@@ -1,22 +1,54 @@
 <script setup lang="ts">
-import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import { Link } from '@inertiajs/vue3';
+import { Building2, ArrowRight, ShieldCheck } from 'lucide-vue-next';
 </script>
 
 <template>
-    <div
-        class="flex min-h-screen flex-col items-center bg-gray-100 pt-6 sm:justify-center sm:pt-0 dark:bg-gray-900"
-    >
-        <div>
-            <Link href="/">
-                <ApplicationLogo class="h-20 w-20 fill-current text-gray-500" />
+    <div class="relative min-h-screen flex flex-col justify-center items-center bg-[#09090b] px-4 py-12 text-zinc-100 font-sans selection:bg-emerald-500 selection:text-black text-right" dir="rtl">
+        <!-- خلفية هادية متناسقة -->
+        <div class="pointer-events-none absolute inset-0 -z-10 overflow-hidden opacity-30">
+            <div class="absolute top-0 right-1/2 translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-emerald-500/20 via-zinc-900/10 to-transparent blur-3xl"></div>
+            <div class="absolute inset-0 bg-[linear-gradient(to_right,#27272a_1px,transparent_1px),linear-gradient(to_bottom,#27272a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
+        </div>
+
+        <!-- زرار الرجوع للرئيسية وشارة الأمان -->
+        <div class="w-full max-w-md mb-6 flex items-center justify-between">
+            <Link
+                href="/"
+                class="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-400 hover:text-white transition"
+            >
+                <ArrowRight class="h-3.5 w-3.5" />
+                الرجوع للرئيسية
+            </Link>
+            <div class="flex items-center gap-1 text-[11px] font-mono text-zinc-400">
+                <ShieldCheck class="h-3.5 w-3.5 text-emerald-400" />
+                <span>مساحة معزولة ومحمية</span>
+            </div>
+        </div>
+
+        <!-- اللوجو والهوية -->
+        <div class="mb-6 flex flex-col items-center text-center">
+            <Link href="/" class="flex items-center gap-2.5 group">
+                <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-black shadow-lg shadow-emerald-500/25 group-hover:scale-105 transition-transform font-bold text-lg">
+                    دار
+                </div>
+                <div class="text-right">
+                    <div class="text-2xl font-bold tracking-tight text-white flex items-center gap-1.5 font-sans">
+                        دار
+                    </div>
+                    <p class="text-xs text-zinc-400 font-medium">نظام لأدارة الايجار</p>
+                </div>
             </Link>
         </div>
 
-        <div
-            class="mt-6 w-full overflow-hidden bg-white px-6 py-4 shadow-md sm:max-w-md sm:rounded-lg dark:bg-gray-800"
-        >
+        <!-- كارت الفورم -->
+        <div class="w-full max-w-md overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6 sm:p-8 shadow-2xl shadow-black/80 backdrop-blur-xl">
             <slot />
+        </div>
+
+        <!-- الفوتر -->
+        <div class="mt-8 text-center text-xs text-zinc-500 font-medium">
+            دار • نظام لأدارة الايجار • أمان كامل لبياناتك ومساحة عمل معزولة
         </div>
     </div>
 </template>

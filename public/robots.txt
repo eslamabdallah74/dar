@@ -1,2 +1,21 @@
 User-agent: *
-Disallow:
+Allow: /
+Allow: /images/
+Allow: /build/
+Allow: /login
+Allow: /register
+
+# Disallow private/authenticated application panels
+Disallow: /dashboard
+Disallow: /properties
+Disallow: /leases
+Disallow: /payments
+Disallow: /maintenance
+Disallow: /renters
+Disallow: /expenses
+Disallow: /settings
+Disallow: /whatsapp
+Disallow: /subscription
+Disallow: /profile
+
+Sitemap: /sitemap.xml

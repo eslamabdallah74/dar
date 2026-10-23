@@ -20,7 +20,106 @@ const mobileMenuOpen = ref(false);
 </script>
 
 <template>
-    <Head title="دار — نظام لأدارة الايجار" />
+    <Head>
+        <title>دار — منصة إدارة وتأجير العقارات والأملاك السكنية والمشتركة</title>
+        <meta name="description" content="منصة دار السحابية المتكاملة لإدارة وتأجير العقارات، عقود الإيجار، تحصيل الإيجارات وسندات القبض، وتذكيرات واتساب التلقائية." />
+        <meta property="og:title" content="دار — منصة إدارة وتأجير العقارات والأملاك السكنية والمشتركة" />
+        <meta property="og:description" content="أدر عقاراتك، وحداتك، مستأجريك وسندات القبض في منصة عربية موحدة مع تذكيرات واتساب التلقائية." />
+        <meta property="og:image" content="/images/logo.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="دار — منصة إدارة وتأجير العقارات والأملاك السكنية" />
+        <meta name="twitter:description" content="منصة سحابية متكاملة لإدارة وتأجير العقارات، عقود الإيجار، وسندات القبض مع تذكيرات واتساب." />
+        <meta name="twitter:image" content="/images/logo.png" />
+
+        <!-- Structured Data (JSON-LD) -->
+        <component :is="'script'" type="application/ld+json">
+            {{ JSON.stringify({
+                "@context": "https://schema.org",
+                "@graph": [
+                    {
+                        "@type": "Organization",
+                        "@id": "https://dar.app/#organization",
+                        "name": "دار",
+                        "alternateName": "Dar Property Management",
+                        "url": "https://dar.app",
+                        "logo": {
+                            "@type": "ImageObject",
+                            "url": "/images/logo.png"
+                        },
+                        "description": "منصة سحابية عربية متكاملة لإدارة وتأجير العقارات السكنية والشقق المشتركة وسكن الطلاب"
+                    },
+                    {
+                        "@type": "SoftwareApplication",
+                        "@id": "https://dar.app/#software",
+                        "name": "دار - Dar",
+                        "applicationCategory": "BusinessApplication",
+                        "operatingSystem": "All modern web browsers",
+                        "offers": [
+                            {
+                                "@type": "Offer",
+                                "name": "الباقة المجانية",
+                                "price": "0",
+                                "priceCurrency": "EGP",
+                                "description": "إدارة حتى 5 وحدات سكنية مجاناً مدى الحياة"
+                            },
+                            {
+                                "@type": "Offer",
+                                "name": "باقة النمو - Growth",
+                                "price": "299",
+                                "priceCurrency": "EGP",
+                                "description": "إدارة حتى 25 وحدة سكنية مع تذكيرات واتساب وتوثيق العقود"
+                            },
+                            {
+                                "@type": "Offer",
+                                "name": "باقة المحترفين - Pro",
+                                "price": "799",
+                                "priceCurrency": "EGP",
+                                "description": "إدارة حتى 100 وحدة سكنية مع تخصيص كامل ودعم متقدم"
+                            }
+                        ]
+                    },
+                    {
+                        "@type": "FAQPage",
+                        "@id": "https://dar.app/#faq",
+                        "mainEntity": [
+                            {
+                                "@type": "Question",
+                                "name": "هل التجربة المجانية تتطلب بطاقة بنكية؟",
+                                "acceptedAnswer": {
+                                    "@type": "Answer",
+                                    "text": "لا نهائيًا، يمكنك التسجيل والبدء فورًا في إدارة حتى 5 وحدات مجانًا بالكامل دون الحاجة لإدخال أي بطاقة دفع أو التزام مالي."
+                                }
+                            },
+                            {
+                                "@type": "Question",
+                                "name": "كيف تعمل تذكيرات واتساب التلقائية؟",
+                                "acceptedAnswer": {
+                                    "@type": "Answer",
+                                    "text": "ترسل المنصة إشعارًا مهذبًا ومخصصًا للمستأجر عبر واتساب قبل موعد استحقاق الإيجار بأيام محددة تختارها، متضمنًا اسم الوحدة والمبلغ المستحق وتاريخ السداد."
+                                }
+                            },
+                            {
+                                "@type": "Question",
+                                "name": "هل يمكنني إدارة التأجير بالسرير أو الغرفة المنفصلة؟",
+                                "acceptedAnswer": {
+                                    "@type": "Answer",
+                                    "text": "نعم! صُمم النظام بهيكلية شجرية مرنة: عقار -> شقة -> غرفة -> سرير، مما يتيح لك إنشاء عقود ومتابعة دفعات لكل سرير على حدة بدقة متناهية."
+                                }
+                            },
+                            {
+                                "@type": "Question",
+                                "name": "هل بياناتي وعقود مستأجريّ آمنة؟",
+                                "acceptedAnswer": {
+                                    "@type": "Answer",
+                                    "text": "نعتمد على سيرفرات مشفرة بالكامل ونسخ احتياطي يومي، مع عزل تام لبيانات كل مساحة عمل لضمان سرية وخصوصية سجلاتك المالية وعقودك."
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }) }}
+        </component>
+    </Head>
 
     <div class="min-h-screen bg-[#F3F7FA] text-[#334155] font-sans selection:bg-[#0E6E7E] selection:text-white" dir="rtl">
         <!-- ========================================== -->
@@ -31,13 +130,17 @@ const mobileMenuOpen = ref(false);
                 <div class="flex items-center justify-between h-20">
                     <!-- Brand Logo -->
                     <div class="flex items-center gap-8">
-                        <Link href="/" class="flex items-center gap-3 group">
-                            <div class="w-11 h-11 rounded-xl bg-[#0F2747] flex items-center justify-center text-white font-black text-lg shadow-md group-hover:bg-[#0E6E7E] transition-colors">
-                                دار
+                        <Link href="/" class="flex items-center gap-3.5 group">
+                            <div class="w-14 h-14 rounded-full bg-white flex items-center justify-center p-2 shadow-md border border-slate-200 group-hover:scale-105 group-hover:shadow-lg transition-all shrink-0">
+                                <img
+                                    src="/images/logo.png"
+                                    alt="شعار منصة دار"
+                                    class="w-full h-full object-contain"
+                                />
                             </div>
                             <div class="flex flex-col">
                                 <span class="text-2xl font-black text-[#0F2747] tracking-tight">دار</span>
-                                <span class="text-[11px] font-semibold text-[#5B6770] -mt-1">نظام لأدارة الايجار</span>
+                                <span class="text-[11px] font-semibold text-[#5B6770] -mt-1">نظام إدارة الإيجار</span>
                             </div>
                         </Link>
 
@@ -112,7 +215,7 @@ const mobileMenuOpen = ref(false);
         </header>
 
         <!-- ========================================== -->
-        <!-- 2. HERO SECTION (Hero from Figma)          -->
+        <!-- 2. HERO SECTION                            -->
         <!-- ========================================== -->
         <section class="relative pt-12 pb-20 lg:pt-20 lg:pb-28 overflow-hidden">
             <!-- Subtle background decorative gradients -->
@@ -122,19 +225,19 @@ const mobileMenuOpen = ref(false);
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
                     <!-- Right Column: Hero Content & CTAs -->
                     <div class="lg:col-span-7 flex flex-col items-start text-right">
-                        <!-- Figma Pill Badge -->
+                        <!-- Hero Pill Badge -->
                         <div class="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-[#E3F1F4] border border-[#0E6E7E]/20 text-[#0E6E7E] text-xs sm:text-sm font-bold mb-6">
                             <span class="w-2 h-2 rounded-full bg-[#0E6E7E] animate-pulse"></span>
                             <span>منصة SaaS عربية لإدارة العقارات والإيجارات</span>
                         </div>
 
-                        <!-- Figma Hero Main Title -->
+                        <!-- Hero Main Title -->
                         <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-[#0F2747] tracking-tight leading-[1.2] mb-6">
                             إدارة عقاراتك وإيجاراتك <br class="hidden sm:inline" />
                             <span class="text-[#0E6E7E]">من مكان واحد</span>
                         </h1>
 
-                        <!-- Figma Subtitle -->
+                        <!-- Hero Subtitle -->
                         <p class="text-base sm:text-lg text-[#334155] leading-relaxed max-w-2xl mb-8 font-normal">
                             عقارات، مستأجرون، عقود، مستحقات وصيانة في منصة واحدة، مع تذكيرات واتساب تلقائية قبل موعد الدفع وتنبيه قبل انتهاء العقد.
                         </p>
@@ -162,7 +265,7 @@ const mobileMenuOpen = ref(false);
                             </a>
                         </div>
 
-                        <!-- Trust Features Row (from Figma) -->
+                        <!-- Trust Features Row -->
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6 border-t border-[#D6E0E7] w-full text-xs sm:text-sm font-semibold text-[#5B6770]">
                             <div class="flex items-center gap-2">
                                 <div class="w-5 h-5 rounded-full bg-[#E3F1F4] flex items-center justify-center text-[#0E6E7E]">
@@ -191,7 +294,7 @@ const mobileMenuOpen = ref(false);
                         </div>
                     </div>
 
-                    <!-- Left Column: Figma Dashboard Preview Card (1:1 from Figma) -->
+                    <!-- Left Column: Dashboard Preview Card -->
                     <div class="lg:col-span-5 relative">
                         <div class="bg-white rounded-2xl sm:rounded-3xl border border-[#D6E0E7] shadow-xl p-5 sm:p-6 transition-all relative">
                             <!-- Card Header Bar -->
@@ -215,7 +318,7 @@ const mobileMenuOpen = ref(false);
                                 </span>
                             </div>
 
-                            <!-- Top 3 Metrics (from Figma) -->
+                            <!-- Top 3 Metrics -->
                             <div class="grid grid-cols-3 gap-2.5 mb-5">
                                 <!-- Metric 1: نسبة الإشغال -->
                                 <div class="bg-[#F3F7FA] rounded-xl p-3 border border-[#D6E0E7]/60 text-center">
@@ -234,7 +337,7 @@ const mobileMenuOpen = ref(false);
                                 </div>
                             </div>
 
-                            <!-- Occupancy Trend Bar (Figma: الإشغال خلال 6 أشهر) -->
+                            <!-- Occupancy Trend Bar (الإشغال خلال 6 أشهر) -->
                             <div class="mb-5 bg-[#F3F7FA] rounded-xl p-3 border border-[#D6E0E7]/60">
                                 <div class="flex items-center justify-between text-xs font-bold mb-2">
                                     <span class="text-[#0F2747]">الإشغال خلال 6 أشهر</span>
@@ -268,7 +371,7 @@ const mobileMenuOpen = ref(false);
                                 </div>
                             </div>
 
-                            <!-- Live Tenant List with Status Badges (from Figma) -->
+                            <!-- Live Tenant List with Status Badges -->
                             <div class="space-y-2 mb-4">
                                 <span class="block text-xs font-bold text-[#5B6770] px-1">سجل المستأجرين الأخير</span>
 
@@ -328,7 +431,7 @@ const mobileMenuOpen = ref(false);
                                 </div>
                             </div>
 
-                            <!-- WhatsApp Notification Banner Toast (from Figma) -->
+                            <!-- WhatsApp Notification Banner Toast -->
                             <div class="mt-4 p-3 rounded-xl bg-[#E8EFF4] border border-[#0E6E7E]/30 flex items-center gap-3">
                                 <div class="w-8 h-8 rounded-full bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-sm">
                                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -347,7 +450,7 @@ const mobileMenuOpen = ref(false);
         </section>
 
         <!-- ========================================== -->
-        <!-- 3. AUDIENCE SECTION (Audience from Figma)  -->
+        <!-- 3. AUDIENCE SECTION                            -->
         <!-- ========================================== -->
         <section class="py-16 bg-white border-y border-[#D6E0E7]">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -613,7 +716,7 @@ const mobileMenuOpen = ref(false);
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
-                    <!-- Plan 1: الباقة المجانية (Free Tier from Figma Hero) -->
+                    <!-- Plan 1: الباقة المجانية -->
                     <div class="bg-white rounded-3xl p-8 border border-[#D6E0E7] flex flex-col justify-between hover:shadow-md transition">
                         <div>
                             <div class="flex items-center justify-between mb-4">
@@ -883,9 +986,13 @@ const mobileMenuOpen = ref(false);
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
                     <!-- Brand info -->
                     <div class="md:col-span-2 space-y-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-[#0E6E7E] flex items-center justify-center text-white font-bold text-base">
-                                دار
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center p-1.5 shadow-md ring-2 ring-white/10 shrink-0">
+                                <img
+                                    src="/images/logo.png"
+                                    alt="شعار دار"
+                                    class="w-full h-full object-contain"
+                                />
                             </div>
                             <span class="text-2xl font-black text-white">دار</span>
                         </div>

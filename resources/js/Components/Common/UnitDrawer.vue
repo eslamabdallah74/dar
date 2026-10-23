@@ -53,7 +53,7 @@ const emit = defineEmits<{
         ></div>
 
         <div class="fixed inset-y-0 left-0 max-w-full flex pl-0 sm:pl-10">
-            <!-- Slide Drawer Panel (Width 400px per Figma side drawer) -->
+            <!-- Slide Drawer Panel (Width 400px) -->
             <div class="w-screen max-w-md bg-white shadow-2xl border-r border-[#D6E0E7] flex flex-col justify-between animate-in slide-in-from-left duration-200">
                 <!-- Top: Header & Unit details -->
                 <div class="overflow-y-auto p-6 space-y-6 flex-1">
@@ -112,7 +112,7 @@ const emit = defineEmits<{
                             <div class="flex items-center justify-between">
                                 <span class="text-xs text-[#5B6770]">الهاتف / WhatsApp:</span>
                                 <a
-                                    :href="`https://wa.me/966${unit.active_lease.renter_phone.replace(/^0+/, '')}`"
+                                    :href="`https://wa.me/20${unit.active_lease.renter_phone.replace(/^0+/, '')}`"
                                     target="_blank"
                                     class="text-xs font-semibold text-[#0E6E7E] flex items-center gap-1 font-mono hover:underline"
                                 >
@@ -124,7 +124,7 @@ const emit = defineEmits<{
                             <div class="flex items-center justify-between">
                                 <span class="text-xs text-[#5B6770]">القيمة الإيجارية:</span>
                                 <span class="text-sm font-bold text-[#0F2747]">
-                                    {{ unit.active_lease.rent_amount.toLocaleString() }} ر.س / شهرياً
+                                    {{ unit.active_lease.rent_amount.toLocaleString() }} ج.م / شهرياً
                                 </span>
                             </div>
 

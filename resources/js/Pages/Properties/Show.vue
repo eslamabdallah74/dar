@@ -23,6 +23,8 @@ import {
 
 interface UnitItem {
     id: number;
+    parent_unit_id?: number | null;
+    parent_unit_name?: string | null;
     code: string;
     name: string;
     unit_type: string;
@@ -75,10 +77,18 @@ const showAddUnitModal = ref(false);
 const recordPaymentOpen = ref(false);
 const activeUnitForPayment = ref<any>(null);
 
-const addUnitForm = useForm({
+const addUnitForm = useForm<{
+    name: string;
+    code: string;
+    unit_type: string;
+    parent_unit_id: number | null;
+    is_rentable: boolean;
+    unit_limit?: string;
+}>({
     name: '',
     code: '',
     unit_type: 'apartment',
+    parent_unit_id: null,
     is_rentable: true,
 });
 
@@ -163,7 +173,7 @@ const submitUnit = () => {
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
                 <span class="text-xs font-semibold text-[#5B6770]">الإيراد الشهري المحقق</span>
                 <div class="flex items-baseline justify-between">
-                    <span class="text-2xl font-bold text-[#0F2747] font-mono">{{ stats.monthly_revenue.toLocaleString() }} <span class="text-xs font-sans font-normal text-[#5B6770]">ر.س</span></span>
+                    <span class="text-2xl font-bold text-[#0F2747] font-mono">{{ stats.monthly_revenue.toLocaleString() }} <span class="text-xs font-sans font-normal text-[#5B6770]">ج.م</span></span>
                     <span class="text-xs text-[#5B6770]">شهرياً</span>
                 </div>
             </div>
@@ -200,7 +210,12 @@ const submitUnit = () => {
                             <h4 class="text-sm font-bold text-[#0F2747] group-hover:text-[#0E6E7E] transition">
                                 {{ unit.name }}
                             </h4>
-                            <span class="text-xs text-[#5B6770]">{{ unit.type_label }}</span>
+                            <div class="flex items-center gap-1.5 flex-wrap mt-0.5">
+                                <span class="text-xs text-[#5B6770]">{{ unit.type_label }}</span>
+                                <span v-if="unit.parent_unit_name" class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium">
+                                    تابع لـ: {{ unit.parent_unit_name }}
+                                </span>
+                            </div>
                         </div>
 
                         <!-- تفاصيل الإشغال -->
@@ -211,7 +226,7 @@ const submitUnit = () => {
                             </div>
                             <div class="flex items-center justify-between text-xs">
                                 <span class="text-[#5B6770]">الإيجار:</span>
-                                <span class="font-bold text-[#0E6E7E] font-mono">{{ unit.active_lease.rent_amount.toLocaleString() }} ر.س</span>
+                                <span class="font-bold text-[#0E6E7E] font-mono">{{ unit.active_lease.rent_amount.toLocaleString() }} ج.م</span>
                             </div>
                         </div>
 
@@ -277,41 +292,81 @@ const submitUnit = () => {
                 </div>
 
                 <form @submit.prevent="submitUnit" class="space-y-4">
+                    <div v-if="addUnitForm.errors.unit_limit" class="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold leading-relaxed">
+                        ⚠️ {{ addUnitForm.errors.unit_limit }}
+                    </div>
+
                     <div>
                         <label class="block text-xs font-bold text-[#0F2747] mb-1.5">اسم الوحدة *</label>
                         <input
                             v-model="addUnitForm.name"
                             type="text"
+                            maxlength="255"
                             placeholder="مثال: شقة 303 (الدور الثالث)"
                             required
-                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition"
+                            class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#0F2747] transition"
+                            :class="addUnitForm.errors.name ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-1 focus:ring-rose-500' : 'border-[#D6E0E7] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E]'"
                         />
+                        <p v-if="addUnitForm.errors.name" class="mt-1 text-xs text-rose-600 font-medium">{{ addUnitForm.errors.name }}</p>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-bold text-[#0F2747] mb-1.5">رمز الوحدة</label>
+                            <label class="block text-xs font-bold text-[#0F2747] mb-1.5">كود الوحدة <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
                             <input
                                 v-model="addUnitForm.code"
                                 type="text"
+                                maxlength="50"
                                 placeholder="APT-303"
-                                class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] font-mono focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition"
+                                class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#0F2747] font-mono transition"
+                                :class="addUnitForm.errors.code ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-1 focus:ring-rose-500' : 'border-[#D6E0E7] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E]'"
                             />
+                            <p v-if="addUnitForm.errors.code" class="mt-1 text-xs text-rose-600 font-medium">{{ addUnitForm.errors.code }}</p>
                         </div>
 
                         <div>
                             <label class="block text-xs font-bold text-[#0F2747] mb-1.5">النوع *</label>
                             <select
                                 v-model="addUnitForm.unit_type"
-                                class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition"
+                                class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#0F2747] transition"
+                                :class="addUnitForm.errors.unit_type ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-1 focus:ring-rose-500' : 'border-[#D6E0E7] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E]'"
                             >
                                 <option value="apartment">شقة</option>
                                 <option value="room">غرفة</option>
                                 <option value="bed">سرير</option>
                                 <option value="other">مرفق آخر</option>
                             </select>
+                            <p v-if="addUnitForm.errors.unit_type" class="mt-1 text-xs text-rose-600 font-medium">{{ addUnitForm.errors.unit_type }}</p>
                         </div>
                     </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">الوحدة الرئيسية (الأب) <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري للتقسيم الهرمي)</span></label>
+                        <select
+                            v-model="addUnitForm.parent_unit_id"
+                            class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#0F2747] transition"
+                            :class="addUnitForm.errors.parent_unit_id ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-1 focus:ring-rose-500' : 'border-[#D6E0E7] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E]'"
+                        >
+                            <option :value="null">بدون وحدة أب (وحدة رئيسية بالعقار)</option>
+                            <option v-for="u in units" :key="u.id" :value="u.id">
+                                {{ u.code ? u.code + ' • ' : '' }}{{ u.name }} ({{ u.type_label }})
+                            </option>
+                        </select>
+                        <p v-if="addUnitForm.errors.parent_unit_id" class="mt-1 text-xs text-rose-600 font-medium">{{ addUnitForm.errors.parent_unit_id }}</p>
+                    </div>
+
+                    <div class="flex items-center gap-2.5 p-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC]">
+                        <input
+                            id="is_rentable_checkbox"
+                            v-model="addUnitForm.is_rentable"
+                            type="checkbox"
+                            class="w-4 h-4 rounded text-[#0E6E7E] focus:ring-[#0E6E7E] border-[#D6E0E7]"
+                        />
+                        <label for="is_rentable_checkbox" class="text-xs font-bold text-[#0F2747] cursor-pointer">
+                            الوحدة قابلة للتأجير بشكل مستقل
+                        </label>
+                    </div>
+                    <p v-if="addUnitForm.errors.is_rentable" class="mt-1 text-xs text-rose-600 font-medium">{{ addUnitForm.errors.is_rentable }}</p>
 
                     <div class="pt-4 flex items-center justify-end gap-3 border-t border-[#D6E0E7]">
                         <button

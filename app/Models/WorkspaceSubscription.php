@@ -14,18 +14,18 @@ class WorkspaceSubscription extends Model
     protected $fillable = [
         'workspace_id',
         'plan_id',
-        'starts_at',
-        'expires_at',
-        'status',
-        'notes',
         'activated_by',
+        'status',
+        'starts_at',
+        'ends_at',
+        'provider_reference',
     ];
 
     protected function casts(): array
     {
         return [
             'starts_at' => 'datetime',
-            'expires_at' => 'datetime',
+            'ends_at' => 'datetime',
         ];
     }
 
@@ -48,13 +48,13 @@ class WorkspaceSubscription extends Model
     {
         return $query->where('status', 'active')
             ->where(function ($q) {
-                $q->whereNull('expires_at')
-                    ->orWhere('expires_at', '>', now());
+                $q->whereNull('ends_at')
+                    ->orWhere('ends_at', '>', now());
             });
     }
 
     public function isCurrentlyActive(): bool
     {
-        return $this->status === 'active' && ($this->expires_at === null || $this->expires_at->isFuture());
+        return $this->status === 'active' && ($this->ends_at === null || $this->ends_at->isFuture());
     }
 }

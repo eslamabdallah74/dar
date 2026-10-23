@@ -141,6 +141,7 @@ const submitGeneral = () => {
                             v-model="form.currency"
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition"
                         >
+                            <option value="EGP">جنيه مصري (EGP)</option>
                             <option value="SAR">ريال سعودي (SAR)</option>
                             <option value="AED">درهم إماراتي (AED)</option>
                             <option value="USD">دولار أمريكي (USD)</option>
@@ -148,7 +149,7 @@ const submitGeneral = () => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">رقم السجل التجاري</label>
+                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">رقم السجل التجاري <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
                         <input
                             v-model="form.cr_number"
                             type="text"
@@ -157,7 +158,7 @@ const submitGeneral = () => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">الرقم الضريبي (VAT)</label>
+                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">الرقم الضريبي <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
                         <input
                             v-model="form.tax_number"
                             type="text"
@@ -166,7 +167,7 @@ const submitGeneral = () => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">رقم هاتف المنشأة المعتمد</label>
+                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">رقم هاتف المنشأة <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
                         <input
                             v-model="form.phone"
                             type="text"
@@ -175,7 +176,7 @@ const submitGeneral = () => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">العنوان والمقر الرئيسي</label>
+                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">العنوان والمقر الرئيسي <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
                         <input
                             v-model="form.address"
                             type="text"

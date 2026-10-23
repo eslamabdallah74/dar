@@ -19,7 +19,7 @@ interface StatusConfig {
 }
 
 const statusMap: Record<string, StatusConfig> = {
-    // Green / Success tints (Always #0F2747 text per Figma AA contrast rule)
+    // Green / Success tints (Always #0F2747 text per AA contrast rule)
     occupied: { dotColor: 'bg-emerald-500', bgColor: 'bg-[#E3F1F4]', defaultLabel: 'مؤجرة' },
     active: { dotColor: 'bg-emerald-500', bgColor: 'bg-[#DEF7EC]', defaultLabel: 'سارٍ' },
     paid: { dotColor: 'bg-emerald-500', bgColor: 'bg-[#DEF7EC]', defaultLabel: 'مسدد بالكامل' },

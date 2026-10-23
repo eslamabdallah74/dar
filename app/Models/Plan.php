@@ -13,17 +13,16 @@ class Plan extends Model
     protected $fillable = [
         'name',
         'slug',
-        'max_units',
-        'price_egp',
-        'billing_interval',
+        'monthly_price',
+        'unit_limit',
         'is_active',
     ];
 
     protected function casts(): array
     {
         return [
-            'max_units' => 'integer',
-            'price_egp' => 'decimal:2',
+            'monthly_price' => 'decimal:2',
+            'unit_limit' => 'integer',
             'is_active' => 'boolean',
         ];
     }

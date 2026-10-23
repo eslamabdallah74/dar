@@ -75,12 +75,13 @@ class MaintenanceController extends Controller
             'property_id' => 'required|exists:properties,id',
             'unit_id' => 'nullable|exists:units,id',
             'title' => 'required|string|max:255',
-            'description' => 'required|string',
+            'description' => 'nullable|string',
             'reported_by_renter_id' => 'nullable|exists:renters,id',
         ]);
 
         $workspace->maintenanceRequests()->create([
             ...$validated,
+            'description' => $validated['description'] ?? '',
             'status' => 'open',
             'reported_at' => now(),
         ]);
@@ -107,4 +108,3 @@ class MaintenanceController extends Controller
         return back()->with('success', 'تم تحديث حالة طلب الصيانة بنجاح');
     }
 }
-

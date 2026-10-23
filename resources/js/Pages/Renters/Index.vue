@@ -182,7 +182,7 @@ const submitRenter = () => {
             </div>
         </div>
 
-        <!-- جدول المستأجرين (Figma Data Table) -->
+        <!-- جدول المستأجرين (Renters Data Table) -->
         <div v-if="filteredRenters.length > 0" class="rounded-3xl border border-[#D6E0E7] bg-white overflow-hidden shadow-2xs">
             <div class="overflow-x-auto">
                 <table class="w-full text-right text-sm">
@@ -308,11 +308,11 @@ const submitRenter = () => {
 
                 <form @submit.prevent="submitRenter" class="space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">الاسم الثلاثي أو الكامل *</label>
+                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">اسم المستأجر *</label>
                         <input
                             v-model="form.name"
                             type="text"
-                            placeholder="مثال: محمد علي، خالد العتيبي..."
+                            placeholder="مثال: أحمد محمود علي"
                             required
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition"
                         />
@@ -320,29 +320,29 @@ const submitRenter = () => {
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-bold text-[#0F2747] mb-1.5">رقم الجوال *</label>
+                            <label class="block text-xs font-bold text-[#0F2747] mb-1.5">رقم الهاتف *</label>
                             <input
                                 v-model="form.phone"
                                 type="text"
-                                placeholder="05XXXXXXXX"
+                                placeholder="01XXXXXXXXX"
                                 required
                                 class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] font-mono focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-left"
                             />
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-[#0F2747] mb-1.5">رقم الهوية / الإقامة</label>
+                            <label class="block text-xs font-bold text-[#0F2747] mb-1.5">الرقم القومي / الهوية <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
                             <input
                                 v-model="form.national_id"
                                 type="text"
-                                placeholder="10XXXXXXXX"
+                                placeholder="الرقم القومي (14 رقم)"
                                 class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] font-mono focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-left"
                             />
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">البريد الإلكتروني (اختياري)</label>
+                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">البريد الإلكتروني <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
                         <input
                             v-model="form.email"
                             type="email"

@@ -46,7 +46,7 @@ const props = defineProps<{
         phone: string;
         national_id: string | null;
     }>;
-    properties: Array<{
+    properties?: Array<{
         id: number;
         name: string;
     }>;
@@ -55,7 +55,7 @@ const props = defineProps<{
 }>();
 
 const selectedPropertyId = ref<string | number>(
-    props.units.find(u => String(u.id) === String(props.preselected_unit_id))?.property_id || (props.properties[0]?.id ?? '')
+    props.units.find(u => String(u.id) === String(props.preselected_unit_id))?.property_id || (props.properties?.[0]?.id ?? '')
 );
 
 const filteredUnits = computed(() => {
@@ -266,13 +266,13 @@ const submit = () => {
                                 class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-left"
                             />
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#5B6770]">
-                                ر.س
+                                ج.م
                             </span>
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">مبلغ التأمين / الوديعة المستلمة</label>
+                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">مبلغ التأمين / الوديعة <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
                         <div class="relative">
                             <input
                                 v-model="form.deposit_amount"
@@ -281,7 +281,7 @@ const submit = () => {
                                 class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-left"
                             />
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#5B6770]">
-                                ر.س
+                                ج.م
                             </span>
                         </div>
                     </div>
@@ -334,7 +334,7 @@ const submit = () => {
                             </div>
                             <div>
                                 <span class="text-[#5B6770] block">القيمة الإيجارية:</span>
-                                <span class="font-mono font-bold text-[#0F2747]">{{ conflictData.conflicting_lease.rent_amount }} ر.س</span>
+                                <span class="font-mono font-bold text-[#0F2747]">{{ conflictData.conflicting_lease.rent_amount }} ج.م</span>
                             </div>
                         </div>
 

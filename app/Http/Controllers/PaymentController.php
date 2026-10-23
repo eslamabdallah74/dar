@@ -188,4 +188,3 @@ class PaymentController extends Controller
         return back()->with('success', 'تم تسجيل الدفعة وإصدار سند القبض بنجاح');
     }
 }
-

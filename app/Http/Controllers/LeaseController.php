@@ -3,21 +3,48 @@
 namespace App\Http\Controllers;
 
 use App\Models\Lease;
+use App\Models\Renter;
 use App\Models\Unit;
+use App\Models\Workspace;
 use App\Support\CurrentWorkspace;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class LeaseController extends Controller
 {
+    /**
+     * Resolve and authorize the active workspace for the authenticated user.
+     */
+    protected function resolveWorkspace(Request $request): Workspace
+    {
+        $workspace = app(CurrentWorkspace::class)->get();
+
+        if (! $workspace) {
+            abort(403, 'لا توجد مساحة عمل نشطة أو مصرح بها.');
+        }
+
+        $user = $request->user();
+        if (! $user) {
+            abort(401);
+        }
+
+        $isAuthorized = $workspace->owner_user_id === $user->id
+            || $workspace->members()->where('user_id', $user->id)->exists();
+
+        abort_if(! $isAuthorized, 403, 'غير مصرح لك بالوصول لمساحة العمل هذه.');
+
+        return $workspace;
+    }
+
     public function index(Request $request): Response
     {
-        $workspace = app(CurrentWorkspace::class)->get()
-            ?? $request->user()->ownedWorkspaces()->first();
+        $workspace = $this->resolveWorkspace($request);
 
         $leases = $workspace->leases()
             ->with(['renter', 'unit.property'])
@@ -61,43 +88,45 @@ class LeaseController extends Controller
         return Inertia::render('Leases/Index', [
             'leases' => $leases,
             'stats' => [
+                'total_leases' => $leases->count(),
                 'active_leases' => $activeCount,
                 'expiring_soon' => $expiringCount,
                 'total_annual_value' => $totalContractValue,
-                'total_leases' => $leases->count(),
+                'total_value' => $totalContractValue,
             ],
         ]);
     }
 
     public function create(Request $request): Response
     {
-        $workspace = app(CurrentWorkspace::class)->get()
-            ?? $request->user()->ownedWorkspaces()->first();
+        $workspace = $this->resolveWorkspace($request);
 
         $units = $workspace->units()
-            ->where('is_rentable', true)
-            ->with([
-                'property',
-                'leases' => fn ($q) => $q->whereIn('status', ['active', 'draft'])->with('renter'),
-            ])
+            ->with(['property', 'currentLease.renter'])
             ->get()
-            ->map(fn (Unit $unit) => [
-                'id' => $unit->id,
-                'name' => $unit->name,
-                'code' => $unit->code,
-                'property_id' => $unit->property_id,
-                'property_name' => $unit->property?->name,
-                'is_occupied' => $unit->leases->where('status', 'active')->isNotEmpty(),
-                'active_leases' => $unit->leases->map(fn ($l) => [
-                    'id' => $l->id,
-                    'renter_name' => $l->renter?->name,
-                    'starts_on' => $l->starts_on?->toDateString(),
-                    'ends_on' => $l->ends_on?->toDateString(),
-                ]),
+            ->map(fn (Unit $u) => [
+                'id' => $u->id,
+                'name' => ($u->code ? $u->code.' • ' : '').$u->name,
+                'code' => $u->code,
+                'property_id' => $u->property_id,
+                'property_name' => $u->property?->name ?? 'عقار عام',
+                'is_occupied' => (bool) $u->currentLease,
+                'unit_type' => $u->unit_type,
+                'active_leases' => $u->currentLease ? [[
+                    'id' => $u->currentLease->id,
+                    'renter_name' => $u->currentLease->renter?->name ?? 'مستأجر',
+                    'starts_on' => $u->currentLease->starts_on?->format('d/m/Y'),
+                    'ends_on' => $u->currentLease->ends_on?->format('d/m/Y'),
+                ]] : [],
             ]);
 
-        $renters = $workspace->renters()->orderBy('name')->get(['id', 'name', 'phone', 'national_id']);
-        $properties = $workspace->properties()->orderBy('name')->get(['id', 'name']);
+        $renters = $workspace->renters()
+            ->orderBy('name')
+            ->get(['id', 'name', 'phone']);
+
+        $properties = $workspace->properties()
+            ->orderBy('name')
+            ->get(['id', 'name']);
 
         return Inertia::render('Leases/Create', [
             'units' => $units,
@@ -105,13 +134,16 @@ class LeaseController extends Controller
             'properties' => $properties,
             'preselected_unit_id' => $request->query('unit_id'),
             'preselected_renter_id' => $request->query('renter_id'),
+            'initial_data' => [
+                'unit_id' => $request->query('unit_id'),
+                'renter_id' => $request->query('renter_id'),
+            ],
         ]);
     }
 
     public function checkConflict(Request $request): JsonResponse
     {
-        $workspace = app(CurrentWorkspace::class)->get()
-            ?? $request->user()->ownedWorkspaces()->first();
+        $workspace = $this->resolveWorkspace($request);
 
         $request->validate([
             'unit_id' => 'required|exists:units,id',
@@ -123,21 +155,27 @@ class LeaseController extends Controller
         $startsOn = $request->starts_on;
         $endsOn = $request->ends_on;
 
+        $unit = Unit::withoutGlobalScopes()
+            ->where('workspace_id', $workspace->id)
+            ->findOrFail($unitId);
+
+        $hierarchyIds = $unit->getHierarchyUnitIds();
+
         $conflictingLease = $workspace->leases()
-            ->where('unit_id', $unitId)
+            ->whereIn('unit_id', $hierarchyIds)
             ->whereIn('status', ['active', 'draft'])
-            ->where(function ($query) use ($startsOn, $endsOn) {
-                $query->whereBetween('starts_on', [$startsOn, $endsOn])
-                    ->orWhereBetween('ends_on', [$startsOn, $endsOn])
-                    ->orWhere(function ($q) use ($startsOn, $endsOn) {
-                        $q->where('starts_on', '<=', $startsOn)
-                            ->where('ends_on', '>=', $endsOn);
-                    });
-            })
+            ->where('starts_on', '<=', $endsOn)
+            ->where('ends_on', '>=', $startsOn)
             ->with(['renter', 'unit.property'])
             ->first();
 
         if ($conflictingLease) {
+            $isSelf = $conflictingLease->unit_id === $unit->id;
+            $conflictingUnit = Unit::withoutGlobalScopes()->find($conflictingLease->unit_id);
+            $unitLabel = $isSelf
+                ? 'الوحدة المحددة'
+                : ($conflictingUnit ? "الوحدة المرتبطة ({$conflictingUnit->name})" : 'وحدة في نفس الهيكل العقاري');
+
             return response()->json([
                 'has_conflict' => true,
                 'conflicting_lease' => [
@@ -149,7 +187,7 @@ class LeaseController extends Controller
                     'ends_on' => $conflictingLease->ends_on?->format('d/m/Y'),
                     'rent_amount' => (float) $conflictingLease->rent_amount,
                 ],
-                'message' => 'تنبيه: الوحدة محجوزة بالفعل بعقد سارٍ في هذه الفترة.',
+                'message' => "تنبيه: {$unitLabel} محجوزة بالفعل بعقد سارٍ في هذه الفترة.",
             ]);
         }
 
@@ -162,8 +200,7 @@ class LeaseController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $workspace = app(CurrentWorkspace::class)->get()
-            ?? $request->user()->ownedWorkspaces()->first();
+        $workspace = $this->resolveWorkspace($request);
 
         $validated = $request->validate([
             'unit_id' => 'required|exists:units,id',
@@ -175,29 +212,65 @@ class LeaseController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        $unit = Unit::withoutGlobalScopes()
+            ->where('workspace_id', $workspace->id)
+            ->findOrFail($validated['unit_id']);
+
+        $renter = Renter::withoutGlobalScopes()
+            ->where('workspace_id', $workspace->id)
+            ->findOrFail($validated['renter_id']);
+
+        $hierarchyIds = $unit->getHierarchyUnitIds();
         $startsCarbon = Carbon::parse($validated['starts_on']);
 
-        $lease = $workspace->leases()->create([
-            'unit_id' => $validated['unit_id'],
-            'renter_id' => $validated['renter_id'],
-            'starts_on' => $validated['starts_on'],
-            'ends_on' => $validated['ends_on'],
-            'rent_amount' => $validated['rent_amount'],
-            'billing_interval' => 'monthly',
-            'billing_anchor_day' => min(28, (int) $startsCarbon->format('j')),
-            'first_due_date' => $validated['starts_on'],
-            'status' => 'active',
-            'notes' => $validated['notes'] ?? null,
-        ]);
+        DB::transaction(function () use ($workspace, $validated, $startsCarbon, $hierarchyIds, $unit) {
+            // Lock affected units in hierarchy for update
+            Unit::withoutGlobalScopes()
+                ->whereIn('id', $hierarchyIds)
+                ->lockForUpdate()
+                ->get();
 
-        // Automatically create first month rent charge
-        $workspace->rentCharges()->create([
-            'lease_id' => $lease->id,
-            'period_start' => $startsCarbon->startOfMonth()->toDateString(),
-            'period_end' => $startsCarbon->copy()->endOfMonth()->toDateString(),
-            'due_date' => $lease->starts_on,
-            'amount' => $lease->rent_amount,
-        ]);
+            $conflictingLease = $workspace->leases()
+                ->whereIn('unit_id', $hierarchyIds)
+                ->whereIn('status', ['active', 'draft'])
+                ->where('starts_on', '<=', $validated['ends_on'])
+                ->where('ends_on', '>=', $validated['starts_on'])
+                ->first();
+
+            if ($conflictingLease) {
+                $isSelf = $conflictingLease->unit_id === $unit->id;
+                $conflictingUnit = Unit::withoutGlobalScopes()->find($conflictingLease->unit_id);
+                $unitLabel = $isSelf
+                    ? 'الوحدة المحددة'
+                    : ($conflictingUnit ? "الوحدة المرتبطة ({$conflictingUnit->name})" : 'وحدة متداخلة هرمياً');
+
+                throw ValidationException::withMessages([
+                    'unit_id' => "تعارض في التواريخ: {$unitLabel} مرتبطة بالفعل بعقد إيجار سارٍ خلال الفترة المحددة ({$conflictingLease->starts_on->format('d/m/Y')} إلى {$conflictingLease->ends_on->format('d/m/Y')}).",
+                ]);
+            }
+
+            $lease = $workspace->leases()->create([
+                'unit_id' => $validated['unit_id'],
+                'renter_id' => $validated['renter_id'],
+                'starts_on' => $validated['starts_on'],
+                'ends_on' => $validated['ends_on'],
+                'rent_amount' => $validated['rent_amount'],
+                'billing_interval' => 'monthly',
+                'billing_anchor_day' => min(28, (int) $startsCarbon->format('j')),
+                'first_due_date' => $validated['starts_on'],
+                'status' => 'active',
+                'notes' => $validated['notes'] ?? null,
+            ]);
+
+            // Automatically create first month rent charge
+            $workspace->rentCharges()->create([
+                'lease_id' => $lease->id,
+                'period_start' => $startsCarbon->startOfMonth()->toDateString(),
+                'period_end' => $startsCarbon->copy()->endOfMonth()->toDateString(),
+                'due_date' => $lease->starts_on,
+                'amount' => $lease->rent_amount,
+            ]);
+        });
 
         return redirect()->route('leases.index')->with('success', 'تم إنشاء وتفعيل عقد الإيجار بنجاح');
     }

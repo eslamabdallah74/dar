@@ -57,8 +57,8 @@ class Workspace extends Model
         return $this->hasOne(WorkspaceSubscription::class)
             ->where('status', 'active')
             ->where(function ($query) {
-                $query->whereNull('expires_at')
-                    ->orWhere('expires_at', '>', now());
+                $query->whereNull('ends_at')
+                    ->orWhere('ends_at', '>', now());
             })
             ->latestOfMany();
     }

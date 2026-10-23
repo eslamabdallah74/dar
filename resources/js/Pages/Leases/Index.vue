@@ -103,7 +103,7 @@ const filteredLeases = computed(() => {
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
                 <span class="text-xs font-semibold text-[#5B6770]">إجمالي القيمة السنوية</span>
                 <div class="flex items-baseline justify-between">
-                    <span class="text-2xl font-bold text-[#0F2747] font-mono">{{ stats.total_annual_value.toLocaleString() }} <span class="text-xs font-sans font-normal text-[#5B6770]">ر.س</span></span>
+                    <span class="text-2xl font-bold text-[#0F2747] font-mono">{{ (stats.total_annual_value ?? (stats as any).total_value ?? 0).toLocaleString() }} <span class="text-xs font-sans font-normal text-[#5B6770]">ج.م</span></span>
                     <span class="text-xs text-[#5B6770]">سنوياً</span>
                 </div>
             </div>
@@ -204,7 +204,7 @@ const filteredLeases = computed(() => {
 
                             <!-- القيمة -->
                             <td class="py-4 px-6 font-mono text-xs font-bold text-[#0F2747]">
-                                {{ lease.rent_amount.toLocaleString() }} ر.س
+                                {{ (lease.rent_amount ?? 0).toLocaleString() }} ج.م
                                 <span class="text-[10px] font-sans font-normal text-[#5B6770] block">دفع شهري</span>
                             </td>
 

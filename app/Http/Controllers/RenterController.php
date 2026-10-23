@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Renter;
+use App\Models\Workspace;
 use App\Support\CurrentWorkspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -11,10 +12,35 @@ use Inertia\Response;
 
 class RenterController extends Controller
 {
+    /**
+     * Resolve and authorize the active workspace for the authenticated user.
+     */
+    protected function resolveWorkspace(Request $request): Workspace
+    {
+        $workspace = app(CurrentWorkspace::class)->get();
+
+        if (! $workspace) {
+            abort(403, 'لا توجد مساحة عمل نشطة أو مصرح بها.');
+        }
+
+        $user = $request->user();
+        if (! $user) {
+            abort(401);
+        }
+
+        $isAuthorized = $workspace->owner_user_id === $user->id
+            || $workspace->members()->where('user_id', $user->id)->exists();
+
+        if (! $isAuthorized) {
+            abort(403, 'غير مصرح لك بالوصول إلى مساحة العمل هذه.');
+        }
+
+        return $workspace;
+    }
+
     public function index(Request $request): Response
     {
-        $workspace = app(CurrentWorkspace::class)->get()
-            ?? $request->user()->ownedWorkspaces()->first();
+        $workspace = $this->resolveWorkspace($request);
 
         $renters = $workspace->renters()
             ->with([
@@ -73,13 +99,12 @@ class RenterController extends Controller
 
     public function show(Request $request, Renter $renter): Response
     {
-        $workspace = app(CurrentWorkspace::class)->get()
-            ?? $request->user()->ownedWorkspaces()->first();
+        $workspace = $this->resolveWorkspace($request);
 
         abort_if($renter->workspace_id !== $workspace->id, 403);
 
         $renter->load([
-            'leases' => fn ($q) => $q->with(['unit.property', 'rentCharges.paymentAllocations.payment'])->latest(),
+            'leases' => fn ($q) => $q->with(['unit.property', 'rentCharges.allocations.payment'])->latest(),
             'payments' => fn ($q) => $q->latest(),
             'messageLogs' => fn ($q) => $q->latest()->take(10),
             'documents',
@@ -90,7 +115,7 @@ class RenterController extends Controller
         $charges = collect();
         if ($activeLease) {
             $charges = $activeLease->rentCharges->map(function ($charge) {
-                $allocated = (float) $charge->paymentAllocations->sum('amount');
+                $allocated = (float) $charge->allocations->sum('amount');
                 $outstanding = max(0, (float) $charge->amount - $allocated);
                 $isPaid = $outstanding <= 0;
                 $isOverdue = ! $isPaid && $charge->due_date < today();
@@ -149,7 +174,7 @@ class RenterController extends Controller
                 'name' => $renter->name,
                 'phone' => $renter->phone,
                 'email' => $renter->email,
-                'national_id' => $renter->national_id ?? '1092837465',
+                'national_id' => $renter->national_id ?? '—',
                 'whatsapp_opted_in' => (bool) $renter->whatsapp_opt_in_at,
                 'whatsapp_opt_in_date' => $renter->whatsapp_opt_in_at?->format('d/m/Y'),
                 'notes' => $renter->notes,
@@ -181,8 +206,7 @@ class RenterController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $workspace = app(CurrentWorkspace::class)->get()
-            ?? $request->user()->ownedWorkspaces()->first();
+        $workspace = $this->resolveWorkspace($request);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -208,8 +232,7 @@ class RenterController extends Controller
 
     public function update(Request $request, Renter $renter): RedirectResponse
     {
-        $workspace = app(CurrentWorkspace::class)->get()
-            ?? $request->user()->ownedWorkspaces()->first();
+        $workspace = $this->resolveWorkspace($request);
 
         abort_if($renter->workspace_id !== $workspace->id, 403);
 
@@ -226,4 +249,3 @@ class RenterController extends Controller
         return back()->with('success', 'تم تحديث بيانات المستأجر بنجاح');
     }
 }
-

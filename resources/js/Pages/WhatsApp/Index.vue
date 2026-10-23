@@ -159,7 +159,7 @@ const sendTestMessage = () => {
             </div>
         </div>
 
-        <!-- قسم قوالب الرسائل التلقائية (Figma Automation Templates) -->
+        <!-- قسم قوالب الرسائل التلقائية (Automation Templates) -->
         <div class="space-y-4">
             <div class="flex items-center justify-between pb-2 border-b border-[#D6E0E7]">
                 <div class="flex items-center gap-2">

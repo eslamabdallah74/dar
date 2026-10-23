@@ -97,7 +97,7 @@ const submit = () => {
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
                 <span class="text-xs font-semibold text-[#5B6770]">إجمالي المصروفات للشهر</span>
                 <div class="flex items-baseline justify-between">
-                    <span class="text-2xl font-bold text-[#0F2747] font-mono">{{ stats.total_amount.toLocaleString() }} <span class="text-xs font-sans font-normal text-[#5B6770]">ر.س</span></span>
+                    <span class="text-2xl font-bold text-[#0F2747] font-mono">{{ stats.total_amount.toLocaleString() }} <span class="text-xs font-sans font-normal text-[#5B6770]">ج.م</span></span>
                     <span class="text-xs text-rose-600 font-semibold bg-rose-50 px-2 py-0.5 rounded-md flex items-center gap-1">
                         <TrendingDown class="w-3.5 h-3.5" />
                         <span>تشغيلي</span>
@@ -117,7 +117,7 @@ const submit = () => {
                 <span class="text-xs font-semibold text-[#5B6770]">أكبر بند مصروفات</span>
                 <div class="flex items-baseline justify-between">
                     <span class="text-lg font-bold text-[#0F2747]">كهرباء ومياه</span>
-                    <span class="text-xs text-[#0E6E7E] font-bold font-mono">680 ر.س</span>
+                    <span class="text-xs text-[#0E6E7E] font-bold font-mono">680 ج.م</span>
                 </div>
             </div>
 
@@ -192,7 +192,7 @@ const submit = () => {
                                 {{ exp.property_name }}
                             </td>
                             <td class="py-4 px-6 font-mono text-sm font-bold text-rose-700">
-                                {{ exp.amount.toLocaleString() }} ر.س
+                                {{ exp.amount.toLocaleString() }} ج.م
                             </td>
                             <td class="py-4 px-6 text-xs text-[#5B6770]">
                                 {{ exp.notes }}
@@ -228,7 +228,7 @@ const submit = () => {
 
                 <form @submit.prevent="submit" class="space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">العقار المعني</label>
+                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">العقار المعني <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
                         <select
                             v-model="form.property_id"
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition"
@@ -265,7 +265,7 @@ const submit = () => {
                                     required
                                     class="w-full h-11 pl-10 pr-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-left"
                                 />
-                                <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-[#5B6770]">ر.س</span>
+                                <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-[#5B6770]">ج.م</span>
                             </div>
                         </div>
                     </div>
@@ -281,7 +281,7 @@ const submit = () => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">بيان المصروف والتفاصيل</label>
+                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">بيان وتفاصيل المصروف <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
                         <textarea
                             v-model="form.notes"
                             rows="2"

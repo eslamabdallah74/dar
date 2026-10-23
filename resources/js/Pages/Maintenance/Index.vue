@@ -316,12 +316,11 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">الوصف والتفاصيل *</label>
+                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">الوصف والتفاصيل <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
                         <textarea
                             v-model="form.description"
                             rows="3"
-                            placeholder="اكتب وصفاً مفصلاً للمشكلة لمساعدة الفني..."
-                            required
+                            placeholder="اكتب وصفاً أو تفاصيل إضافية للمساعدة إن وجدت..."
                             class="w-full p-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition"
                         ></textarea>
                     </div>

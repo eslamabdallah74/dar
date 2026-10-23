@@ -11,7 +11,10 @@ use App\Http\Controllers\RenterController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\WhatsAppController;
+use App\Models\Workspace;
+use App\Support\CurrentWorkspace;
 use Illuminate\Foundation\Application;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -24,11 +27,65 @@ Route::get('/', function () {
     ]);
 });
 
+Route::get('/sitemap.xml', function () {
+    $baseUrl = url('/');
+    $now = now()->toAtomString();
+
+    $xml = '<?xml version="1.0" encoding="UTF-8"?>';
+    $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">';
+    $xml .= '<url>';
+    $xml .= '<loc>'.$baseUrl.'</loc>';
+    $xml .= '<lastmod>'.$now.'</lastmod>';
+    $xml .= '<changefreq>daily</changefreq>';
+    $xml .= '<priority>1.0</priority>';
+    $xml .= '<image:image>';
+    $xml .= '<image:loc>'.$baseUrl.'/images/logo.png</image:loc>';
+    $xml .= '<image:title>دار — منصة إدارة وتأجير العقارات</image:title>';
+    $xml .= '</image:image>';
+    $xml .= '</url>';
+    $xml .= '<url>';
+    $xml .= '<loc>'.$baseUrl.'/login</loc>';
+    $xml .= '<changefreq>monthly</changefreq>';
+    $xml .= '<priority>0.8</priority>';
+    $xml .= '</url>';
+    $xml .= '<url>';
+    $xml .= '<loc>'.$baseUrl.'/register</loc>';
+    $xml .= '<changefreq>monthly</changefreq>';
+    $xml .= '<priority>0.9</priority>';
+    $xml .= '</url>';
+    $xml .= '</urlset>';
+
+    return response($xml, 200, [
+        'Content-Type' => 'application/xml; charset=utf-8',
+        'Cache-Control' => 'public, max-age=3600',
+    ]);
+});
+
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::post('/workspaces/switch', function (Request $request) {
+        $validated = $request->validate([
+            'workspace_id' => 'required|integer|exists:workspaces,id',
+        ]);
+
+        $user = $request->user();
+        $workspace = Workspace::where('id', $validated['workspace_id'])
+            ->where(function ($query) use ($user) {
+                $query->where('owner_user_id', $user->id)
+                    ->orWhereHas('members', fn ($q) => $q->where('user_id', $user->id));
+            })
+            ->firstOrFail();
+
+        $request->session()->put('active_workspace_id', $workspace->id);
+        app(CurrentWorkspace::class)->set($workspace);
+
+        return back()->with('success', 'تم التبديل إلى مساحة العمل: '.$workspace->name);
+    })->name('workspaces.switch');
+
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
     // 04 / العقارات والوحدات
     Route::get('/properties', [PropertyController::class, 'index'])->name('properties.index');
+    Route::get('/properties/create', fn () => redirect()->route('properties.index', ['new' => 1]))->name('properties.create');
     Route::post('/properties', [PropertyController::class, 'store'])->name('properties.store');
     Route::get('/properties/{property}', [PropertyController::class, 'show'])->name('properties.show');
     Route::post('/properties/{property}/units', [PropertyController::class, 'storeUnit'])->name('properties.units.store');

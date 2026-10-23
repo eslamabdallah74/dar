@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\DB;
 
 class Unit extends Model
 {
@@ -18,11 +19,10 @@ class Unit extends Model
         'workspace_id',
         'property_id',
         'parent_unit_id',
-        'name',
         'unit_type',
+        'code',
+        'name',
         'is_rentable',
-        'floor',
-        'notes',
     ];
 
     protected function casts(): array
@@ -72,15 +72,95 @@ class Unit extends Model
     }
 
     /**
-     * Billable units query (Decision 1):
-     * Count independently rentable units that do not have rentable child units.
-     * Vacant units still count; occupied units count once.
+     * Get all ancestor IDs of this unit up to the root parent.
+     *
+     * @return array<int>
+     */
+    public function getAncestorIds(): array
+    {
+        $ancestorIds = [];
+        $currentParentId = $this->parent_unit_id;
+
+        while ($currentParentId !== null) {
+            if (in_array((int) $currentParentId, $ancestorIds, true)) {
+                break; // Prevent infinite cycle
+            }
+            $ancestorIds[] = (int) $currentParentId;
+            $parent = static::withoutGlobalScopes()->select(['id', 'parent_unit_id'])->find($currentParentId);
+            $currentParentId = $parent?->parent_unit_id;
+        }
+
+        return $ancestorIds;
+    }
+
+    /**
+     * Get all descendant IDs of this unit at any depth.
+     *
+     * @return array<int>
+     */
+    public function getDescendantIds(): array
+    {
+        $results = DB::select('
+            WITH RECURSIVE unit_descendants AS (
+                SELECT id, parent_unit_id
+                FROM units
+                WHERE parent_unit_id = ?
+
+                UNION ALL
+
+                SELECT u.id, u.parent_unit_id
+                FROM units u
+                JOIN unit_descendants ud ON u.parent_unit_id = ud.id
+            )
+            SELECT id FROM unit_descendants
+        ', [$this->id]);
+
+        return array_map(fn ($r) => (int) $r->id, $results);
+    }
+
+    /**
+     * Get all units in the hierarchy of this unit: self, all ancestors, all descendants.
+     *
+     * @return array<int>
+     */
+    public function getHierarchyUnitIds(): array
+    {
+        return array_values(array_unique(array_merge(
+            [(int) $this->id],
+            $this->getAncestorIds(),
+            $this->getDescendantIds()
+        )));
+    }
+
+    /**
+     * Billable units query:
+     * A unit counts as billable when:
+     * 1. is_rentable = true
+     * 2. It has no rentable descendants at any depth.
+     *
+     * Vacant units still count; properties never count as billable units.
      */
     public function scopeBillableLeaves(Builder $query): Builder
     {
         return $query->where('is_rentable', true)
-            ->whereDoesntHave('childUnits', function (Builder $q) {
-                $q->where('is_rentable', true);
+            ->whereNotExists(function ($sub) {
+                $sub->selectRaw(1)
+                    ->fromRaw('(
+                        WITH RECURSIVE unit_descendants AS (
+                            SELECT id, parent_unit_id, is_rentable, parent_unit_id AS ancestor_id
+                            FROM units
+                            WHERE parent_unit_id IS NOT NULL
+
+                            UNION ALL
+
+                            SELECT u.id, u.parent_unit_id, u.is_rentable, ud.ancestor_id
+                            FROM units u
+                            JOIN unit_descendants ud ON u.parent_unit_id = ud.id
+                        )
+                        SELECT ancestor_id, is_rentable FROM unit_descendants
+                    ) AS ud')
+                    ->whereColumn('ud.ancestor_id', 'units.id')
+                    ->where('ud.is_rentable', 1);
             });
     }
 

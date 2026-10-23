@@ -39,16 +39,16 @@ const emit = defineEmits<{
     (e: 'newAction'): void;
 }>();
 
-// الروابط العشرة المطابقة لفيجما بالترتيب الدقيق مع المسارات الحقيقية
+// الروابط المعتمدة بالترتيب الدقيق المطلوب
 const navLinks = [
     { key: 'dashboard', name: 'الرئيسية', icon: LayoutDashboard, routeName: 'dashboard' },
-    { key: 'properties', name: 'العقارات', icon: Building2, routeName: 'properties.index' },
+    { key: 'properties', name: 'العقارات والوحدات', icon: Building2, routeName: 'properties.index' },
     { key: 'renters', name: 'المستأجرون', icon: Users, routeName: 'renters.index' },
     { key: 'leases', name: 'العقود', icon: FileText, routeName: 'leases.index' },
-    { key: 'payments', name: 'الدفعات', icon: CreditCard, routeName: 'payments.index' },
-    { key: 'maintenance', name: 'الصيانة', icon: Wrench, routeName: 'maintenance.index' },
+    { key: 'payments', name: 'المدفوعات', icon: CreditCard, routeName: 'payments.index' },
     { key: 'expenses', name: 'المصروفات', icon: Coins, routeName: 'expenses.index' },
-    { key: 'whatsapp', name: 'WhatsApp', icon: MessageSquare, routeName: 'whatsapp.index', badge: 'تلقائي' },
+    { key: 'maintenance', name: 'الصيانة', icon: Wrench, routeName: 'maintenance.index' },
+    { key: 'whatsapp', name: 'رسائل واتساب', icon: MessageSquare, routeName: 'whatsapp.index', badge: 'تلقائي' },
     { key: 'subscription', name: 'الاشتراك', icon: Layers, routeName: 'subscription.index' },
     { key: 'settings', name: 'الإعدادات', icon: Settings, routeName: 'settings.index' },
 ];
@@ -81,14 +81,18 @@ const userMenuOpen = ref(false);
             <!-- الشعار وهوية دار (Logo) -->
             <div class="flex items-center justify-between">
                 <Link :href="route('dashboard')" class="flex items-center gap-3 group">
-                    <!-- علامة الشعار الهندسية 40x40 -->
-                    <div class="w-10 h-10 rounded-xl bg-[#17334F] border border-white/10 flex items-center justify-center text-white shadow-sm group-hover:bg-[#0E6E7E] transition-colors">
-                        <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M3 10l9-7 9 7v10a1 1 0 01-1 1h-5v-6h-6v6H4a1 1 0 01-1-1V10z" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
+                    <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center p-1.5 shadow-md ring-2 ring-white/20 group-hover:scale-105 group-hover:ring-white/40 transition-all shrink-0">
+                        <img
+                            src="/images/logo.png"
+                            alt="شعار دار"
+                            class="w-full h-full object-contain"
+                        />
                     </div>
-                    <!-- اسم دار -->
-                    <span class="text-[32px] font-bold text-white tracking-tight leading-none">دار</span>
+                    <!-- اسم دار وشعار المنصة -->
+                    <div class="flex flex-col text-right">
+                        <span class="text-2xl font-black text-white tracking-tight leading-none">دار</span>
+                        <span class="text-[10px] text-white/70 font-medium mt-1">إدارة وتأجير العقارات</span>
+                    </div>
                 </Link>
 
                 <!-- زر إغلاق للموبايل فقط -->

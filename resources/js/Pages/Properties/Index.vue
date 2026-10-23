@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
@@ -66,6 +66,12 @@ const submitProperty = () => {
         },
     });
 };
+
+onMounted(() => {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('new')) {
+        showAddModal.value = true;
+    }
+});
 </script>
 
 <template>
@@ -269,33 +275,41 @@ const submitProperty = () => {
                         <input
                             v-model="form.name"
                             type="text"
+                            maxlength="255"
                             placeholder="مثال: عمارة النور، مجمع الصحافة..."
                             required
-                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition"
+                            class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#0F2747] transition"
+                            :class="form.errors.name ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-1 focus:ring-rose-500' : 'border-[#D6E0E7] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E]'"
                         />
+                        <p v-if="form.errors.name" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.name }}</p>
                     </div>
 
                     <div>
                         <label class="block text-xs font-bold text-[#0F2747] mb-1.5">نوع العقار *</label>
                         <select
                             v-model="form.property_type"
-                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition"
+                            class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#0F2747] transition"
+                            :class="form.errors.property_type ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-1 focus:ring-rose-500' : 'border-[#D6E0E7] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E]'"
                         >
                             <option value="building">عمارة سكنية</option>
                             <option value="compound">مجمع سكني</option>
                             <option value="villa">فيلا</option>
                             <option value="other">عقار تجاري / آخر</option>
                         </select>
+                        <p v-if="form.errors.property_type" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.property_type }}</p>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">العنوان والموقع</label>
+                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">العنوان والموقع <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
                         <input
                             v-model="form.address"
                             type="text"
-                            placeholder="مثال: حي الصحافة، شارع العليا، الرياض"
-                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition"
+                            maxlength="500"
+                            placeholder="مثال: المعادي الجديدة، شارع النصر، القاهرة"
+                            class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#0F2747] transition"
+                            :class="form.errors.address ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-1 focus:ring-rose-500' : 'border-[#D6E0E7] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E]'"
                         />
+                        <p v-if="form.errors.address" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.address }}</p>
                     </div>
 
                     <div class="pt-4 flex items-center justify-end gap-3 border-t border-[#D6E0E7]">

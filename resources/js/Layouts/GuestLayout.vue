@@ -28,15 +28,19 @@ import { Building2, ArrowRight, ShieldCheck } from 'lucide-vue-next';
 
         <!-- اللوجو والهوية -->
         <div class="mb-6 flex flex-col items-center text-center">
-            <Link href="/" class="flex items-center gap-2.5 group">
-                <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-black shadow-lg shadow-emerald-500/25 group-hover:scale-105 transition-transform font-bold text-lg">
-                    دار
+            <Link href="/" class="flex items-center gap-4 group">
+                <div class="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-white flex items-center justify-center p-2.5 sm:p-3 shadow-xl shadow-black/20 ring-4 ring-white/10 group-hover:scale-105 group-hover:ring-white/25 transition-all shrink-0">
+                    <img
+                        src="/images/logo.png"
+                        alt="شعار دار — نظام إدارة الإيجار"
+                        class="w-full h-full object-contain"
+                    />
                 </div>
                 <div class="text-right">
-                    <div class="text-2xl font-bold tracking-tight text-white flex items-center gap-1.5 font-sans">
+                    <div class="text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-1.5 font-sans">
                         دار
                     </div>
-                    <p class="text-xs text-zinc-400 font-medium">نظام لأدارة الايجار</p>
+                    <p class="text-xs sm:text-sm text-zinc-400 font-medium">نظام لإدارة الإيجار والأملاك</p>
                 </div>
             </Link>
         </div>

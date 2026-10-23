@@ -14,7 +14,7 @@ beforeEach(function () {
         'name' => 'عقارات النور',
         'slug' => 'workspace-test-'.$this->user->id,
         'owner_user_id' => $this->user->id,
-        'currency' => 'SAR',
+        'currency' => 'EGP',
     ]);
     $this->workspace->members()->create([
         'user_id' => $this->user->id,
@@ -25,7 +25,7 @@ beforeEach(function () {
         'workspace_id' => $this->workspace->id,
         'name' => 'عمارة النور',
         'property_type' => 'building',
-        'address' => 'الرياض - حي الصحافة',
+        'address' => 'القاهرة - المعادي',
     ]);
 
     $this->unit = Unit::create([
@@ -176,6 +176,19 @@ test('maintenance and expenses pages render and accept submissions', function ()
         'title' => 'فحص تكييف',
     ]);
 
+    // تأكيد أن إدخال البيانات سهل والوصف اختياري
+    $this->actingAs($this->user)
+        ->post('/maintenance', [
+            'property_id' => $this->property->id,
+            'title' => 'عطل إضاءة المدخل',
+        ])
+        ->assertRedirect();
+
+    $this->assertDatabaseHas('maintenance_requests', [
+        'title' => 'عطل إضاءة المدخل',
+        'description' => '',
+    ]);
+
     $this->actingAs($this->user)
         ->get('/expenses')
         ->assertOk()
@@ -221,6 +234,54 @@ test('whatsapp, subscription and settings pages render correctly', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->component('Settings/Index')
             ->has('workspace')
+            ->where('workspace.currency', 'EGP')
             ->has('members')
         );
+});
+
+test('workspace currency defaults to EGP and can be updated through settings', function () {
+    expect($this->workspace->currency)->toBe('EGP');
+
+    $this->actingAs($this->user)
+        ->put('/settings', [
+            'name' => 'عقارات دار مصر',
+            'currency' => 'EGP',
+        ])
+        ->assertRedirect();
+
+    $this->assertDatabaseHas('workspaces', [
+        'id' => $this->workspace->id,
+        'name' => 'عقارات دار مصر',
+        'currency' => 'EGP',
+    ]);
+});
+
+test('dashboard shares workspace info and quick renters list with active leases', function () {
+    $this->actingAs($this->user)
+        ->get('/dashboard')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Dashboard')
+            ->has('renters')
+            ->where('workspace.currency', 'EGP')
+            ->has('quickRenters')
+        );
+});
+
+test('sitemap xml endpoint returns valid xml with public links and logo', function () {
+    $response = $this->get('/sitemap.xml');
+    $response->assertOk();
+    $response->assertHeader('Content-Type', 'application/xml; charset=utf-8');
+    expect($response->getContent())
+        ->toContain('<loc>')
+        ->toContain('/images/logo.png')
+        ->toContain('/login')
+        ->toContain('/register');
+});
+
+test('landing page loads successfully with seo tags and logo image', function () {
+    $response = $this->get('/');
+    $response->assertOk();
+    $response->assertSee('images/logo.png');
+    $response->assertSee('دار — منصة إدارة وتأجير العقارات والأملاك');
 });

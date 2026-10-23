@@ -15,21 +15,17 @@ class RenterDocument extends Model
         'workspace_id',
         'renter_id',
         'document_type',
-        'file_path',
-        'original_filename',
-        'mime_type',
-        'file_size_bytes',
+        'storage_path',
+        'uploaded_by',
     ];
-
-    protected function casts(): array
-    {
-        return [
-            'file_size_bytes' => 'integer',
-        ];
-    }
 
     public function renter(): BelongsTo
     {
         return $this->belongsTo(Renter::class);
+    }
+
+    public function uploadedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'uploaded_by');
     }
 }

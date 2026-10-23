@@ -95,5 +95,39 @@ test('authenticated user can view the modular dashboard with workspace metrics',
         ->has('upcoming_dues')
         ->has('attention_items')
         ->has('bottom_kpis')
+        ->has('kpis')
+        ->has('income_chart')
+        ->has('occupancy_summary')
+        ->has('recent_properties')
+        ->has('recent_activities')
+        ->has('whatsapp_summary')
+        ->where('is_empty_workspace', false)
+    );
+});
+
+test('first-time empty workspace shows onboarding state', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::create([
+        'name' => 'Empty Portfolio',
+        'slug' => 'empty-portfolio',
+        'owner_user_id' => $user->id,
+        'currency' => 'EGP',
+    ]);
+    $workspace->members()->create([
+        'user_id' => $user->id,
+        'role' => 'owner',
+    ]);
+
+    $response = $this->actingAs($user)
+        ->withSession(['active_workspace_id' => $workspace->id])
+        ->get('/dashboard');
+
+    $response->assertStatus(200);
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('Dashboard')
+        ->where('is_empty_workspace', true)
+        ->has('kpis')
+        ->where('kpis.properties.value', '0')
+        ->where('kpis.units.value', '0')
     );
 });

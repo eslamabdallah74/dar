@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { Head, usePage } from '@inertiajs/vue3';
-import FigmaSidebar from '@/Components/Dashboard/FigmaSidebar.vue';
-import FigmaGlobalToolbar from '@/Components/Dashboard/FigmaGlobalToolbar.vue';
-import FigmaFooter from '@/Components/Dashboard/FigmaFooter.vue';
+import AppSidebar from '@/Components/Layout/AppSidebar.vue';
+import AppNavbar from '@/Components/Layout/AppNavbar.vue';
+import AppFooter from '@/Components/Layout/AppFooter.vue';
 import ModalNewAction from '@/Components/Common/ModalNewAction.vue';
 import ModalRecordPayment from '@/Components/Common/ModalRecordPayment.vue';
 import { CheckCircle2, AlertCircle, X } from 'lucide-vue-next';
@@ -42,8 +42,8 @@ const openRecordPaymentModal = () => {
     <div class="min-h-screen bg-[#F3F7FA] text-[#0F2747] flex font-sans antialiased select-auto" dir="rtl">
         <Head :title="title" />
 
-        <!-- 1. الشريط الجانبي المطابق لفيجما بعرض 224px (Sidebar) -->
-        <FigmaSidebar
+        <!-- 1. الشريط الجانبي الرئيسي (App Sidebar) -->
+        <AppSidebar
             :workspace-name="workspace?.name || 'عقارات النور'"
             :user-name="user?.name || 'أحمد حسن'"
             :user-role="user?.role || 'مالك الحساب'"
@@ -66,8 +66,8 @@ const openRecordPaymentModal = () => {
 
         <!-- 2. منطقة العمل الرئيسية (Main Workspace Content) -->
         <div class="flex-1 flex flex-col min-w-0 bg-[#F3F7FA]">
-            <!-- شريط الأدوات العلوي المتطابق بارتفاع 80px (Global Toolbar) -->
-            <FigmaGlobalToolbar
+            <!-- شريط الأدوات العلوي الموحد (Global Navbar) -->
+            <AppNavbar
                 @toggle-mobile="mobileOpen = !mobileOpen"
                 @new-action="newActionOpen = true"
             />
@@ -128,8 +128,8 @@ const openRecordPaymentModal = () => {
                 <slot />
             </main>
 
-            <!-- التذييل الموحد المتطابق مع فيجما (Footer) -->
-            <FigmaFooter />
+            <!-- التذييل الموحد (App Footer) -->
+            <AppFooter />
         </div>
 
         <!-- النوافذ المنبثقة العامة (Global Modals) -->

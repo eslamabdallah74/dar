@@ -146,7 +146,7 @@ const handleUpgradeClick = (plan: PlanItem) => {
                         <!-- السعر -->
                         <div class="flex items-baseline gap-1">
                             <span class="text-3xl font-bold text-[#0F2747] font-mono">{{ plan.price }}</span>
-                            <span class="text-xs text-[#5B6770]">ر.س / {{ plan.period }}</span>
+                            <span class="text-xs text-[#5B6770]">ج.م / {{ plan.period }}</span>
                         </div>
 
                         <!-- الميزات -->
@@ -207,7 +207,7 @@ const handleUpgradeClick = (plan: PlanItem) => {
                             <td class="py-4 px-6 font-mono font-bold text-[#0E6E7E]">{{ inv.id }}</td>
                             <td class="py-4 px-6 font-mono text-[#5B6770]">{{ inv.date }}</td>
                             <td class="py-4 px-6 font-bold text-[#0F2747]">{{ inv.description }}</td>
-                            <td class="py-4 px-6 font-mono font-bold text-[#0F2747]">{{ inv.amount }} ر.س</td>
+                            <td class="py-4 px-6 font-mono font-bold text-[#0F2747]">{{ inv.amount }} ج.م</td>
                             <td class="py-4 px-6">
                                 <StatusBadge :status="inv.status" :label="inv.status_label" size="sm" />
                             </td>
@@ -238,7 +238,7 @@ const handleUpgradeClick = (plan: PlanItem) => {
                     سيتم تفعيل سعة {{ selectedPlanToUpgrade.units_limit }} وحدة تأجيرية فوراً واحتساب فارق السعر على بطاقتك الائتمانية.
                 </p>
                 <div class="p-4 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] font-mono text-lg font-bold text-[#0E6E7E]">
-                    {{ selectedPlanToUpgrade.price }} ر.س / شهرياً
+                    {{ selectedPlanToUpgrade.price }} ج.م / شهرياً
                 </div>
                 <div class="pt-2 flex items-center justify-center gap-3">
                     <button

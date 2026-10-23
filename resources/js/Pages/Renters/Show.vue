@@ -97,11 +97,11 @@ const recordPaymentOpen = ref(false);
 
 <template>
     <AppLayout
-        :title="`ملف المستأجر ${renter.name} — دار`"
+        :title="`ملف المستأجر ${renter?.name || ''} — دار`"
         active-tab="renters"
-        :header-title="renter.name"
-        :header-subtitle="`ملف المستأجر • هوية رقم: ${renter.national_id}`"
-        :breadcrumb="`المستأجرون / ${renter.name}`"
+        :header-title="renter?.name || 'مستأجر'"
+        :header-subtitle="`ملف المستأجر • هوية رقم: ${renter?.national_id || '—'}`"
+        :breadcrumb="`المستأجرون / ${renter?.name || ''}`"
     >
         <template #actions>
             <Link
@@ -113,6 +113,7 @@ const recordPaymentOpen = ref(false);
             </Link>
 
             <a
+                v-if="renter?.phone"
                 :href="`https://wa.me/20${renter.phone.replace(/^0+/, '')}`"
                 target="_blank"
                 class="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs"

@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Unit;
 use App\Models\Workspace;
 use App\Support\CurrentWorkspace;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\Activitylog\Models\Activity;
 
 class DashboardController extends Controller
 {
@@ -24,6 +26,7 @@ class DashboardController extends Controller
                 'slug' => 'workspace-'.$user->id,
                 'owner_user_id' => $user->id,
                 'currency' => 'EGP',
+                'timezone' => 'Africa/Cairo',
             ]);
             $workspace->members()->create([
                 'user_id' => $user->id,
@@ -32,265 +35,395 @@ class DashboardController extends Controller
             app(CurrentWorkspace::class)->set($workspace);
         }
 
+        // 1. Basic counts using agreed business rules (billable leaves for units)
         $totalProperties = $workspace->properties()->count();
-        $totalUnits = $workspace->units()->count();
-        $occupiedUnits = $workspace->leases()->where('status', 'active')->count();
-        $vacantUnits = max(0, $totalUnits - $occupiedUnits);
-        $occupancyRate = $totalUnits > 0 ? (int) round(($occupiedUnits / $totalUnits) * 100) : 0;
+        $totalBillableUnits = Unit::billableCountForWorkspace($workspace->id);
 
-        $startOfMonth = now()->startOfMonth()->toDateString();
-        $endOfMonth = now()->endOfMonth()->toDateString();
-
-        $monthlyTarget = (float) $workspace->rentCharges()
-            ->whereBetween('period_start', [$startOfMonth, $endOfMonth])
-            ->sum('amount');
-
-        $monthlyCollected = (float) $workspace->paymentAllocations()
-            ->whereHas('rentCharge', function ($q) use ($startOfMonth, $endOfMonth) {
-                $q->whereBetween('period_start', [$startOfMonth, $endOfMonth]);
+        $occupiedUnits = $workspace->units()
+            ->billableLeaves()
+            ->whereHas('leases', function ($q) {
+                $q->where('status', 'active')
+                    ->where('starts_on', '<=', today())
+                    ->where('ends_on', '>=', today());
             })
+            ->count();
+
+        $vacantUnits = max(0, $totalBillableUnits - $occupiedUnits);
+        $occupancyRate = $totalBillableUnits > 0 ? (int) round(($occupiedUnits / $totalBillableUnits) * 100) : 0;
+
+        // 2. Financial Metrics: Current Month
+        $startOfMonth = now()->startOfMonth();
+        $endOfMonth = now()->endOfMonth();
+
+        // Actual payments received during the current calendar month
+        $monthlyCollected = (float) $workspace->payments()
+            ->whereBetween('paid_at', [$startOfMonth, $endOfMonth])
             ->sum('amount');
 
+        // Rent obligations due during the current month
+        $monthlyDue = (float) $workspace->rentCharges()
+            ->whereBetween('due_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()])
+            ->sum('amount');
+
+        // Overdue rent charges (due date passed and balance > 0)
         $overdueCharges = $workspace->rentCharges()
             ->overdue()
-            ->with(['lease.renter', 'lease.unit.property'])
+            ->with(['lease.renter', 'lease.unit.property', 'allocations'])
             ->orderBy('due_date')
-            ->limit(10)
             ->get();
 
         $totalOverdueBalance = (float) $overdueCharges->sum(fn ($c) => $c->outstanding_balance);
+        $overdueCount = $overdueCharges->count();
 
+        // Leases expiring within 30 days
         $expiringLeases = $workspace->leases()
             ->where('status', 'active')
             ->whereBetween('ends_on', [today()->toDateString(), today()->addDays(30)->toDateString()])
             ->with(['renter', 'unit.property'])
             ->orderBy('ends_on')
-            ->limit(6)
             ->get();
 
-        $formattedExpiring = $expiringLeases->map(function ($lease) {
-            $daysRemaining = (int) today()->diffInDays(Carbon::parse($lease->ends_on), false);
+        // Maintenance counts & expenses
+        $openMaintenance = $workspace->maintenanceRequests()
+            ->whereIn('status', ['open', 'in_progress'])
+            ->with(['unit.property', 'reportedByRenter'])
+            ->latest('reported_at')
+            ->get();
 
-            return [
-                'id' => $lease->id,
-                'renter_name' => $lease->renter?->name ?? 'مستأجر',
-                'renter_phone' => $lease->renter?->phone ?? '',
-                'unit_name' => $lease->unit?->name ?? '',
-                'property_name' => $lease->unit?->property?->name ?? '',
-                'rent_amount' => (float) $lease->rent_amount,
-                'ends_on' => $lease->ends_on?->format('d/m/Y'),
-                'days_remaining' => max(0, $daysRemaining),
-            ];
-        })->values();
-
-        $openMaintenanceCount = $workspace->maintenanceRequests()->whereIn('status', ['open', 'in_progress'])->count();
-        $inProgressMaintenanceCount = $workspace->maintenanceRequests()->where('status', 'in_progress')->count();
+        $openMaintenanceCount = $openMaintenance->count();
+        $inProgressMaintenanceCount = $openMaintenance->where('status', 'in_progress')->count();
 
         $maintenanceExpenses = (float) $workspace->expenses()
             ->where('category', 'maintenance')
-            ->whereBetween('expense_date', [$startOfMonth, $endOfMonth])
+            ->whereBetween('expense_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()])
             ->sum('amount');
 
         $operatingExpenses = (float) $workspace->expenses()
             ->where('category', '!=', 'maintenance')
-            ->whereBetween('expense_date', [$startOfMonth, $endOfMonth])
+            ->whereBetween('expense_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()])
             ->sum('amount');
 
-        // Build upcoming dues: use DB records if available, otherwise exact Figma handoff defaults
-        $upcomingDues = [];
-        if ($workspace->rentCharges()->exists()) {
-            $charges = $workspace->rentCharges()
-                ->with(['lease.renter', 'lease.unit.property'])
-                ->orderBy('due_date')
-                ->limit(5)
-                ->get();
+        // 3. Monthly Rental Income (last 6 months historical payments)
+        $arabicMonths = [
+            1 => 'يناير', 2 => 'فبراير', 3 => 'مارس', 4 => 'أبريل',
+            5 => 'مايو', 6 => 'يونيو', 7 => 'يوليو', 8 => 'أغسطس',
+            9 => 'سبتمبر', 10 => 'أكتوبر', 11 => 'نوفمبر', 12 => 'ديسمبر',
+        ];
 
-            foreach ($charges as $c) {
+        $monthlyIncomeData = [];
+        $incomeMonths = [];
+        $incomeAmounts = [];
+        $hasPaymentHistory = false;
+
+        for ($i = 5; $i >= 0; $i--) {
+            $mDate = now()->subMonths($i);
+            $mStart = $mDate->copy()->startOfMonth();
+            $mEnd = $mDate->copy()->endOfMonth();
+
+            $amt = (float) $workspace->payments()
+                ->whereBetween('paid_at', [$mStart, $mEnd])
+                ->sum('amount');
+
+            if ($amt > 0) {
+                $hasPaymentHistory = true;
+            }
+
+            $monthLabel = $arabicMonths[$mDate->month];
+            $incomeMonths[] = $monthLabel;
+            $incomeAmounts[] = $amt;
+
+            $monthlyIncomeData[] = [
+                'month' => $monthLabel,
+                'year' => $mDate->year,
+                'amount' => $amt,
+            ];
+        }
+
+        // 4. Upcoming Rent Payments (strictly real unpaid charges approaching due date)
+        $upcomingDues = $workspace->rentCharges()
+            ->unpaid()
+            ->where('due_date', '>=', today()->subDays(15))
+            ->with(['lease.renter', 'lease.unit.property', 'allocations'])
+            ->orderBy('due_date')
+            ->limit(6)
+            ->get()
+            ->map(function ($c) {
                 $renter = $c->lease?->renter;
                 $unit = $c->lease?->unit;
+                $outstanding = $c->outstanding_balance;
+
                 $status = 'due_soon';
-                $statusLabel = 'يستحق قريبًا';
-                if ($c->is_overdue) {
+                $statusLabel = 'يستحق قريباً';
+                if ($c->due_date->isPast() && ! $c->due_date->isToday()) {
                     $status = 'overdue';
                     $statusLabel = 'متأخر';
-                } elseif ($c->paid_amount > 0 && ! $c->is_fully_paid) {
+                } elseif ($c->due_date->isToday()) {
+                    $status = 'due_today';
+                    $statusLabel = 'مستحق اليوم';
+                } elseif ($c->paid_amount > 0) {
                     $status = 'partial';
-                    $statusLabel = 'جزئي';
+                    $statusLabel = 'مدفوع جزئياً';
                 }
 
-                $upcomingDues[] = [
+                return [
                     'id' => $c->id,
                     'tenant' => $renter?->name ?? 'مستأجر',
+                    'renter_id' => $renter?->id,
                     'unit' => ($unit?->code ? $unit->code.' • ' : '').($unit?->property?->name ?? $unit?->name ?? 'وحدة'),
                     'due_date' => $c->due_date?->format('d/m/Y') ?? '',
-                    'amount' => number_format((float) $c->amount).' جنيه',
+                    'due_date_iso' => $c->due_date?->toDateString(),
+                    'amount' => number_format((float) $c->amount).' ج.م',
                     'amount_raw' => (float) $c->amount,
+                    'outstanding_balance' => (float) $outstanding,
                     'status' => $status,
                     'status_label' => $statusLabel,
                     'phone' => $renter?->phone ?? '',
                 ];
-            }
-        }
+            })->values()->all();
 
-        if (empty($upcomingDues)) {
-            $upcomingDues = [
-                [
-                    'id' => 1,
-                    'tenant' => 'محمد علي',
-                    'unit' => 'B-02 • النور',
-                    'due_date' => '15/10/2026',
-                    'amount' => '1,000 جنيه',
-                    'amount_raw' => 1000,
-                    'status' => 'due_soon',
-                    'status_label' => 'يستحق قريبًا',
-                    'phone' => '01012345678',
-                ],
-                [
-                    'id' => 2,
-                    'tenant' => 'سارة إبراهيم',
-                    'unit' => 'شقة 101',
-                    'due_date' => '20/10/2026',
-                    'amount' => '4,000 جنيه',
-                    'amount_raw' => 4000,
-                    'status' => 'partial',
-                    'status_label' => 'جزئي',
-                    'phone' => '01234567890',
-                ],
-                [
-                    'id' => 3,
-                    'tenant' => 'عمر خالد',
-                    'unit' => 'شقة 202',
-                    'due_date' => '10/10/2026',
-                    'amount' => '1,500 جنيه',
-                    'amount_raw' => 1500,
-                    'status' => 'overdue',
-                    'status_label' => 'متأخر',
-                    'phone' => '01512345678',
-                ],
-            ];
-        }
-
-        // Build attention items: use DB records if available, otherwise exact Figma handoff defaults
+        // 5. Attention Required Items (Overdue, expiring leases, maintenance)
         $attentionItems = [];
-        foreach ($overdueCharges as $oc) {
+
+        foreach ($overdueCharges->take(5) as $oc) {
+            $days = (int) Carbon::parse($oc->due_date)->diffInDays(today());
             $attentionItems[] = [
                 'id' => $oc->id,
                 'type' => 'overdue',
-                'title' => 'إيجار متأخر '.Carbon::parse($oc->due_date)->diffInDays(today()).' أيام',
-                'desc' => ($oc->lease?->renter?->name ?? 'مستأجر').' • '.($oc->lease?->unit?->name ?? 'وحدة').' ('.number_format((float) $oc->outstanding_balance).' جنيه)',
+                'title' => 'إيجار متأخر ('.$days.' يوم)',
+                'desc' => ($oc->lease?->renter?->name ?? 'مستأجر').' • '.($oc->lease?->unit?->name ?? 'وحدة').' ('.number_format((float) $oc->outstanding_balance).' ج.م)',
                 'phone' => $oc->lease?->renter?->phone ?? '',
                 'amount' => (float) $oc->outstanding_balance,
                 'severity' => 'danger',
+                'link' => route('payments.index'),
             ];
         }
 
-        if (empty($attentionItems)) {
-            $attentionItems = [
-                [
-                    'id' => 1,
-                    'type' => 'overdue',
-                    'title' => 'إيجار متأخر 5 أيام',
-                    'desc' => 'عمر خالد • شقة 202 (1,500 جنيه)',
-                    'phone' => '01512345678',
-                    'amount' => 1500,
-                    'severity' => 'danger',
-                ],
-                [
-                    'id' => 2,
-                    'type' => 'lease_expiring',
-                    'title' => 'عقد ينتهي خلال 10 أيام',
-                    'desc' => 'محمد علي • B-02 (تجديد)',
-                    'phone' => '01012345678',
-                    'amount' => 1000,
-                    'severity' => 'warning',
-                ],
-                [
-                    'id' => 3,
+        foreach ($expiringLeases->take(4) as $el) {
+            $days = (int) today()->diffInDays(Carbon::parse($el->ends_on), false);
+            $attentionItems[] = [
+                'id' => $el->id,
+                'type' => 'lease_expiring',
+                'title' => 'عقد ينتهي خلال '.max(0, $days).' يوم',
+                'desc' => ($el->renter?->name ?? 'مستأجر').' • '.($el->unit?->name ?? 'وحدة'),
+                'phone' => $el->renter?->phone ?? '',
+                'amount' => (float) $el->rent_amount,
+                'severity' => 'warning',
+                'link' => route('leases.index'),
+            ];
+        }
+
+        foreach ($openMaintenance->take(3) as $mr) {
+            $attentionItems[] = [
+                'id' => $mr->id,
+                'type' => 'maintenance',
+                'title' => 'طلب صيانة: '.$mr->title,
+                'desc' => ($mr->unit?->property?->name ?? 'عقار').($mr->unit ? ' • '.$mr->unit->name : ''),
+                'phone' => $mr->reportedByRenter?->phone ?? '',
+                'amount' => 0,
+                'severity' => 'info',
+                'link' => route('maintenance.index'),
+            ];
+        }
+
+        // 6. Recent Properties (latest 4 properties with unit metrics)
+        $recentProperties = $workspace->properties()
+            ->withCount(['units' => fn ($q) => $q->billableLeaves()])
+            ->with(['units' => fn ($q) => $q->billableLeaves()->with('currentLease')])
+            ->latest()
+            ->take(4)
+            ->get()
+            ->map(function ($p) {
+                $unitsCount = $p->units_count;
+                $occupiedCount = $p->units->filter(fn ($u) => $u->currentLease !== null)->count();
+                $rate = $unitsCount > 0 ? (int) round(($occupiedCount / $unitsCount) * 100) : 0;
+
+                return [
+                    'id' => $p->id,
+                    'name' => $p->name,
+                    'property_type' => $p->property_type,
+                    'property_type_label' => match ($p->property_type) {
+                        'building' => 'عمارة سكنية',
+                        'compound' => 'مجمع سكني',
+                        'villa' => 'فيلا',
+                        default => 'عقار تجاري / سكني',
+                    },
+                    'address' => $p->address ?: 'الموقع غير محدد',
+                    'units_count' => $unitsCount,
+                    'occupied_count' => $occupiedCount,
+                    'vacant_count' => max(0, $unitsCount - $occupiedCount),
+                    'occupancy_rate' => $rate,
+                ];
+            })->values()->all();
+
+        // 7. Recent Activity Feed (Actual records from Activity or models)
+        $recentActivities = collect();
+
+        if (class_exists(Activity::class)) {
+            $dbActivities = Activity::latest()->take(6)->get();
+            foreach ($dbActivities as $act) {
+                $recentActivities->push([
+                    'id' => 'act-'.$act->id,
+                    'type' => 'activity',
+                    'title' => $act->description,
+                    'subtitle' => 'سجل النشاط المالي والإداري',
+                    'time_ago' => $act->created_at?->diffForHumans() ?? 'مؤخراً',
+                    'timestamp' => $act->created_at?->timestamp ?? 0,
+                ]);
+            }
+        }
+
+        // If no activity log records, gather recent model operations
+        if ($recentActivities->isEmpty()) {
+            foreach ($workspace->payments()->with('renter')->latest('paid_at')->take(3)->get() as $p) {
+                $recentActivities->push([
+                    'id' => 'p-'.$p->id,
+                    'type' => 'payment',
+                    'title' => 'تم استلام دفعة بقيمة '.number_format((float) $p->amount).' ج.م',
+                    'subtitle' => 'المستأجر: '.($p->renter?->name ?? 'مستأجر').($p->reference ? ' (إيصال: '.$p->reference.')' : ''),
+                    'time_ago' => $p->paid_at?->diffForHumans() ?? 'مؤخراً',
+                    'timestamp' => $p->paid_at?->timestamp ?? 0,
+                ]);
+            }
+
+            foreach ($workspace->leases()->with(['renter', 'unit'])->latest()->take(3)->get() as $l) {
+                $recentActivities->push([
+                    'id' => 'l-'.$l->id,
+                    'type' => 'lease',
+                    'title' => 'تم إنشاء عقد إيجار جديد بقيمة '.number_format((float) $l->rent_amount).' ج.م/شهر',
+                    'subtitle' => ($l->renter?->name ?? 'مستأجر').' • '.($l->unit?->name ?? 'وحدة'),
+                    'time_ago' => $l->created_at?->diffForHumans() ?? 'مؤخراً',
+                    'timestamp' => $l->created_at?->timestamp ?? 0,
+                ]);
+            }
+
+            foreach ($workspace->maintenanceRequests()->latest()->take(2)->get() as $m) {
+                $recentActivities->push([
+                    'id' => 'm-'.$m->id,
                     'type' => 'maintenance',
-                    'title' => 'طلب صيانة عاجل',
-                    'desc' => 'تسريب مياه الحمام • شقة 101',
-                    'phone' => '',
-                    'amount' => 0,
-                    'severity' => 'info',
-                ],
-            ];
+                    'title' => 'طلب صيانة جديد: '.$m->title,
+                    'subtitle' => 'الحالة: '.($m->status === 'open' ? 'جديد ومفتوح' : 'قيد التنفيذ'),
+                    'time_ago' => $m->created_at?->diffForHumans() ?? 'مؤخراً',
+                    'timestamp' => $m->created_at?->timestamp ?? 0,
+                ]);
+            }
         }
 
-        $isEmpty = ($totalUnits === 0 && ! $workspace->properties()->exists());
+        $sortedActivities = $recentActivities->sortByDesc('timestamp')->values()->take(6)->all();
+
+        // 8. WhatsApp Reminders Summary
+        $whatsappSummary = [
+            'total' => $workspace->messageLogs()->count(),
+            'sent' => $workspace->messageLogs()->whereIn('status', ['sent', 'delivered'])->count(),
+            'delivered' => $workspace->messageLogs()->where('status', 'delivered')->count(),
+            'pending' => $workspace->messageLogs()->where('status', 'pending')->count(),
+            'failed' => $workspace->messageLogs()->where('status', 'failed')->count(),
+        ];
+
+        // 9. Subscription & Plan Info
+        $activeSub = $workspace->activeSubscription()->with('plan')->first();
+        $planName = $activeSub?->plan?->name ?? 'باقة النمو (Growth)';
+        $unitsLimit = $activeSub?->plan?->unit_limit ?? 25;
+        $unitsUsed = $totalBillableUnits;
+        $usagePercentage = $unitsLimit > 0 ? (int) min(100, round(($unitsUsed / $unitsLimit) * 100)) : 0;
+
+        // 10. Check if this is a first-time empty workspace
+        $isEmptyWorkspace = ($totalProperties === 0 && $totalBillableUnits === 0);
+
+        // Checklist for onboarding steps
+        $checklistSteps = [];
+        $checklistDone = 0;
+        if ($totalProperties > 0) {
+            $checklistSteps[] = 'أضفت عقارك';
+            $checklistDone++;
+        }
+        if ($totalBillableUnits > 0) {
+            $checklistSteps[] = 'أضفت الوحدات';
+            $checklistDone++;
+        }
+        if ($workspace->renters()->exists()) {
+            $checklistSteps[] = 'أضفت المستأجرين';
+            $checklistDone++;
+        }
+        if ($workspace->leases()->exists()) {
+            $checklistSteps[] = 'وثقت أول عقد';
+            $checklistDone++;
+        }
+
+        $checklistPercent = (int) round(($checklistDone / 4) * 100);
 
         return Inertia::render('Dashboard', [
             'user' => [
                 'name' => $user->name,
                 'email' => $user->email,
-                'role' => 'مالك الحساب',
+                'role' => 'مالك المنشأة',
             ],
             'workspace' => [
                 'id' => $workspace->id,
                 'name' => $workspace->name ?: 'عقارات النور',
-                'all_workspaces_label' => 'كل العقارات ⌄',
                 'currency' => $workspace->currency ?? 'EGP',
-                'plan_name' => 'Growth • تجريبية',
+                'plan_name' => $planName,
                 'trial_days_remaining' => 10,
-                'units_used' => $totalUnits ?: 18,
-                'units_limit' => 24,
+                'units_used' => $unitsUsed,
+                'units_limit' => $unitsLimit,
+                'usage_percentage' => $usagePercentage,
             ],
+            'is_empty_workspace' => $isEmptyWorkspace,
             'header' => [
-                'greeting' => 'صباح الخير، '.($user->name ?: 'أحمد'),
-                'subtitle' => 'كل عقاراتك بنظرة واحدة • الخميس، 15 أكتوبر '.now()->year,
-                'breadcrumb' => 'مساحة العمل / صباح الخير، '.($user->name ?: 'أحمد'),
+                'greeting' => 'مرحباً، '.($user->name ?: 'أحمد').' 👋',
+                'subtitle' => 'إليك نظرة عامة على أداء عقاراتك اليوم • '.now()->translatedFormat('l، d F Y'),
             ],
             'checklist' => [
-                'title' => 'دارك جاهزة • اكتملت 4 من 4 خطوات',
-                'steps' => ['أضفت عقارك', 'جهزت الوحدات', 'أضفت المستأجر', 'أول عقد'],
-                'percentage' => 100,
+                'title' => $checklistPercent === 100
+                    ? 'دارك جاهزة بالكامل • اكتملت 4 من 4 خطوات'
+                    : 'خطوات إعداد حسابك • مكتمل '.$checklistDone.' من 4 خطوات',
+                'steps' => $checklistSteps,
+                'percentage' => $checklistPercent,
                 'action_label' => 'عرض العقارات',
             ],
             'top_kpis' => [
                 'properties_units' => [
-                    'title' => 'العقارات / الوحدات',
-                    'value' => ($totalProperties ?: 3).' / '.($totalUnits ?: 24),
-                    'subtitle' => ($totalProperties ?: 3).' مبانٍ في محفظتك',
+                    'title' => 'العقارات والوحدات',
+                    'value' => $totalProperties.' / '.$totalBillableUnits,
+                    'subtitle' => 'عقارات ووحدات مسجلة',
                 ],
                 'occupancy' => [
-                    'title' => 'الإشغال',
-                    'value' => ($totalUnits > 0 ? $occupancyRate : 75).'%',
-                    'subtitle' => ($totalUnits > 0 ? $occupiedUnits : 18).' مشغولة · '.($totalUnits > 0 ? $vacantUnits : 6).' شاغرة',
+                    'title' => 'معدل الإشغال',
+                    'value' => $occupancyRate.'%',
+                    'subtitle' => $occupiedUnits.' مشغولة • '.$vacantUnits.' شاغرة',
                 ],
                 'collections' => [
-                    'title' => 'المحصّل / المستحق',
-                    'value' => ($monthlyTarget > 0 ? number_format($monthlyCollected).' / '.number_format($monthlyTarget) : '37,000 / 42,000'),
-                    'subtitle' => 'جنيه • أكتوبر '.now()->year,
+                    'title' => 'المحصل هذا الشهر',
+                    'value' => number_format($monthlyCollected).' ج.م',
+                    'subtitle' => 'من أصل '.number_format($monthlyDue).' ج.م',
                 ],
                 'expiring' => [
                     'title' => 'عقود تنتهي قريبًا',
-                    'value' => (string) ($expiringLeases->count() ?: 3),
+                    'value' => (string) $expiringLeases->count(),
                     'subtitle' => 'خلال 30 يومًا القادمة',
                 ],
             ],
             'occupancy_trend' => [
                 'title' => 'اتجاه الإشغال',
                 'subtitle' => 'مايو – أكتوبر '.now()->year.' • كل العقارات',
-                'current_rate' => ($totalUnits > 0 ? $occupancyRate : 75).'%',
+                'current_rate' => $occupancyRate.'%',
                 'badge' => '+8 نقاط منذ مايو',
                 'months' => ['مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر'],
-                'rates' => [67, 70, 72, 70, 72, ($totalUnits > 0 ? $occupancyRate : 75)],
+                'rates' => [67, 70, 72, 70, 72, $occupancyRate],
             ],
-            'attention_items' => $attentionItems,
-            'upcoming_dues' => $upcomingDues,
             'bottom_kpis' => [
                 'maintenance_open' => [
                     'title' => 'طلبات صيانة مفتوحة',
-                    'value' => (string) ($openMaintenanceCount ?: 4),
-                    'subtitle' => ($inProgressMaintenanceCount ?: 2).' قيد التنفيذ',
+                    'value' => (string) $openMaintenanceCount,
+                    'subtitle' => $inProgressMaintenanceCount.' قيد التنفيذ',
                 ],
                 'maintenance_expenses' => [
                     'title' => 'مصروفات الصيانة',
-                    'value' => number_format($maintenanceExpenses ?: 1200).' جنيه',
+                    'value' => number_format($maintenanceExpenses).' جنيه',
                     'subtitle' => 'أكتوبر '.now()->year,
                 ],
                 'operating_expenses' => [
                     'title' => 'مصروفات التشغيل',
-                    'value' => number_format($operatingExpenses ?: 2600).' جنيه',
+                    'value' => number_format($operatingExpenses).' جنيه',
                     'subtitle' => 'مرافق ونظافة وخدمات',
                 ],
             ],
@@ -298,7 +431,65 @@ class DashboardController extends Controller
                 'copyright' => 'دار © '.now()->year,
                 'last_updated' => 'آخر تحديث اليوم، 09:41',
             ],
-            'is_empty_workspace' => $isEmpty,
+            'kpis' => [
+                'properties' => [
+                    'label' => 'إجمالي العقارات',
+                    'value' => (string) $totalProperties,
+                    'subtitle' => $totalProperties === 1 ? 'عقار واحد مسجل' : $totalProperties.' عقارات مسجلة',
+                ],
+                'units' => [
+                    'label' => 'الوحدات القابلة للتأجير',
+                    'value' => (string) $totalBillableUnits,
+                    'subtitle' => 'من أصل '.$unitsLimit.' وحدة في الباقة',
+                ],
+                'occupancy' => [
+                    'label' => 'معدل الإشغال',
+                    'value' => $occupancyRate.'%',
+                    'subtitle' => $occupiedUnits.' مشغولة · '.$vacantUnits.' شاغرة',
+                ],
+                'collected' => [
+                    'label' => 'الإيجارات المحصلة هذا الشهر',
+                    'value' => number_format($monthlyCollected).' ج.م',
+                    'subtitle' => 'من إجمالي '.number_format($monthlyDue).' ج.م مستحقة',
+                ],
+                'overdue' => [
+                    'label' => 'المتأخرات',
+                    'value' => number_format($totalOverdueBalance).' ج.م',
+                    'subtitle' => $overdueCount.' دفعات متأخرة',
+                    'count' => $overdueCount,
+                ],
+                'expiring' => [
+                    'label' => 'عقود تنتهي قريباً',
+                    'value' => (string) $expiringLeases->count(),
+                    'subtitle' => 'خلال 30 يوماً القادمة',
+                ],
+            ],
+            'occupancy_summary' => [
+                'total' => $totalBillableUnits,
+                'occupied' => $occupiedUnits,
+                'vacant' => $vacantUnits,
+                'maintenance' => $openMaintenanceCount,
+                'occupancy_rate' => $occupancyRate,
+            ],
+            'income_chart' => [
+                'months' => $incomeMonths,
+                'amounts' => $incomeAmounts,
+                'history' => $monthlyIncomeData,
+                'has_history' => $hasPaymentHistory,
+                'total_collected' => (float) array_sum($incomeAmounts),
+            ],
+            'attention_items' => $attentionItems,
+            'upcoming_dues' => $upcomingDues,
+            'recent_properties' => $recentProperties,
+            'recent_activities' => $sortedActivities,
+            'whatsapp_summary' => $whatsappSummary,
+            'subscription_usage' => [
+                'units_used' => $unitsUsed,
+                'units_limit' => $unitsLimit,
+                'percentage' => $usagePercentage,
+                'plan_name' => $planName,
+                'days_remaining' => 10,
+            ],
             'renters' => $workspace->renters()
                 ->with(['leases' => fn ($q) => $q->where('status', 'active')->with('unit')])
                 ->orderBy('name')
@@ -313,23 +504,6 @@ class DashboardController extends Controller
                         'rent_amount' => (float) $l->rent_amount,
                     ] : null,
                 ]),
-            // Fallback backward-compatible props
-            'metrics' => [
-                'total_units' => $totalUnits ?: 24,
-                'occupied_units' => $occupiedUnits ?: 18,
-                'vacant_units' => $vacantUnits ?: 6,
-                'occupancy_rate' => $occupancyRate ?: 75,
-                'monthly_target' => $monthlyTarget ?: 42000,
-                'monthly_collected' => $monthlyCollected ?: 37000,
-                'collection_percentage' => 75,
-                'total_overdue_balance' => $totalOverdueBalance ?: 1500,
-                'overdue_renters_count' => count($attentionItems),
-                'expiring_leases_count' => count($formattedExpiring) ?: 3,
-            ],
-            'overdue_renters' => $attentionItems,
-            'expiring_leases' => $formattedExpiring,
-            'recent_payments' => [],
-            'properties_summary' => [],
         ]);
     }
 }

@@ -42,6 +42,11 @@ class RentCharge extends Model
         return $this->hasMany(PaymentAllocation::class);
     }
 
+    public function paymentAllocations(): HasMany
+    {
+        return $this->allocations();
+    }
+
     public function messageLogs(): HasMany
     {
         return $this->hasMany(MessageLog::class);

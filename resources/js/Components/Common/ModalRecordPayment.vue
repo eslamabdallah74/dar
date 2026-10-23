@@ -191,8 +191,8 @@ const submit = () => {
                             required
                             class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition"
                         >
-                            <option value="bank_transfer">تحويل بنكي</option>
-                            <option value="other">مدى / بطاقة مصرفية</option>
+                            <option value="bank_transfer">تحويل بنكي / إنستاباي</option>
+                            <option value="other">بطاقة بنكية / فيزا / ميزة</option>
                             <option value="cash">نقدي (كاش)</option>
                             <option value="cheque">شيك مصرفي</option>
                         </select>
@@ -200,7 +200,7 @@ const submit = () => {
 
                     <div>
                         <label class="block text-xs font-bold text-[#0F2747] mb-1.5">
-                            رقم المرجع / الإيصال
+                            رقم المرجع / الإيصال <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري / تلقائي)</span>
                         </label>
                         <input
                             v-model="form.reference"
@@ -214,12 +214,12 @@ const submit = () => {
                 <!-- ملاحظات -->
                 <div>
                     <label class="block text-xs font-bold text-[#0F2747] mb-1.5">
-                        ملاحظات أو تفاصيل التحويل
+                        ملاحظات أو تفاصيل التحويل <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span>
                     </label>
                     <textarea
                         v-model="form.notes"
                         rows="2"
-                        placeholder="مثل: تحويل عبر الراجحي إلى الحساب الاستثماري..."
+                        placeholder="مثل: تحويل عبر إنستاباي أو إيداع بنكي..."
                         class="w-full p-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition"
                     ></textarea>
                 </div>

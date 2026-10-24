@@ -196,6 +196,26 @@ const depositStatusClass = (status?: string) => {
             </div>
         </div>
 
+        <!-- تنبيه بالعقود التي تجاوزت موعدها وبانتظار قرار الإدارة -->
+        <div v-if="(stats.past_end_date ?? 0) > 0" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl sm:rounded-3xl bg-amber-50 border border-amber-200 text-amber-900 shadow-2xs">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-amber-200/80 text-amber-900 flex items-center justify-center shrink-0">
+                    <Clock class="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <div>
+                    <span class="font-bold text-xs sm:text-sm block text-amber-950">يوجد {{ stats.past_end_date }} عقود تجاوزت تاريخ انتهائها وبانتظار قرار الإدارة</span>
+                    <span class="text-[11px] text-amber-800">العقود لا تنتهي تلقائياً حتى لا تضيع حقوق التأمين والتسليم. يرجى اتخاذ إجراء (التجديد أو الإنهاء والتسوية).</span>
+                </div>
+            </div>
+            <button
+                type="button"
+                @click="statusFilter = 'past_due'"
+                class="px-4 py-2 rounded-xl bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold transition shrink-0 cursor-pointer shadow-xs self-start sm:self-auto"
+            >
+                عرض العقود المتطلبة للقرار
+            </button>
+        </div>
+
         <!-- شريط البحث والتصفية المتجاوب -->
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border border-[#D6E0E7] shadow-2xs">
             <div class="relative flex-1 max-w-md">
@@ -221,8 +241,9 @@ const depositStatusClass = (status?: string) => {
                 <button
                     v-for="f in [
                         { id: 'all', label: 'كافة العقود' },
+                        { id: 'past_due', label: 'انتهت مدتها (' + (stats.past_end_date ?? 0) + ')' },
                         { id: 'active', label: 'سارية' },
-                        { id: 'expiring', label: 'تنتهي قريباً' },
+                        { id: 'expiring', label: 'تنتهي قريباً (' + stats.expiring_soon + ')' },
                         { id: 'with_deposit', label: 'تتضمن تأمين' },
                     ]"
                     :key="f.id"
@@ -252,13 +273,16 @@ const depositStatusClass = (status?: string) => {
                             <FileText class="w-3 h-3" />
                             <span>{{ lease.contract_number }}</span>
                         </span>
-                        <span v-if="lease.is_expiring_soon" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                        <span v-if="lease.is_past_end_date" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                            انتهى موعده (يتطلب إجراء)
+                        </span>
+                        <span v-else-if="lease.is_expiring_soon" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                             ينتهي قريباً
                         </span>
                     </div>
 
                     <StatusBadge
-                        :status="lease.is_expiring_soon ? 'expiring' : lease.status"
+                        :status="lease.is_past_end_date ? 'past_due' : (lease.is_expiring_soon ? 'expiring' : lease.status)"
                         :label="lease.status_label"
                         size="sm"
                     />
@@ -492,7 +516,7 @@ const depositStatusClass = (status?: string) => {
                             <!-- حالة العقد -->
                             <td class="py-4 px-6">
                                 <StatusBadge
-                                    :status="lease.is_expiring_soon ? 'expiring' : lease.status"
+                                    :status="lease.is_past_end_date ? 'past_due' : (lease.is_expiring_soon ? 'expiring' : lease.status)"
                                     :label="lease.status_label"
                                     size="sm"
                                 />

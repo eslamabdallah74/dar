@@ -47,12 +47,14 @@ interface LeaseItem {
     status: string;
     status_label: string;
     is_expiring_soon: boolean;
+    is_past_end_date?: boolean;
 }
 
 const props = defineProps<{
     leases: LeaseItem[];
     stats: {
         active_leases: number;
+        past_end_date?: number;
         expiring_soon: number;
         total_annual_value: number;
         total_leases: number;
@@ -80,7 +82,8 @@ const filteredLeases = computed(() => {
             || (l.renter_phone && l.renter_phone.includes(query));
 
         const matchesStatus = statusFilter.value === 'all'
-            || (statusFilter.value === 'active' && l.status === 'active' && !l.is_expiring_soon)
+            || (statusFilter.value === 'active' && l.status === 'active' && !l.is_expiring_soon && !l.is_past_end_date)
+            || (statusFilter.value === 'past_due' && l.is_past_end_date)
             || (statusFilter.value === 'expiring' && l.is_expiring_soon)
             || (statusFilter.value === 'with_deposit' && (l.security_deposit_amount ?? 0) > 0);
 

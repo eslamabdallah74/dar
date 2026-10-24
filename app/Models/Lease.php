@@ -164,6 +164,19 @@ class Lease extends Model
         return max(0.0, $this->total_deposit_received - $this->total_deposit_deductions - $this->total_deposit_refunded);
     }
 
+    public function getIsPastEndDateAttribute(): bool
+    {
+        return $this->status === 'active' && $this->ends_on !== null && $this->ends_on->lt(today());
+    }
+
+    public function getIsExpiringSoonAttribute(): bool
+    {
+        return $this->status === 'active'
+            && $this->ends_on !== null
+            && $this->ends_on->gte(today())
+            && $this->ends_on->lte(today()->addDays(30));
+    }
+
     public function syncSecurityDepositStatus(): void
     {
         $requiredAmount = (float) $this->security_deposit_amount;

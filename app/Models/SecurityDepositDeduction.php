@@ -19,6 +19,8 @@ class SecurityDepositDeduction extends Model
         'amount',
         'category',
         'description',
+        'notes',
+        'attachment_path',
         'status',
         'deducted_at',
     ];
@@ -44,5 +46,17 @@ class SecurityDepositDeduction extends Model
     public function recordedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by');
+    }
+
+    public function getCategoryLabelAttribute(): string
+    {
+        return match ($this->category) {
+            'furniture_damage' => 'تلف أثاث أو أجهزة',
+            'fixture_damage' => 'تلف مرافق وتركيبات',
+            'unpaid_dues' => 'مستحقات غير مدفوعة',
+            'missing_items' => 'مفقودات ومحتويات ناقصة',
+            'other_damage' => 'أضرار أو مطالبات أخرى',
+            default => $this->category,
+        };
     }
 }

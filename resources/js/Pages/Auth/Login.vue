@@ -29,10 +29,10 @@ const submit = () => {
 </script>
 
 <template>
-    <GuestLayout>
+    <GuestLayout image-background>
         <Head title="تسجيل الدخول — دار" />
 
-        <div class="mb-6 text-center">
+        <div class="mb-3 text-center sm:mb-6">
             <h1 class="text-2xl font-bold text-white">أهلاً بيك من جديد 👋</h1>
             <p class="mt-1.5 text-xs text-zinc-300 font-medium">
                 سجّل دخولك لمتابعة عقاراتك، المستأجرين، وتحصيلات الإيجار.
@@ -43,7 +43,7 @@ const submit = () => {
             {{ status }}
         </div>
 
-        <form @submit.prevent="submit" class="space-y-4">
+        <form @submit.prevent="submit" class="space-y-2 sm:space-y-4">
             <!-- البريد الإلكتروني أو الاسم -->
             <div>
                 <InputLabel for="email" value="البريد الإلكتروني أو الاسم" />
@@ -114,7 +114,7 @@ const submit = () => {
             </div>
 
             <!-- رابط التسجيل الجديد -->
-            <div class="pt-4 border-t border-zinc-800/80 text-center text-xs text-zinc-400">
+            <div class="border-t border-zinc-800/80 pt-2 text-center text-xs text-zinc-400 sm:pt-4">
                 معندكش حساب مسجّل لسه؟
                 <Link
                     :href="route('register')"

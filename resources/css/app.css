@@ -17,6 +17,12 @@
         font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     }
 
+    [dir="rtl"] select {
+        background-position: left 0.5rem center;
+        padding-left: 2.5rem;
+        padding-right: 0.75rem;
+    }
+
     /* Arabic typography: prevent tracking-tight from breaking cursive connections */
     [dir="rtl"] h1,
     [dir="rtl"] h2,

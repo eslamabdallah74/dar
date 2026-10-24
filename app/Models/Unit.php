@@ -57,7 +57,6 @@ class Unit extends Model
         return $this->hasOne(Lease::class)
             ->where('status', 'active')
             ->where('starts_on', '<=', today())
-            ->where('ends_on', '>=', today())
             ->latestOfMany();
     }
 

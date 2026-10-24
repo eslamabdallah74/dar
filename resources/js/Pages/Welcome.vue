@@ -217,227 +217,48 @@ const mobileMenuOpen = ref(false);
         <!-- ========================================== -->
         <!-- 2. HERO SECTION                            -->
         <!-- ========================================== -->
-        <section class="relative pt-12 pb-20 lg:pt-20 lg:pb-28 overflow-hidden">
-            <!-- Subtle background decorative gradients -->
-            <div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-gradient-to-b from-[#E3F1F4]/70 to-transparent blur-3xl pointer-events-none -z-10"></div>
+        <section class="overflow-hidden bg-[#F3F7FA]">
+            <div class="relative">
+                <img
+                    src="/images/banner.png"
+                    alt="منصة دار لإدارة العقارات على الحاسوب والهاتف"
+                    fetchpriority="high"
+                    class="block aspect-[16/9] w-full object-cover object-[76%_center] lg:aspect-[1983/793] lg:object-fill"
+                />
 
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
-                    <!-- Right Column: Hero Content & CTAs -->
-                    <div class="lg:col-span-7 flex flex-col items-start text-right">
-                        <!-- Hero Main Title -->
-                        <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-[#0F2747] tracking-tight leading-[1.2] mb-6">
-                            إدارة عقاراتك وإيجاراتك <br class="hidden sm:inline" />
+                <div class="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:absolute lg:inset-0 lg:flex lg:items-center lg:px-8 lg:py-0" dir="ltr">
+                    <div class="max-w-xl text-right" dir="rtl">
+                        <h1 class="mb-5 text-3xl font-extrabold leading-[1.2] tracking-tight text-[#0F2747] sm:text-5xl lg:text-6xl">
+                            إدارة عقاراتك وإيجاراتك
                             <span class="text-[#0E6E7E]">من مكان واحد</span>
                         </h1>
 
-                        <!-- Hero Subtitle -->
-                        <p class="text-base sm:text-lg text-[#334155] leading-relaxed max-w-2xl mb-8 font-normal">
+                        <p class="mb-7 max-w-2xl text-base font-normal leading-relaxed text-[#334155] sm:text-lg">
                             عقارات، مستأجرون، عقود، مستحقات وصيانة في منصة واحدة، مع تذكيرات واتساب تلقائية قبل موعد الدفع وتنبيه قبل انتهاء العقد.
                         </p>
 
-                        <!-- CTA Buttons -->
-                        <div class="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-4 mb-10">
+                        <div class="mb-8 flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center">
                             <Link
                                 v-if="canRegister"
                                 :href="route('register')"
-                                class="inline-flex justify-center items-center gap-3 px-8 py-4 rounded-xl bg-[#0E6E7E] text-white font-bold text-base shadow-lg shadow-[#0E6E7E]/20 hover:bg-[#0B5A68] hover:shadow-md transition transform active:scale-[0.99]"
+                                class="inline-flex items-center justify-center gap-3 rounded-xl bg-[#0E6E7E] px-8 py-4 text-base font-bold text-white shadow-lg shadow-[#0E6E7E]/20 transition hover:bg-[#0B5A68] hover:shadow-md active:scale-[0.99]"
                             >
                                 <span>ابدأ تجربتك المجانية</span>
-                                <svg class="w-5 h-5 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <svg class="h-5 w-5 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M5 12h14M12 5l7 7-7 7"/>
                                 </svg>
                             </Link>
                             <a
                                 href="#how-it-works"
-                                class="inline-flex justify-center items-center gap-2.5 px-7 py-4 rounded-xl bg-white border border-[#D6E0E7] text-[#0F2747] font-bold text-base hover:bg-[#F3F7FA] hover:border-[#B6C5D0] transition shadow-sm"
+                                class="inline-flex items-center justify-center gap-2.5 rounded-xl border border-[#D6E0E7] bg-white px-7 py-4 text-base font-bold text-[#0F2747] shadow-sm transition hover:border-[#B6C5D0] hover:bg-[#F3F7FA]"
                             >
-                                <svg class="w-5 h-5 text-[#0E6E7E]" viewBox="0 0 24 24" fill="currentColor">
+                                <svg class="h-5 w-5 text-[#0E6E7E]" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M8 5v14l11-7z"/>
                                 </svg>
                                 <span>شاهد كيف تعمل</span>
                             </a>
                         </div>
 
-                        <!-- Trust Features Row -->
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6 border-t border-[#D6E0E7] w-full text-xs sm:text-sm font-semibold text-[#5B6770]">
-                            <div class="flex items-center gap-2">
-                                <div class="w-5 h-5 rounded-full bg-[#E3F1F4] flex items-center justify-center text-[#0E6E7E]">
-                                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                                        <path d="M20 6L9 17l-5-5"/>
-                                    </svg>
-                                </div>
-                                <span>واجهة عربية بالكامل</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <div class="w-5 h-5 rounded-full bg-[#E3F1F4] flex items-center justify-center text-[#0E6E7E]">
-                                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                                        <path d="M20 6L9 17l-5-5"/>
-                                    </svg>
-                                </div>
-                                <span>عقار · شقة · غرفة · سرير</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <div class="w-5 h-5 rounded-full bg-[#E3F1F4] flex items-center justify-center text-[#0E6E7E]">
-                                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                                        <path d="M20 6L9 17l-5-5"/>
-                                    </svg>
-                                </div>
-                                <span>تجربة مجانية حتى 5 وحدات</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Left Column: Dashboard Preview Card -->
-                    <div class="lg:col-span-5 relative">
-                        <div class="bg-white rounded-2xl sm:rounded-3xl border border-[#D6E0E7] shadow-xl p-5 sm:p-6 transition-all relative">
-                            <!-- Card Header Bar -->
-                            <div class="flex items-center justify-between pb-4 mb-5 border-b border-[#D6E0E7]">
-                                <div class="flex items-center gap-2.5">
-                                    <div class="w-8 h-8 rounded-lg bg-[#0F2747] text-white flex items-center justify-center">
-                                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <rect x="3" y="3" width="7" height="7"/>
-                                            <rect x="14" y="3" width="7" height="7"/>
-                                            <rect x="14" y="14" width="7" height="7"/>
-                                            <rect x="3" y="14" width="7" height="7"/>
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <h3 class="text-sm font-bold text-[#0F2747]">لوحة المتابعة</h3>
-                                        <p class="text-[11px] text-[#5B6770]">مباشر · عقارات القاهرة</p>
-                                    </div>
-                                </div>
-                                <span class="px-2.5 py-1 rounded-md bg-[#F3F7FA] text-[#0F2747] text-xs font-bold border border-[#D6E0E7]">
-                                    أكتوبر 2026
-                                </span>
-                            </div>
-
-                            <!-- Top 3 Metrics -->
-                            <div class="grid grid-cols-3 gap-2.5 mb-5">
-                                <!-- Metric 1: نسبة الإشغال -->
-                                <div class="bg-[#F3F7FA] rounded-xl p-3 border border-[#D6E0E7]/60 text-center">
-                                    <span class="block text-[11px] font-medium text-[#5B6770] mb-1">نسبة الإشغال</span>
-                                    <span class="block text-xl font-extrabold text-[#0E6E7E]">78%</span>
-                                </div>
-                                <!-- Metric 2: المستحق (جنيه) -->
-                                <div class="bg-[#F3F7FA] rounded-xl p-3 border border-[#D6E0E7]/60 text-center">
-                                    <span class="block text-[11px] font-medium text-[#5B6770] mb-1">المستحق (جنيه)</span>
-                                    <span class="block text-xl font-extrabold text-[#0F2747]">9,500</span>
-                                </div>
-                                <!-- Metric 3: عقود تنتهي قريبًا -->
-                                <div class="bg-[#F3F7FA] rounded-xl p-3 border border-[#D6E0E7]/60 text-center">
-                                    <span class="block text-[11px] font-medium text-[#5B6770] mb-1">عقود تنتهي قريبًا</span>
-                                    <span class="block text-xl font-extrabold text-[#DC2626]">3</span>
-                                </div>
-                            </div>
-
-                            <!-- Occupancy Trend Bar (الإشغال خلال 6 أشهر) -->
-                            <div class="mb-5 bg-[#F3F7FA] rounded-xl p-3 border border-[#D6E0E7]/60">
-                                <div class="flex items-center justify-between text-xs font-bold mb-2">
-                                    <span class="text-[#0F2747]">الإشغال خلال 6 أشهر</span>
-                                    <span class="text-[#0E6E7E] text-[11px]">↑ +12% نمو مستمر</span>
-                                </div>
-                                <div class="grid grid-cols-6 gap-1.5 items-end h-12 pt-2">
-                                    <div class="flex flex-col items-center gap-1">
-                                        <div class="w-full bg-[#D6E0E7] rounded-t h-6"></div>
-                                        <span class="text-[9px] text-[#5B6770]">مايو</span>
-                                    </div>
-                                    <div class="flex flex-col items-center gap-1">
-                                        <div class="w-full bg-[#D6E0E7] rounded-t h-7"></div>
-                                        <span class="text-[9px] text-[#5B6770]">يونيو</span>
-                                    </div>
-                                    <div class="flex flex-col items-center gap-1">
-                                        <div class="w-full bg-[#D6E0E7] rounded-t h-8"></div>
-                                        <span class="text-[9px] text-[#5B6770]">يوليو</span>
-                                    </div>
-                                    <div class="flex flex-col items-center gap-1">
-                                        <div class="w-full bg-[#B6C5D0] rounded-t h-9"></div>
-                                        <span class="text-[9px] text-[#5B6770]">أغسطس</span>
-                                    </div>
-                                    <div class="flex flex-col items-center gap-1">
-                                        <div class="w-full bg-[#0E6E7E]/60 rounded-t h-10"></div>
-                                        <span class="text-[9px] text-[#5B6770]">سبتمبر</span>
-                                    </div>
-                                    <div class="flex flex-col items-center gap-1">
-                                        <div class="w-full bg-[#0E6E7E] rounded-t h-12"></div>
-                                        <span class="text-[9px] font-bold text-[#0E6E7E]">أكتوبر</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Live Tenant List with Status Badges -->
-                            <div class="space-y-2 mb-4">
-                                <span class="block text-xs font-bold text-[#5B6770] px-1">سجل المستأجرين الأخير</span>
-
-                                <!-- Tenant 1: أحمد محمد -->
-                                <div class="flex items-center justify-between p-2.5 rounded-xl bg-white border border-[#D6E0E7] hover:border-[#B6C5D0] transition">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-7 h-7 rounded-full bg-[#E3F1F4] text-[#0E6E7E] font-bold text-xs flex items-center justify-center">أ</div>
-                                        <div>
-                                            <span class="block text-xs font-bold text-[#0F2747]">أحمد محمد</span>
-                                            <span class="block text-[10px] text-[#5B6770]">شقة 3B · عمارة الياسمين</span>
-                                        </div>
-                                    </div>
-                                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]">
-                                        مدفوع
-                                    </span>
-                                </div>
-
-                                <!-- Tenant 2: سارة علي -->
-                                <div class="flex items-center justify-between p-2.5 rounded-xl bg-white border border-[#D6E0E7] hover:border-[#B6C5D0] transition">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-7 h-7 rounded-full bg-[#FFFBEB] text-[#D97706] font-bold text-xs flex items-center justify-center">س</div>
-                                        <div>
-                                            <span class="block text-xs font-bold text-[#0F2747]">سارة علي</span>
-                                            <span class="block text-[10px] text-[#5B6770]">غرفة 2 · سرير A</span>
-                                        </div>
-                                    </div>
-                                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]">
-                                        يستحق قريبًا
-                                    </span>
-                                </div>
-
-                                <!-- Tenant 3: خالد حسن -->
-                                <div class="flex items-center justify-between p-2.5 rounded-xl bg-white border border-[#D6E0E7] hover:border-[#B6C5D0] transition">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-7 h-7 rounded-full bg-[#FEF2F2] text-[#DC2626] font-bold text-xs flex items-center justify-center">خ</div>
-                                        <div>
-                                            <span class="block text-xs font-bold text-[#0F2747]">خالد حسن</span>
-                                            <span class="block text-[10px] text-[#5B6770]">شقة 1A · برج النصر</span>
-                                        </div>
-                                    </div>
-                                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FEF2F2] text-[#DC2626] border border-[#FECACA]">
-                                        متأخر
-                                    </span>
-                                </div>
-
-                                <!-- Available unit: سرير B -->
-                                <div class="flex items-center justify-between p-2.5 rounded-xl bg-[#F3F7FA] border border-dashed border-[#B6C5D0]">
-                                    <div class="flex items-center gap-2">
-                                        <svg class="w-4 h-4 text-[#0E6E7E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10M2 17h20M6 8v9"/>
-                                        </svg>
-                                        <span class="text-xs font-semibold text-[#0F2747]">غرفة 2 · سرير B</span>
-                                    </div>
-                                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#E3F1F4] text-[#0E6E7E]">
-                                        متاح للحجز
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- WhatsApp Notification Banner Toast -->
-                            <div class="mt-4 p-3 rounded-xl bg-[#E8EFF4] border border-[#0E6E7E]/30 flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-full bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-sm">
-                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.664-.698c.969.587 1.771.888 2.796.888 3.182 0 5.767-2.587 5.767-5.766.001-3.181-2.585-5.775-5.767-5.775zm3.366 8.163c-.141.399-.824.773-1.144.821-.309.047-.706.071-2.072-.497-1.745-.726-2.871-2.493-2.958-2.609-.088-.115-.706-.94-.706-1.792 0-.853.444-1.272.603-1.446.159-.175.347-.219.462-.219.116 0 .232.001.332.006.106.005.249-.04.389.297.144.347.491 1.2.534 1.288.043.088.072.19.014.306-.058.115-.087.189-.173.291-.087.101-.183.226-.261.303-.087.087-.178.181-.077.354.101.173.449.741.963 1.199.662.59 1.221.773 1.394.86.173.087.275.073.376-.044.101-.116.433-.506.549-.68.116-.173.231-.144.389-.087.159.058 1.011.477 1.184.564.173.087.289.13.332.203.043.072.043.419-.098.818z"/>
-                                    </svg>
-                                </div>
-                                <div class="text-right">
-                                    <span class="block text-xs font-bold text-[#0F2747]">تم إرسال تذكير واتساب</span>
-                                    <span class="block text-[11px] text-[#5B6770]">إلى أحمد محمد · موعد الإيجار يوم 15</span>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>

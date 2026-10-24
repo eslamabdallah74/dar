@@ -2,46 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Leases\CreateLeaseAction;
+use App\Http\Requests\Leases\StoreLeaseRequest;
 use App\Models\Lease;
-use App\Models\Renter;
 use App\Models\Unit;
-use App\Models\Workspace;
-use App\Support\CurrentWorkspace;
-use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class LeaseController extends Controller
 {
-    /**
-     * Resolve and authorize the active workspace for the authenticated user.
-     */
-    protected function resolveWorkspace(Request $request): Workspace
-    {
-        $workspace = app(CurrentWorkspace::class)->get();
-
-        if (! $workspace) {
-            abort(403, 'لا توجد مساحة عمل نشطة أو مصرح بها.');
-        }
-
-        $user = $request->user();
-        if (! $user) {
-            abort(401);
-        }
-
-        $isAuthorized = $workspace->owner_user_id === $user->id
-            || $workspace->members()->where('user_id', $user->id)->exists();
-
-        abort_if(! $isAuthorized, 403, 'غير مصرح لك بالوصول لمساحة العمل هذه.');
-
-        return $workspace;
-    }
-
     public function index(Request $request): Response
     {
         $workspace = $this->resolveWorkspace($request);
@@ -51,9 +23,14 @@ class LeaseController extends Controller
             ->latest()
             ->get()
             ->map(function (Lease $lease) {
+                $isPastEndDate = $lease->status === 'active'
+                    && $lease->ends_on !== null
+                    && $lease->ends_on->lt(today());
+
                 $isExpiringSoon = $lease->status === 'active'
-                    && $lease->ends_on >= today()
-                    && $lease->ends_on <= today()->addDays(30);
+                    && $lease->ends_on !== null
+                    && $lease->ends_on->gte(today())
+                    && $lease->ends_on->lte(today()->addDays(30));
 
                 return [
                     'id' => $lease->id,
@@ -90,17 +67,20 @@ class LeaseController extends Controller
                     },
                     'status' => $lease->status,
                     'status_label' => match ($lease->status) {
-                        'active' => $isExpiringSoon ? 'ينتهي قريباً' : 'سارٍ',
+                        'active' => $isPastEndDate ? 'انتهى موعده (يتطلب إجراء)' : ($isExpiringSoon ? 'ينتهي قريباً' : 'سارٍ'),
                         'expired' => 'منتهي',
                         'draft' => 'مسودة',
-                        'terminated' => 'ملغي',
+                        'terminated' => 'منتهي ومسوّى',
+                        'cancelled' => 'ملغي',
                         default => $lease->status,
                     },
+                    'is_past_end_date' => $isPastEndDate,
                     'is_expiring_soon' => $isExpiringSoon,
                 ];
             });
 
         $activeCount = $leases->where('status', 'active')->count();
+        $pastEndDateCount = $leases->where('is_past_end_date', true)->count();
         $expiringCount = $leases->where('is_expiring_soon', true)->count();
         $totalContractValue = (float) $leases->where('status', 'active')->sum('rent_amount') * 12;
         $totalDepositsHeld = (float) $leases->whereIn('security_deposit_status', ['held', 'partially_received', 'under_review'])->sum('security_deposit_amount');
@@ -110,6 +90,7 @@ class LeaseController extends Controller
             'stats' => [
                 'total_leases' => $leases->count(),
                 'active_leases' => $activeCount,
+                'past_end_date' => $pastEndDateCount,
                 'expiring_soon' => $expiringCount,
                 'total_annual_value' => $totalContractValue,
                 'total_value' => $totalContractValue,
@@ -151,7 +132,7 @@ class LeaseController extends Controller
 
         $renters = $workspace->renters()
             ->orderBy('name')
-            ->get(['id', 'name', 'phone']);
+            ->get(['id', 'name', 'phone', 'national_id']);
 
         $properties = $workspace->properties()
             ->orderBy('name')
@@ -228,84 +209,11 @@ class LeaseController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreLeaseRequest $request, CreateLeaseAction $createLeaseAction): RedirectResponse
     {
         $workspace = $this->resolveWorkspace($request);
 
-        $validated = $request->validate([
-            'unit_id' => 'required|exists:units,id',
-            'renter_id' => 'required|exists:renters,id',
-            'starts_on' => 'required|date',
-            'ends_on' => 'required|date|after:starts_on',
-            'rent_amount' => 'required|numeric|min:1',
-            'security_deposit_amount' => 'nullable|numeric|min:0',
-            'billing_interval' => 'nullable|in:monthly',
-            'notes' => 'nullable|string',
-        ]);
-
-        $unit = Unit::withoutGlobalScopes()
-            ->where('workspace_id', $workspace->id)
-            ->findOrFail($validated['unit_id']);
-
-        $renter = Renter::withoutGlobalScopes()
-            ->where('workspace_id', $workspace->id)
-            ->findOrFail($validated['renter_id']);
-
-        $hierarchyIds = $unit->getHierarchyUnitIds();
-        $startsCarbon = Carbon::parse($validated['starts_on']);
-        $depositAmount = isset($validated['security_deposit_amount']) ? (float) $validated['security_deposit_amount'] : 0.00;
-        $depositStatus = $depositAmount > 0 ? 'due' : 'not_required';
-
-        DB::transaction(function () use ($workspace, $validated, $startsCarbon, $hierarchyIds, $unit, $depositAmount, $depositStatus) {
-            // Lock affected units in hierarchy for update
-            Unit::withoutGlobalScopes()
-                ->whereIn('id', $hierarchyIds)
-                ->lockForUpdate()
-                ->get();
-
-            $conflictingLease = $workspace->leases()
-                ->whereIn('unit_id', $hierarchyIds)
-                ->whereIn('status', ['active', 'draft'])
-                ->where('starts_on', '<=', $validated['ends_on'])
-                ->where('ends_on', '>=', $validated['starts_on'])
-                ->first();
-
-            if ($conflictingLease) {
-                $isSelf = $conflictingLease->unit_id === $unit->id;
-                $conflictingUnit = Unit::withoutGlobalScopes()->find($conflictingLease->unit_id);
-                $unitLabel = $isSelf
-                    ? 'الوحدة المحددة'
-                    : ($conflictingUnit ? "الوحدة المرتبطة ({$conflictingUnit->name})" : 'وحدة متداخلة هرمياً');
-
-                throw ValidationException::withMessages([
-                    'unit_id' => "تعارض في التواريخ: {$unitLabel} مرتبطة بالفعل بعقد إيجار سارٍ خلال الفترة المحددة ({$conflictingLease->starts_on->format('d/m/Y')} إلى {$conflictingLease->ends_on->format('d/m/Y')}).",
-                ]);
-            }
-
-            $lease = $workspace->leases()->create([
-                'unit_id' => $validated['unit_id'],
-                'renter_id' => $validated['renter_id'],
-                'starts_on' => $validated['starts_on'],
-                'ends_on' => $validated['ends_on'],
-                'rent_amount' => $validated['rent_amount'],
-                'security_deposit_amount' => $depositAmount,
-                'security_deposit_status' => $depositStatus,
-                'billing_interval' => 'monthly',
-                'billing_anchor_day' => min(28, (int) $startsCarbon->format('j')),
-                'first_due_date' => $validated['starts_on'],
-                'status' => 'active',
-                'notes' => $validated['notes'] ?? null,
-            ]);
-
-            // Automatically create first month rent charge
-            $workspace->rentCharges()->create([
-                'lease_id' => $lease->id,
-                'period_start' => $startsCarbon->startOfMonth()->toDateString(),
-                'period_end' => $startsCarbon->copy()->endOfMonth()->toDateString(),
-                'due_date' => $lease->starts_on,
-                'amount' => $lease->rent_amount,
-            ]);
-        });
+        $createLeaseAction->execute($workspace, $request->validated());
 
         return redirect()->route('leases.index')->with('success', 'تم إنشاء وتفعيل عقد الإيجار بنجاح');
     }
@@ -374,11 +282,14 @@ class LeaseController extends Controller
             'category_label' => match ($d->category) {
                 'furniture_damage' => 'تلف أثاث أو أجهزة',
                 'fixture_damage' => 'تلف تركيبات ومرافق',
+                'unpaid_dues' => 'مستحقات غير مدفوعة',
                 'missing_items' => 'مفقودات ومحتويات ناقصة',
                 'other_damage' => 'أضرار موثقة أخرى',
                 default => 'بند خصم',
             },
             'description' => $d->description,
+            'notes' => $d->notes,
+            'attachment_url' => $d->attachment_path ? Storage::disk('public')->url($d->attachment_path) : null,
             'status' => $d->status,
             'deducted_at' => $d->deducted_at?->format('d/m/Y') ?? $d->created_at?->format('d/m/Y'),
             'recorded_by' => $d->recordedByUser?->name ?? 'مستخدم النظام',
@@ -419,9 +330,8 @@ class LeaseController extends Controller
             ];
         });
 
-        $isExpiringSoon = $lease->status === 'active'
-            && $lease->ends_on >= today()
-            && $lease->ends_on <= today()->addDays(30);
+        $isPastEndDate = $lease->is_past_end_date;
+        $isExpiringSoon = $lease->is_expiring_soon;
 
         return Inertia::render('Leases/Show', [
             'lease' => [
@@ -435,12 +345,15 @@ class LeaseController extends Controller
                 'billing_interval' => $lease->billing_interval === 'monthly' ? 'شهري' : 'سنوي',
                 'status' => $lease->status,
                 'status_label' => match ($lease->status) {
-                    'active' => $isExpiringSoon ? 'ينتهي قريباً' : 'سارٍ',
+                    'active' => $isPastEndDate ? 'انتهى موعده (يتطلب إجراء)' : ($isExpiringSoon ? 'ينتهي قريباً' : 'سارٍ'),
                     'expired' => 'منتهي',
                     'draft' => 'مسودة',
-                    'terminated' => 'ملغي / منتهي مبكراً',
+                    'terminated' => 'منتهي ومسوّى',
+                    'cancelled' => 'ملغي',
                     default => $lease->status,
                 },
+                'is_past_end_date' => $isPastEndDate,
+                'is_expiring_soon' => $isExpiringSoon,
                 'notes' => $lease->notes,
                 'created_at' => $lease->created_at?->format('d/m/Y'),
             ],
@@ -490,16 +403,30 @@ class LeaseController extends Controller
                 'settlement' => $settlement ? [
                     'id' => $settlement->id,
                     'status' => $settlement->status,
+                    'settlement_type' => $settlement->settlement_type,
+                    'settlement_type_label' => $settlement->settlement_type_label,
+                    'retention_reason' => $settlement->retention_reason,
+                    'original_deposit' => (float) ($settlement->original_deposit ?? $lease->security_deposit_amount),
                     'inspection_category' => $settlement->inspection_category,
                     'inspection_category_label' => match ($settlement->inspection_category) {
                         'no_issues' => 'لا توجد ملاحظات أو أضرار',
                         'furniture_damage' => 'تلف أثاث أو أجهزة',
                         'fixture_damage' => 'تلف تركيبات ومرافق',
+                        'unpaid_dues' => 'مستحقات غير مدفوعة',
                         'missing_items' => 'مفقودات ومحتويات ناقصة',
                         'other_damage' => 'أضرار موثقة أخرى',
                         default => $settlement->inspection_category,
                     },
                     'inspection_notes' => $settlement->inspection_notes,
+                    'total_received' => (float) $settlement->total_received,
+                    'total_deductions' => (float) $settlement->total_deductions,
+                    'total_refunded' => (float) $settlement->total_refunded,
+                    'refundable_balance' => (float) $settlement->refundable_balance,
+                    'refund_status' => $settlement->refund_status ?? 'not_applicable',
+                    'refund_status_label' => $settlement->refund_status_label,
+                    'refund_method' => $settlement->refund_method,
+                    'refund_payment_date' => $settlement->refund_payment_date?->format('d/m/Y'),
+                    'refund_reference' => $settlement->refund_reference,
                     'settled_at' => $settlement->settled_at?->format('d/m/Y H:i'),
                     'settled_by' => $settlement->settledByUser?->name,
                     'notes' => $settlement->notes,
@@ -510,6 +437,9 @@ class LeaseController extends Controller
                     'can_record_deduction' => $totalReceived > 0 && $lease->security_deposit_status !== 'settled' && $refundableBalance > 0,
                     'can_record_refund' => $refundableBalance > 0 && in_array($lease->security_deposit_status, ['under_review', 'held', 'due', 'partially_received']),
                     'can_settle' => in_array($lease->security_deposit_status, ['under_review', 'held', 'partially_received', 'due']),
+                    'can_record_pending_refund' => $settlement && $settlement->refund_status === 'pending' && $refundableBalance > 0,
+                    'can_extend' => $lease->status === 'active',
+                    'can_terminate' => $lease->status === 'active',
                 ],
             ],
             'rent_charges' => $rentCharges,
@@ -518,14 +448,191 @@ class LeaseController extends Controller
         ]);
     }
 
-    public function terminate(Request $request, Lease $lease): RedirectResponse
+    public function extend(ExtendLeaseRequest $request, Lease $lease): RedirectResponse
     {
         $workspace = $this->resolveWorkspace($request);
         abort_if($lease->workspace_id !== $workspace->id, 403);
 
-        $lease->update(['status' => 'terminated']);
-        $lease->syncSecurityDepositStatus();
+        if ($lease->status !== 'active') {
+            return back()->with('error', 'لا يمكن تمديد عقد غير نشط.');
+        }
 
-        return back()->with('success', 'تم إنهاء عقد الإيجار بنجاح وبدء مرحلة التسوية.');
+        $validated = $request->validated();
+
+        DB::transaction(function () use ($workspace, $lease, $validated) {
+            $lockedLease = Lease::withoutGlobalScopes()->where('id', $lease->id)->lockForUpdate()->firstOrFail();
+            $unit = $lockedLease->unit;
+
+            if ($unit) {
+                $hierarchyIds = $unit->getHierarchyUnitIds();
+                $conflictingLease = $workspace->leases()
+                    ->whereIn('unit_id', $hierarchyIds)
+                    ->where('id', '!=', $lockedLease->id)
+                    ->whereIn('status', ['active', 'draft'])
+                    ->where('starts_on', '<=', $validated['ends_on'])
+                    ->where('ends_on', '>=', $lockedLease->starts_on)
+                    ->first();
+
+                if ($conflictingLease) {
+                    throw ValidationException::withMessages([
+                        'ends_on' => "تعارض في التواريخ: الوحدة مرتبطة بالفعل بعقد آخر في الفترة المحددة ({$conflictingLease->starts_on->format('d/m/Y')} إلى {$conflictingLease->ends_on->format('d/m/Y')}).",
+                    ]);
+                }
+            }
+
+            $updates = [
+                'ends_on' => $validated['ends_on'],
+            ];
+
+            if (! empty($validated['rent_amount'])) {
+                $updates['rent_amount'] = $validated['rent_amount'];
+            }
+
+            if (! empty($validated['notes'])) {
+                $existingNotes = $lockedLease->notes ? $lockedLease->notes."\n" : '';
+                $updates['notes'] = $existingNotes.'[تمديد العقد بتاريخ '.now()->format('d/m/Y').']: '.$validated['notes'];
+            }
+
+            $lockedLease->update($updates);
+        });
+
+        return back()->with('success', 'تم تمديد فترة عقد الإيجار بنجاح وتحديث تاريخ الانتهاء.');
+    }
+
+    public function terminate(TerminateLeaseRequest $request, Lease $lease): RedirectResponse
+    {
+        $workspace = $this->resolveWorkspace($request);
+        abort_if($lease->workspace_id !== $workspace->id, 403);
+
+        if ($lease->status === 'terminated') {
+            return back()->with('error', 'هذا العقد منتهٍ بالفعل.');
+        }
+
+        $validated = $request->validated();
+
+        DB::transaction(function () use ($workspace, $lease, $validated, $request) {
+            $lockedLease = Lease::withoutGlobalScopes()->where('id', $lease->id)->lockForUpdate()->firstOrFail();
+
+            $hasDeposit = (float) $lockedLease->security_deposit_amount > 0 || $lockedLease->total_deposit_received > 0;
+
+            if ($hasDeposit) {
+                $settlementType = $validated['settlement_type'];
+                $totalReceived = $lockedLease->total_deposit_received;
+                $originalDeposit = (float) $lockedLease->security_deposit_amount;
+
+                // Existing settlement or create new
+                $settlement = $lockedLease->securityDepositSettlement;
+                if (! $settlement) {
+                    $settlement = SecurityDepositSettlement::create([
+                        'workspace_id' => $workspace->id,
+                        'lease_id' => $lockedLease->id,
+                        'settled_by' => $request->user()->id,
+                        'status' => 'settled',
+                        'total_received' => $totalReceived,
+                        'total_deductions' => 0.00,
+                        'total_refunded' => 0.00,
+                        'refundable_balance' => $totalReceived,
+                    ]);
+                }
+
+                if ($settlementType === 'partial_refund') {
+                    // Record all deductions submitted with optional attachments
+                    if (! empty($validated['deductions'])) {
+                        foreach ($request->input('deductions', []) as $index => $deductionData) {
+                            $attachmentPath = null;
+                            if ($request->hasFile("deductions.{$index}.attachment")) {
+                                $attachmentPath = $request->file("deductions.{$index}.attachment")
+                                    ->store('deposit_attachments', 'public');
+                            }
+
+                            $deduction = SecurityDepositDeduction::create([
+                                'workspace_id' => $workspace->id,
+                                'lease_id' => $lockedLease->id,
+                                'settlement_id' => $settlement->id,
+                                'recorded_by' => $request->user()->id,
+                                'amount' => (float) $deductionData['amount'],
+                                'category' => $deductionData['category'],
+                                'description' => $deductionData['description'],
+                                'notes' => $deductionData['notes'] ?? null,
+                                'attachment_path' => $attachmentPath,
+                                'status' => 'confirmed',
+                                'deducted_at' => now(),
+                            ]);
+
+                            dispatch(new ProcessDepositDeductionJob($deduction->id));
+                        }
+                    }
+                }
+
+                // Recalculate balances after adding any new deductions
+                $lockedLease->unsetRelation('securityDepositDeductions');
+                $lockedLease->unsetRelation('securityDepositRefunds');
+                $totalDeductions = $lockedLease->total_deposit_deductions;
+                $previouslyRefunded = $lockedLease->total_deposit_refunded;
+                $refundableBalance = max(0.0, $totalReceived - $totalDeductions - $previouslyRefunded);
+
+                $refundStatus = $validated['refund_status'] ?? 'not_applicable';
+                $refundMethod = null;
+                $refundDate = null;
+                $refundRef = null;
+
+                if ($settlementType === 'no_refund') {
+                    $refundStatus = 'not_applicable';
+                    $refundableBalance = 0.00;
+                } elseif ($refundableBalance > 0 && $refundStatus === 'refunded') {
+                    $refundMethod = $validated['refund_method'];
+                    $refundDate = $validated['refund_payment_date'];
+                    $refundRef = $validated['refund_reference'] ?? 'DEP-REF-'.time();
+
+                    $refund = SecurityDepositRefund::create([
+                        'workspace_id' => $workspace->id,
+                        'lease_id' => $lockedLease->id,
+                        'settlement_id' => $settlement->id,
+                        'recorded_by' => $request->user()->id,
+                        'amount' => $refundableBalance,
+                        'refunded_at' => $refundDate,
+                        'payment_method' => $refundMethod,
+                        'reference' => $refundRef,
+                        'notes' => $validated['notes'] ?? 'رد التأمين المتبقي عند اعتماد تسوية إنهاء العقد',
+                    ]);
+
+                    dispatch(new ProcessDepositRefundJob($refund->id));
+
+                    // After refunding, balance becomes 0
+                    $previouslyRefunded += $refundableBalance;
+                    $refundableBalance = 0.00;
+                }
+
+                $settlement->update([
+                    'settled_by' => $request->user()->id,
+                    'status' => 'settled',
+                    'settlement_type' => $settlementType,
+                    'retention_reason' => $validated['retention_reason'] ?? null,
+                    'original_deposit' => $originalDeposit,
+                    'inspection_category' => $validated['inspection_category'] ?? 'no_issues',
+                    'inspection_notes' => $validated['inspection_notes'] ?? null,
+                    'total_received' => $totalReceived,
+                    'total_deductions' => $totalDeductions,
+                    'total_refunded' => $previouslyRefunded,
+                    'refundable_balance' => $refundableBalance,
+                    'refund_status' => $refundStatus,
+                    'refund_method' => $refundMethod,
+                    'refund_payment_date' => $refundDate,
+                    'refund_reference' => $refundRef,
+                    'settled_at' => now(),
+                    'notes' => $validated['notes'] ?? null,
+                ]);
+
+                dispatch(new FinalizeSettlementJob($settlement->id));
+            }
+
+            $lockedLease->updateQuietly([
+                'status' => 'terminated',
+            ]);
+
+            $lockedLease->syncSecurityDepositStatus();
+        });
+
+        return back()->with('success', 'تم إنهاء عقد الإيجار واعتماد تسوية التأمين بنجاح.');
     }
 }

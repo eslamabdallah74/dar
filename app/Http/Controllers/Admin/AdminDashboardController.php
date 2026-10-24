@@ -47,8 +47,7 @@ class AdminDashboardController extends Controller
         // Occupancy calculation across all workspaces
         $occupiedUnits = Unit::whereHas('leases', function ($q) {
             $q->where('status', 'active')
-                ->where('starts_on', '<=', today())
-                ->where('ends_on', '>=', today());
+                ->where('starts_on', '<=', today());
         })->count();
 
         $maintenanceUnits = Unit::whereHas('maintenanceRequests', function ($q) {

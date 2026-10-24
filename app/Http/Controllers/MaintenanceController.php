@@ -2,44 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Maintenance\StoreMaintenanceRequest;
+use App\Http\Requests\Maintenance\UpdateMaintenanceStatusRequest;
 use App\Jobs\NotifyMaintenanceRequestCreatedJob;
 use App\Models\MaintenanceRequest;
 use App\Models\Property;
 use App\Models\Unit;
-use App\Models\Workspace;
-use App\Support\CurrentWorkspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class MaintenanceController extends Controller
 {
-    /**
-     * Resolve and authorize the active workspace for the authenticated user.
-     */
-    protected function resolveWorkspace(Request $request): Workspace
-    {
-        $workspace = app(CurrentWorkspace::class)->get();
-
-        if (! $workspace) {
-            abort(403, 'لا توجد مساحة عمل نشطة أو مصرح بها.');
-        }
-
-        $user = $request->user();
-        if (! $user) {
-            abort(401);
-        }
-
-        $isAuthorized = $workspace->owner_user_id === $user->id
-            || $workspace->members()->where('user_id', $user->id)->exists();
-
-        abort_if(! $isAuthorized, 403, 'غير مصرح لك بالوصول لمساحة العمل هذه.');
-
-        return $workspace;
-    }
-
     public function index(Request $request): Response
     {
         $workspace = $this->resolveWorkspace($request);
@@ -92,26 +67,10 @@ class MaintenanceController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreMaintenanceRequest $request): RedirectResponse
     {
         $workspace = $this->resolveWorkspace($request);
-
-        $validated = $request->validate([
-            'property_id' => [
-                'required',
-                Rule::exists('properties', 'id')->where('workspace_id', $workspace->id),
-            ],
-            'unit_id' => [
-                'nullable',
-                Rule::exists('units', 'id')->where('workspace_id', $workspace->id),
-            ],
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'reported_by_renter_id' => [
-                'nullable',
-                Rule::exists('renters', 'id')->where('workspace_id', $workspace->id),
-            ],
-        ]);
+        $validated = $request->validated();
 
         $maintenanceRequest = $workspace->maintenanceRequests()->create([
             ...$validated,
@@ -125,15 +84,13 @@ class MaintenanceController extends Controller
         return back()->with('success', 'تم تسجيل طلب الصيانة بنجاح');
     }
 
-    public function updateStatus(Request $request, MaintenanceRequest $maintenance): RedirectResponse
+    public function updateStatus(UpdateMaintenanceStatusRequest $request, MaintenanceRequest $maintenance): RedirectResponse
     {
         $workspace = $this->resolveWorkspace($request);
 
         abort_if($maintenance->workspace_id !== $workspace->id, 403, 'غير مصرح لك بتعديل طلب الصيانة هذا.');
 
-        $validated = $request->validate([
-            'status' => 'required|in:open,in_progress,closed',
-        ]);
+        $validated = $request->validated();
 
         $maintenance->update([
             'status' => $validated['status'],

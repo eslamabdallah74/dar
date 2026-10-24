@@ -7,7 +7,6 @@ use App\Models\PaymentAllocation;
 use App\Models\RentCharge;
 use App\Models\Workspace;
 use App\Services\Payments\PaymentGatewayManager;
-use App\Support\CurrentWorkspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,27 +18,6 @@ class OnlinePaymentController extends Controller
     public function __construct(
         protected PaymentGatewayManager $gatewayManager
     ) {}
-
-    protected function resolveWorkspace(Request $request): Workspace
-    {
-        $workspace = app(CurrentWorkspace::class)->get();
-
-        if (! $workspace) {
-            abort(403, 'لا توجد مساحة عمل نشطة أو مصرح بها.');
-        }
-
-        $user = $request->user();
-        if (! $user) {
-            abort(401);
-        }
-
-        $isAuthorized = $workspace->owner_user_id === $user->id
-            || $workspace->members()->where('user_id', $user->id)->exists();
-
-        abort_if(! $isAuthorized, 403, 'غير مصرح لك بالوصول لمساحة العمل هذه.');
-
-        return $workspace;
-    }
 
     /**
      * Create an online payment checkout session for a specific rent charge.

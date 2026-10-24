@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Renters\StoreRenterDocumentRequest;
+use App\Http\Requests\Renters\StoreRenterRequest;
+use App\Http\Requests\Renters\UpdateRenterRequest;
 use App\Models\Renter;
 use App\Models\RenterDocument;
-use App\Models\Workspace;
-use App\Support\CurrentWorkspace;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -16,32 +18,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class RenterController extends Controller
 {
-    /**
-     * Resolve and authorize the active workspace for the authenticated user.
-     */
-    protected function resolveWorkspace(Request $request): Workspace
-    {
-        $workspace = app(CurrentWorkspace::class)->get();
-
-        if (! $workspace) {
-            abort(403, 'لا توجد مساحة عمل نشطة أو مصرح بها.');
-        }
-
-        $user = $request->user();
-        if (! $user) {
-            abort(401);
-        }
-
-        $isAuthorized = $workspace->owner_user_id === $user->id
-            || $workspace->members()->where('user_id', $user->id)->exists();
-
-        if (! $isAuthorized) {
-            abort(403, 'غير مصرح لك بالوصول إلى مساحة العمل هذه.');
-        }
-
-        return $workspace;
-    }
-
     public function index(Request $request): Response
     {
         $workspace = $this->resolveWorkspace($request);
@@ -272,20 +248,63 @@ class RenterController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function checkPhone(Request $request): JsonResponse
     {
         $workspace = $this->resolveWorkspace($request);
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'phone' => 'required|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'national_id' => 'nullable|string|max:50',
-            'whatsapp_consent' => 'nullable|boolean',
-            'notes' => 'nullable|string',
-            'id_card_front' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'id_card_back' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+        $request->validate([
+            'phone' => 'required|string',
+            'exclude_id' => 'nullable|integer',
         ]);
+
+        $phone = trim($request->input('phone'));
+        $digits = preg_replace('/\D+/', '', $phone);
+
+        $query = $workspace->renters();
+        if ($request->filled('exclude_id')) {
+            $query->where('id', '!=', $request->input('exclude_id'));
+        }
+
+        $existing = $query->where(function ($q) use ($phone, $digits) {
+            $q->where('phone', $phone);
+            if (! empty($digits)) {
+                $q->orWhere('phone', $digits);
+                if (str_starts_with($digits, '20') && strlen($digits) > 10) {
+                    $q->orWhere('phone', '0'.substr($digits, 2));
+                    $q->orWhere('phone', '+'.$digits);
+                } elseif (str_starts_with($digits, '0') && strlen($digits) === 11) {
+                    $q->orWhere('phone', '+2'.$digits);
+                    $q->orWhere('phone', '2'.$digits);
+                }
+                $q->orWhereRaw("REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', '') = ?", [$digits]);
+            }
+        })->first();
+
+        if ($existing) {
+            return response()->json([
+                'exists' => true,
+                'renter' => [
+                    'id' => $existing->id,
+                    'name' => $existing->name,
+                    'phone' => $existing->phone,
+                    'national_id' => $existing->national_id,
+                    'email' => $existing->email,
+                ],
+                'message' => 'هذا الرقم مسجل بالفعل للمستأجر: '.$existing->name,
+            ]);
+        }
+
+        return response()->json([
+            'exists' => false,
+            'renter' => null,
+            'message' => 'رقم الهاتف متاح',
+        ]);
+    }
+
+    public function store(StoreRenterRequest $request): RedirectResponse|JsonResponse
+    {
+        $workspace = $this->resolveWorkspace($request);
+        $validated = $request->validated();
 
         $renter = $workspace->renters()->create([
             'name' => $validated['name'],
@@ -317,24 +336,29 @@ class RenterController extends Controller
             $renter->update($updates);
         }
 
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'تمت إضافة المستأجر بنجاح',
+                'renter' => [
+                    'id' => $renter->id,
+                    'name' => $renter->name,
+                    'phone' => $renter->phone,
+                    'national_id' => $renter->national_id,
+                ],
+            ], 201);
+        }
+
         return back()->with('success', 'تمت إضافة المستأجر بنجاح');
     }
 
-    public function update(Request $request, Renter $renter): RedirectResponse
+    public function update(UpdateRenterRequest $request, Renter $renter): RedirectResponse
     {
         $workspace = $this->resolveWorkspace($request);
 
         abort_if($renter->workspace_id !== $workspace->id, 403);
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'phone' => 'required|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'national_id' => 'nullable|string|max:50',
-            'notes' => 'nullable|string',
-            'id_card_front' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-            'id_card_back' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
-        ]);
+        $validated = $request->validated();
 
         if ($request->hasFile('id_card_front')) {
             if ($renter->id_card_front && Storage::disk('public')->exists($renter->id_card_front)) {
@@ -365,16 +389,12 @@ class RenterController extends Controller
         return back()->with('success', 'تم تحديث بيانات المستأجر بنجاح');
     }
 
-    public function storeDocument(Request $request, Renter $renter): RedirectResponse
+    public function storeDocument(StoreRenterDocumentRequest $request, Renter $renter): RedirectResponse
     {
         $workspace = $this->resolveWorkspace($request);
         abort_if($renter->workspace_id !== $workspace->id, 403, 'غير مصرح لك بإدارة مستندات هذا المستأجر.');
 
-        $validated = $request->validate([
-            'document_type' => 'required|in:national_id,passport,employment_letter,other',
-            'title' => 'nullable|string|max:255',
-            'file' => 'required|file|max:10240|mimes:pdf,jpeg,png,jpg,webp,doc,docx',
-        ]);
+        $validated = $request->validated();
 
         $file = $request->file('file');
         $originalName = $file->getClientOriginalName();

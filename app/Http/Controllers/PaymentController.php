@@ -2,47 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Payments\RecordPaymentAction;
+use App\Http\Requests\Payments\StorePaymentRequest;
 use App\Models\Payment;
-use App\Models\PaymentAllocation;
 use App\Models\RentCharge;
 use App\Models\Renter;
-use App\Models\Workspace;
-use App\Services\WhatsAppService;
-use App\Support\CurrentWorkspace;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class PaymentController extends Controller
 {
-    /**
-     * Resolve and authorize the active workspace for the authenticated user.
-     */
-    protected function resolveWorkspace(Request $request): Workspace
-    {
-        $workspace = app(CurrentWorkspace::class)->get();
-
-        if (! $workspace) {
-            abort(403, 'لا توجد مساحة عمل نشطة أو مصرح بها.');
-        }
-
-        $user = $request->user();
-        if (! $user) {
-            abort(401);
-        }
-
-        $isAuthorized = $workspace->owner_user_id === $user->id
-            || $workspace->members()->where('user_id', $user->id)->exists();
-
-        abort_if(! $isAuthorized, 403, 'غير مصرح لك بالوصول لمساحة العمل هذه.');
-
-        return $workspace;
-    }
-
     public function index(Request $request): Response
     {
         $workspace = $this->resolveWorkspace($request);
@@ -146,93 +118,15 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StorePaymentRequest $request, RecordPaymentAction $recordPaymentAction): RedirectResponse
     {
         $workspace = $this->resolveWorkspace($request);
 
-        $validated = $request->validate([
-            'renter_id' => [
-                'required',
-                Rule::exists('renters', 'id')->where('workspace_id', $workspace->id),
-            ],
-            'amount' => 'required|numeric|min:0.5',
-            'payment_method' => 'required|in:cash,bank_transfer,cheque,other',
-            'paid_at' => 'nullable|date',
-            'reference' => 'nullable|string|max:100',
-            'notes' => 'nullable|string',
-            'rent_charge_id' => [
-                'nullable',
-                Rule::exists('rent_charges', 'id')->where('workspace_id', $workspace->id),
-            ],
-        ]);
-
-        $payment = DB::transaction(function () use ($workspace, $validated, $request) {
-            $reference = $validated['reference'] ?? ('REC-'.date('Y').'-'.str_pad((string) ($workspace->payments()->count() + 1), 4, '0', STR_PAD_LEFT));
-
-            $payment = $workspace->payments()->create([
-                'renter_id' => $validated['renter_id'],
-                'recorded_by' => $request->user()->id,
-                'amount' => $validated['amount'],
-                'paid_at' => $validated['paid_at'] ?? now(),
-                'payment_method' => $validated['payment_method'],
-                'reference' => $reference,
-                'notes' => $validated['notes'] ?? null,
-            ]);
-
-            $remainingAmount = (float) $payment->amount;
-
-            // 1. If a specific charge is indicated, allocate to it first
-            if (! empty($validated['rent_charge_id'])) {
-                $charge = $workspace->rentCharges()
-                    ->lockForUpdate()
-                    ->find($validated['rent_charge_id']);
-
-                if ($charge && $charge->outstanding_balance > 0) {
-                    $allocAmount = min($remainingAmount, $charge->outstanding_balance);
-                    PaymentAllocation::create([
-                        'workspace_id' => $workspace->id,
-                        'payment_id' => $payment->id,
-                        'rent_charge_id' => $charge->id,
-                        'amount' => $allocAmount,
-                    ]);
-                    $remainingAmount -= $allocAmount;
-                }
-            }
-
-            // 2. Allocate any remaining amount to the oldest unpaid charges of this renter
-            if ($remainingAmount > 0) {
-                $unpaidCharges = $workspace->rentCharges()
-                    ->whereHas('lease', fn ($q) => $q->where('renter_id', $validated['renter_id']))
-                    ->when(! empty($validated['rent_charge_id']), fn ($q) => $q->where('id', '!=', $validated['rent_charge_id']))
-                    ->orderBy('due_date')
-                    ->lockForUpdate()
-                    ->get();
-
-                foreach ($unpaidCharges as $c) {
-                    if ($remainingAmount <= 0) {
-                        break;
-                    }
-                    $balance = $c->outstanding_balance;
-                    if ($balance > 0) {
-                        $allocAmount = min($remainingAmount, $balance);
-                        PaymentAllocation::create([
-                            'workspace_id' => $workspace->id,
-                            'payment_id' => $payment->id,
-                            'rent_charge_id' => $c->id,
-                            'amount' => $allocAmount,
-                        ]);
-                        $remainingAmount -= $allocAmount;
-                    }
-                }
-            }
-
-            return $payment;
-        });
-
-        // Queue electronic receipt asynchronously via WhatsApp / SMS if enabled
-        if ($workspace->auto_instant_receipts) {
-            app(WhatsAppService::class)->queuePaymentReceipt($payment);
-        }
+        $recordPaymentAction->execute(
+            workspace: $workspace,
+            data: $request->validated(),
+            userId: $request->user()->id,
+        );
 
         return back()->with('success', 'تم تسجيل الدفعة وإصدار سند القبض بنجاح');
     }

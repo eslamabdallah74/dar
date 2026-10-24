@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Properties\StorePropertyRequest;
+use App\Http\Requests\Properties\StoreUnitRequest;
+use App\Http\Requests\Properties\UpdateUnitRequest;
 use App\Models\Plan;
 use App\Models\Property;
 use App\Models\Unit;
-use App\Models\Workspace;
 use App\Services\UnitHierarchyService;
-use App\Support\CurrentWorkspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,30 +18,6 @@ use Inertia\Response;
 
 class PropertyController extends Controller
 {
-    /**
-     * Resolve and authorize the active workspace for the authenticated user.
-     */
-    protected function resolveWorkspace(Request $request): Workspace
-    {
-        $workspace = app(CurrentWorkspace::class)->get();
-
-        if (! $workspace) {
-            abort(403, 'لا توجد مساحة عمل نشطة أو مصرح بها.');
-        }
-
-        $user = $request->user();
-        if (! $user) {
-            abort(401);
-        }
-
-        $isAuthorized = $workspace->owner_user_id === $user->id
-            || $workspace->members()->where('user_id', $user->id)->exists();
-
-        abort_if(! $isAuthorized, 403, 'غير مصرح لك بالوصول لمساحة العمل هذه.');
-
-        return $workspace;
-    }
-
     public function index(Request $request): Response
     {
         $workspace = $this->resolveWorkspace($request);
@@ -462,41 +439,10 @@ class PropertyController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StorePropertyRequest $request): RedirectResponse
     {
         $workspace = $this->resolveWorkspace($request);
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'code' => ['nullable', 'string', 'max:50'],
-            'property_type' => ['required', 'in:building,commercial,villa,standalone,other'],
-            'address' => ['nullable', 'string', 'max:500'],
-            'city' => ['nullable', 'string', 'max:100'],
-            'district' => ['nullable', 'string', 'max:100'],
-            'street' => ['nullable', 'string', 'max:150'],
-            'building_number' => ['nullable', 'string', 'max:50'],
-            'postal_code' => ['nullable', 'string', 'max:20'],
-            'google_maps_url' => ['nullable', 'url', 'max:500'],
-            'floors_count' => ['nullable', 'integer', 'min:1', 'max:200'],
-            'total_area' => ['nullable', 'numeric', 'min:0'],
-            'year_built' => ['nullable', 'integer', 'min:1800', 'max:2100'],
-            'finishing_type' => ['nullable', 'string', 'max:50'],
-            'amenities' => ['nullable', 'array'],
-            'amenities.*' => ['string', 'max:50'],
-            'electricity_meter_number' => ['nullable', 'string', 'max:100'],
-            'water_meter_number' => ['nullable', 'string', 'max:100'],
-            'gas_meter_number' => ['nullable', 'string', 'max:100'],
-            'guard_name' => ['nullable', 'string', 'max:150'],
-            'guard_phone' => ['nullable', 'string', 'max:30'],
-            'deed_number' => ['nullable', 'string', 'max:100'],
-            'notes' => ['nullable', 'string', 'max:2000'],
-            'cover_image_file' => ['nullable', 'image', 'max:5120'],
-            'units' => ['nullable', 'array'],
-            'units.*.name' => ['required_with:units', 'string', 'max:255'],
-            'units.*.code' => ['nullable', 'string', 'max:50'],
-            'units.*.unit_type' => ['required_with:units', 'in:apartment,shop,room,bed'],
-            'units.*.is_rentable' => ['nullable', 'boolean'],
-        ]);
+        $validated = $request->validated();
 
         $coverImagePath = null;
         if ($request->hasFile('cover_image_file')) {
@@ -566,20 +512,13 @@ class PropertyController extends Controller
         return redirect()->route('properties.show', $property->id)->with('success', 'تم إنشاء العقار بنجاح وتجهيز وحداته');
     }
 
-    public function storeUnit(Request $request, Property $property): RedirectResponse
+    public function storeUnit(StoreUnitRequest $request, Property $property): RedirectResponse
     {
         $workspace = $this->resolveWorkspace($request);
 
         abort_if($property->workspace_id !== $workspace->id, 403, 'غير مصرح لك بإدارة هذا العقار.');
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'code' => ['nullable', 'string', 'max:50'],
-            'unit_type' => ['required', 'in:apartment,room,bed,shop'],
-            'is_rentable' => ['nullable', 'boolean'],
-            'parent_unit_id' => ['nullable', 'integer', 'exists:units,id'],
-        ]);
-
+        $validated = $request->validated();
         $isRentable = isset($validated['is_rentable']) ? (bool) $validated['is_rentable'] : true;
         $parentUnitId = $validated['parent_unit_id'] ?? null;
 
@@ -623,21 +562,14 @@ class PropertyController extends Controller
         return back()->with('success', 'تمت إضافة الوحدة بنجاح');
     }
 
-    public function updateUnit(Request $request, Property $property, Unit $unit): RedirectResponse
+    public function updateUnit(UpdateUnitRequest $request, Property $property, Unit $unit): RedirectResponse
     {
         $workspace = $this->resolveWorkspace($request);
 
         abort_if($property->workspace_id !== $workspace->id, 403, 'غير مصرح لك بإدارة هذا العقار.');
         abort_if($unit->property_id !== $property->id || $unit->workspace_id !== $workspace->id, 403, 'غير مصرح لك بتعديل هذه الوحدة.');
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'code' => ['nullable', 'string', 'max:50'],
-            'unit_type' => ['required', 'in:apartment,room,bed,shop'],
-            'is_rentable' => ['nullable', 'boolean'],
-            'parent_unit_id' => ['nullable', 'integer', 'exists:units,id'],
-        ]);
-
+        $validated = $request->validated();
         $isRentable = isset($validated['is_rentable']) ? (bool) $validated['is_rentable'] : true;
         $parentUnitId = $validated['parent_unit_id'] ?? null;
 

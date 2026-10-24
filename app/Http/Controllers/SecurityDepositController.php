@@ -2,6 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\SecurityDeposits\RecordPendingRefundPaymentRequest;
+use App\Http\Requests\SecurityDeposits\ReverseSecurityDepositPaymentRequest;
+use App\Http\Requests\SecurityDeposits\SettleSecurityDepositRequest;
+use App\Http\Requests\SecurityDeposits\StartSecurityDepositSettlementRequest;
+use App\Http\Requests\SecurityDeposits\StoreSecurityDepositDeductionRequest;
+use App\Http\Requests\SecurityDeposits\StoreSecurityDepositPaymentRequest;
+use App\Http\Requests\SecurityDeposits\StoreSecurityDepositRefundRequest;
 use App\Jobs\FinalizeSettlementJob;
 use App\Jobs\ProcessDepositDeductionJob;
 use App\Jobs\ProcessDepositPaymentJob;
@@ -11,8 +18,6 @@ use App\Models\SecurityDepositDeduction;
 use App\Models\SecurityDepositPayment;
 use App\Models\SecurityDepositRefund;
 use App\Models\SecurityDepositSettlement;
-use App\Models\Workspace;
-use App\Support\CurrentWorkspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,33 +26,9 @@ use Illuminate\Validation\ValidationException;
 class SecurityDepositController extends Controller
 {
     /**
-     * Resolve and authorize the active workspace for the authenticated user.
-     */
-    protected function resolveWorkspace(Request $request): Workspace
-    {
-        $workspace = app(CurrentWorkspace::class)->get();
-
-        if (! $workspace) {
-            abort(403, 'لا توجد مساحة عمل نشطة أو مصرح بها.');
-        }
-
-        $user = $request->user();
-        if (! $user) {
-            abort(401);
-        }
-
-        $isAuthorized = $workspace->owner_user_id === $user->id
-            || $workspace->members()->where('user_id', $user->id)->exists();
-
-        abort_if(! $isAuthorized, 403, 'غير مصرح لك بالوصول لمساحة العمل هذه.');
-
-        return $workspace;
-    }
-
-    /**
      * Record a security deposit payment (collection).
      */
-    public function recordPayment(Request $request, Lease $lease): RedirectResponse
+    public function recordPayment(StoreSecurityDepositPaymentRequest $request, Lease $lease): RedirectResponse
     {
         $workspace = $this->resolveWorkspace($request);
         abort_if($lease->workspace_id !== $workspace->id, 403, 'غير مصرح لك بإدارة هذا العقد.');
@@ -58,13 +39,7 @@ class SecurityDepositController extends Controller
             ]);
         }
 
-        $validated = $request->validate([
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'payment_method' => ['required', 'in:cash,bank_transfer,cheque,other'],
-            'paid_at' => ['nullable', 'date'],
-            'reference' => ['nullable', 'string', 'max:100'],
-            'notes' => ['nullable', 'string', 'max:1000'],
-        ]);
+        $validated = $request->validated();
 
         DB::transaction(function () use ($workspace, $lease, $validated, $request) {
             // Lock lease for update to prevent concurrent race conditions
@@ -92,7 +67,7 @@ class SecurityDepositController extends Controller
     /**
      * Reverse a security deposit payment.
      */
-    public function reversePayment(Request $request, Lease $lease, SecurityDepositPayment $payment): RedirectResponse
+    public function reversePayment(ReverseSecurityDepositPaymentRequest $request, Lease $lease, SecurityDepositPayment $payment): RedirectResponse
     {
         $workspace = $this->resolveWorkspace($request);
         abort_if($lease->workspace_id !== $workspace->id || $payment->lease_id !== $lease->id, 403);
@@ -109,9 +84,7 @@ class SecurityDepositController extends Controller
             ]);
         }
 
-        $validated = $request->validate([
-            'reversal_reason' => ['required', 'string', 'max:500'],
-        ]);
+        $validated = $request->validated();
 
         DB::transaction(function () use ($lease, $payment, $validated, $request) {
             $lockedLease = Lease::withoutGlobalScopes()->where('id', $lease->id)->lockForUpdate()->firstOrFail();
@@ -141,15 +114,12 @@ class SecurityDepositController extends Controller
     /**
      * Start the settlement process / unit inspection.
      */
-    public function startSettlement(Request $request, Lease $lease): RedirectResponse
+    public function startSettlement(StartSecurityDepositSettlementRequest $request, Lease $lease): RedirectResponse
     {
         $workspace = $this->resolveWorkspace($request);
         abort_if($lease->workspace_id !== $workspace->id, 403);
 
-        $validated = $request->validate([
-            'inspection_category' => ['required', 'in:no_issues,furniture_damage,fixture_damage,missing_items,other_damage'],
-            'inspection_notes' => ['nullable', 'string', 'max:2000'],
-        ]);
+        $validated = $request->validated();
 
         DB::transaction(function () use ($workspace, $lease, $validated, $request) {
             $lockedLease = Lease::withoutGlobalScopes()->where('id', $lease->id)->lockForUpdate()->firstOrFail();
@@ -180,7 +150,7 @@ class SecurityDepositController extends Controller
     /**
      * Record a justified deduction for damage or missing items.
      */
-    public function recordDeduction(Request $request, Lease $lease): RedirectResponse
+    public function recordDeduction(StoreSecurityDepositDeductionRequest $request, Lease $lease): RedirectResponse
     {
         $workspace = $this->resolveWorkspace($request);
         abort_if($lease->workspace_id !== $workspace->id, 403);
@@ -191,12 +161,7 @@ class SecurityDepositController extends Controller
             ]);
         }
 
-        $validated = $request->validate([
-            'category' => ['required', 'in:furniture_damage,fixture_damage,missing_items,other_damage'],
-            'description' => ['required', 'string', 'max:1000'],
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'deducted_at' => ['nullable', 'date'],
-        ]);
+        $validated = $request->validated();
 
         DB::transaction(function () use ($workspace, $lease, $validated, $request) {
             $lockedLease = Lease::withoutGlobalScopes()->where('id', $lease->id)->lockForUpdate()->firstOrFail();
@@ -226,6 +191,11 @@ class SecurityDepositController extends Controller
                 ]);
             }
 
+            $attachmentPath = null;
+            if ($request->hasFile('attachment')) {
+                $attachmentPath = $request->file('attachment')->store('deposit_attachments', 'public');
+            }
+
             $deduction = SecurityDepositDeduction::create([
                 'workspace_id' => $workspace->id,
                 'lease_id' => $lockedLease->id,
@@ -234,6 +204,8 @@ class SecurityDepositController extends Controller
                 'amount' => $deductionAmount,
                 'category' => $validated['category'],
                 'description' => $validated['description'],
+                'notes' => $validated['notes'] ?? null,
+                'attachment_path' => $attachmentPath,
                 'status' => 'confirmed',
                 'deducted_at' => $validated['deducted_at'] ?? now(),
             ]);
@@ -292,18 +264,12 @@ class SecurityDepositController extends Controller
     /**
      * Record actual refund payment to renter.
      */
-    public function recordRefund(Request $request, Lease $lease): RedirectResponse
+    public function recordRefund(StoreSecurityDepositRefundRequest $request, Lease $lease): RedirectResponse
     {
         $workspace = $this->resolveWorkspace($request);
         abort_if($lease->workspace_id !== $workspace->id, 403);
 
-        $validated = $request->validate([
-            'amount' => ['required', 'numeric', 'min:0.01'],
-            'payment_method' => ['required', 'in:cash,bank_transfer,cheque,other'],
-            'refunded_at' => ['nullable', 'date'],
-            'reference' => ['nullable', 'string', 'max:100'],
-            'notes' => ['nullable', 'string', 'max:1000'],
-        ]);
+        $validated = $request->validated();
 
         DB::transaction(function () use ($workspace, $lease, $validated, $request) {
             $lockedLease = Lease::withoutGlobalScopes()->where('id', $lease->id)->lockForUpdate()->firstOrFail();
@@ -351,16 +317,12 @@ class SecurityDepositController extends Controller
     /**
      * Finalize and settle the security deposit.
      */
-    public function settle(Request $request, Lease $lease): RedirectResponse
+    public function settle(SettleSecurityDepositRequest $request, Lease $lease): RedirectResponse
     {
         $workspace = $this->resolveWorkspace($request);
         abort_if($lease->workspace_id !== $workspace->id, 403);
 
-        $validated = $request->validate([
-            'inspection_category' => ['required', 'in:no_issues,furniture_damage,fixture_damage,missing_items,other_damage'],
-            'inspection_notes' => ['nullable', 'string', 'max:2000'],
-            'notes' => ['nullable', 'string', 'max:1000'],
-        ]);
+        $validated = $request->validated();
 
         DB::transaction(function () use ($workspace, $lease, $validated, $request) {
             $lockedLease = Lease::withoutGlobalScopes()->where('id', $lease->id)->lockForUpdate()->firstOrFail();
@@ -378,12 +340,14 @@ class SecurityDepositController extends Controller
                 [
                     'settled_by' => $request->user()->id,
                     'status' => 'settled',
+                    'original_deposit' => (float) $lockedLease->security_deposit_amount,
                     'inspection_category' => $validated['inspection_category'],
                     'inspection_notes' => $validated['inspection_notes'] ?? null,
                     'total_received' => $totalReceived,
                     'total_deductions' => $totalDeductions,
                     'total_refunded' => $totalRefunded,
                     'refundable_balance' => $remainingRefundable,
+                    'refund_status' => $remainingRefundable > 0 ? 'pending' : 'not_applicable',
                     'settled_at' => now(),
                     'notes' => $validated['notes'] ?? null,
                 ]
@@ -395,5 +359,68 @@ class SecurityDepositController extends Controller
         });
 
         return back()->with('success', 'تم اعتماد وإغلاق تسوية التأمين نهائياً بنجاح');
+    }
+
+    /**
+     * Record actual refund payment for a pending settled deposit.
+     */
+    public function recordPendingRefund(RecordPendingRefundPaymentRequest $request, Lease $lease): RedirectResponse
+    {
+        $workspace = $this->resolveWorkspace($request);
+        abort_if($lease->workspace_id !== $workspace->id, 403);
+
+        $settlement = $lease->securityDepositSettlement;
+        if (! $settlement) {
+            throw ValidationException::withMessages([
+                'amount' => 'لا توجد تسوية مسجلة لهذا العقد.',
+            ]);
+        }
+
+        $validated = $request->validated();
+
+        DB::transaction(function () use ($workspace, $lease, $settlement, $validated, $request) {
+            $lockedLease = Lease::withoutGlobalScopes()->where('id', $lease->id)->lockForUpdate()->firstOrFail();
+            $lockedSettlement = SecurityDepositSettlement::where('id', $settlement->id)->lockForUpdate()->firstOrFail();
+
+            $refundableBalance = $lockedLease->refundable_deposit_balance;
+            $refundAmount = (float) $validated['amount'];
+
+            if ($refundAmount > $refundableBalance) {
+                throw ValidationException::withMessages([
+                    'amount' => "المبلغ المطلوب صرفه ({$refundAmount} ج.م) يتجاوز الرصيد المستحق رده للمستأجر ({$refundableBalance} ج.م).",
+                ]);
+            }
+
+            $refund = SecurityDepositRefund::create([
+                'workspace_id' => $workspace->id,
+                'lease_id' => $lockedLease->id,
+                'settlement_id' => $lockedSettlement->id,
+                'recorded_by' => $request->user()->id,
+                'amount' => $refundAmount,
+                'refunded_at' => $validated['refunded_at'],
+                'payment_method' => $validated['payment_method'],
+                'reference' => $validated['reference'] ?? 'DEP-REF-'.time(),
+                'notes' => $validated['notes'] ?? 'توثيق صرف مبلغ التأمين للمستأجر',
+            ]);
+
+            $lockedLease->unsetRelation('securityDepositRefunds');
+            $newTotalRefunded = $lockedLease->total_deposit_refunded;
+            $newRefundableBalance = max(0.0, (float) $lockedSettlement->total_received - (float) $lockedSettlement->total_deductions - $newTotalRefunded);
+
+            $lockedSettlement->update([
+                'total_refunded' => $newTotalRefunded,
+                'refundable_balance' => $newRefundableBalance,
+                'refund_status' => $newRefundableBalance <= 0 ? 'refunded' : 'pending',
+                'refund_method' => $validated['payment_method'],
+                'refund_payment_date' => $validated['refunded_at'],
+                'refund_reference' => $refund->reference,
+            ]);
+
+            $lockedLease->syncSecurityDepositStatus();
+
+            dispatch(new ProcessDepositRefundJob($refund->id));
+        });
+
+        return back()->with('success', 'تم توثيق صرف مبلغ التأمين للمستأجر بنجاح وتحديث حالة الصرف.');
     }
 }

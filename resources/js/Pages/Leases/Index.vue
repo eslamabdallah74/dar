@@ -200,7 +200,7 @@ const depositStatusClass = (status?: string) => {
                     v-model="searchQuery"
                     type="text"
                     placeholder="ابحث برقم العقد، اسم المستأجر، رقم الهاتف أو الوحدة..."
-                    class="w-full h-10.5 pr-10 pl-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs sm:text-sm text-[#0F2747] placeholder:text-[#5B6770] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
+                    class="w-full h-11 pr-10 pl-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs sm:text-sm text-[#0F2747] placeholder:text-[#5B6770] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
                 />
                 <Search class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#5B6770]" />
                 <button
@@ -371,7 +371,7 @@ const depositStatusClass = (status?: string) => {
                 <!-- زر تفاصيل العقد والتأمين الكامل -->
                 <Link
                     :href="route('leases.show', lease.id)"
-                    class="w-full h-10.5 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-2xs"
+                    class="w-full h-11 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-2xs"
                 >
                     <span>تفاصيل العقد والتأمين</span>
                     <ArrowLeft class="w-4 h-4" />
@@ -460,11 +460,13 @@ const depositStatusClass = (status?: string) => {
 
                             <!-- الإيجار الشهري -->
                             <td class="py-4 px-6 text-xs">
-                                <div class="font-mono font-bold text-sm text-[#0F2747]">
-                                    {{ (lease.rent_amount ?? 0).toLocaleString() }}
-                                    <span class="text-[10px] font-sans font-normal text-[#5B6770]">{{ currencySymbol }}</span>
+                                <div class="flex items-baseline gap-1.5 whitespace-nowrap font-mono font-bold text-sm text-[#0F2747]">
+                                    <span>
+                                        {{ (lease.rent_amount ?? 0).toLocaleString() }}
+                                        <span class="text-[10px] font-sans font-normal text-[#5B6770]">{{ currencySymbol }}</span>
+                                    </span>
+                                    <span class="font-sans text-[10px] font-normal text-[#5B6770]">شهرياً</span>
                                 </div>
-                                <span class="text-[10px] text-[#5B6770]">شهرياً</span>
                             </td>
 
                             <!-- تأمين الوحدة المسترد -->
@@ -494,10 +496,10 @@ const depositStatusClass = (status?: string) => {
                             </td>
 
                             <!-- إجراءات -->
-                            <td class="py-4 px-6 text-left">
+                            <td class="py-4 px-6 text-left whitespace-nowrap">
                                 <Link
                                     :href="route('leases.show', lease.id)"
-                                    class="h-8.5 px-3.5 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#0E6E7E] hover:text-white hover:border-[#0E6E7E] text-[#0E6E7E] text-xs font-bold transition inline-flex items-center gap-1.5 shadow-2xs group/btn"
+                                    class="my-2 px-3.5 py-2 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#0E6E7E] hover:text-white hover:border-[#0E6E7E] text-[#0E6E7E] text-xs font-bold transition inline-flex items-center gap-1.5 whitespace-nowrap shadow-2xs group/btn"
                                 >
                                     <span>تفاصيل العقد والتأمين</span>
                                     <ArrowLeft class="w-3.5 h-3.5 group-hover/btn:-translate-x-0.5 transition-transform" />

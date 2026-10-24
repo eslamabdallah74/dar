@@ -19,7 +19,6 @@ return new class extends Migration
             $table->string('provider_reference')->nullable()->comment('Reserved for future payment gateway');
             $table->timestamps();
 
-            $table->index('workspace_id');
             $table->index(['workspace_id', 'status']);
             $table->index('starts_at');
         });

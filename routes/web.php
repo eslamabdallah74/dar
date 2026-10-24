@@ -101,6 +101,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // 05 / المستأجرون
     Route::get('/renters', [RenterController::class, 'index'])->name('renters.index');
     Route::post('/renters', [RenterController::class, 'store'])->name('renters.store');
+    Route::post('/renters/check-phone', [RenterController::class, 'checkPhone'])->name('renters.check-phone');
     Route::get('/renters/{renter}', [RenterController::class, 'show'])->name('renters.show');
     Route::put('/renters/{renter}', [RenterController::class, 'update'])->name('renters.update');
     Route::post('/renters/{renter}/documents', [RenterController::class, 'storeDocument'])->name('renters.documents.store');
@@ -113,6 +114,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/leases/check-conflict', [LeaseController::class, 'checkConflict'])->name('leases.check-conflict');
     Route::post('/leases', [LeaseController::class, 'store'])->name('leases.store');
     Route::get('/leases/{lease}', [LeaseController::class, 'show'])->name('leases.show');
+    Route::post('/leases/{lease}/extend', [LeaseController::class, 'extend'])->name('leases.extend');
     Route::post('/leases/{lease}/terminate', [LeaseController::class, 'terminate'])->name('leases.terminate');
 
     // تأمين الوحدة (Security Deposits)
@@ -122,6 +124,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/leases/{lease}/security-deposit/deductions', [SecurityDepositController::class, 'recordDeduction'])->name('leases.security-deposit.deduction');
     Route::delete('/leases/{lease}/security-deposit/deductions/{deduction}', [SecurityDepositController::class, 'deleteDeduction'])->name('leases.security-deposit.deduction.delete');
     Route::post('/leases/{lease}/security-deposit/refunds', [SecurityDepositController::class, 'recordRefund'])->name('leases.security-deposit.refund');
+    Route::post('/leases/{lease}/security-deposit/pending-refund', [SecurityDepositController::class, 'recordPendingRefund'])->name('leases.security-deposit.pending-refund');
     Route::post('/leases/{lease}/security-deposit/settle', [SecurityDepositController::class, 'settle'])->name('leases.security-deposit.settle');
 
     // 07 / الاستحقاقات والدفعات

@@ -515,7 +515,7 @@ const depositBadgeClass = computed(() => {
                         <div class="pt-2 border-t border-[#D6E0E7]/60">
                             <Link
                                 :href="route('renters.show', renter.id)"
-                                class="w-full h-8.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] hover:bg-white text-xs font-bold text-[#0E6E7E] flex items-center justify-center gap-1 transition"
+                                class="w-full h-9 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] hover:bg-white text-xs font-bold text-[#0E6E7E] flex items-center justify-center gap-1 transition"
                             >
                                 <span>عرض السجل الكامل للمستأجر</span>
                                 <ExternalLink class="w-3.5 h-3.5" />
@@ -555,13 +555,13 @@ const depositBadgeClass = computed(() => {
                     </div>
 
                     <!-- شريط الإجراءات السياقية المتوافقة مع الحالة الحالية -->
-                    <div class="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                    <div class="flex flex-wrap items-center gap-x-2 gap-y-3 sm:gap-x-2.5">
                         <!-- زر تسجيل استلام دفعة تأمين -->
                         <button
                             v-if="security_deposit.actions.can_record_payment"
                             @click="showRecordPaymentModal = true"
                             type="button"
-                            class="h-9.5 px-4 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                            class="h-10 px-4 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
                         >
                             <CreditCard class="w-3.5 h-3.5" />
                             <span>تسجيل استلام دفعة تأمين</span>
@@ -572,7 +572,7 @@ const depositBadgeClass = computed(() => {
                             v-if="security_deposit.actions.can_start_settlement"
                             @click="showStartSettlementModal = true"
                             type="button"
-                            class="h-9.5 px-4 rounded-xl border border-[#0E6E7E] text-[#0E6E7E] hover:bg-[#E3F1F4] text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                            class="h-10 px-4 rounded-xl border border-[#0E6E7E] text-[#0E6E7E] hover:bg-[#E3F1F4] text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
                         >
                             <Wrench class="w-3.5 h-3.5" />
                             <span>بدء فحص الوحدة والتسوية</span>
@@ -583,7 +583,7 @@ const depositBadgeClass = computed(() => {
                             v-if="security_deposit.actions.can_record_deduction"
                             @click="showRecordDeductionModal = true"
                             type="button"
-                            class="h-9.5 px-4 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                            class="h-10 px-4 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
                         >
                             <MinusCircle class="w-3.5 h-3.5" />
                             <span>إضافة خصم أضرار مبرر</span>
@@ -594,7 +594,7 @@ const depositBadgeClass = computed(() => {
                             v-if="security_deposit.actions.can_record_refund"
                             @click="showRecordRefundModal = true"
                             type="button"
-                            class="h-9.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                            class="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
                         >
                             <RotateCcw class="w-3.5 h-3.5" />
                             <span>تسجيل رد التأمين للمستأجر</span>
@@ -605,7 +605,7 @@ const depositBadgeClass = computed(() => {
                             v-if="security_deposit.actions.can_settle"
                             @click="showFinalizeSettlementModal = true"
                             type="button"
-                            class="h-9.5 px-4 rounded-xl bg-[#0F2747] hover:bg-[#1E3A5F] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                            class="h-10 px-4 rounded-xl bg-[#0F2747] hover:bg-[#1E3A5F] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
                         >
                             <FileCheck class="w-3.5 h-3.5" />
                             <span>اعتماد التسوية النهائية</span>

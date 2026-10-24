@@ -23,10 +23,10 @@ const submit = () => {
 </script>
 
 <template>
-    <GuestLayout>
+    <GuestLayout image-background>
         <Head title="إنشاء حساب جديد — دار" />
 
-        <div class="mb-6 text-center">
+        <div class="mb-3 text-center sm:mb-6">
             <h1 class="text-2xl font-bold text-white">ابدأ بأول عقار لك</h1>
             <p class="mt-1.5 text-xs text-zinc-300 font-medium">
                 أنشئ حسابك، ثم أضف عقارك الأول مباشرة من لوحة التحكم.
@@ -34,12 +34,12 @@ const submit = () => {
         </div>
 
         <!-- شارة البداية السريعة -->
-        <div class="mb-5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-400 flex items-center gap-2 font-semibold">
+        <div class="mb-3 flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs font-semibold text-emerald-400 sm:mb-5">
             <CheckCircle2 class="h-4 w-4 shrink-0 text-emerald-400" />
             <span>أول 5 وحدات مجاناً بالكامل • بدون أي كروت بنكية</span>
         </div>
 
-        <form @submit.prevent="submit" class="space-y-4">
+        <form @submit.prevent="submit" class="space-y-2 sm:space-y-4">
             <!-- الاسم بالكامل -->
             <div>
                 <InputLabel for="name" value="اسمك بالكامل" />
@@ -96,7 +96,7 @@ const submit = () => {
             </div>
 
             <!-- زرار البدء -->
-            <div class="pt-3">
+            <div class="pt-1 sm:pt-3">
                 <PrimaryButton
                     class="w-full flex items-center justify-center gap-2 font-bold"
                     :class="{ 'opacity-50': form.processing }"
@@ -111,7 +111,7 @@ const submit = () => {
             </div>
 
             <!-- رابط الدخول إذا مسجل بالفعل -->
-            <div class="pt-4 border-t border-zinc-800/80 text-center text-xs text-zinc-400">
+            <div class="border-t border-zinc-800/80 pt-2 text-center text-xs text-zinc-400 sm:pt-4">
                 عندك حساب مسجل بالفعل؟
                 <Link
                     :href="route('login')"

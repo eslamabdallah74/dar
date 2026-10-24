@@ -29,6 +29,7 @@ const statusMap: Record<string, StatusConfig> = {
 
     // Amber / Pending / Attention tints
     expiring: { dotColor: 'bg-amber-500', bgColor: 'bg-[#FEF3C7]', defaultLabel: 'ينتهي قريباً' },
+    past_due: { dotColor: 'bg-amber-600', bgColor: 'bg-[#FEF3C7]', defaultLabel: 'انتهى موعده' },
     pending: { dotColor: 'bg-amber-500', bgColor: 'bg-[#FEF3C7]', defaultLabel: 'مستحق قريباً' },
     in_progress: { dotColor: 'bg-amber-500', bgColor: 'bg-[#FEF3C7]', defaultLabel: 'قيد المعالجة' },
     partial: { dotColor: 'bg-amber-500', bgColor: 'bg-[#FEF3C7]', defaultLabel: 'سداد جزئي' },

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import { KeyRound, Lock, CheckCircle2 } from 'lucide-vue-next';
 
 const passwordInput = ref<HTMLInputElement | null>(null);
 const currentPasswordInput = ref<HTMLInputElement | null>(null);
@@ -37,73 +37,93 @@ const updatePassword = () => {
 
 <template>
     <section>
-        <header>
-            <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-                Update Password
+        <header class="pb-4 border-b border-[#E8EFF4]">
+            <h2 class="text-base font-bold text-[#0F2747] flex items-center gap-2">
+                <KeyRound class="w-5 h-5 text-[#0E6E7E]" />
+                تغيير كلمة المرور
             </h2>
 
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Ensure your account is using a long, random password to stay
-                secure.
+            <p class="mt-1 text-xs text-[#5B6770] font-medium">
+                تأكد من استخدام كلمة مرور قوية وغير مكررة لحماية حسابك وعقاراتك.
             </p>
         </header>
 
-        <form @submit.prevent="updatePassword" class="mt-6 space-y-6">
+        <form @submit.prevent="updatePassword" class="mt-6 space-y-5">
             <div>
-                <InputLabel for="current_password" value="Current Password" />
+                <InputLabel for="current_password" value="كلمة المرور الحالية" class="text-xs font-bold text-[#0F2747] mb-1.5" />
 
-                <TextInput
-                    id="current_password"
-                    ref="currentPasswordInput"
-                    v-model="form.current_password"
-                    type="password"
-                    class="mt-1 block w-full"
-                    autocomplete="current-password"
-                />
+                <div class="relative">
+                    <TextInput
+                        id="current_password"
+                        ref="currentPasswordInput"
+                        v-model="form.current_password"
+                        type="password"
+                        class="w-full h-11 pr-10 pl-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
+                        autocomplete="current-password"
+                        placeholder="••••••••••••"
+                    />
+                    <Lock class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8E9CA6]" />
+                </div>
 
                 <InputError
                     :message="form.errors.current_password"
-                    class="mt-2"
+                    class="mt-1.5"
                 />
             </div>
 
             <div>
-                <InputLabel for="password" value="New Password" />
+                <InputLabel for="password" value="كلمة المرور الجديدة" class="text-xs font-bold text-[#0F2747] mb-1.5" />
 
-                <TextInput
-                    id="password"
-                    ref="passwordInput"
-                    v-model="form.password"
-                    type="password"
-                    class="mt-1 block w-full"
-                    autocomplete="new-password"
-                />
+                <div class="relative">
+                    <TextInput
+                        id="password"
+                        ref="passwordInput"
+                        v-model="form.password"
+                        type="password"
+                        class="w-full h-11 pr-10 pl-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
+                        autocomplete="new-password"
+                        placeholder="8 أحرف على الأقل"
+                    />
+                    <Lock class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8E9CA6]" />
+                </div>
 
-                <InputError :message="form.errors.password" class="mt-2" />
+                <InputError :message="form.errors.password" class="mt-1.5" />
             </div>
 
             <div>
                 <InputLabel
                     for="password_confirmation"
-                    value="Confirm Password"
+                    value="تأكيد كلمة المرور الجديدة"
+                    class="text-xs font-bold text-[#0F2747] mb-1.5"
                 />
 
-                <TextInput
-                    id="password_confirmation"
-                    v-model="form.password_confirmation"
-                    type="password"
-                    class="mt-1 block w-full"
-                    autocomplete="new-password"
-                />
+                <div class="relative">
+                    <TextInput
+                        id="password_confirmation"
+                        v-model="form.password_confirmation"
+                        type="password"
+                        class="w-full h-11 pr-10 pl-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
+                        autocomplete="new-password"
+                        placeholder="أعد كتابة كلمة المرور"
+                    />
+                    <Lock class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8E9CA6]" />
+                </div>
 
                 <InputError
                     :message="form.errors.password_confirmation"
-                    class="mt-2"
+                    class="mt-1.5"
                 />
             </div>
 
-            <div class="flex items-center gap-4">
-                <PrimaryButton :disabled="form.processing">Save</PrimaryButton>
+            <div class="flex items-center gap-4 pt-2">
+                <button
+                    type="submit"
+                    :disabled="form.processing"
+                    class="h-10 px-6 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer disabled:opacity-50"
+                >
+                    <span v-if="form.processing">جاري التحديث...</span>
+                    <span v-else>تحديث كلمة المرور</span>
+                </button>
 
                 <Transition
                     enter-active-class="transition ease-in-out"
@@ -113,9 +133,10 @@ const updatePassword = () => {
                 >
                     <p
                         v-if="form.recentlySuccessful"
-                        class="text-sm text-gray-600 dark:text-gray-400"
+                        class="text-xs text-emerald-700 font-bold flex items-center gap-1.5"
                     >
-                        Saved.
+                        <CheckCircle2 class="w-4 h-4" />
+                        تم تحديث كلمة المرور بنجاح
                     </p>
                 </Transition>
             </div>

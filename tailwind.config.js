@@ -13,7 +13,9 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Cairo', '"IBM Plex Sans Arabic"', 'system-ui', ...defaultTheme.fontFamily.sans],
+                sans: ['"IBM Plex Sans Arabic"', 'Alexandria', 'Cairo', 'system-ui', ...defaultTheme.fontFamily.sans],
+                ibm: ['"IBM Plex Sans Arabic"', 'sans-serif'],
+                alexandria: ['Alexandria', 'sans-serif'],
                 cairo: ['Cairo', 'sans-serif'],
                 mono: ['"JetBrains Mono"', ...defaultTheme.fontFamily.mono],
             },

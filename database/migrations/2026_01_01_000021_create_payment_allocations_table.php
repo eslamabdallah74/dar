@@ -19,10 +19,6 @@ return new class extends Migration
 
             // One allocation record per payment-charge pair
             $table->unique(['payment_id', 'rent_charge_id']);
-
-            $table->index('workspace_id');
-            $table->index('payment_id');
-            $table->index('rent_charge_id');
         });
         // No hard deletes on payment_allocations — enforce at application layer
     }

@@ -25,6 +25,16 @@ const emit = defineEmits<{
 }>();
 
 const page = usePage();
+const currencySymbol = computed(() => {
+    const curr = (page.props as any).auth?.workspace?.currency || 'SAR';
+    switch (curr.toUpperCase()) {
+        case 'EGP': return 'ج.م';
+        case 'SAR': return 'ر.س';
+        case 'AED': return 'د.إ';
+        case 'USD': return '$';
+        default: return curr;
+    }
+});
 const effectiveRenters = computed(() => {
     if (props.renters && props.renters.length > 0) {
         return props.renters;
@@ -159,10 +169,10 @@ const submit = () => {
                                 step="0.01"
                                 placeholder="0.00"
                                 required
-                                class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-left"
+                                class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
                             />
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#5B6770]">
-                                ج.م
+                                {{ currencySymbol }}
                             </span>
                         </div>
                     </div>
@@ -175,7 +185,7 @@ const submit = () => {
                             v-model="form.paid_at"
                             type="date"
                             required
-                            class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-left"
+                            class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
                         />
                     </div>
                 </div>
@@ -206,7 +216,7 @@ const submit = () => {
                             v-model="form.reference"
                             type="text"
                             placeholder="REC-XXXXXX"
-                            class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition font-mono text-left"
+                            class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition font-mono text-right"
                         />
                     </div>
                 </div>

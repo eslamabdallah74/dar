@@ -92,10 +92,10 @@ const emit = defineEmits<{
                 </button>
 
                 <!-- 3. إضافة عقار جديد -->
-                <Link
-                    :href="route('properties.index')"
-                    @click="emit('close')"
-                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#0E6E7E] hover:bg-[#F3F7FA] transition group text-right"
+                <button
+                    type="button"
+                    @click="() => { emit('close'); emit('addProperty'); }"
+                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#0E6E7E] hover:bg-[#F3F7FA] transition group text-right w-full"
                 >
                     <div class="w-11 h-11 rounded-xl bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center shrink-0 group-hover:bg-[#0E6E7E] group-hover:text-white transition">
                         <Building2 class="w-5 h-5" />
@@ -105,10 +105,10 @@ const emit = defineEmits<{
                             إضافة عقار أو مبنى
                         </div>
                         <div class="text-xs text-[#5B6770]">
-                            تعريف عمارة، مجمع سكني أو شقق جديدة
+                            تعريف عمارة أو شقق جديدة
                         </div>
                     </div>
-                </Link>
+                </button>
 
                 <!-- 4. إضافة مستأجر جديد -->
                 <Link
@@ -151,4 +151,3 @@ const emit = defineEmits<{
         </div>
     </div>
 </template>
-

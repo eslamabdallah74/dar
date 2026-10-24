@@ -9,40 +9,41 @@ test('registration screen can be rendered', function () {
     $response->assertStatus(200);
 });
 
-test('new users can register and their workspace is automatically provisioned', function () {
+test('new users receive a workspace and are sent to the property setup wizard', function () {
     $response = $this->post('/register', [
         'name' => 'Ahmed Mansour',
-        'email' => 'ahmed@example.com',
-        'company_name' => 'Al-Andalus Real Estate',
         'password' => 'password',
         'password_confirmation' => 'password',
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect(route('properties.create'));
 
-    $user = User::where('email', 'ahmed@example.com')->first();
+    $user = User::where('name', 'Ahmed Mansour')->first();
     expect($user)->not->toBeNull();
 
     $workspace = Workspace::where('owner_user_id', $user->id)->first();
     expect($workspace)->not->toBeNull();
-    expect($workspace->name)->toBe('Al-Andalus Real Estate');
+    expect($workspace->name)->toBe("Ahmed Mansour's Workspace");
     expect($workspace->currency)->toBe('EGP');
 
     // Verify membership record with owner role
     expect($workspace->members()->where('user_id', $user->id)->first()->role)->toBe('owner');
+
+    $this->actingAs($user)
+        ->get(route('properties.create'))
+        ->assertInertia(fn ($page) => $page->component('Properties/Create'));
 });
 
 test('new users can register without an email', function () {
     $response = $this->post('/register', [
         'name' => 'Kareem Tarek',
-        'email' => '',
         'password' => 'password',
         'password_confirmation' => 'password',
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect(route('properties.create'));
 
     $user = User::where('name', 'Kareem Tarek')->first();
     expect($user)->not->toBeNull();

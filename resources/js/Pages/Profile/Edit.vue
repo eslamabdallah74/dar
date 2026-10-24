@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import AppLayout from '@/Layouts/AppLayout.vue';
 import DeleteUserForm from './Partials/DeleteUserForm.vue';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
-import { Head } from '@inertiajs/vue3';
 
 defineProps<{
     mustVerifyEmail?: boolean;
@@ -12,41 +11,31 @@ defineProps<{
 </script>
 
 <template>
-    <Head title="Profile" />
+    <AppLayout
+        title="الملف الشخصي والحساب — دار"
+        active-tab="settings"
+        header-title="الملف الشخصي والحساب"
+        header-subtitle="إدارة بياناتك الشخصية وكلمة المرور والأمان"
+    >
+        <div class="space-y-6 w-full">
+            <!-- 1. تعديل البيانات الشخصية -->
+            <div class="bg-white rounded-2xl border border-[#D6E0E7] p-6 sm:p-8 shadow-2xs">
+                <UpdateProfileInformationForm
+                    :must-verify-email="mustVerifyEmail"
+                    :status="status"
+                    class="max-w-2xl"
+                />
+            </div>
 
-    <AuthenticatedLayout>
-        <template #header>
-            <h2
-                class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200"
-            >
-                Profile
-            </h2>
-        </template>
+            <!-- 2. تغيير كلمة المرور -->
+            <div class="bg-white rounded-2xl border border-[#D6E0E7] p-6 sm:p-8 shadow-2xs">
+                <UpdatePasswordForm class="max-w-2xl" />
+            </div>
 
-        <div class="py-12">
-            <div class="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
-                <div
-                    class="bg-white p-4 shadow sm:rounded-lg sm:p-8 dark:bg-gray-800"
-                >
-                    <UpdateProfileInformationForm
-                        :must-verify-email="mustVerifyEmail"
-                        :status="status"
-                        class="max-w-xl"
-                    />
-                </div>
-
-                <div
-                    class="bg-white p-4 shadow sm:rounded-lg sm:p-8 dark:bg-gray-800"
-                >
-                    <UpdatePasswordForm class="max-w-xl" />
-                </div>
-
-                <div
-                    class="bg-white p-4 shadow sm:rounded-lg sm:p-8 dark:bg-gray-800"
-                >
-                    <DeleteUserForm class="max-w-xl" />
-                </div>
+            <!-- 3. حذف الحساب -->
+            <div class="bg-white rounded-2xl border border-rose-200/80 p-6 sm:p-8 shadow-2xs">
+                <DeleteUserForm class="max-w-2xl" />
             </div>
         </div>
-    </AuthenticatedLayout>
+    </AppLayout>
 </template>

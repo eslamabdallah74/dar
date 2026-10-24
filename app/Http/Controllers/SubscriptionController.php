@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Plan;
+use App\Models\Unit;
+use App\Models\Workspace;
 use App\Support\CurrentWorkspace;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -9,15 +12,39 @@ use Inertia\Response;
 
 class SubscriptionController extends Controller
 {
+    /**
+     * Resolve and authorize the active workspace for the authenticated user.
+     */
+    protected function resolveWorkspace(Request $request): Workspace
+    {
+        $workspace = app(CurrentWorkspace::class)->get();
+
+        if (! $workspace) {
+            abort(403, 'لا توجد مساحة عمل نشطة أو مصرح بها.');
+        }
+
+        $user = $request->user();
+        if (! $user) {
+            abort(401);
+        }
+
+        $isAuthorized = $workspace->owner_user_id === $user->id
+            || $workspace->members()->where('user_id', $user->id)->exists();
+
+        abort_if(! $isAuthorized, 403, 'غير مصرح لك بالوصول لمساحة العمل هذه.');
+
+        return $workspace;
+    }
+
     public function index(Request $request): Response
     {
-        $workspace = app(CurrentWorkspace::class)->get()
-            ?? $request->user()->ownedWorkspaces()->first();
+        $workspace = $this->resolveWorkspace($request);
 
-        $totalUnits = $workspace->units()->count();
-        if ($totalUnits === 0) {
-            $totalUnits = 12;
-        }
+        $totalBillableUnits = Unit::billableCountForWorkspace($workspace->id);
+        $activeSubscription = $workspace->activeSubscription()->with('plan')->first();
+        $currentPlan = $activeSubscription?->plan;
+
+        $dbPlans = Plan::where('is_active', true)->get();
 
         $plans = [
             [
@@ -33,7 +60,7 @@ class SubscriptionController extends Controller
                     'عقود إيجار غير محدودة',
                     'تذكيرات WhatsApp محدودة (50 رسالة/شهر)',
                 ],
-                'is_current' => false,
+                'is_current' => $currentPlan?->slug === 'starter' || ($currentPlan === null),
             ],
             [
                 'id' => 'growth',
@@ -49,7 +76,7 @@ class SubscriptionController extends Controller
                     'إدارة الصيانة والمصروفات التشغيلية',
                     'دعم فني مخصص ذو أولوية',
                 ],
-                'is_current' => true,
+                'is_current' => $currentPlan?->slug === 'growth',
             ],
             [
                 'id' => 'pro',
@@ -61,42 +88,40 @@ class SubscriptionController extends Controller
                 'features' => [
                     'إدارة حتى 100 وحدة تأجيرية',
                     'كل ميزات باقة النمو',
-                    'صلاحيات متقدمة لفريق العمل (أدوار متعددة)',
+                    'إدارة متقدمة لجميع العقارات والأملاك',
                     'تقارير مالية ومحاسبية متقدمة مع ضريبة القيمة المضافة',
                     'ربط مباشر مع منصة إيجار (قريباً)',
                 ],
-                'is_current' => false,
+                'is_current' => $currentPlan?->slug === 'pro',
             ],
         ];
 
+        $planName = $currentPlan?->name ?? 'باقة الانطلاق (المجانية)';
+        $unitLimit = $currentPlan?->unit_limit ?? 5;
+        $daysRemaining = $activeSubscription?->ends_at
+            ? max(0, (int) now()->diffInDays($activeSubscription->ends_at, false))
+            : 30;
+
         return Inertia::render('Subscription/Index', [
             'current_plan' => [
-                'name' => 'باقة النمو • تجريبية',
-                'trial_days_remaining' => 10,
-                'units_used' => $totalUnits,
-                'units_limit' => 25,
-                'renewal_date' => now()->addDays(10)->format('d/m/Y'),
-                'payment_card' => '•••• 4242 (Visa)',
+                'name' => $planName,
+                'trial_days_remaining' => $daysRemaining,
+                'units_used' => $totalBillableUnits,
+                'units_limit' => $unitLimit,
+                'renewal_date' => $activeSubscription?->ends_at?->format('d/m/Y') ?? now()->addDays(30)->format('d/m/Y'),
+                'payment_card' => $activeSubscription ? '•••• 4242 (مدى / بطاقة بنكية)' : 'غير محدد',
             ],
             'plans' => $plans,
-            'billing_history' => [
+            'billing_history' => $activeSubscription ? [
                 [
-                    'id' => 'INV-2026-001',
-                    'date' => '01/10/2026',
-                    'description' => 'اشتراك باقة النمو - شهر أكتوبر 2026',
-                    'amount' => 199.00,
+                    'id' => 'SUB-'.$activeSubscription->id,
+                    'date' => $activeSubscription->starts_at?->format('d/m/Y') ?? now()->format('d/m/Y'),
+                    'description' => 'اشتراك '.$planName,
+                    'amount' => (float) ($currentPlan?->monthly_price ?? 0.0),
                     'status' => 'paid',
-                    'status_label' => 'مدفوعة',
+                    'status_label' => 'نشط ومعتمد',
                 ],
-                [
-                    'id' => 'INV-2026-002',
-                    'date' => '01/09/2026',
-                    'description' => 'اشتراك باقة النمو - شهر سبتمبر 2026',
-                    'amount' => 199.00,
-                    'status' => 'paid',
-                    'status_label' => 'مدفوعة',
-                ],
-            ],
+            ] : [],
         ]);
     }
 }

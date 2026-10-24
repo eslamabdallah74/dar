@@ -6,18 +6,46 @@ use App\Models\Payment;
 use App\Models\PaymentAllocation;
 use App\Models\RentCharge;
 use App\Models\Renter;
+use App\Models\Workspace;
+use App\Services\WhatsAppService;
 use App\Support\CurrentWorkspace;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class PaymentController extends Controller
 {
+    /**
+     * Resolve and authorize the active workspace for the authenticated user.
+     */
+    protected function resolveWorkspace(Request $request): Workspace
+    {
+        $workspace = app(CurrentWorkspace::class)->get();
+
+        if (! $workspace) {
+            abort(403, 'لا توجد مساحة عمل نشطة أو مصرح بها.');
+        }
+
+        $user = $request->user();
+        if (! $user) {
+            abort(401);
+        }
+
+        $isAuthorized = $workspace->owner_user_id === $user->id
+            || $workspace->members()->where('user_id', $user->id)->exists();
+
+        abort_if(! $isAuthorized, 403, 'غير مصرح لك بالوصول لمساحة العمل هذه.');
+
+        return $workspace;
+    }
+
     public function index(Request $request): Response
     {
-        $workspace = app(CurrentWorkspace::class)->get()
-            ?? $request->user()->ownedWorkspaces()->first();
+        $workspace = $this->resolveWorkspace($request);
 
         // 1. Rent charges (Dues)
         $charges = $workspace->rentCharges()
@@ -94,21 +122,15 @@ class PaymentController extends Controller
         $endOfMonth = now()->endOfMonth()->toDateString();
 
         $monthTarget = (float) $charges->whereBetween('raw_due_date', [$startOfMonth, $endOfMonth])->sum('amount');
-        if ($monthTarget == 0) {
-            $monthTarget = 42000.0;
-        }
-
-        $monthCollected = (float) $payments->sum('amount');
-        if ($monthCollected == 0) {
-            $monthCollected = 37500.0;
+        $monthCollected = (float) $payments->whereBetween('paid_at', [now()->startOfMonth()->format('d/m/Y'), now()->endOfMonth()->format('d/m/Y')])->sum('amount');
+        if ($monthCollected === 0.0) {
+            $monthCollected = (float) $workspace->payments()
+                ->whereBetween('paid_at', [now()->startOfMonth(), now()->endOfMonth()])
+                ->sum('amount');
         }
 
         $totalOverdue = (float) $charges->where('status', 'overdue')->sum('outstanding_balance');
-        if ($totalOverdue == 0) {
-            $totalOverdue = 4500.0;
-        }
-
-        $collectionRate = $monthTarget > 0 ? (int) round(($monthCollected / $monthTarget) * 100) : 89;
+        $collectionRate = $monthTarget > 0 ? (int) round(($monthCollected / $monthTarget) * 100) : 0;
 
         return Inertia::render('Payments/Index', [
             'charges' => $charges,
@@ -120,71 +142,115 @@ class PaymentController extends Controller
                 'overdue' => $totalOverdue,
                 'rate' => $collectionRate,
             ],
+            'currency' => $workspace->currency ?? 'EGP',
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
-        $workspace = app(CurrentWorkspace::class)->get()
-            ?? $request->user()->ownedWorkspaces()->first();
+        $workspace = $this->resolveWorkspace($request);
 
         $validated = $request->validate([
-            'renter_id' => 'required|exists:renters,id',
-            'amount' => 'required|numeric|min:1',
+            'renter_id' => [
+                'required',
+                Rule::exists('renters', 'id')->where('workspace_id', $workspace->id),
+            ],
+            'amount' => 'required|numeric|min:0.5',
             'payment_method' => 'required|in:cash,bank_transfer,cheque,other',
             'paid_at' => 'nullable|date',
             'reference' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
-            'rent_charge_id' => 'nullable|exists:rent_charges,id',
+            'rent_charge_id' => [
+                'nullable',
+                Rule::exists('rent_charges', 'id')->where('workspace_id', $workspace->id),
+            ],
         ]);
 
-        $payment = $workspace->payments()->create([
-            'renter_id' => $validated['renter_id'],
-            'recorded_by' => $request->user()->id,
-            'amount' => $validated['amount'],
-            'paid_at' => $validated['paid_at'] ?? now(),
-            'payment_method' => $validated['payment_method'],
-            'reference' => $validated['reference'] ?? 'REC-'.time(),
-            'notes' => $validated['notes'] ?? null,
-        ]);
+        $payment = DB::transaction(function () use ($workspace, $validated, $request) {
+            $reference = $validated['reference'] ?? ('REC-'.date('Y').'-'.str_pad((string) ($workspace->payments()->count() + 1), 4, '0', STR_PAD_LEFT));
 
-        // Allocate payment to charge
-        if (! empty($validated['rent_charge_id'])) {
-            $charge = $workspace->rentCharges()->find($validated['rent_charge_id']);
-            if ($charge) {
-                PaymentAllocation::create([
-                    'workspace_id' => $workspace->id,
-                    'payment_id' => $payment->id,
-                    'rent_charge_id' => $charge->id,
-                    'amount' => min((float) $payment->amount, (float) $charge->outstanding_balance),
-                ]);
-            }
-        } else {
-            // Allocate to oldest unpaid charge of this renter
-            $unpaidCharges = $workspace->rentCharges()
-                ->whereHas('lease', fn ($q) => $q->where('renter_id', $validated['renter_id']))
-                ->orderBy('due_date')
-                ->get();
+            $payment = $workspace->payments()->create([
+                'renter_id' => $validated['renter_id'],
+                'recorded_by' => $request->user()->id,
+                'amount' => $validated['amount'],
+                'paid_at' => $validated['paid_at'] ?? now(),
+                'payment_method' => $validated['payment_method'],
+                'reference' => $reference,
+                'notes' => $validated['notes'] ?? null,
+            ]);
 
             $remainingAmount = (float) $payment->amount;
-            foreach ($unpaidCharges as $c) {
-                if ($remainingAmount <= 0) {
-                    break;
-                }
-                $balance = $c->outstanding_balance;
-                if ($balance > 0) {
-                    $allocAmount = min($remainingAmount, $balance);
+
+            // 1. If a specific charge is indicated, allocate to it first
+            if (! empty($validated['rent_charge_id'])) {
+                $charge = $workspace->rentCharges()
+                    ->lockForUpdate()
+                    ->find($validated['rent_charge_id']);
+
+                if ($charge && $charge->outstanding_balance > 0) {
+                    $allocAmount = min($remainingAmount, $charge->outstanding_balance);
                     PaymentAllocation::create([
                         'workspace_id' => $workspace->id,
                         'payment_id' => $payment->id,
-                        'rent_charge_id' => $c->id,
+                        'rent_charge_id' => $charge->id,
                         'amount' => $allocAmount,
                     ]);
                     $remainingAmount -= $allocAmount;
                 }
             }
+
+            // 2. Allocate any remaining amount to the oldest unpaid charges of this renter
+            if ($remainingAmount > 0) {
+                $unpaidCharges = $workspace->rentCharges()
+                    ->whereHas('lease', fn ($q) => $q->where('renter_id', $validated['renter_id']))
+                    ->when(! empty($validated['rent_charge_id']), fn ($q) => $q->where('id', '!=', $validated['rent_charge_id']))
+                    ->orderBy('due_date')
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($unpaidCharges as $c) {
+                    if ($remainingAmount <= 0) {
+                        break;
+                    }
+                    $balance = $c->outstanding_balance;
+                    if ($balance > 0) {
+                        $allocAmount = min($remainingAmount, $balance);
+                        PaymentAllocation::create([
+                            'workspace_id' => $workspace->id,
+                            'payment_id' => $payment->id,
+                            'rent_charge_id' => $c->id,
+                            'amount' => $allocAmount,
+                        ]);
+                        $remainingAmount -= $allocAmount;
+                    }
+                }
+            }
+
+            return $payment;
+        });
+
+        // Queue electronic receipt asynchronously via WhatsApp / SMS if enabled
+        if ($workspace->auto_instant_receipts) {
+            app(WhatsAppService::class)->queuePaymentReceipt($payment);
         }
 
         return back()->with('success', 'تم تسجيل الدفعة وإصدار سند القبض بنجاح');
+    }
+
+    public function showReceipt(Request $request, Payment $payment): View
+    {
+        $workspace = $this->resolveWorkspace($request);
+        abort_if($payment->workspace_id !== $workspace->id, 403, 'غير مصرح لك بعرض هذا السند.');
+
+        $payment->load([
+            'renter',
+            'recordedBy',
+            'allocations.rentCharge.lease.unit.property',
+        ]);
+
+        return view('receipts.show', [
+            'payment' => $payment,
+            'workspace' => $workspace,
+        ]);
     }
 }

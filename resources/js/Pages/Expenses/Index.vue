@@ -263,7 +263,7 @@ const submit = () => {
                                     step="0.01"
                                     placeholder="0.00"
                                     required
-                                    class="w-full h-11 pl-10 pr-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-left"
+                                    class="w-full h-11 pl-10 pr-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
                                 />
                                 <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-[#5B6770]">ج.م</span>
                             </div>
@@ -276,7 +276,7 @@ const submit = () => {
                             v-model="form.expense_date"
                             type="date"
                             required
-                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-left"
+                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
                         />
                     </div>
 

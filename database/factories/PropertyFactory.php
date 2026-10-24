@@ -18,7 +18,7 @@ class PropertyFactory extends Factory
         return [
             'workspace_id' => Workspace::factory(),
             'name' => 'عمارة '.fake()->streetName(),
-            'property_type' => fake()->randomElement(['building', 'villa', 'compound', 'other']),
+            'property_type' => fake()->randomElement(['building', 'villa', 'other']),
             'address' => fake()->address(),
         ];
     }
@@ -34,13 +34,6 @@ class PropertyFactory extends Factory
     {
         return $this->state(fn () => [
             'property_type' => 'villa',
-        ]);
-    }
-
-    public function compound(): static
-    {
-        return $this->state(fn () => [
-            'property_type' => 'compound',
         ]);
     }
 }

@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { Link, useForm } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
+import { Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
 import EmptyState from '@/Components/Common/EmptyState.vue';
 import {
     Building2,
-    Check,
     Coins,
     Home,
     MapPin,
@@ -14,7 +13,6 @@ import {
     Search,
     TrendingUp,
     Users,
-    X,
 } from 'lucide-vue-next';
 
 interface PropertyItem {
@@ -42,13 +40,6 @@ const props = defineProps<{
 
 const searchQuery = ref('');
 const selectedType = ref('all');
-const showAddModal = ref(false);
-
-const form = useForm({
-    name: '',
-    property_type: 'building',
-    address: '',
-});
 
 const filteredProperties = computed(() => {
     return props.properties.filter(p => {
@@ -58,20 +49,6 @@ const filteredProperties = computed(() => {
     });
 });
 
-const submitProperty = () => {
-    form.post(route('properties.store'), {
-        onSuccess: () => {
-            form.reset();
-            showAddModal.value = false;
-        },
-    });
-};
-
-onMounted(() => {
-    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('new')) {
-        showAddModal.value = true;
-    }
-});
 </script>
 
 <template>
@@ -83,14 +60,13 @@ onMounted(() => {
         breadcrumb="العقارات"
     >
         <template #actions>
-            <button
-                @click="showAddModal = true"
-                type="button"
-                class="h-11 px-5 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-sm font-semibold transition shadow-xs flex items-center gap-2 cursor-pointer"
+            <Link
+                :href="route('properties.create')"
+                class="h-11 px-5 rounded-xl bg-[#18705A] hover:bg-[#105742] text-white text-sm font-semibold transition shadow-xs flex items-center gap-2 cursor-pointer"
             >
                 <Plus class="h-4 w-4 stroke-[2.5]" />
                 <span>إضافة عقار جديد</span>
-            </button>
+            </Link>
         </template>
 
         <!-- صف المؤشرات الرئيسية المتطابق (KPI Cards) -->
@@ -99,7 +75,7 @@ onMounted(() => {
                 <span class="text-xs font-semibold text-[#5B6770]">إجمالي العقارات</span>
                 <div class="flex items-baseline justify-between">
                     <span class="text-2xl font-bold text-[#0F2747] font-mono">{{ stats.total_properties }}</span>
-                    <span class="text-xs text-[#0E6E7E] font-medium">مباني ومجمعات</span>
+                    <span class="text-xs text-[#0E6E7E] font-medium">عمارات وشقق</span>
                 </div>
             </div>
 
@@ -149,8 +125,7 @@ onMounted(() => {
                     v-for="filter in [
                         { id: 'all', label: 'الكل' },
                         { id: 'building', label: 'عمارات' },
-                        { id: 'compound', label: 'مجمعات' },
-                        { id: 'villa', label: 'فلل' }
+                        { id: 'apartment', label: 'شقق' }
                     ]"
                     :key="filter.id"
                     @click="selectedType = filter.id"
@@ -255,83 +230,7 @@ onMounted(() => {
             title="لم يتم العثور على أي عقارات"
             description="لم نجد أي عقار يطابق بحثك الحالي. يمكنك إضافة عقار جديد أو تعديل معايير البحث."
             action-label="إضافة عقار جديد الآن"
-            @action="showAddModal = true"
+            @action="$inertia.visit(route('properties.create'))"
         />
-
-        <!-- نافذة إضافة عقار جديد (Add Property Modal) -->
-        <div v-if="showAddModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-            <div @click="showAddModal = false" class="fixed inset-0 bg-[#0F2747]/60 backdrop-blur-xs"></div>
-            <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-6 z-10 animate-in fade-in zoom-in-95" dir="rtl">
-                <div class="flex items-center justify-between pb-4 border-b border-[#D6E0E7] mb-5">
-                    <h3 class="text-base font-bold text-[#0F2747]">إضافة عقار جديد</h3>
-                    <button @click="showAddModal = false" type="button" class="p-1.5 text-[#5B6770] hover:text-[#0F2747]">
-                        <X class="w-5 h-5" />
-                    </button>
-                </div>
-
-                <form @submit.prevent="submitProperty" class="space-y-4">
-                    <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">اسم العقار / المبنى *</label>
-                        <input
-                            v-model="form.name"
-                            type="text"
-                            maxlength="255"
-                            placeholder="مثال: عمارة النور، مجمع الصحافة..."
-                            required
-                            class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#0F2747] transition"
-                            :class="form.errors.name ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-1 focus:ring-rose-500' : 'border-[#D6E0E7] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E]'"
-                        />
-                        <p v-if="form.errors.name" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.name }}</p>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">نوع العقار *</label>
-                        <select
-                            v-model="form.property_type"
-                            class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#0F2747] transition"
-                            :class="form.errors.property_type ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-1 focus:ring-rose-500' : 'border-[#D6E0E7] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E]'"
-                        >
-                            <option value="building">عمارة سكنية</option>
-                            <option value="compound">مجمع سكني</option>
-                            <option value="villa">فيلا</option>
-                            <option value="other">عقار تجاري / آخر</option>
-                        </select>
-                        <p v-if="form.errors.property_type" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.property_type }}</p>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">العنوان والموقع <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
-                        <input
-                            v-model="form.address"
-                            type="text"
-                            maxlength="500"
-                            placeholder="مثال: المعادي الجديدة، شارع النصر، القاهرة"
-                            class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#0F2747] transition"
-                            :class="form.errors.address ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500 focus:ring-1 focus:ring-rose-500' : 'border-[#D6E0E7] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E]'"
-                        />
-                        <p v-if="form.errors.address" class="mt-1 text-xs text-rose-600 font-medium">{{ form.errors.address }}</p>
-                    </div>
-
-                    <div class="pt-4 flex items-center justify-end gap-3 border-t border-[#D6E0E7]">
-                        <button
-                            @click="showAddModal = false"
-                            type="button"
-                            class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold text-[#5B6770]"
-                        >
-                            إلغاء
-                        </button>
-                        <button
-                            type="submit"
-                            :disabled="form.processing"
-                            class="h-10 px-5 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center gap-2"
-                        >
-                            <Check class="w-4 h-4" />
-                            <span>{{ form.processing ? 'جاري الإضافة...' : 'حفظ العقار' }}</span>
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
     </AppLayout>
 </template>
-

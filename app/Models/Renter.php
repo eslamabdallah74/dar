@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Renter extends Model
 {
@@ -18,11 +19,18 @@ class Renter extends Model
         'phone',
         'email',
         'national_id',
+        'id_card_front',
+        'id_card_back',
         'whatsapp_opt_in_at',
         'whatsapp_opt_in_source',
         'whatsapp_opt_in_recorded_by',
         'whatsapp_opted_out_at',
         'notes',
+    ];
+
+    protected $appends = [
+        'id_card_front_url',
+        'id_card_back_url',
     ];
 
     protected function casts(): array
@@ -31,6 +39,16 @@ class Renter extends Model
             'whatsapp_opt_in_at' => 'datetime',
             'whatsapp_opted_out_at' => 'datetime',
         ];
+    }
+
+    public function getIdCardFrontUrlAttribute(): ?string
+    {
+        return $this->id_card_front ? Storage::disk('public')->url($this->id_card_front) : null;
+    }
+
+    public function getIdCardBackUrlAttribute(): ?string
+    {
+        return $this->id_card_back ? Storage::disk('public')->url($this->id_card_back) : null;
     }
 
     public function whatsappOptInRecordedBy(): BelongsTo

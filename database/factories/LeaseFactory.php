@@ -28,12 +28,30 @@ class LeaseFactory extends Factory
             'starts_on' => $startsOn->toDateString(),
             'ends_on' => $endsOn->toDateString(),
             'rent_amount' => 3000.00,
+            'security_deposit_amount' => 0.00,
+            'security_deposit_status' => 'not_required',
             'billing_interval' => 'monthly',
             'billing_anchor_day' => 1,
             'first_due_date' => $startsOn->toDateString(),
             'status' => 'active',
             'notes' => fake()->sentence(),
         ];
+    }
+
+    public function withDeposit(float $amount = 5000.00): static
+    {
+        return $this->state(fn () => [
+            'security_deposit_amount' => $amount,
+            'security_deposit_status' => 'due',
+        ]);
+    }
+
+    public function withoutDeposit(): static
+    {
+        return $this->state(fn () => [
+            'security_deposit_amount' => 0.00,
+            'security_deposit_status' => 'not_required',
+        ]);
     }
 
     public function active(): static

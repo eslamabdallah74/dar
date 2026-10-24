@@ -15,8 +15,6 @@ return new class extends Migration
             $table->enum('property_type', ['building', 'villa', 'compound', 'other']);
             $table->text('address')->nullable();
             $table->timestamps();
-
-            $table->index('workspace_id');
         });
     }
 

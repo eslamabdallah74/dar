@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { Head, router, Link } from '@inertiajs/vue3';
-import AppSidebar from '@/Components/Layout/AppSidebar.vue';
-import AppNavbar from '@/Components/Layout/AppNavbar.vue';
-import AppFooter from '@/Components/Layout/AppFooter.vue';
+import { router, Link } from '@inertiajs/vue3';
+import AppLayout from '@/Layouts/AppLayout.vue';
 import PrimaryKpiRow from '@/Components/Dashboard/PrimaryKpiRow.vue';
 import RentalIncomeChart from '@/Components/Dashboard/RentalIncomeChart.vue';
 import OccupancySummaryCard from '@/Components/Dashboard/OccupancySummaryCard.vue';
@@ -14,7 +12,6 @@ import RecentActivityFeed from '@/Components/Dashboard/RecentActivityFeed.vue';
 import QuickActionsBar from '@/Components/Dashboard/QuickActionsBar.vue';
 import WhatsAppSummaryCard from '@/Components/Dashboard/WhatsAppSummaryCard.vue';
 import EmptyWorkspaceOnboarding from '@/Components/Dashboard/EmptyWorkspaceOnboarding.vue';
-import ModalNewAction from '@/Components/Common/ModalNewAction.vue';
 import ModalRecordPayment from '@/Components/Common/ModalRecordPayment.vue';
 import {
     Plus,
@@ -22,6 +19,7 @@ import {
     Building2,
     Calendar,
     Sparkles,
+    Shield,
     AlertCircle,
 } from 'lucide-vue-next';
 
@@ -36,6 +34,8 @@ interface Props {
         name: string;
         all_workspaces_label?: string;
         currency: string;
+        currency_symbol?: string;
+        currency_label?: string;
         plan_name: string;
         trial_days_remaining: number;
         units_used: number;
@@ -133,6 +133,14 @@ interface Props {
         plan_name: string;
         days_remaining: number;
     };
+    security_deposits?: {
+        total_held: number;
+        awaiting_settlement_count: number;
+        awaiting_settlement_amount: number;
+        refunds_outstanding: number;
+        confirmed_deductions: number;
+        currency_symbol: string;
+    };
     renters?: Array<{
         id: number;
         name: string;
@@ -151,11 +159,7 @@ interface Props {
 
 const props = defineProps<Props>();
 
-// Mobile drawer state
-const mobileSidebarOpen = ref(false);
-
 // Real Modals
-const newActionOpen = ref(false);
 const recordPaymentOpen = ref(false);
 const paymentInitialRenterId = ref<number | undefined>();
 const paymentInitialAmount = ref<number | undefined>();
@@ -173,6 +177,10 @@ function handleRecordPayment(dueItem?: any) {
         paymentInitialRenterId.value = undefined;
     }
     recordPaymentOpen.value = true;
+}
+
+function addProperty() {
+    router.visit(route('properties.create'));
 }
 
 function handleSendWhatsApp(dueItem: any) {
@@ -207,36 +215,16 @@ function handleAttentionAction(item: any) {
 </script>
 
 <template>
-    <div class="min-h-screen bg-[#F3F7FA] text-[#334155] font-sans selection:bg-[#0E6E7E] selection:text-white flex" dir="rtl">
-        <Head title="الرئيسية — دار لإدارة العقارات" />
-
-        <!-- الشريط الجانبي الرئيسي (AppSidebar) -->
-        <AppSidebar
-            :workspace-name="workspace?.name"
-            :all-workspaces-label="workspace?.all_workspaces_label"
-            :user-name="user?.name"
-            :user-role="user?.role"
-            :plan-name="workspace?.plan_name"
-            :trial-days-remaining="workspace?.trial_days_remaining"
-            :units-used="workspace?.units_used"
-            :units-limit="workspace?.units_limit"
-            :mobile-open="mobileSidebarOpen"
-            :active-tab="'dashboard'"
-            @close-mobile="mobileSidebarOpen = false"
-            @new-action="newActionOpen = true"
-        />
-
-        <!-- منطقة العمل الرئيسية -->
-        <div class="flex-1 flex flex-col min-w-0 min-h-screen">
-            <!-- شريط الأدوات العلوي الموحد (AppNavbar) -->
-            <AppNavbar
-                @toggle-mobile="mobileSidebarOpen = !mobileSidebarOpen"
-                @new-action="newActionOpen = true"
-            />
-
-            <!-- محتوى لوحة التحكم (Dashboard Content) -->
-            <main class="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1280px] w-full mx-auto">
-                <!-- قسم الترحيب الرئيسي (Welcome Hero Section) -->
+    <AppLayout
+        title="الرئيسية — دار لإدارة العقارات"
+        active-tab="dashboard"
+        :all-workspaces-label="workspace?.all_workspaces_label"
+        :plan-name="workspace?.plan_name"
+        :trial-days-remaining="workspace?.trial_days_remaining"
+        :units-used="workspace?.units_used"
+        :units-limit="workspace?.units_limit"
+    >
+        <!-- قسم الترحيب الرئيسي (Welcome Hero Section) -->
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[#E8EFF4]">
                     <div>
                         <h1 class="text-2xl sm:text-3xl font-black text-[#0F2747] tracking-tight">
@@ -250,13 +238,14 @@ function handleAttentionAction(item: any) {
                     <!-- الأزرار الرئيسية في الهيدر -->
                     <div class="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
                         <!-- زر إضافة عقار جديد الأساسي -->
-                        <Link
-                            :href="route('properties.index', { new: 1 })"
+                        <button
+                            type="button"
+                            @click="addProperty"
                             class="h-11 px-5 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-sm font-bold transition shadow-xs flex items-center justify-center gap-2"
                         >
                             <Plus class="h-4 w-4 stroke-[2.5]" />
                             <span>إضافة عقار جديد</span>
-                        </Link>
+                        </button>
 
                         <!-- زر تسجيل دفعة السريع -->
                         <button
@@ -273,6 +262,7 @@ function handleAttentionAction(item: any) {
                 <!-- شريط الإجراءات السريعة (Quick Actions Bar) -->
                 <QuickActionsBar
                     @record-payment="handleRecordPayment()"
+                    @add-property="addProperty"
                 />
 
                 <!-- حالة مساحة العمل الجديدة والفارغة (First-time empty workspace) -->
@@ -311,6 +301,60 @@ function handleAttentionAction(item: any) {
                         </Link>
                     </div>
 
+                    <!-- شريط ملخص تأمين الوحدات المسترد (مفصول عن الإيراد التشغيلي) -->
+                    <div
+                        v-if="security_deposits && (security_deposits.total_held > 0 || security_deposits.awaiting_settlement_count > 0 || security_deposits.confirmed_deductions > 0)"
+                        class="p-5 rounded-2xl bg-white border border-[#D6E0E7] shadow-2xs space-y-3"
+                    >
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E8EFF4]">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-xl bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center">
+                                    <Shield class="w-4 h-4 stroke-[2.2]" />
+                                </div>
+                                <div>
+                                    <h3 class="text-xs sm:text-sm font-bold text-[#0F2747]">
+                                        صندوق تأمين الوحدات المسترد (محفوظ ومفصول عن إيراد الإيجار)
+                                    </h3>
+                                    <span class="text-[11px] text-[#5B6770]">أموال تأمين مستردة للمستأجرين عند انتهاء العقود</span>
+                                </div>
+                            </div>
+                            <Link
+                                :href="route('leases.index')"
+                                class="text-xs font-bold text-[#0E6E7E] hover:underline flex items-center gap-1 self-start sm:self-auto"
+                            >
+                                <span>متابعة عقود التأمين</span>
+                                <span>←</span>
+                            </Link>
+                        </div>
+
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1">
+                            <div>
+                                <span class="text-xs text-[#5B6770] block">إجمالي مبالغ التأمين المحتجزة</span>
+                                <span class="text-lg font-bold text-emerald-700 font-mono mt-0.5 block">
+                                    {{ security_deposits.total_held.toLocaleString() }} {{ security_deposits.currency_symbol || 'ج.م' }}
+                                </span>
+                            </div>
+                            <div>
+                                <span class="text-xs text-[#5B6770] block">تأمينات بانتظار التسوية</span>
+                                <span class="text-lg font-bold text-amber-700 font-mono mt-0.5 block">
+                                    {{ security_deposits.awaiting_settlement_count }} عقود
+                                </span>
+                            </div>
+                            <div>
+                                <span class="text-xs text-[#5B6770] block">مبالغ مستحقة الرد للمستأجرين</span>
+                                <span class="text-lg font-bold text-[#0E6E7E] font-mono mt-0.5 block">
+                                    {{ security_deposits.refunds_outstanding.toLocaleString() }} {{ security_deposits.currency_symbol || 'ج.م' }}
+                                </span>
+                            </div>
+                            <div>
+                                <span class="text-xs text-[#5B6770] block">خصومات أضرار معتمدة</span>
+                                <span class="text-lg font-bold text-rose-700 font-mono mt-0.5 block">
+                                    {{ security_deposits.confirmed_deductions.toLocaleString() }} {{ security_deposits.currency_symbol || 'ج.م' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- الصف الأول: رسم الإيرادات الشهرية (8 أعمدة) + ملخص الإشغال (4 أعمدة) -->
                     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
                         <!-- رسم الإيرادات الإيجارية الشهرية خلال 6 أشهر -->
@@ -321,6 +365,8 @@ function handleAttentionAction(item: any) {
                                 :history="income_chart?.history"
                                 :has-history="income_chart?.has_history"
                                 :total-collected="income_chart?.total_collected"
+                                :currency-symbol="workspace?.currency_symbol"
+                                :currency-label="workspace?.currency_label"
                             />
                         </div>
 
@@ -376,28 +422,6 @@ function handleAttentionAction(item: any) {
                     </div>
                 </template>
 
-                <!-- تذييل الصفحة الموحد (AppFooter) -->
-                <AppFooter
-                    :copyright="footer?.copyright"
-                    :last-updated="footer?.last_updated"
-                />
-            </main>
-        </div>
-
-        <!-- خلفية داكنة للموبايل عند فتح الشريط الجانبي -->
-        <div
-            v-if="mobileSidebarOpen"
-            @click="mobileSidebarOpen = false"
-            class="lg:hidden fixed inset-0 bg-[#0F2747]/60 backdrop-blur-xs z-40 transition-opacity"
-        ></div>
-
-        <!-- النوافذ المنبثقة العامة الحقيقية (Real Modals) -->
-        <ModalNewAction
-            :show="newActionOpen"
-            @close="newActionOpen = false"
-            @record-payment="() => { newActionOpen = false; handleRecordPayment(); }"
-        />
-
         <ModalRecordPayment
             :show="recordPaymentOpen"
             :renters="renters"
@@ -406,5 +430,5 @@ function handleAttentionAction(item: any) {
             :initial-rent-charge-id="paymentInitialRentChargeId"
             @close="recordPaymentOpen = false"
         />
-    </div>
+    </AppLayout>
 </template>

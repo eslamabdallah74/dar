@@ -71,6 +71,51 @@ class Unit extends Model
         return $this->hasMany(Expense::class);
     }
 
+    public function isApartment(): bool
+    {
+        return $this->unit_type === 'apartment';
+    }
+
+    public function isRoom(): bool
+    {
+        return $this->unit_type === 'room';
+    }
+
+    public function isBed(): bool
+    {
+        return $this->unit_type === 'bed';
+    }
+
+    public function isShop(): bool
+    {
+        return $this->unit_type === 'shop';
+    }
+
+    public function getTypeLabelAttribute(): string
+    {
+        return match ($this->unit_type) {
+            'apartment' => 'شقة',
+            'room' => 'أوضة',
+            'bed' => 'سرير',
+            'shop' => 'محل',
+            default => 'وحدة',
+        };
+    }
+
+    public function allowsChildren(): bool
+    {
+        return in_array($this->unit_type, ['apartment', 'room'], true);
+    }
+
+    public function allowedChildType(): ?string
+    {
+        return match ($this->unit_type) {
+            'apartment' => 'room',
+            'room' => 'bed',
+            default => null,
+        };
+    }
+
     /**
      * Get all ancestor IDs of this unit up to the root parent.
      *

@@ -22,8 +22,6 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
 
-            $table->index('workspace_id');
-            $table->index('property_id');
             $table->index(['workspace_id', 'expense_date']);
         });
     }

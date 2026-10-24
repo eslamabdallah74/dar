@@ -140,7 +140,7 @@ const mobileMenuOpen = ref(false);
                             </div>
                             <div class="flex flex-col">
                                 <span class="text-2xl font-black text-[#0F2747] tracking-tight">دار</span>
-                                <span class="text-[11px] font-semibold text-[#5B6770] -mt-1">نظام إدارة الإيجار</span>
+                                <span class="text-[11px] font-semibold text-[#5B6770] -mt-1">لإدارة الإيجار</span>
                             </div>
                         </Link>
 
@@ -225,12 +225,6 @@ const mobileMenuOpen = ref(false);
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
                     <!-- Right Column: Hero Content & CTAs -->
                     <div class="lg:col-span-7 flex flex-col items-start text-right">
-                        <!-- Hero Pill Badge -->
-                        <div class="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-[#E3F1F4] border border-[#0E6E7E]/20 text-[#0E6E7E] text-xs sm:text-sm font-bold mb-6">
-                            <span class="w-2 h-2 rounded-full bg-[#0E6E7E] animate-pulse"></span>
-                            <span>منصة SaaS عربية لإدارة العقارات والإيجارات</span>
-                        </div>
-
                         <!-- Hero Main Title -->
                         <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-[#0F2747] tracking-tight leading-[1.2] mb-6">
                             إدارة عقاراتك وإيجاراتك <br class="hidden sm:inline" />
@@ -830,7 +824,7 @@ const mobileMenuOpen = ref(false);
                                 </li>
                                 <li class="flex items-center gap-3">
                                     <svg class="w-4 h-4 text-[#0E6E7E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                                    <span>مستخدمون متعددون وصلاحيات مخصصة</span>
+                                    <span>إدارة شاملة لجميع عقاراتك وأملاكك</span>
                                 </li>
                                 <li class="flex items-center gap-3">
                                     <svg class="w-4 h-4 text-[#0E6E7E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
@@ -1025,7 +1019,7 @@ const mobileMenuOpen = ref(false);
 
                 <div class="pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
                     <span>جميع الحقوق محفوظة © 2026 منصة دار.</span>
-                    <span class="text-[#5B6770]">نظام لأدارة الايجار</span>
+                    <span class="text-[#5B6770]">نظام لإدارة الإيجار</span>
                 </div>
             </div>
         </footer>

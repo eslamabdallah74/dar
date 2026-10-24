@@ -14,12 +14,17 @@ const props = defineProps<{
     history?: IncomeHistoryItem[];
     hasHistory?: boolean;
     totalCollected?: number;
+    currencySymbol?: string;
+    currencyLabel?: string;
 }>();
 
 const hoveredIndex = ref<number | null>(null);
 
 const activeMonths = computed(() => props.months || ['مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر']);
 const activeAmounts = computed(() => props.amounts || [0, 0, 0, 0, 0, 0]);
+
+const currencySymbol = computed(() => props.currencySymbol || 'ر.س');
+const currencyLabel = computed(() => props.currencyLabel || 'بالعملة المحلية');
 
 const totalIncome = computed(() => {
     if (props.totalCollected !== undefined) {
@@ -43,7 +48,6 @@ const paddingY = 25;
 
 const maxAmount = computed(() => {
     const maxVal = Math.max(...activeAmounts.value, 1000);
-    // Round up to nice number
     const magnitude = Math.pow(10, Math.floor(Math.log10(maxVal)));
     return Math.ceil(maxVal / magnitude) * magnitude;
 });
@@ -104,7 +108,7 @@ const growthPercentage = computed(() => {
 </script>
 
 <template>
-    <div class="rounded-2xl border border-[#D6E0E7] bg-white p-6 shadow-2xs flex flex-col justify-between">
+    <div class="rounded-2xl border border-[#D6E0E7] bg-white p-6 shadow-2xs flex flex-col justify-between h-full">
         <!-- الرأس ومعلومات الإيراد -->
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
@@ -115,16 +119,16 @@ const growthPercentage = computed(() => {
                     </span>
                 </div>
                 <p class="text-xs text-[#5B6770] font-medium mt-1">
-                    صافي التحصيلات النقدية المستلمة فعلياً بالجنيه المصري
+                    صافي التحصيلات النقدية المستلمة فعلياً {{ currencyLabel }}
                 </p>
             </div>
 
             <!-- إجمالي التحصيل والشارة -->
             <div class="flex items-center gap-3 self-start sm:self-auto">
-                <div class="text-left">
+                <div class="text-start sm:text-left">
                     <span class="text-xs text-[#5B6770] font-medium block">إجمالي المحصّل</span>
-                    <span class="text-xl font-black font-mono text-[#0F2747]" dir="ltr">
-                        {{ Number(totalIncome).toLocaleString() }} ج.م
+                    <span class="text-xl font-black text-[#0F2747]">
+                        {{ Number(totalIncome).toLocaleString() }} {{ currencySymbol }}
                     </span>
                 </div>
 
@@ -134,7 +138,7 @@ const growthPercentage = computed(() => {
                     :class="growthPercentage >= 0 ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'"
                 >
                     <ArrowUpRight v-if="growthPercentage >= 0" class="h-3.5 w-3.5 stroke-[2.5]" />
-                    <span dir="ltr">{{ growthPercentage > 0 ? `+${growthPercentage}%` : `${growthPercentage}%` }}</span>
+                    <span>{{ growthPercentage > 0 ? `+${growthPercentage}%` : `${growthPercentage}%` }}</span>
                 </div>
             </div>
         </div>
@@ -164,8 +168,8 @@ const growthPercentage = computed(() => {
             >
                 <defs>
                     <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#0E6E7E" stop-opacity="0.30" />
-                        <stop offset="60%" stop-color="#0E6E7E" stop-opacity="0.08" />
+                        <stop offset="0%" stop-color="#0E6E7E" stop-opacity="0.25" />
+                        <stop offset="60%" stop-color="#0E6E7E" stop-opacity="0.06" />
                         <stop offset="100%" stop-color="#0E6E7E" stop-opacity="0.0" />
                     </linearGradient>
                 </defs>
@@ -191,7 +195,7 @@ const growthPercentage = computed(() => {
                     :d="smoothPathD"
                     fill="none"
                     stroke="#0E6E7E"
-                    stroke-width="2.75"
+                    stroke-width="3"
                     stroke-linecap="round"
                     stroke-linejoin="round"
                 />
@@ -214,10 +218,10 @@ const growthPercentage = computed(() => {
                     <circle
                         :cx="point.x"
                         :cy="point.y"
-                        :r="hoveredIndex === idx ? 7 : 4.5"
+                        :r="hoveredIndex === idx ? 7 : (idx === chartPoints.length - 1 ? 5.5 : 4)"
                         fill="#FFFFFF"
                         stroke="#0E6E7E"
-                        :stroke-width="hoveredIndex === idx ? 3 : 2.5"
+                        :stroke-width="hoveredIndex === idx ? 3.5 : 2.5"
                         class="transition-all duration-150 cursor-pointer"
                         @mouseenter="hoveredIndex = idx"
                         @mouseleave="hoveredIndex = null"
@@ -225,9 +229,9 @@ const growthPercentage = computed(() => {
 
                     <!-- منطقة التقاط لمس أكبر للتفاعل السلس -->
                     <rect
-                        :x="point.x - 20"
+                        :x="point.x - 25"
                         y="0"
-                        width="40"
+                        width="50"
                         :height="svgHeight"
                         fill="transparent"
                         class="cursor-pointer"
@@ -243,19 +247,19 @@ const growthPercentage = computed(() => {
                 class="absolute -top-3 pointer-events-none transform -translate-x-1/2 transition-all duration-150"
                 :style="{ left: `${(chartPoints[hoveredIndex].x / svgWidth) * 100}%` }"
             >
-                <div class="bg-[#0F2747] text-white text-xs py-1.5 px-3 rounded-lg shadow-lg whitespace-nowrap flex flex-col items-center">
+                <div class="bg-[#0F2747] text-white text-xs py-1.5 px-3 rounded-xl shadow-lg whitespace-nowrap flex flex-col items-center">
                     <span class="text-[10px] text-white/70">{{ chartPoints[hoveredIndex].month }}</span>
-                    <span class="font-bold font-mono">{{ Number(chartPoints[hoveredIndex].amount).toLocaleString() }} ج.م</span>
+                    <span class="font-bold font-mono">{{ Number(chartPoints[hoveredIndex].amount).toLocaleString() }} {{ currencySymbol }}</span>
                 </div>
             </div>
 
             <!-- مسميات الأشهر بالأسفل -->
-            <div class="flex items-center justify-between px-2 pt-2 border-t border-[#E8EFF4]">
+            <div class="flex items-center justify-between px-2 pt-3 border-t border-[#E8EFF4]">
                 <span
                     v-for="(month, idx) in activeMonths"
                     :key="idx"
                     class="text-xs font-semibold text-[#5B6770] transition-colors"
-                    :class="{ 'text-[#0E6E7E] font-bold': hoveredIndex === idx }"
+                    :class="{ 'text-[#0E6E7E] font-bold': hoveredIndex === idx || idx === activeMonths.length - 1 }"
                 >
                     {{ month }}
                 </span>
@@ -263,4 +267,3 @@ const growthPercentage = computed(() => {
         </div>
     </div>
 </template>
-

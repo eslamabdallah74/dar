@@ -15,6 +15,8 @@ return new class extends Migration
             $table->string('phone', 20);
             $table->string('email')->nullable();
             $table->string('national_id', 50)->nullable();
+            $table->string('id_card_front', 500)->nullable();
+            $table->string('id_card_back', 500)->nullable();
             // WhatsApp consent fields (Decision 7)
             $table->timestamp('whatsapp_opt_in_at')->nullable();
             $table->string('whatsapp_opt_in_source', 100)->nullable();
@@ -23,7 +25,6 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
 
-            $table->index('workspace_id');
             $table->index(['workspace_id', 'phone']);
         });
     }

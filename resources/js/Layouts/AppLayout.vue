@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { Head, usePage } from '@inertiajs/vue3';
+import { Head, usePage, router } from '@inertiajs/vue3';
 import AppSidebar from '@/Components/Layout/AppSidebar.vue';
 import AppNavbar from '@/Components/Layout/AppNavbar.vue';
 import AppFooter from '@/Components/Layout/AppFooter.vue';
@@ -15,11 +15,25 @@ const props = withDefaults(
         headerTitle?: string;
         headerSubtitle?: string;
         breadcrumb?: string;
+        adminMode?: boolean;
+        customNavLinks?: any[];
+        allWorkspacesLabel?: string;
+        planName?: string;
+        trialDaysRemaining?: number;
+        unitsUsed?: number;
+        unitsLimit?: number;
     }>(),
     {
         title: 'دار — إدارة الأملاك والتأجير',
+        adminMode: false,
     }
 );
+
+const emit = defineEmits<{
+    (e: 'selectTab', tab: string): void;
+    (e: 'search', query: string): void;
+    (e: 'newAction'): void;
+}>();
 
 const page = usePage();
 const mobileOpen = ref(false);
@@ -36,6 +50,14 @@ const openRecordPaymentModal = () => {
     newActionOpen.value = false;
     recordPaymentOpen.value = true;
 };
+
+function handleNewAction() {
+    if (props.adminMode) {
+        emit('newAction');
+    } else {
+        newActionOpen.value = true;
+    }
+}
 </script>
 
 <template>
@@ -45,16 +67,20 @@ const openRecordPaymentModal = () => {
         <!-- 1. الشريط الجانبي الرئيسي (App Sidebar) -->
         <AppSidebar
             :workspace-name="workspace?.name || 'عقارات النور'"
-            :user-name="user?.name || 'أحمد حسن'"
-            :user-role="user?.role || 'مالك الحساب'"
-            :plan-name="'Growth • تجريبية'"
-            :trial-days-remaining="10"
-            :units-used="18"
-            :units-limit="24"
+            :all-workspaces-label="allWorkspacesLabel"
+            :user-name="user?.name || (adminMode ? 'مدير النظام' : 'أحمد حسن')"
+            :user-role="adminMode ? 'مدير النظام المركزي' : (user?.role || 'مالك الحساب')"
+            :plan-name="planName || 'Growth • تجريبية'"
+            :trial-days-remaining="trialDaysRemaining ?? 10"
+            :units-used="unitsUsed ?? 18"
+            :units-limit="unitsLimit ?? 24"
             :mobile-open="mobileOpen"
             :active-tab="activeTab"
+            :admin-mode="adminMode"
+            :custom-nav-links="customNavLinks"
             @close-mobile="mobileOpen = false"
-            @new-action="newActionOpen = true"
+            @new-action="handleNewAction"
+            @select-tab="(tab) => emit('selectTab', tab)"
         />
 
         <!-- خلفية معتمة للموبايل عند فتح القائمة -->
@@ -68,12 +94,14 @@ const openRecordPaymentModal = () => {
         <div class="flex-1 flex flex-col min-w-0 bg-[#F3F7FA]">
             <!-- شريط الأدوات العلوي الموحد (Global Navbar) -->
             <AppNavbar
+                :admin-mode="adminMode"
                 @toggle-mobile="mobileOpen = !mobileOpen"
-                @new-action="newActionOpen = true"
+                @new-action="handleNewAction"
+                @search="(query) => emit('search', query)"
             />
 
-            <!-- تنبيهات الفلاش (Flash Notifications) -->
-            <div v-if="(flash.success || flash.error) && showFlash" class="px-4 sm:px-8 pt-4">
+            <!-- تنبيهات الفلاش (Flash Notifications) متناسقة مع العرض الموحد -->
+            <div v-if="(flash.success || flash.error) && showFlash" class="max-w-[1440px] w-full mx-auto px-4 sm:px-8 pt-4">
                 <div
                     v-if="flash.success"
                     class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-semibold flex items-center justify-between shadow-xs animate-in fade-in"
@@ -82,7 +110,7 @@ const openRecordPaymentModal = () => {
                         <CheckCircle2 class="w-5 h-5 text-emerald-600 shrink-0" />
                         <span>{{ flash.success }}</span>
                     </div>
-                    <button @click="showFlash = false" type="button" class="text-emerald-700 hover:text-emerald-950 p-1">
+                    <button @click="showFlash = false" type="button" class="text-emerald-700 hover:text-emerald-950 p-1 cursor-pointer">
                         <X class="w-4 h-4" />
                     </button>
                 </div>
@@ -95,19 +123,19 @@ const openRecordPaymentModal = () => {
                         <AlertCircle class="w-5 h-5 text-rose-600 shrink-0" />
                         <span>{{ flash.error }}</span>
                     </div>
-                    <button @click="showFlash = false" type="button" class="text-rose-700 hover:text-rose-950 p-1">
+                    <button @click="showFlash = false" type="button" class="text-rose-700 hover:text-rose-950 p-1 cursor-pointer">
                         <X class="w-4 h-4" />
                     </button>
                 </div>
             </div>
 
             <!-- محتوى الصفحة المعروضة (Page Slot) -->
-            <main class="flex-1 px-4 sm:px-8 py-6 sm:py-8 max-w-[1400px] w-full mx-auto space-y-8">
+            <main class="flex-1 px-4 sm:px-8 py-6 sm:py-8 max-w-[1440px] w-full mx-auto space-y-8">
                 <!-- رأس الصفحة الاختياري إن وُجد (Page Header) -->
                 <div v-if="headerTitle" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
                     <div>
                         <div v-if="breadcrumb" class="text-xs font-semibold text-[#5B6770] mb-1.5 flex items-center gap-1.5">
-                            <span>الرئيسية</span>
+                            <span>{{ adminMode ? 'لوحة الإدارة' : 'الرئيسية' }}</span>
                             <span>/</span>
                             <span class="text-[#0E6E7E]">{{ breadcrumb }}</span>
                         </div>
@@ -126,24 +154,26 @@ const openRecordPaymentModal = () => {
                 </div>
 
                 <slot />
-            </main>
 
-            <!-- التذييل الموحد (App Footer) -->
-            <AppFooter />
+                <!-- التذييل الموحد (App Footer) متناسق مع العرض الكامل للصفحة -->
+                <AppFooter />
+            </main>
         </div>
 
         <!-- النوافذ المنبثقة العامة (Global Modals) -->
         <ModalNewAction
+            v-if="!adminMode"
             :show="newActionOpen"
             @close="newActionOpen = false"
             @record-payment="openRecordPaymentModal"
+            @add-property="() => { newActionOpen = false; router.visit(route('properties.create')); }"
         />
 
         <ModalRecordPayment
+            v-if="!adminMode"
             :show="recordPaymentOpen"
             :renters="quickRenters"
             @close="recordPaymentOpen = false"
         />
     </div>
 </template>
-

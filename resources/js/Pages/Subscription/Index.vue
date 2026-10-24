@@ -199,7 +199,7 @@ const handleUpgradeClick = (plan: PlanItem) => {
                             <th class="py-3.5 px-6">الوصف</th>
                             <th class="py-3.5 px-6">المبلغ</th>
                             <th class="py-3.5 px-6">الحالة</th>
-                            <th class="py-3.5 px-6 text-left">تحميل</th>
+                            <th class="py-3.5 px-6 text-start sm:text-left">تحميل</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-[#D6E0E7]">
@@ -211,7 +211,7 @@ const handleUpgradeClick = (plan: PlanItem) => {
                             <td class="py-4 px-6">
                                 <StatusBadge :status="inv.status" :label="inv.status_label" size="sm" />
                             </td>
-                            <td class="py-4 px-6 text-left">
+                            <td class="py-4 px-6 text-start sm:text-left">
                                 <button
                                     type="button"
                                     class="p-1.5 rounded-lg border border-[#D6E0E7] hover:bg-slate-100 text-[#5B6770] hover:text-[#0F2747] transition cursor-pointer"

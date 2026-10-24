@@ -45,13 +45,12 @@ const submit = () => {
                     <TextInput
                         id="email"
                         type="email"
-                        class="block w-full pr-10 text-left font-mono"
+                        class="block w-full pr-10 text-right"
                         v-model="form.email"
                         required
                         autofocus
                         autocomplete="username"
                         placeholder="ahmed@example.com"
-                        dir="ltr"
                     />
                     <Mail class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
                 </div>

@@ -10,7 +10,7 @@
         <!-- Primary Meta Tags -->
         <meta name="title" content="دار — منصة إدارة وتأجير العقارات والأملاك">
         <meta name="description" content="منصة دار السحابية المتكاملة لإدارة وتأجير العقارات، عقود الإيجار السكنية والتجارية، تحصيل الإيجارات وسندات القبض، تذكيرات واتساب التلقائية، ومتابعة الصيانة ونسب الإشغال.">
-        <meta name="keywords" content="إدارة عقارات, نظام إدارة الإيجار, برنامج إدارة الأملاك, عقود الإيجار, سند قبض إلكتروني, تذكير إيجار واتساب, سكن مشترك, إدارة شقق, دار, Dar property management">
+        <meta name="keywords" content="إدارة عقارات, نظام لإدارة الإيجار, برنامج لإدارة الأملاك, عقود الإيجار, سند قبض إلكتروني, تذكير إيجار واتساب, سكن مشترك, إدارة شقق, دار, Dar property management">
         <meta name="author" content="منصة دار">
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
         <link rel="canonical" href="{{ url()->current() }}">
@@ -47,10 +47,10 @@
         <meta name="twitter:image" content="{{ asset('images/logo.png') }}">
         <meta name="twitter:image:alt" content="شعار منصة دار">
 
-        <!-- Fonts: Cairo & IBM Plex Sans Arabic -->
+        <!-- Fonts: IBM Plex Sans Arabic (Primary), Alexandria & JetBrains Mono -->
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@300;400;500;600;700;800&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 
         <!-- Scripts -->
         @routes

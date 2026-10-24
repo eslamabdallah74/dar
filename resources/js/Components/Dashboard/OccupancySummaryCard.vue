@@ -48,8 +48,8 @@ const maintenancePercent = computed(() => {
                         توزيع الوحدات القابلة للتأجير في محفظتك
                     </p>
                 </div>
-                <div class="text-left">
-                    <span class="text-2xl font-black font-mono text-[#0F2747]" dir="ltr">
+                <div class="text-start sm:text-left">
+                    <span class="text-2xl font-black text-[#0F2747]">
                         {{ occupancyRate }}%
                     </span>
                     <span class="text-[11px] text-[#5B6770] block font-medium">معدل الإشغال</span>
@@ -80,7 +80,7 @@ const maintenancePercent = computed(() => {
                     ></div>
                 </div>
 
-                <div class="text-[11px] text-[#5B6770] font-medium text-left">
+                <div class="text-[11px] text-[#5B6770] font-medium text-start">
                     إجمالي {{ totalUnits }} وحدة مسجلة
                 </div>
             </div>

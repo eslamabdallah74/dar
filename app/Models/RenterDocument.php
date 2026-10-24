@@ -15,7 +15,10 @@ class RenterDocument extends Model
         'workspace_id',
         'renter_id',
         'document_type',
+        'title',
+        'original_filename',
         'storage_path',
+        'file_size',
         'uploaded_by',
     ];
 

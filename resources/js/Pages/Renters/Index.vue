@@ -10,9 +10,12 @@ import {
     CreditCard,
     DollarSign,
     FileText,
+    Image as ImageIcon,
     MessageCircle,
     Plus,
     Search,
+    Trash2,
+    Upload,
     User,
     UserPlus,
     Users,
@@ -54,6 +57,11 @@ const showAddModal = ref(false);
 const recordPaymentOpen = ref(false);
 const activeRenterForPayment = ref<RenterItem | null>(null);
 
+const frontInputRef = ref<HTMLInputElement | null>(null);
+const backInputRef = ref<HTMLInputElement | null>(null);
+const frontPreview = ref<string | null>(null);
+const backPreview = ref<string | null>(null);
+
 const form = useForm({
     name: '',
     phone: '',
@@ -61,7 +69,56 @@ const form = useForm({
     national_id: '',
     whatsapp_consent: true,
     notes: '',
+    id_card_front: null as File | null,
+    id_card_back: null as File | null,
 });
+
+const onFrontFileChange = (e: Event) => {
+    const target = e.target as HTMLInputElement;
+    const file = target.files?.[0];
+    if (file) {
+        form.id_card_front = file;
+        frontPreview.value = URL.createObjectURL(file);
+    }
+};
+
+const clearFrontFile = () => {
+    form.id_card_front = null;
+    if (frontPreview.value) {
+        URL.revokeObjectURL(frontPreview.value);
+        frontPreview.value = null;
+    }
+    if (frontInputRef.value) {
+        frontInputRef.value.value = '';
+    }
+};
+
+const onBackFileChange = (e: Event) => {
+    const target = e.target as HTMLInputElement;
+    const file = target.files?.[0];
+    if (file) {
+        form.id_card_back = file;
+        backPreview.value = URL.createObjectURL(file);
+    }
+};
+
+const clearBackFile = () => {
+    form.id_card_back = null;
+    if (backPreview.value) {
+        URL.revokeObjectURL(backPreview.value);
+        backPreview.value = null;
+    }
+    if (backInputRef.value) {
+        backInputRef.value.value = '';
+    }
+};
+
+const closeModal = () => {
+    showAddModal.value = false;
+    form.reset();
+    clearFrontFile();
+    clearBackFile();
+};
 
 const filteredRenters = computed(() => {
     return props.renters.filter(r => {
@@ -84,9 +141,9 @@ const openPaymentForRenter = (renter: RenterItem) => {
 
 const submitRenter = () => {
     form.post(route('renters.store'), {
+        forceFormData: true,
         onSuccess: () => {
-            form.reset();
-            showAddModal.value = false;
+            closeModal();
         },
     });
 };
@@ -194,7 +251,7 @@ const submitRenter = () => {
                             <th class="py-3.5 px-6">القيمة الشهرية</th>
                             <th class="py-3.5 px-6">حالة السداد</th>
                             <th class="py-3.5 px-6">WhatsApp</th>
-                            <th class="py-3.5 px-6 text-left">الإجراءات</th>
+                            <th class="py-3.5 px-6 text-start sm:text-left">الإجراءات</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-[#D6E0E7]">
@@ -259,7 +316,7 @@ const submitRenter = () => {
                             </td>
 
                             <!-- الإجراءات -->
-                            <td class="py-4 px-6 text-left">
+                            <td class="py-4 px-6 text-start sm:text-left">
                                 <div class="flex items-center justify-end gap-2">
                                     <button
                                         @click="openPaymentForRenter(renter)"
@@ -297,11 +354,14 @@ const submitRenter = () => {
 
         <!-- نافذة إضافة مستأجر جديد (Add Renter Modal) -->
         <div v-if="showAddModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-            <div @click="showAddModal = false" class="fixed inset-0 bg-[#0F2747]/60 backdrop-blur-xs"></div>
-            <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-6 z-10 animate-in fade-in zoom-in-95" dir="rtl">
+            <div @click="closeModal" class="fixed inset-0 bg-[#0F2747]/60 backdrop-blur-xs"></div>
+            <div class="relative w-full max-w-lg sm:max-w-xl bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-6 z-10 animate-in fade-in zoom-in-95 my-8" dir="rtl">
                 <div class="flex items-center justify-between pb-4 border-b border-[#D6E0E7] mb-5">
-                    <h3 class="text-base font-bold text-[#0F2747]">إضافة مستأجر جديد</h3>
-                    <button @click="showAddModal = false" type="button" class="p-1.5 text-[#5B6770] hover:text-[#0F2747]">
+                    <div>
+                        <h3 class="text-base font-bold text-[#0F2747]">إضافة مستأجر جديد</h3>
+                        <p class="text-xs text-[#5B6770] mt-0.5">تسجيل بيانات المستأجر وإرفاق صورة بطاقة الهوية</p>
+                    </div>
+                    <button @click="closeModal" type="button" class="p-1.5 text-[#5B6770] hover:text-[#0F2747]">
                         <X class="w-5 h-5" />
                     </button>
                 </div>
@@ -316,9 +376,12 @@ const submitRenter = () => {
                             required
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition"
                         />
+                        <p v-if="form.errors.name" class="text-xs text-rose-600 font-semibold mt-1">
+                            {{ form.errors.name }}
+                        </p>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-[#0F2747] mb-1.5">رقم الهاتف *</label>
                             <input
@@ -326,8 +389,11 @@ const submitRenter = () => {
                                 type="text"
                                 placeholder="01XXXXXXXXX"
                                 required
-                                class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] font-mono focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-left"
+                                class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
                             />
+                            <p v-if="form.errors.phone" class="text-xs text-rose-600 font-semibold mt-1">
+                                {{ form.errors.phone }}
+                            </p>
                         </div>
 
                         <div>
@@ -336,8 +402,11 @@ const submitRenter = () => {
                                 v-model="form.national_id"
                                 type="text"
                                 placeholder="الرقم القومي (14 رقم)"
-                                class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] font-mono focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-left"
+                                class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
                             />
+                            <p v-if="form.errors.national_id" class="text-xs text-rose-600 font-semibold mt-1">
+                                {{ form.errors.national_id }}
+                            </p>
                         </div>
                     </div>
 
@@ -347,8 +416,125 @@ const submitRenter = () => {
                             v-model="form.email"
                             type="email"
                             placeholder="name@example.com"
-                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] font-mono focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-left"
+                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
                         />
+                        <p v-if="form.errors.email" class="text-xs text-rose-600 font-semibold mt-1">
+                            {{ form.errors.email }}
+                        </p>
+                    </div>
+
+                    <!-- صور بطاقة الهوية (اختياري) -->
+                    <div class="space-y-2 pt-1 border-t border-[#D6E0E7]/60">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-xs font-bold text-[#0F2747]">
+                                صورة بطاقة الهوية / الإقامة <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span>
+                            </label>
+                            <span class="text-[11px] text-[#5B6770]">JPG, PNG, WEBP حتى 5MB</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <!-- الوجه الأمامي -->
+                            <div class="space-y-1.5">
+                                <span class="text-[11px] font-semibold text-[#5B6770]">الوجه الأمامي</span>
+                                <input
+                                    ref="frontInputRef"
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/jpg,image/webp"
+                                    class="hidden"
+                                    @change="onFrontFileChange"
+                                />
+
+                                <div
+                                    v-if="frontPreview"
+                                    class="relative rounded-2xl border border-[#0E6E7E]/30 bg-[#F8FAFC] overflow-hidden group h-32 flex items-center justify-center"
+                                >
+                                    <img :src="frontPreview" alt="الوجه الأمامي" class="w-full h-full object-cover" />
+                                    <div class="absolute inset-0 bg-[#0F2747]/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+                                        <button
+                                            type="button"
+                                            @click="frontInputRef?.click()"
+                                            class="px-2.5 py-1.5 rounded-lg bg-white/90 text-[#0F2747] text-xs font-bold hover:bg-white transition"
+                                        >
+                                            تغيير
+                                        </button>
+                                        <button
+                                            type="button"
+                                            @click="clearFrontFile"
+                                            class="p-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition"
+                                            title="حذف الصورة"
+                                        >
+                                            <Trash2 class="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div
+                                    v-else
+                                    @click="frontInputRef?.click()"
+                                    class="h-32 rounded-2xl border-2 border-dashed border-[#D6E0E7] hover:border-[#0E6E7E] bg-[#F8FAFC] hover:bg-[#E3F1F4]/20 transition cursor-pointer flex flex-col items-center justify-center p-3 text-center gap-1.5 group"
+                                >
+                                    <div class="w-9 h-9 rounded-xl bg-white group-hover:bg-[#E3F1F4] border border-[#D6E0E7] group-hover:border-[#0E6E7E]/40 flex items-center justify-center transition">
+                                        <Upload class="w-4 h-4 text-[#5B6770] group-hover:text-[#0E6E7E]" />
+                                    </div>
+                                    <span class="text-xs font-bold text-[#0F2747]">رفع الوجه الأمامي</span>
+                                    <span class="text-[10px] text-[#8A9AA7]">انقر لاختيار ملف</span>
+                                </div>
+                                <p v-if="form.errors.id_card_front" class="text-xs text-rose-600 font-semibold mt-1">
+                                    {{ form.errors.id_card_front }}
+                                </p>
+                            </div>
+
+                            <!-- الوجه الخلفي -->
+                            <div class="space-y-1.5">
+                                <span class="text-[11px] font-semibold text-[#5B6770]">الوجه الخلفي</span>
+                                <input
+                                    ref="backInputRef"
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/jpg,image/webp"
+                                    class="hidden"
+                                    @change="onBackFileChange"
+                                />
+
+                                <div
+                                    v-if="backPreview"
+                                    class="relative rounded-2xl border border-[#0E6E7E]/30 bg-[#F8FAFC] overflow-hidden group h-32 flex items-center justify-center"
+                                >
+                                    <img :src="backPreview" alt="الوجه الخلفي" class="w-full h-full object-cover" />
+                                    <div class="absolute inset-0 bg-[#0F2747]/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+                                        <button
+                                            type="button"
+                                            @click="backInputRef?.click()"
+                                            class="px-2.5 py-1.5 rounded-lg bg-white/90 text-[#0F2747] text-xs font-bold hover:bg-white transition"
+                                        >
+                                            تغيير
+                                        </button>
+                                        <button
+                                            type="button"
+                                            @click="clearBackFile"
+                                            class="p-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition"
+                                            title="حذف الصورة"
+                                        >
+                                            <Trash2 class="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div
+                                    v-else
+                                    @click="backInputRef?.click()"
+                                    class="h-32 rounded-2xl border-2 border-dashed border-[#D6E0E7] hover:border-[#0E6E7E] bg-[#F8FAFC] hover:bg-[#E3F1F4]/20 transition cursor-pointer flex flex-col items-center justify-center p-3 text-center gap-1.5 group"
+                                >
+                                    <div class="w-9 h-9 rounded-xl bg-white group-hover:bg-[#E3F1F4] border border-[#D6E0E7] group-hover:border-[#0E6E7E]/40 flex items-center justify-center transition">
+                                        <Upload class="w-4 h-4 text-[#5B6770] group-hover:text-[#0E6E7E]" />
+                                    </div>
+                                    <span class="text-xs font-bold text-[#0F2747]">رفع الوجه الخلفي</span>
+                                    <span class="text-[10px] text-[#8A9AA7]">انقر لاختيار ملف</span>
+                                </div>
+                                <p v-if="form.errors.id_card_back" class="text-xs text-rose-600 font-semibold mt-1">
+                                    {{ form.errors.id_card_back }}
+                                </p>
+                            </div>
+                        </div>
                     </div>
 
                     <label class="flex items-center gap-3 p-3 rounded-xl bg-[#E3F1F4]/40 border border-[#0E6E7E]/20 cursor-pointer">
@@ -364,16 +550,16 @@ const submitRenter = () => {
 
                     <div class="pt-4 flex items-center justify-end gap-3 border-t border-[#D6E0E7]">
                         <button
-                            @click="showAddModal = false"
+                            @click="closeModal"
                             type="button"
-                            class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold text-[#5B6770]"
+                            class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold text-[#5B6770] hover:bg-slate-50 transition"
                         >
                             إلغاء
                         </button>
                         <button
                             type="submit"
                             :disabled="form.processing"
-                            class="h-10 px-5 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center gap-2"
+                            class="h-10 px-5 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
                         >
                             <Check class="w-4 h-4" />
                             <span>{{ form.processing ? 'جاري الإضافة...' : 'حفظ المستأجر' }}</span>

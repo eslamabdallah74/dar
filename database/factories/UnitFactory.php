@@ -48,6 +48,16 @@ class UnitFactory extends Factory
         ]);
     }
 
+    public function shop(): static
+    {
+        return $this->state(fn () => [
+            'unit_type' => 'shop',
+            'code' => 'SHP-'.fake()->unique()->numerify('###'),
+            'name' => 'محل '.fake()->numerify('###'),
+            'is_rentable' => true,
+        ]);
+    }
+
     public function rentable(): static
     {
         return $this->state(fn () => [

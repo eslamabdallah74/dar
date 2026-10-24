@@ -235,7 +235,7 @@ test('whatsapp, subscription and settings pages render correctly', function () {
             ->component('Settings/Index')
             ->has('workspace')
             ->where('workspace.currency', 'EGP')
-            ->has('members')
+            ->has('preferences')
         );
 });
 

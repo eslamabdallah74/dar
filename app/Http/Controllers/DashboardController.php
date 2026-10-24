@@ -52,6 +52,26 @@ class DashboardController extends Controller
         $occupancyRate = $totalBillableUnits > 0 ? (int) round(($occupiedUnits / $totalBillableUnits) * 100) : 0;
 
         // 2. Financial Metrics: Current Month
+        $currencyCode = $workspace->currency ?? 'EGP';
+        $currencySymbol = match (strtoupper($currencyCode)) {
+            'EGP' => 'ج.م',
+            'SAR' => 'ر.س',
+            'AED' => 'د.إ',
+            'USD' => '$',
+            'EUR' => '€',
+            'KWD' => 'د.ك',
+            default => $currencyCode,
+        };
+
+        $currencyLabel = match (strtoupper($currencyCode)) {
+            'EGP' => 'بالجنيه المصري',
+            'SAR' => 'بالريال السعودي',
+            'AED' => 'بالدرهم الإماراتي',
+            'USD' => 'بالدولار الأمريكي',
+            'KWD' => 'بالدينار الكويتي',
+            default => 'بالعملة المحلية',
+        };
+
         $startOfMonth = now()->startOfMonth();
         $endOfMonth = now()->endOfMonth();
 
@@ -147,7 +167,7 @@ class DashboardController extends Controller
             ->orderBy('due_date')
             ->limit(6)
             ->get()
-            ->map(function ($c) {
+            ->map(function ($c) use ($currencySymbol) {
                 $renter = $c->lease?->renter;
                 $unit = $c->lease?->unit;
                 $outstanding = $c->outstanding_balance;
@@ -172,9 +192,10 @@ class DashboardController extends Controller
                     'unit' => ($unit?->code ? $unit->code.' • ' : '').($unit?->property?->name ?? $unit?->name ?? 'وحدة'),
                     'due_date' => $c->due_date?->format('d/m/Y') ?? '',
                     'due_date_iso' => $c->due_date?->toDateString(),
-                    'amount' => number_format((float) $c->amount).' ج.م',
+                    'amount' => number_format((float) $c->amount).' '.$currencySymbol,
                     'amount_raw' => (float) $c->amount,
                     'outstanding_balance' => (float) $outstanding,
+                    'currency_symbol' => $currencySymbol,
                     'status' => $status,
                     'status_label' => $statusLabel,
                     'phone' => $renter?->phone ?? '',
@@ -190,7 +211,7 @@ class DashboardController extends Controller
                 'id' => $oc->id,
                 'type' => 'overdue',
                 'title' => 'إيجار متأخر ('.$days.' يوم)',
-                'desc' => ($oc->lease?->renter?->name ?? 'مستأجر').' • '.($oc->lease?->unit?->name ?? 'وحدة').' ('.number_format((float) $oc->outstanding_balance).' ج.م)',
+                'desc' => ($oc->lease?->renter?->name ?? 'مستأجر').' • '.($oc->lease?->unit?->name ?? 'وحدة').' ('.number_format((float) $oc->outstanding_balance).' '.$currencySymbol.')',
                 'phone' => $oc->lease?->renter?->phone ?? '',
                 'amount' => (float) $oc->outstanding_balance,
                 'severity' => 'danger',
@@ -225,6 +246,37 @@ class DashboardController extends Controller
             ];
         }
 
+        // Security deposits metrics
+        $heldLeases = $workspace->leases()
+            ->where('security_deposit_status', 'held')
+            ->with(['securityDepositPayments', 'securityDepositDeductions', 'securityDepositRefunds'])
+            ->get();
+        $totalDepositsHeld = (float) $heldLeases->sum(fn ($l) => $l->refundable_deposit_balance);
+
+        $underReviewLeases = $workspace->leases()
+            ->where('security_deposit_status', 'under_review')
+            ->with(['securityDepositPayments', 'securityDepositDeductions', 'securityDepositRefunds', 'renter', 'unit'])
+            ->get();
+        $depositsAwaitingSettlementCount = $underReviewLeases->count();
+        $depositsAwaitingSettlementAmount = (float) $underReviewLeases->sum(fn ($l) => $l->refundable_deposit_balance);
+
+        $confirmedDeductionsTotal = (float) $workspace->securityDepositDeductions()
+            ->where('status', 'confirmed')
+            ->sum('amount');
+
+        foreach ($underReviewLeases->take(2) as $url) {
+            $attentionItems[] = [
+                'id' => $url->id,
+                'type' => 'security_deposit_review',
+                'title' => 'تسوية تأمين معلقة: '.($url->renter?->name ?? 'مستأجر'),
+                'desc' => ($url->unit?->name ?? 'وحدة').' ('.number_format((float) $url->refundable_deposit_balance).' '.$currencySymbol.')',
+                'phone' => $url->renter?->phone ?? '',
+                'amount' => (float) $url->refundable_deposit_balance,
+                'severity' => 'warning',
+                'link' => route('leases.show', $url->id),
+            ];
+        }
+
         // 6. Recent Properties (latest 4 properties with unit metrics)
         $recentProperties = $workspace->properties()
             ->withCount(['units' => fn ($q) => $q->billableLeaves()])
@@ -243,7 +295,6 @@ class DashboardController extends Controller
                     'property_type' => $p->property_type,
                     'property_type_label' => match ($p->property_type) {
                         'building' => 'عمارة سكنية',
-                        'compound' => 'مجمع سكني',
                         'villa' => 'فيلا',
                         default => 'عقار تجاري / سكني',
                     },
@@ -255,57 +306,40 @@ class DashboardController extends Controller
                 ];
             })->values()->all();
 
-        // 7. Recent Activity Feed (Actual records from Activity or models)
+        // 7. Recent Activity Feed (Strictly scoped to current workspace operations)
         $recentActivities = collect();
 
-        if (class_exists(Activity::class)) {
-            $dbActivities = Activity::latest()->take(6)->get();
-            foreach ($dbActivities as $act) {
-                $recentActivities->push([
-                    'id' => 'act-'.$act->id,
-                    'type' => 'activity',
-                    'title' => $act->description,
-                    'subtitle' => 'سجل النشاط المالي والإداري',
-                    'time_ago' => $act->created_at?->diffForHumans() ?? 'مؤخراً',
-                    'timestamp' => $act->created_at?->timestamp ?? 0,
-                ]);
-            }
+        foreach ($workspace->payments()->with('renter')->latest('paid_at')->take(4)->get() as $p) {
+            $recentActivities->push([
+                'id' => 'p-'.$p->id,
+                'type' => 'payment',
+                'title' => 'تم استلام دفعة بقيمة '.number_format((float) $p->amount).' '.$currencySymbol,
+                'subtitle' => 'المستأجر: '.($p->renter?->name ?? 'مستأجر').($p->reference ? ' (إيصال: '.$p->reference.')' : ''),
+                'time_ago' => $p->paid_at?->diffForHumans() ?? 'مؤخراً',
+                'timestamp' => $p->paid_at?->timestamp ?? 0,
+            ]);
         }
 
-        // If no activity log records, gather recent model operations
-        if ($recentActivities->isEmpty()) {
-            foreach ($workspace->payments()->with('renter')->latest('paid_at')->take(3)->get() as $p) {
-                $recentActivities->push([
-                    'id' => 'p-'.$p->id,
-                    'type' => 'payment',
-                    'title' => 'تم استلام دفعة بقيمة '.number_format((float) $p->amount).' ج.م',
-                    'subtitle' => 'المستأجر: '.($p->renter?->name ?? 'مستأجر').($p->reference ? ' (إيصال: '.$p->reference.')' : ''),
-                    'time_ago' => $p->paid_at?->diffForHumans() ?? 'مؤخراً',
-                    'timestamp' => $p->paid_at?->timestamp ?? 0,
-                ]);
-            }
+        foreach ($workspace->leases()->with(['renter', 'unit'])->latest()->take(3)->get() as $l) {
+            $recentActivities->push([
+                'id' => 'l-'.$l->id,
+                'type' => 'lease',
+                'title' => 'تم إنشاء عقد إيجار جديد بقيمة '.number_format((float) $l->rent_amount).' '.$currencySymbol.'/شهر',
+                'subtitle' => ($l->renter?->name ?? 'مستأجر').' • '.($l->unit?->name ?? 'وحدة'),
+                'time_ago' => $l->created_at?->diffForHumans() ?? 'مؤخراً',
+                'timestamp' => $l->created_at?->timestamp ?? 0,
+            ]);
+        }
 
-            foreach ($workspace->leases()->with(['renter', 'unit'])->latest()->take(3)->get() as $l) {
-                $recentActivities->push([
-                    'id' => 'l-'.$l->id,
-                    'type' => 'lease',
-                    'title' => 'تم إنشاء عقد إيجار جديد بقيمة '.number_format((float) $l->rent_amount).' ج.م/شهر',
-                    'subtitle' => ($l->renter?->name ?? 'مستأجر').' • '.($l->unit?->name ?? 'وحدة'),
-                    'time_ago' => $l->created_at?->diffForHumans() ?? 'مؤخراً',
-                    'timestamp' => $l->created_at?->timestamp ?? 0,
-                ]);
-            }
-
-            foreach ($workspace->maintenanceRequests()->latest()->take(2)->get() as $m) {
-                $recentActivities->push([
-                    'id' => 'm-'.$m->id,
-                    'type' => 'maintenance',
-                    'title' => 'طلب صيانة جديد: '.$m->title,
-                    'subtitle' => 'الحالة: '.($m->status === 'open' ? 'جديد ومفتوح' : 'قيد التنفيذ'),
-                    'time_ago' => $m->created_at?->diffForHumans() ?? 'مؤخراً',
-                    'timestamp' => $m->created_at?->timestamp ?? 0,
-                ]);
-            }
+        foreach ($workspace->maintenanceRequests()->with('unit.property')->latest()->take(2)->get() as $m) {
+            $recentActivities->push([
+                'id' => 'm-'.$m->id,
+                'type' => 'maintenance',
+                'title' => 'طلب صيانة: '.$m->title,
+                'subtitle' => ($m->unit?->property?->name ?? 'عقار').($m->unit ? ' • '.$m->unit->name : '').' ('.($m->status === 'open' ? 'جديد ومفتوح' : 'قيد التنفيذ').')',
+                'time_ago' => $m->created_at?->diffForHumans() ?? 'مؤخراً',
+                'timestamp' => $m->created_at?->timestamp ?? 0,
+            ]);
         }
 
         $sortedActivities = $recentActivities->sortByDesc('timestamp')->values()->take(6)->all();
@@ -359,8 +393,10 @@ class DashboardController extends Controller
             ],
             'workspace' => [
                 'id' => $workspace->id,
-                'name' => $workspace->name ?: 'عقارات النور',
-                'currency' => $workspace->currency ?? 'EGP',
+                'name' => $workspace->name ?: 'عقارات دار',
+                'currency' => $currencyCode,
+                'currency_symbol' => $currencySymbol,
+                'currency_label' => $currencyLabel,
                 'plan_name' => $planName,
                 'trial_days_remaining' => 10,
                 'units_used' => $unitsUsed,
@@ -369,8 +405,8 @@ class DashboardController extends Controller
             ],
             'is_empty_workspace' => $isEmptyWorkspace,
             'header' => [
-                'greeting' => 'مرحباً، '.($user->name ?: 'أحمد').' 👋',
-                'subtitle' => 'إليك نظرة عامة على أداء عقاراتك اليوم • '.now()->translatedFormat('l، d F Y'),
+                'greeting' => ((now()->hour >= 5 && now()->hour < 12) ? 'صباح الخير' : 'مساء الخير').'، '.($user->name ?: 'عزيزي المالك').' 👋',
+                'subtitle' => 'اليوم '.now()->translatedFormat('l، d F Y').' • نظرة عامة على محفظتك العقارية والعمليات التشغيلية',
             ],
             'checklist' => [
                 'title' => $checklistPercent === 100
@@ -393,8 +429,8 @@ class DashboardController extends Controller
                 ],
                 'collections' => [
                     'title' => 'المحصل هذا الشهر',
-                    'value' => number_format($monthlyCollected).' ج.م',
-                    'subtitle' => 'من أصل '.number_format($monthlyDue).' ج.م',
+                    'value' => number_format($monthlyCollected).' '.$currencySymbol,
+                    'subtitle' => 'من أصل '.number_format($monthlyDue).' '.$currencySymbol,
                 ],
                 'expiring' => [
                     'title' => 'عقود تنتهي قريبًا',
@@ -418,18 +454,18 @@ class DashboardController extends Controller
                 ],
                 'maintenance_expenses' => [
                     'title' => 'مصروفات الصيانة',
-                    'value' => number_format($maintenanceExpenses).' جنيه',
+                    'value' => number_format($maintenanceExpenses).' '.$currencySymbol,
                     'subtitle' => 'أكتوبر '.now()->year,
                 ],
                 'operating_expenses' => [
                     'title' => 'مصروفات التشغيل',
-                    'value' => number_format($operatingExpenses).' جنيه',
+                    'value' => number_format($operatingExpenses).' '.$currencySymbol,
                     'subtitle' => 'مرافق ونظافة وخدمات',
                 ],
             ],
             'footer' => [
                 'copyright' => 'دار © '.now()->year,
-                'last_updated' => 'آخر تحديث اليوم، 09:41',
+                'last_updated' => 'آخر تحديث اليوم، '.now()->format('H:i'),
             ],
             'kpis' => [
                 'properties' => [
@@ -449,12 +485,12 @@ class DashboardController extends Controller
                 ],
                 'collected' => [
                     'label' => 'الإيجارات المحصلة هذا الشهر',
-                    'value' => number_format($monthlyCollected).' ج.م',
-                    'subtitle' => 'من إجمالي '.number_format($monthlyDue).' ج.م مستحقة',
+                    'value' => number_format($monthlyCollected).' '.$currencySymbol,
+                    'subtitle' => 'من إجمالي '.number_format($monthlyDue).' '.$currencySymbol.' مستحقة',
                 ],
                 'overdue' => [
-                    'label' => 'المتأخرات',
-                    'value' => number_format($totalOverdueBalance).' ج.م',
+                    'label' => 'المتأخرات المعلقة',
+                    'value' => number_format($totalOverdueBalance).' '.$currencySymbol,
                     'subtitle' => $overdueCount.' دفعات متأخرة',
                     'count' => $overdueCount,
                 ],
@@ -477,12 +513,22 @@ class DashboardController extends Controller
                 'history' => $monthlyIncomeData,
                 'has_history' => $hasPaymentHistory,
                 'total_collected' => (float) array_sum($incomeAmounts),
+                'currency_symbol' => $currencySymbol,
+                'currency_label' => $currencyLabel,
             ],
             'attention_items' => $attentionItems,
             'upcoming_dues' => $upcomingDues,
             'recent_properties' => $recentProperties,
             'recent_activities' => $sortedActivities,
             'whatsapp_summary' => $whatsappSummary,
+            'security_deposits' => [
+                'total_held' => $totalDepositsHeld,
+                'awaiting_settlement_count' => $depositsAwaitingSettlementCount,
+                'awaiting_settlement_amount' => $depositsAwaitingSettlementAmount,
+                'refunds_outstanding' => $depositsAwaitingSettlementAmount,
+                'confirmed_deductions' => $confirmedDeductionsTotal,
+                'currency_symbol' => $currencySymbol,
+            ],
             'subscription_usage' => [
                 'units_used' => $unitsUsed,
                 'units_limit' => $unitsLimit,

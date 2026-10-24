@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\SetCurrentWorkspace;
 use Illuminate\Foundation\Application;
@@ -21,7 +22,13 @@ return Application::configure(basePath: dirname(__DIR__))
             SetCurrentWorkspace::class,
         ]);
 
-        //
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/*',
+        ]);
+
+        $middleware->alias([
+            'admin' => EnsureUserIsAdmin::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

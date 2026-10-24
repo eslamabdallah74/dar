@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { Building2, ArrowRight, ShieldCheck } from 'lucide-vue-next';
+import { ArrowRight } from 'lucide-vue-next';
 </script>
 
 <template>
@@ -11,8 +11,7 @@ import { Building2, ArrowRight, ShieldCheck } from 'lucide-vue-next';
             <div class="absolute inset-0 bg-[linear-gradient(to_right,#27272a_1px,transparent_1px),linear-gradient(to_bottom,#27272a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
         </div>
 
-        <!-- زرار الرجوع للرئيسية وشارة الأمان -->
-        <div class="w-full max-w-md mb-6 flex items-center justify-between">
+        <div class="mb-6 flex w-full max-w-md items-center">
             <Link
                 href="/"
                 class="inline-flex items-center gap-1.5 text-xs font-semibold text-zinc-400 hover:text-white transition"
@@ -20,10 +19,6 @@ import { Building2, ArrowRight, ShieldCheck } from 'lucide-vue-next';
                 <ArrowRight class="h-3.5 w-3.5" />
                 الرجوع للرئيسية
             </Link>
-            <div class="flex items-center gap-1 text-[11px] font-mono text-zinc-400">
-                <ShieldCheck class="h-3.5 w-3.5 text-emerald-400" />
-                <span>مساحة معزولة ومحمية</span>
-            </div>
         </div>
 
         <!-- اللوجو والهوية -->
@@ -32,7 +27,7 @@ import { Building2, ArrowRight, ShieldCheck } from 'lucide-vue-next';
                 <div class="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-white flex items-center justify-center p-2.5 sm:p-3 shadow-xl shadow-black/20 ring-4 ring-white/10 group-hover:scale-105 group-hover:ring-white/25 transition-all shrink-0">
                     <img
                         src="/images/logo.png"
-                        alt="شعار دار — نظام إدارة الإيجار"
+                        alt="شعار دار — لإدارة الإيجار"
                         class="w-full h-full object-contain"
                     />
                 </div>
@@ -40,7 +35,7 @@ import { Building2, ArrowRight, ShieldCheck } from 'lucide-vue-next';
                     <div class="text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-1.5 font-sans">
                         دار
                     </div>
-                    <p class="text-xs sm:text-sm text-zinc-400 font-medium">نظام لإدارة الإيجار والأملاك</p>
+                    <p class="text-xs sm:text-sm text-zinc-400 font-medium">لإدارة الإيجار والأملاك</p>
                 </div>
             </Link>
         </div>
@@ -52,7 +47,7 @@ import { Building2, ArrowRight, ShieldCheck } from 'lucide-vue-next';
 
         <!-- الفوتر -->
         <div class="mt-8 text-center text-xs text-zinc-500 font-medium">
-            دار • نظام لأدارة الايجار • أمان كامل لبياناتك ومساحة عمل معزولة
+            دار • لإدارة الإيجار والأملاك
         </div>
     </div>
 </template>

@@ -65,7 +65,7 @@ const areaD = `${pathD} L ${points[points.length - 1].x} ${svgHeight} L ${points
 
             <!-- النسبة وشارة التغيير المطابقة لنوتس فيجما تباين AA -->
             <div class="flex items-center gap-2.5">
-                <span class="text-2xl font-black font-mono text-[#0F2747]" dir="ltr">
+                <span class="text-2xl font-black text-[#0F2747]">
                     {{ currentRate || '75%' }}
                 </span>
                 <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-bold text-[#0F2747]">

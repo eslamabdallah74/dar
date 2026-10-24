@@ -69,6 +69,25 @@ class LeaseController extends Controller
                     'raw_ends_on' => $lease->ends_on?->toDateString(),
                     'rent_amount' => (float) $lease->rent_amount,
                     'billing_interval' => $lease->billing_interval === 'monthly' ? 'شهري' : 'سنوي',
+                    'unit_type' => $lease->unit?->unit_type,
+                    'unit_type_label' => match ($lease->unit?->unit_type) {
+                        'apartment' => 'شقة',
+                        'room' => 'غرفة',
+                        'bed' => 'سرير',
+                        'shop' => 'محل',
+                        default => 'وحدة',
+                    },
+                    'security_deposit_amount' => (float) $lease->security_deposit_amount,
+                    'security_deposit_status' => $lease->security_deposit_status,
+                    'security_deposit_status_label' => match ($lease->security_deposit_status) {
+                        'not_required' => 'غير مطلوب',
+                        'due' => 'مستحق الدفع',
+                        'partially_received' => 'مدفوع جزئياً',
+                        'held' => 'محتجز قيد العقد',
+                        'under_review' => 'قيد المراجعة',
+                        'settled' => 'تمت التسوية',
+                        default => $lease->security_deposit_status,
+                    },
                     'status' => $lease->status,
                     'status_label' => match ($lease->status) {
                         'active' => $isExpiringSoon ? 'ينتهي قريباً' : 'سارٍ',
@@ -84,6 +103,7 @@ class LeaseController extends Controller
         $activeCount = $leases->where('status', 'active')->count();
         $expiringCount = $leases->where('is_expiring_soon', true)->count();
         $totalContractValue = (float) $leases->where('status', 'active')->sum('rent_amount') * 12;
+        $totalDepositsHeld = (float) $leases->whereIn('security_deposit_status', ['held', 'partially_received', 'under_review'])->sum('security_deposit_amount');
 
         return Inertia::render('Leases/Index', [
             'leases' => $leases,
@@ -93,7 +113,9 @@ class LeaseController extends Controller
                 'expiring_soon' => $expiringCount,
                 'total_annual_value' => $totalContractValue,
                 'total_value' => $totalContractValue,
+                'total_deposits_held' => $totalDepositsHeld,
             ],
+            'currency' => $workspace->currency ?? 'EGP',
         ]);
     }
 
@@ -112,6 +134,13 @@ class LeaseController extends Controller
                 'property_name' => $u->property?->name ?? 'عقار عام',
                 'is_occupied' => (bool) $u->currentLease,
                 'unit_type' => $u->unit_type,
+                'type_label' => match ($u->unit_type) {
+                    'apartment' => 'شقة',
+                    'room' => 'غرفة',
+                    'bed' => 'سرير',
+                    'shop' => 'محل',
+                    default => 'وحدة',
+                },
                 'active_leases' => $u->currentLease ? [[
                     'id' => $u->currentLease->id,
                     'renter_name' => $u->currentLease->renter?->name ?? 'مستأجر',
@@ -132,6 +161,7 @@ class LeaseController extends Controller
             'units' => $units,
             'renters' => $renters,
             'properties' => $properties,
+            'currency' => $workspace->currency ?? 'EGP',
             'preselected_unit_id' => $request->query('unit_id'),
             'preselected_renter_id' => $request->query('renter_id'),
             'initial_data' => [
@@ -208,6 +238,7 @@ class LeaseController extends Controller
             'starts_on' => 'required|date',
             'ends_on' => 'required|date|after:starts_on',
             'rent_amount' => 'required|numeric|min:1',
+            'security_deposit_amount' => 'nullable|numeric|min:0',
             'billing_interval' => 'nullable|in:monthly',
             'notes' => 'nullable|string',
         ]);
@@ -222,8 +253,10 @@ class LeaseController extends Controller
 
         $hierarchyIds = $unit->getHierarchyUnitIds();
         $startsCarbon = Carbon::parse($validated['starts_on']);
+        $depositAmount = isset($validated['security_deposit_amount']) ? (float) $validated['security_deposit_amount'] : 0.00;
+        $depositStatus = $depositAmount > 0 ? 'due' : 'not_required';
 
-        DB::transaction(function () use ($workspace, $validated, $startsCarbon, $hierarchyIds, $unit) {
+        DB::transaction(function () use ($workspace, $validated, $startsCarbon, $hierarchyIds, $unit, $depositAmount, $depositStatus) {
             // Lock affected units in hierarchy for update
             Unit::withoutGlobalScopes()
                 ->whereIn('id', $hierarchyIds)
@@ -255,6 +288,8 @@ class LeaseController extends Controller
                 'starts_on' => $validated['starts_on'],
                 'ends_on' => $validated['ends_on'],
                 'rent_amount' => $validated['rent_amount'],
+                'security_deposit_amount' => $depositAmount,
+                'security_deposit_status' => $depositStatus,
                 'billing_interval' => 'monthly',
                 'billing_anchor_day' => min(28, (int) $startsCarbon->format('j')),
                 'first_due_date' => $validated['starts_on'],
@@ -273,5 +308,224 @@ class LeaseController extends Controller
         });
 
         return redirect()->route('leases.index')->with('success', 'تم إنشاء وتفعيل عقد الإيجار بنجاح');
+    }
+
+    public function show(Request $request, Lease $lease): Response
+    {
+        $workspace = $this->resolveWorkspace($request);
+        abort_if($lease->workspace_id !== $workspace->id, 403, 'غير مصرح لك بعرض هذا العقد.');
+
+        $lease->syncSecurityDepositStatus();
+
+        $lease->load([
+            'unit.property',
+            'renter',
+            'rentCharges.paymentAllocations.payment',
+            'securityDepositPayments.recordedByUser',
+            'securityDepositPayments.reversedByUser',
+            'securityDepositSettlement.settledByUser',
+            'securityDepositDeductions.recordedByUser',
+            'securityDepositRefunds.recordedByUser',
+            'securityDepositRefunds.reversedByUser',
+        ]);
+
+        $currency = $workspace->currency ?? 'EGP';
+        $currencySymbol = match (strtoupper($currency)) {
+            'EGP' => 'ج.م',
+            'SAR' => 'ر.س',
+            'AED' => 'د.إ',
+            'USD' => '$',
+            'EUR' => '€',
+            'KWD' => 'د.ك',
+            default => $currency,
+        };
+
+        $depositAgreed = (float) $lease->security_deposit_amount;
+        $totalReceived = (float) $lease->total_deposit_received;
+        $outstandingCollection = (float) $lease->outstanding_deposit_amount;
+        $totalDeductions = (float) $lease->total_deposit_deductions;
+        $totalRefunded = (float) $lease->total_deposit_refunded;
+        $refundableBalance = (float) $lease->refundable_deposit_balance;
+
+        $depositPayments = $lease->securityDepositPayments->map(fn ($p) => [
+            'id' => $p->id,
+            'amount' => (float) $p->amount,
+            'paid_at' => $p->paid_at?->format('d/m/Y H:i') ?? $p->created_at?->format('d/m/Y'),
+            'payment_method' => $p->payment_method,
+            'payment_method_label' => match ($p->payment_method) {
+                'cash' => 'نقدي',
+                'bank_transfer' => 'تحويل بنكي',
+                'cheque' => 'شيك',
+                default => 'إلكتروني / إنستاباي',
+            },
+            'reference' => $p->reference ?? 'DEP-'.$p->id,
+            'notes' => $p->notes,
+            'recorded_by' => $p->recordedByUser?->name ?? 'مستخدم النظام',
+            'is_reversed' => (bool) $p->is_reversed,
+            'reversal_reason' => $p->reversal_reason,
+            'reversed_at' => $p->reversed_at?->format('d/m/Y H:i'),
+            'reversed_by' => $p->reversedByUser?->name,
+        ]);
+
+        $deductions = $lease->securityDepositDeductions->map(fn ($d) => [
+            'id' => $d->id,
+            'amount' => (float) $d->amount,
+            'category' => $d->category,
+            'category_label' => match ($d->category) {
+                'furniture_damage' => 'تلف أثاث أو أجهزة',
+                'fixture_damage' => 'تلف تركيبات ومرافق',
+                'missing_items' => 'مفقودات ومحتويات ناقصة',
+                'other_damage' => 'أضرار موثقة أخرى',
+                default => 'بند خصم',
+            },
+            'description' => $d->description,
+            'status' => $d->status,
+            'deducted_at' => $d->deducted_at?->format('d/m/Y') ?? $d->created_at?->format('d/m/Y'),
+            'recorded_by' => $d->recordedByUser?->name ?? 'مستخدم النظام',
+        ]);
+
+        $refunds = $lease->securityDepositRefunds->map(fn ($r) => [
+            'id' => $r->id,
+            'amount' => (float) $r->amount,
+            'refunded_at' => $r->refunded_at?->format('d/m/Y H:i') ?? $r->created_at?->format('d/m/Y'),
+            'payment_method' => $r->payment_method,
+            'payment_method_label' => match ($r->payment_method) {
+                'cash' => 'نقدي',
+                'bank_transfer' => 'تحويل بنكي',
+                'cheque' => 'شيك',
+                default => 'إلكتروني / إنستاباي',
+            },
+            'reference' => $r->reference ?? 'REF-'.$r->id,
+            'notes' => $r->notes,
+            'recorded_by' => $r->recordedByUser?->name ?? 'مستخدم النظام',
+            'is_reversed' => (bool) $r->is_reversed,
+            'reversal_reason' => $r->reversal_reason,
+        ]);
+
+        $settlement = $lease->securityDepositSettlement;
+
+        $rentCharges = $lease->rentCharges->map(function ($c) {
+            $paid = (float) $c->paymentAllocations->sum('amount');
+            $outstanding = max(0, (float) $c->amount - $paid);
+
+            return [
+                'id' => $c->id,
+                'period' => $c->period_start?->format('m/Y'),
+                'due_date' => $c->due_date?->format('d/m/Y'),
+                'amount' => (float) $c->amount,
+                'paid_amount' => $paid,
+                'outstanding_balance' => $outstanding,
+                'status' => $outstanding <= 0 ? 'paid' : ($c->due_date < today() ? 'overdue' : 'pending'),
+            ];
+        });
+
+        $isExpiringSoon = $lease->status === 'active'
+            && $lease->ends_on >= today()
+            && $lease->ends_on <= today()->addDays(30);
+
+        return Inertia::render('Leases/Show', [
+            'lease' => [
+                'id' => $lease->id,
+                'contract_number' => 'C-02'.($lease->id + 4),
+                'starts_on' => $lease->starts_on?->format('d/m/Y'),
+                'ends_on' => $lease->ends_on?->format('d/m/Y'),
+                'raw_starts_on' => $lease->starts_on?->toDateString(),
+                'raw_ends_on' => $lease->ends_on?->toDateString(),
+                'rent_amount' => (float) $lease->rent_amount,
+                'billing_interval' => $lease->billing_interval === 'monthly' ? 'شهري' : 'سنوي',
+                'status' => $lease->status,
+                'status_label' => match ($lease->status) {
+                    'active' => $isExpiringSoon ? 'ينتهي قريباً' : 'سارٍ',
+                    'expired' => 'منتهي',
+                    'draft' => 'مسودة',
+                    'terminated' => 'ملغي / منتهي مبكراً',
+                    default => $lease->status,
+                },
+                'notes' => $lease->notes,
+                'created_at' => $lease->created_at?->format('d/m/Y'),
+            ],
+            'unit' => [
+                'id' => $lease->unit?->id,
+                'name' => $lease->unit?->name,
+                'code' => $lease->unit?->code,
+                'unit_type' => $lease->unit?->unit_type,
+                'unit_type_label' => match ($lease->unit?->unit_type) {
+                    'apartment' => 'شقة',
+                    'room' => 'غرفة',
+                    'bed' => 'سرير',
+                    'shop' => 'محل',
+                    default => 'وحدة',
+                },
+                'property_id' => $lease->unit?->property_id,
+                'property_name' => $lease->unit?->property?->name,
+                'property_address' => $lease->unit?->property?->address,
+            ],
+            'renter' => [
+                'id' => $lease->renter?->id,
+                'name' => $lease->renter?->name,
+                'phone' => $lease->renter?->phone,
+                'national_id' => $lease->renter?->national_id,
+                'email' => $lease->renter?->email,
+            ],
+            'security_deposit' => [
+                'agreed_amount' => $depositAgreed,
+                'total_received' => $totalReceived,
+                'outstanding_amount' => $outstandingCollection,
+                'total_deductions' => $totalDeductions,
+                'total_refunded' => $totalRefunded,
+                'refundable_balance' => $refundableBalance,
+                'status' => $lease->security_deposit_status,
+                'status_label' => match ($lease->security_deposit_status) {
+                    'not_required' => 'غير مطلوب (٠ ج.م)',
+                    'due' => 'مستحق السداد',
+                    'partially_received' => 'مدفوع جزئياً',
+                    'held' => 'محتجز قيد العقد',
+                    'under_review' => 'قيد فحص الوحدة والتسوية',
+                    'settled' => 'تمت التسوية نهائياً',
+                    default => $lease->security_deposit_status,
+                },
+                'payments' => $depositPayments,
+                'deductions' => $deductions,
+                'refunds' => $refunds,
+                'settlement' => $settlement ? [
+                    'id' => $settlement->id,
+                    'status' => $settlement->status,
+                    'inspection_category' => $settlement->inspection_category,
+                    'inspection_category_label' => match ($settlement->inspection_category) {
+                        'no_issues' => 'لا توجد ملاحظات أو أضرار',
+                        'furniture_damage' => 'تلف أثاث أو أجهزة',
+                        'fixture_damage' => 'تلف تركيبات ومرافق',
+                        'missing_items' => 'مفقودات ومحتويات ناقصة',
+                        'other_damage' => 'أضرار موثقة أخرى',
+                        default => $settlement->inspection_category,
+                    },
+                    'inspection_notes' => $settlement->inspection_notes,
+                    'settled_at' => $settlement->settled_at?->format('d/m/Y H:i'),
+                    'settled_by' => $settlement->settledByUser?->name,
+                    'notes' => $settlement->notes,
+                ] : null,
+                'actions' => [
+                    'can_record_payment' => $outstandingCollection > 0 && $lease->security_deposit_status !== 'settled',
+                    'can_start_settlement' => $lease->security_deposit_status !== 'not_required' && $lease->security_deposit_status !== 'settled',
+                    'can_record_deduction' => $totalReceived > 0 && $lease->security_deposit_status !== 'settled' && $refundableBalance > 0,
+                    'can_record_refund' => $refundableBalance > 0 && in_array($lease->security_deposit_status, ['under_review', 'held', 'due', 'partially_received']),
+                    'can_settle' => in_array($lease->security_deposit_status, ['under_review', 'held', 'partially_received', 'due']),
+                ],
+            ],
+            'rent_charges' => $rentCharges,
+            'currency' => $currency,
+            'currency_symbol' => $currencySymbol,
+        ]);
+    }
+
+    public function terminate(Request $request, Lease $lease): RedirectResponse
+    {
+        $workspace = $this->resolveWorkspace($request);
+        abort_if($lease->workspace_id !== $workspace->id, 403);
+
+        $lease->update(['status' => 'terminated']);
+        $lease->syncSecurityDepositStatus();
+
+        return back()->with('success', 'تم إنهاء عقد الإيجار بنجاح وبدء مرحلة التسوية.');
     }
 }

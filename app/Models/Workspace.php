@@ -18,15 +18,27 @@ class Workspace extends Model
         'slug',
         'owner_user_id',
         'currency',
+        'cr_number',
+        'tax_number',
+        'phone',
+        'address',
         'timezone',
         'status',
         'rent_reminder_days_before',
+        'auto_whatsapp_reminders',
+        'auto_instant_receipts',
+        'overdue_warning_days_after',
+        'weekly_summary_report',
     ];
 
     protected function casts(): array
     {
         return [
             'rent_reminder_days_before' => 'integer',
+            'overdue_warning_days_after' => 'integer',
+            'auto_whatsapp_reminders' => 'boolean',
+            'auto_instant_receipts' => 'boolean',
+            'weekly_summary_report' => 'boolean',
         ];
     }
 
@@ -111,5 +123,25 @@ class Workspace extends Model
     public function messageLogs(): HasMany
     {
         return $this->hasMany(MessageLog::class);
+    }
+
+    public function securityDepositPayments(): HasMany
+    {
+        return $this->hasMany(SecurityDepositPayment::class);
+    }
+
+    public function securityDepositSettlements(): HasMany
+    {
+        return $this->hasMany(SecurityDepositSettlement::class);
+    }
+
+    public function securityDepositDeductions(): HasMany
+    {
+        return $this->hasMany(SecurityDepositDeduction::class);
+    }
+
+    public function securityDepositRefunds(): HasMany
+    {
+        return $this->hasMany(SecurityDepositRefund::class);
     }
 }

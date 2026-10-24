@@ -10,9 +10,6 @@ use App\Models\Workspace;
 use App\Models\WorkspaceMember;
 use App\Models\WorkspaceSubscription;
 use App\Support\CurrentWorkspace;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -30,13 +27,15 @@ beforeEach(function () {
         'role' => 'owner',
     ]);
 
-    $this->plan = Plan::create([
-        'name' => 'باقة النمو',
-        'slug' => 'growth-test',
-        'monthly_price' => 199.00,
-        'unit_limit' => 25,
-        'is_active' => true,
-    ]);
+    $this->plan = Plan::firstOrCreate(
+        ['slug' => 'growth-test'],
+        [
+            'name' => 'باقة النمو',
+            'monthly_price' => 199.00,
+            'unit_limit' => 25,
+            'is_active' => true,
+        ]
+    );
 
     WorkspaceSubscription::create([
         'workspace_id' => $this->workspace->id,
@@ -89,7 +88,7 @@ test('unsupported property types are rejected', function () {
     $response = $this->actingAs($this->user)
         ->post(route('properties.store'), [
             'name' => 'عقار غير صالح',
-            'property_type' => 'castle',
+            'property_type' => 'compound',
         ]);
 
     $response->assertSessionHasErrors(['property_type']);
@@ -123,7 +122,7 @@ test('the property is strictly assigned to the resolved workspace', function () 
     $response = $this->actingAs($this->user)
         ->post(route('properties.store'), [
             'name' => 'محاولة حقن مساحة عمل',
-            'property_type' => 'compound',
+            'property_type' => 'building',
             'workspace_id' => $anotherWorkspace->id,
         ]);
 
@@ -374,7 +373,7 @@ test('billable unit counting correctly evaluates leaves and nested descendants a
     $property = Property::create([
         'workspace_id' => $this->workspace->id,
         'name' => 'مجمع تجريبي',
-        'property_type' => 'compound',
+        'property_type' => 'building',
     ]);
 
     // Scenario from spec:
@@ -676,4 +675,140 @@ test('non-overlapping lease periods are allowed without conflict', function () {
         'starts_on' => '2027-01-01',
         'ends_on' => '2027-12-31',
     ]);
+});
+
+/*
+|--------------------------------------------------------------------------
+| 6. Enhanced Property Creation Wizard & Auto-Generation Tests
+|--------------------------------------------------------------------------
+*/
+
+test('user can render the new multi-step property creation wizard page', function () {
+    $response = $this->actingAs($this->user)->get(route('properties.create'));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('Properties/Create')
+        ->has('property_types', 5)
+        ->has('amenities_list')
+        ->has('finishing_types')
+    );
+});
+
+test('user can create a property with all extended details, location, and amenities', function () {
+    $response = $this->actingAs($this->user)->post(route('properties.store'), [
+        'name' => 'برج التحرير التجاري',
+        'code' => 'TOW-01',
+        'property_type' => 'commercial',
+        'city' => 'القاهرة',
+        'district' => 'وسط البلد',
+        'street' => 'ميدان التحرير',
+        'building_number' => '12',
+        'postal_code' => '11511',
+        'google_maps_url' => 'https://maps.google.com/?q=30.0444,31.2357',
+        'floors_count' => 8,
+        'total_area' => 1250.50,
+        'year_built' => 2021,
+        'finishing_type' => 'commercial',
+        'amenities' => ['elevator', 'cctv', 'parking', 'security_guard'],
+        'electricity_meter_number' => 'ELEC-998822',
+        'water_meter_number' => 'WTR-443311',
+        'gas_meter_number' => 'GAS-776655',
+        'guard_name' => 'إبراهيم حسن',
+        'guard_phone' => '01099887766',
+        'deed_number' => 'DEED-CAI-2024-55',
+        'notes' => 'برج تجاري مخصص للمحلات في الأرضي والمكاتب في الأدوار العليا',
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    $property = Property::where('code', 'TOW-01')->firstOrFail();
+
+    expect($property->name)->toBe('برج التحرير التجاري')
+        ->and($property->property_type)->toBe('commercial')
+        ->and($property->city)->toBe('القاهرة')
+        ->and($property->district)->toBe('وسط البلد')
+        ->and($property->building_number)->toBe('12')
+        ->and((int) $property->floors_count)->toBe(8)
+        ->and((float) $property->total_area)->toBe(1250.50)
+        ->and($property->electricity_meter_number)->toBe('ELEC-998822')
+        ->and($property->guard_name)->toBe('إبراهيم حسن')
+        ->and($property->amenities)->toContain('elevator', 'parking');
+});
+
+test('user can auto-generate and create units simultaneously when creating property', function () {
+    $response = $this->actingAs($this->user)->post(route('properties.store'), [
+        'name' => 'عمارة الياسمين',
+        'property_type' => 'building',
+        'city' => 'الشيخ زايد',
+        'floors_count' => 2,
+        'units' => [
+            [
+                'name' => 'محل 1',
+                'code' => 'SHP-01',
+                'unit_type' => 'shop',
+                'is_rentable' => true,
+            ],
+            [
+                'name' => 'شقة 101',
+                'code' => 'APT-101',
+                'unit_type' => 'apartment',
+                'is_rentable' => true,
+            ],
+            [
+                'name' => 'شقة 102',
+                'code' => 'APT-102',
+                'unit_type' => 'apartment',
+                'is_rentable' => true,
+            ],
+            [
+                'name' => 'شقة 201',
+                'code' => 'APT-201',
+                'unit_type' => 'apartment',
+                'is_rentable' => true,
+            ],
+        ],
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    $property = Property::where('name', 'عمارة الياسمين')->firstOrFail();
+
+    $response->assertRedirect(route('properties.show', $property->id));
+
+    // Verify 4 units were created under this property
+    expect($property->units()->count())->toBe(4);
+    expect($property->units()->where('unit_type', 'shop')->count())->toBe(1);
+    expect($property->units()->where('unit_type', 'apartment')->count())->toBe(3);
+
+    $shop = $property->units()->where('code', 'SHP-01')->firstOrFail();
+    expect($shop->unit_type)->toBe('shop')
+        ->and($shop->is_rentable)->toBeTrue();
+});
+
+test('property show page displays extended specifications and details', function () {
+    $property = Property::create([
+        'workspace_id' => $this->workspace->id,
+        'name' => 'برج النخيل الفندقي',
+        'code' => 'TOW-PALM',
+        'property_type' => 'building',
+        'city' => 'شرم الشيخ',
+        'district' => 'خليج نعمة',
+        'floors_count' => 5,
+        'electricity_meter_number' => 'ELEC-SHARM-11',
+        'guard_name' => 'كريم سعيد',
+        'guard_phone' => '01234567890',
+        'amenities' => ['elevator', 'cctv', 'central_ac'],
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('properties.show', $property->id));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('Properties/Show')
+        ->where('property.name', 'برج النخيل الفندقي')
+        ->where('property.city', 'شرم الشيخ')
+        ->where('property.district', 'خليج نعمة')
+        ->where('property.floors_count', 5)
+        ->where('property.electricity_meter_number', 'ELEC-SHARM-11')
+        ->where('property.guard_name', 'كريم سعيد')
+    );
 });

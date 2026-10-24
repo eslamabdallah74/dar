@@ -73,6 +73,57 @@ return [
             'after_commit' => false,
         ],
 
+        // Named logical queue connections (driver defaults to current QUEUE_CONNECTION)
+        'email' => [
+            'driver' => env('QUEUE_CONNECTION', 'redis'),
+            'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'email',
+            'retry_after' => 90,
+            'after_commit' => true,
+        ],
+        'sms' => [
+            'driver' => env('QUEUE_CONNECTION', 'redis'),
+            'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'sms',
+            'retry_after' => 90,
+            'after_commit' => true,
+        ],
+        'lease_notifications' => [
+            'driver' => env('QUEUE_CONNECTION', 'redis'),
+            'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'lease_notifications',
+            'retry_after' => 90,
+            'after_commit' => true,
+        ],
+        'rent_charges' => [
+            'driver' => env('QUEUE_CONNECTION', 'redis'),
+            'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'rent_charges',
+            'retry_after' => 90,
+            'after_commit' => true,
+        ],
+        'security_deposit' => [
+            'driver' => env('QUEUE_CONNECTION', 'redis'),
+            'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'security_deposit',
+            'retry_after' => 90,
+            'after_commit' => true,
+        ],
+        'reports' => [
+            'driver' => env('QUEUE_CONNECTION', 'redis'),
+            'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'reports',
+            'retry_after' => 180,
+            'after_commit' => true,
+        ],
+        'cleanup' => [
+            'driver' => env('QUEUE_CONNECTION', 'redis'),
+            'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'cleanup',
+            'retry_after' => 120,
+            'after_commit' => true,
+        ],
+
         'deferred' => [
             'driver' => 'deferred',
         ],

@@ -20,6 +20,7 @@ import {
     Info,
     ShieldAlert,
     User,
+    Store,
     X,
 } from 'lucide-vue-next';
 
@@ -30,6 +31,8 @@ interface UnitOption {
     property_id: number;
     property_name: string;
     is_occupied: boolean;
+    unit_type?: string;
+    type_label?: string;
     active_leases: Array<{
         id: number;
         renter_name: string;
@@ -50,6 +53,7 @@ const props = defineProps<{
         id: number;
         name: string;
     }>;
+    currency?: string;
     preselected_unit_id?: string | number;
     preselected_renter_id?: string | number;
 }>();
@@ -72,7 +76,7 @@ const form = useForm({
     starts_on: todayDate,
     ends_on: nextYearDate,
     rent_amount: 3200,
-    deposit_amount: 3000,
+    security_deposit_amount: 0,
     billing_interval: 'monthly',
     notes: '',
 });
@@ -155,7 +159,7 @@ const submit = () => {
             </Link>
         </template>
 
-        <form @submit.prevent="submit" class="max-w-4xl mx-auto space-y-6">
+        <form @submit.prevent="submit" class="w-full space-y-6">
             <!-- 1. بطاقة اختيار العقار والوحدة التأجيرية -->
             <div class="rounded-3xl border border-[#D6E0E7] bg-white p-6 shadow-2xs space-y-5">
                 <div class="flex items-center gap-2.5 pb-3 border-b border-[#D6E0E7]">
@@ -187,7 +191,7 @@ const submit = () => {
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition"
                         >
                             <option v-for="u in filteredUnits" :key="u.id" :value="u.id">
-                                {{ u.name }} {{ u.is_occupied ? '(مشغولة حالياً)' : '(شاغرة)' }}
+                                {{ u.type_label ? '[' + u.type_label + '] ' : '' }}{{ u.name }} {{ u.is_occupied ? '(مشغولة حالياً)' : '(شاغرة)' }}
                             </option>
                         </select>
                     </div>
@@ -239,7 +243,7 @@ const submit = () => {
                             v-model="form.starts_on"
                             type="date"
                             required
-                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-left"
+                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
                         />
                     </div>
 
@@ -249,7 +253,7 @@ const submit = () => {
                             v-model="form.ends_on"
                             type="date"
                             required
-                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-left"
+                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
                         />
                     </div>
                 </div>
@@ -263,7 +267,7 @@ const submit = () => {
                                 type="number"
                                 step="0.01"
                                 required
-                                class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-left"
+                                class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
                             />
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#5B6770]">
                                 ج.م
@@ -272,18 +276,25 @@ const submit = () => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">مبلغ التأمين / الوديعة <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
+                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">
+                            مبلغ التأمين المسترد / الوديعة <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري — صفر في حال عدم طلبه)</span>
+                        </label>
                         <div class="relative">
                             <input
-                                v-model="form.deposit_amount"
+                                v-model="form.security_deposit_amount"
                                 type="number"
                                 step="0.01"
-                                class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-left"
+                                min="0"
+                                placeholder="0"
+                                class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
                             />
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#5B6770]">
-                                ج.م
+                                {{ currency || 'ج.م' }}
                             </span>
                         </div>
+                        <p class="mt-1 text-[11px] text-[#5B6770]">
+                            مبلغ تأمين مسترد للمستأجر عند نهاية العقد، لا يُحسب كإيراد إيجار.
+                        </p>
                     </div>
                 </div>
             </div>

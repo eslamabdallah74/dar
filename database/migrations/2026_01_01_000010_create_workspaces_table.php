@@ -18,8 +18,6 @@ return new class extends Migration
             $table->enum('status', ['active', 'suspended', 'cancelled'])->default('active');
             $table->tinyInteger('rent_reminder_days_before')->unsigned()->default(2);
             $table->timestamps();
-
-            $table->index('owner_user_id');
         });
     }
 

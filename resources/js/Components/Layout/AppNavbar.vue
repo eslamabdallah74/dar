@@ -8,23 +8,29 @@ import {
     ChevronDown,
     Clock,
     CreditCard,
+    ExternalLink,
     FileText,
     LogOut,
     Menu,
     Plus,
     Search,
+    Shield,
     ShieldAlert,
+    ShieldCheck,
     User as UserIcon,
     Wrench,
 } from 'lucide-vue-next';
 
 const props = defineProps<{
     searchQuery?: string;
+    adminMode?: boolean;
+    adminTitle?: string;
 }>();
 
 const emit = defineEmits<{
     (e: 'toggleMobile'): void;
     (e: 'newAction'): void;
+    (e: 'search', query: string): void;
 }>();
 
 const page = usePage();
@@ -48,6 +54,10 @@ const userInitials = computed(() => {
 });
 
 function handleSearch() {
+    if (props.adminMode) {
+        emit('search', term.value.trim());
+        return;
+    }
     if (!term.value.trim()) return;
     router.visit(route('renters.index', { search: term.value.trim() }));
 }
@@ -63,7 +73,11 @@ function switchWorkspace(workspaceId: number) {
 
 function handleLogout() {
     userDropdownOpen.value = false;
-    router.post(route('logout'));
+    if (props.adminMode) {
+        router.post(route('admin.logout'));
+    } else {
+        router.post(route('logout'));
+    }
 }
 
 // Close dropdowns on outside click
@@ -86,9 +100,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <header class="h-20 bg-white border-b border-[#D6E0E7] px-4 sm:px-8 flex items-center justify-between sticky top-0 z-40 shadow-2xs select-none">
+    <header class="sticky top-0 z-40 flex h-20 items-center justify-between gap-4 border-b border-[#D6E0E7] bg-white px-4 shadow-2xs select-none sm:px-8">
         <!-- الجانب الأيمن (في RTL): زر الموبايل + محدد مساحة العمل + البحث -->
-        <div class="flex items-center gap-3 sm:gap-4 flex-1 max-w-[850px]">
+        <div class="flex min-w-0 max-w-[850px] flex-1 items-center gap-3 sm:gap-4">
             <!-- زر فتح القائمة للموبايل -->
             <button
                 @click="emit('toggleMobile')"
@@ -99,8 +113,8 @@ onUnmounted(() => {
                 <Menu class="h-5 w-5" />
             </button>
 
-            <!-- محدد مساحة العمل الحالية (Workspace Selector Dropdown) -->
-            <div class="relative dropdown-container">
+            <!-- محدد مساحة العمل الحالية (في وضع العميل) -->
+            <div v-if="!adminMode" class="relative dropdown-container">
                 <button
                     @click.stop="workspaceDropdownOpen = !workspaceDropdownOpen; notificationsDropdownOpen = false; userDropdownOpen = false;"
                     type="button"
@@ -146,23 +160,43 @@ onUnmounted(() => {
                 </div>
             </div>
 
-            <!-- حقل البحث العام -->
-            <div class="relative w-full hidden md:block">
+            <!-- شارة الإدارة المركزية (في وضع الأدمن) -->
+            <div v-else class="flex shrink-0 items-center gap-2.5 h-11 px-3.5 rounded-xl border border-amber-300 bg-amber-50/60 shadow-2xs whitespace-nowrap">
+                <ShieldCheck class="w-5 h-5 text-amber-700 shrink-0" />
+                <div class="flex flex-col text-right leading-tight">
+                    <span class="text-xs font-black text-amber-950">لوحة الإدارة المركزية</span>
+                    <span class="hidden xl:block text-[10px] text-amber-800 font-medium">سلطة الإشراف والتحكم الكامل</span>
+                </div>
+            </div>
+
+            <!-- حقل البحث -->
+            <div class="relative hidden w-full min-w-0 md:block">
                 <input
                     v-model="term"
+                    @input="adminMode && emit('search', term)"
                     @keydown.enter="handleSearch"
                     type="text"
-                    placeholder="ابحث عن عقار، مستأجر أو عقد…"
+                    :placeholder="adminMode ? 'بحث فوري في مساحات العمل، المستخدمين، العقارات...' : 'ابحث عن عقار، مستأجر أو عقد…'"
                     class="w-full h-11 pr-11 pl-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] placeholder:text-[#5B6770] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition shadow-2xs font-sans text-right"
                 />
                 <Search class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#5B6770]" />
             </div>
         </div>
 
-        <!-- الجانب الأيسر: التنبيهات + المستخدم + زر جديد -->
-        <div class="flex items-center gap-2.5 sm:gap-4 shrink-0 mr-4">
-            <!-- قائمة التنبيهات (Notifications Dropdown) -->
-            <div class="relative dropdown-container">
+        <!-- الجانب الأيسر: التنبيهات + المستخدم + زر جديد / العودة للتطبيق -->
+        <div class="flex shrink-0 items-center gap-2.5 sm:gap-4">
+            <!-- رابط سريع لتطبيق العملاء في وضع الأدمن -->
+            <Link
+                v-if="adminMode"
+                :href="route('dashboard')"
+                class="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-[#0E6E7E] hover:text-[#0B5A68] bg-[#E8F3F5] hover:bg-[#D4EAEF] px-3 py-2 rounded-xl transition"
+            >
+                <ExternalLink class="w-3.5 h-3.5" />
+                <span>تطبيق العملاء</span>
+            </Link>
+
+            <!-- قائمة التنبيهات (في وضع العميل) -->
+            <div v-if="!adminMode" class="relative dropdown-container">
                 <button
                     @click.stop="notificationsDropdownOpen = !notificationsDropdownOpen; workspaceDropdownOpen = false; userDropdownOpen = false;"
                     type="button"
@@ -170,7 +204,6 @@ onUnmounted(() => {
                     title="التنبيهات"
                 >
                     <Bell class="h-5 w-5" />
-                    <!-- شارة الإشعارات غير المقروءة تظهر فقط إذا كانت > 0 -->
                     <span
                         v-if="notifications.unread_count > 0"
                         class="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white animate-pulse"
@@ -194,7 +227,6 @@ onUnmounted(() => {
                         </span>
                     </div>
 
-                    <!-- قائمة التنبيهات الفعلية -->
                     <div v-if="notifications.unread_count > 0" class="space-y-1.5 text-xs">
                         <Link
                             v-if="notifications.overdue_count > 0"
@@ -250,13 +282,15 @@ onUnmounted(() => {
                     type="button"
                     class="h-11 px-2.5 sm:px-3 rounded-xl border border-[#D6E0E7] bg-white hover:border-[#0E6E7E] flex items-center gap-2.5 transition cursor-pointer shadow-2xs group"
                 >
-                    <!-- الأفاتار بالأحرف الأولى -->
-                    <div class="w-7 h-7 rounded-lg bg-[#0F2747] text-white flex items-center justify-center font-bold text-xs shrink-0 group-hover:bg-[#0E6E7E] transition-colors">
+                    <div
+                        class="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 transition-colors"
+                        :class="adminMode ? 'bg-amber-400 text-slate-950 font-black' : 'bg-[#0F2747] text-white group-hover:bg-[#0E6E7E]'"
+                    >
                         {{ userInitials }}
                     </div>
                     <div class="hidden sm:flex flex-col text-right leading-tight max-w-[110px] truncate">
                         <span class="text-xs font-bold text-[#0F2747] truncate">{{ user.name }}</span>
-                        <span class="text-[10px] text-[#5B6770] truncate">{{ user.role || 'مالك المنشأة' }}</span>
+                        <span class="text-[10px] text-[#5B6770] truncate">{{ adminMode ? 'مدير النظام المركزي' : (user.role || 'مالك المنشأة') }}</span>
                     </div>
                     <ChevronDown class="w-3.5 h-3.5 text-[#5B6770] transition-transform duration-200" :class="{ 'rotate-180': userDropdownOpen }" />
                 </button>
@@ -273,6 +307,7 @@ onUnmounted(() => {
 
                     <div class="space-y-1 text-xs font-semibold">
                         <Link
+                            v-if="!adminMode"
                             :href="route('profile.edit')"
                             @click="userDropdownOpen = false"
                             class="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-[#0F2747] hover:bg-[#F3F7FA] transition"
@@ -282,12 +317,13 @@ onUnmounted(() => {
                         </Link>
 
                         <Link
-                            :href="route('settings.index')"
+                            v-if="adminMode"
+                            :href="route('dashboard')"
                             @click="userDropdownOpen = false"
-                            class="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-[#0F2747] hover:bg-[#F3F7FA] transition"
+                            class="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-emerald-700 hover:bg-emerald-50 transition"
                         >
-                            <Building2 class="w-4 h-4 text-[#5B6770]" />
-                            <span>إعدادات المحفظة</span>
+                            <ExternalLink class="w-4 h-4" />
+                            <span>الانتقال لتطبيق العميل</span>
                         </Link>
 
                         <button
@@ -296,20 +332,21 @@ onUnmounted(() => {
                             class="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-rose-600 hover:bg-rose-50 transition cursor-pointer border-t border-[#D6E0E7] mt-1 pt-2"
                         >
                             <LogOut class="w-4 h-4" />
-                            <span>تسجيل الخروج</span>
+                            <span>تسجيل الخروج {{ adminMode ? 'الإداري' : '' }}</span>
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- زر + جديد الرئيسي -->
+            <!-- زر + جديد (في وضع العميل) أو زر إجراء في وضع الأدمن -->
             <button
                 @click="emit('newAction')"
                 type="button"
-                class="h-11 px-4 sm:px-5 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-sm font-semibold transition shadow-xs flex items-center gap-2 shrink-0 cursor-pointer"
+                class="h-11 px-4 sm:px-5 rounded-xl text-white text-sm font-semibold transition shadow-xs flex items-center gap-2 shrink-0 cursor-pointer"
+                :class="adminMode ? 'bg-[#0F2747] hover:bg-[#17334F]' : 'bg-[#0E6E7E] hover:bg-[#0B5A68]'"
             >
                 <Plus class="h-4 w-4 stroke-[2.5]" />
-                <span class="hidden sm:inline">جديد</span>
+                <span class="hidden sm:inline">{{ adminMode ? 'إضافة بيانات' : 'جديد' }}</span>
             </button>
         </div>
     </header>

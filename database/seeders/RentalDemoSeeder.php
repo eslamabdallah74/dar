@@ -144,10 +144,10 @@ class RentalDemoSeeder extends Seeder
             ]
         );
 
-        $propCompound = Property::firstOrCreate(
-            ['workspace_id' => $workspace->id, 'name' => 'مجمع الياسمين السكني'],
+        $propYasminVillas = Property::firstOrCreate(
+            ['workspace_id' => $workspace->id, 'name' => 'فلل الياسمين'],
             [
-                'property_type' => 'compound',
+                'property_type' => 'building',
                 'address' => 'التجمع الخامس، الحي الخامس بالقرب من شارع التسعين، القاهرة الجديدة',
             ]
         );
@@ -168,12 +168,28 @@ class RentalDemoSeeder extends Seeder
             ]
         );
 
-        // Secondary Workspace Property
+        // Secondary Workspace Properties (Riyadh, Saudi Arabia)
         $propRiyadh = Property::firstOrCreate(
             ['workspace_id' => $secondaryWorkspace->id, 'name' => 'برج العليا التنفيذي'],
             [
                 'property_type' => 'building',
                 'address' => 'حي العليا، طريق الملك فهد، الرياض',
+            ]
+        );
+
+        $propNakheel = Property::firstOrCreate(
+            ['workspace_id' => $secondaryWorkspace->id, 'name' => 'وحدات النخيل'],
+            [
+                'property_type' => 'building',
+                'address' => 'حي النخيل، طريق الإمام سعود بن عبدالعزيز، الرياض',
+            ]
+        );
+
+        $propHittin = Property::firstOrCreate(
+            ['workspace_id' => $secondaryWorkspace->id, 'name' => 'فيلا حطين الفاخرة'],
+            [
+                'property_type' => 'villa',
+                'address' => 'حي حطين النموذجي، شمال الرياض',
             ]
         );
 
@@ -208,9 +224,9 @@ class RentalDemoSeeder extends Seeder
             );
         }
 
-        // B. Units for مجمع الياسمين (6 units: villas & duplexes)
-        $unitsCompound = [];
-        $compoundUnitsData = [
+        // B. Units for فلل الياسمين (6 units: villas & duplexes)
+        $unitsYasminVillas = [];
+        $yasminVillaUnitsData = [
             ['code' => 'VIL-01', 'name' => 'فيلا 01 (تاون هاوس زاوية بحديقة)', 'type' => 'apartment'],
             ['code' => 'VIL-02', 'name' => 'فيلا 02 (تاون هاوس وسطي بحديقة)', 'type' => 'apartment'],
             ['code' => 'DUP-01', 'name' => 'دوبلكس 01 (أرضي بحديقة خاصة ومسبح)', 'type' => 'apartment'],
@@ -219,9 +235,9 @@ class RentalDemoSeeder extends Seeder
             ['code' => 'DUP-04', 'name' => 'دوبلكس 04 (أول وثانٍ مع روف علوي)', 'type' => 'apartment'],
         ];
 
-        foreach ($compoundUnitsData as $u) {
-            $unitsCompound[$u['code']] = Unit::firstOrCreate(
-                ['workspace_id' => $workspace->id, 'property_id' => $propCompound->id, 'code' => $u['code']],
+        foreach ($yasminVillaUnitsData as $u) {
+            $unitsYasminVillas[$u['code']] = Unit::firstOrCreate(
+                ['workspace_id' => $workspace->id, 'property_id' => $propYasminVillas->id, 'code' => $u['code']],
                 [
                     'name' => $u['name'],
                     'unit_type' => $u['type'],
@@ -281,18 +297,29 @@ class RentalDemoSeeder extends Seeder
         );
 
         // Secondary Workspace Units
-        Unit::firstOrCreate(
-            ['workspace_id' => $secondaryWorkspace->id, 'property_id' => $propRiyadh->id, 'code' => 'STE-101'],
-            ['name' => 'جناح تنفيذي 101', 'unit_type' => 'apartment', 'is_rentable' => true]
-        );
-        Unit::firstOrCreate(
-            ['workspace_id' => $secondaryWorkspace->id, 'property_id' => $propRiyadh->id, 'code' => 'STE-102'],
-            ['name' => 'جناح تنفيذي 102', 'unit_type' => 'apartment', 'is_rentable' => true]
-        );
-        Unit::firstOrCreate(
-            ['workspace_id' => $secondaryWorkspace->id, 'property_id' => $propRiyadh->id, 'code' => 'STE-201'],
-            ['name' => 'جناح تنفيذي 201', 'unit_type' => 'apartment', 'is_rentable' => true]
-        );
+        $saudiUnitsList = [
+            ['property_id' => $propRiyadh->id, 'code' => 'STE-101', 'name' => 'جناح تنفيذي 101', 'unit_type' => 'apartment'],
+            ['property_id' => $propRiyadh->id, 'code' => 'STE-102', 'name' => 'جناح تنفيذي 102', 'unit_type' => 'apartment'],
+            ['property_id' => $propRiyadh->id, 'code' => 'STE-201', 'name' => 'جناح تنفيذي 201', 'unit_type' => 'apartment'],
+            ['property_id' => $propRiyadh->id, 'code' => 'OFC-301', 'name' => 'مكتب تجاري 301', 'unit_type' => 'other'],
+            ['property_id' => $propNakheel->id, 'code' => 'VIL-01', 'name' => 'فيلا تاون هاوس 1', 'unit_type' => 'apartment'],
+            ['property_id' => $propNakheel->id, 'code' => 'VIL-02', 'name' => 'فيلا تاون هاوس 2', 'unit_type' => 'apartment'],
+            ['property_id' => $propNakheel->id, 'code' => 'APT-01', 'name' => 'شقة دوبلكس راقية 01', 'unit_type' => 'apartment'],
+            ['property_id' => $propHittin->id, 'code' => 'VIL-H1', 'name' => 'فيلا حطين المستقلة', 'unit_type' => 'other'],
+        ];
+
+        $unitsSaudi = [];
+        foreach ($saudiUnitsList as $su) {
+            $unitsSaudi[$su['code']] = Unit::firstOrCreate(
+                ['workspace_id' => $secondaryWorkspace->id, 'code' => $su['code']],
+                [
+                    'property_id' => $su['property_id'],
+                    'name' => $su['name'],
+                    'unit_type' => $su['unit_type'],
+                    'is_rentable' => true,
+                ]
+            );
+        }
 
         // -------------------------------------------------------------
         // 6. Renters (Primary Workspace)
@@ -375,7 +402,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'م. شريف هشام الديب',
                 'phone' => '01022334455',
                 'email' => 'sherif.eldeeb@example.com',
-                'notes' => 'رئيس مجلس إدارة شركة مقاولات، مستأجر فيلا 01 بمجمع الياسمين',
+                'notes' => 'رئيس مجلس إدارة شركة مقاولات، مستأجر فيلا 01 بفلل الياسمين',
                 'source' => 'contract_signature',
             ],
             [
@@ -383,7 +410,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'رانيا عادل زكي',
                 'phone' => '01122334466',
                 'email' => 'rania.adel@example.com',
-                'notes' => 'مستأجرة فيلا 02 بمجمع الياسمين، تم سداد وديعة التأمين كاملة',
+                'notes' => 'مستأجرة فيلا 02 بفلل الياسمين، تم سداد وديعة التأمين كاملة',
                 'source' => 'contract_signature',
             ],
             [
@@ -510,6 +537,42 @@ class RentalDemoSeeder extends Seeder
             ]
         );
 
+        $saudiRenter3 = Renter::updateOrCreate(
+            ['workspace_id' => $secondaryWorkspace->id, 'national_id' => '1029384756'],
+            [
+                'name' => 'فيصل بن محمد القحطاني',
+                'phone' => '0504123890',
+                'email' => 'faisal.q@example.com',
+                'whatsapp_opt_in_at' => now()->subMonths(4),
+                'whatsapp_opt_in_source' => 'contract_signature',
+                'notes' => 'مستأجر فيلا تاون هاوس 1 بوحدات النخيل',
+            ]
+        );
+
+        $saudiRenter4 = Renter::updateOrCreate(
+            ['workspace_id' => $secondaryWorkspace->id, 'national_id' => '1098765432'],
+            [
+                'name' => 'نورة بنت عبدالله السبيعي',
+                'phone' => '0546781234',
+                'email' => 'noura.s@example.com',
+                'whatsapp_opt_in_at' => now()->subMonths(1),
+                'whatsapp_opt_in_source' => 'contract_signature',
+                'notes' => 'مستأجرة شقة دوبلكس 01 بوحدات النخيل',
+            ]
+        );
+
+        $saudiRenter5 = Renter::updateOrCreate(
+            ['workspace_id' => $secondaryWorkspace->id, 'national_id' => '7001928374'],
+            [
+                'name' => 'شركة الرواد للحلول التقنية',
+                'phone' => '0567890123',
+                'email' => 'info@alrowad-tech.sa',
+                'whatsapp_opt_in_at' => now()->subMonths(5),
+                'whatsapp_opt_in_source' => 'contract_signature',
+                'notes' => 'عقد تجاري للمكتب 301 برج العليا',
+            ]
+        );
+
         // -------------------------------------------------------------
         // 7. Leases, Charges, Payments & Allocations
         // -------------------------------------------------------------
@@ -596,17 +659,17 @@ class RentalDemoSeeder extends Seeder
                 'current_status' => 'paid',
             ],
             [
-                'unit' => $unitsCompound['VIL-01'],
+                'unit' => $unitsYasminVillas['VIL-01'],
                 'renter' => $renters['28705200104321'], // شريف الديب
                 'rent' => 14000.00,
                 'starts' => now()->subMonths(6)->startOfMonth(),
                 'ends' => now()->addMonths(6)->endOfMonth(),
                 'status' => 'active',
-                'notes' => 'تاون هاوس زاوية بمجمع الياسمين السكني، دفع ربع سنوي',
+                'notes' => 'تاون هاوس زاوية بفلل الياسمين، دفع ربع سنوي',
                 'current_status' => 'paid',
             ],
             [
-                'unit' => $unitsCompound['VIL-02'],
+                'unit' => $unitsYasminVillas['VIL-02'],
                 'renter' => $renters['29302170108901'], // رانيا زكي
                 'rent' => 13500.00,
                 'starts' => now()->subMonths(4)->startOfMonth(),
@@ -616,7 +679,7 @@ class RentalDemoSeeder extends Seeder
                 'current_status' => 'paid',
             ],
             [
-                'unit' => $unitsCompound['DUP-01'],
+                'unit' => $unitsYasminVillas['DUP-01'],
                 'renter' => $renters['28607110103456'], // حسام مصطفى
                 'rent' => 9000.00,
                 'starts' => now()->subMonths(7)->startOfMonth(),
@@ -658,7 +721,7 @@ class RentalDemoSeeder extends Seeder
                 'current_status' => 'due_soon', // Unpaid upcoming
             ],
             [
-                'unit' => $unitsCompound['DUP-02'],
+                'unit' => $unitsYasminVillas['DUP-02'],
                 'renter' => $renters['29701050106789'], // ياسمين خليل
                 'rent' => 9200.00,
                 'starts' => now()->subMonths(11)->startOfMonth(),
@@ -829,51 +892,198 @@ class RentalDemoSeeder extends Seeder
             }
         }
 
-        // Secondary Workspace Leases
-        $saudiLease1 = Lease::firstOrCreate(
+        // Secondary Workspace Leases, Historical Payments & Dues
+        $saudiLeasesConfig = [
             [
-                'workspace_id' => $secondaryWorkspace->id,
-                'unit_id' => Unit::where('workspace_id', $secondaryWorkspace->id)->where('code', 'STE-101')->first()->id,
-                'renter_id' => $saudiRenter1->id,
+                'unit' => $unitsSaudi['STE-101'],
+                'renter' => $saudiRenter1,
+                'rent' => 5000.00,
+                'starts' => now()->subMonths(5)->startOfMonth(),
+                'ends' => now()->addMonths(7)->endOfMonth(),
+                'status' => 'active',
+                'current_status' => 'paid',
             ],
             [
-                'starts_on' => now()->subMonths(3)->startOfMonth()->toDateString(),
-                'ends_on' => now()->addMonths(9)->endOfMonth()->toDateString(),
-                'rent_amount' => 5000.00,
-                'billing_interval' => 'monthly',
-                'billing_anchor_day' => 1,
-                'first_due_date' => now()->subMonths(3)->startOfMonth()->toDateString(),
+                'unit' => $unitsSaudi['STE-102'],
+                'renter' => $saudiRenter2,
+                'rent' => 6000.00,
+                'starts' => now()->subMonths(2)->startOfMonth(),
+                'ends' => now()->addMonths(10)->endOfMonth(),
                 'status' => 'active',
-                'notes' => 'عقد جناح تنفيذي بالرياض',
+                'current_status' => 'due_soon',
+            ],
+            [
+                'unit' => $unitsSaudi['VIL-01'],
+                'renter' => $saudiRenter3,
+                'rent' => 14000.00,
+                'starts' => now()->subMonths(4)->startOfMonth(),
+                'ends' => now()->addMonths(8)->endOfMonth(),
+                'status' => 'active',
+                'current_status' => 'paid',
+            ],
+            [
+                'unit' => $unitsSaudi['APT-01'],
+                'renter' => $saudiRenter4,
+                'rent' => 4500.00,
+                'starts' => now()->subMonths(3)->startOfMonth(),
+                'ends' => now()->addMonths(9)->endOfMonth(),
+                'status' => 'active',
+                'current_status' => 'overdue',
+            ],
+            [
+                'unit' => $unitsSaudi['OFC-301'],
+                'renter' => $saudiRenter5,
+                'rent' => 9000.00,
+                'starts' => now()->subMonths(11)->startOfMonth(),
+                'ends' => now()->addDays(18), // Expiring in 18 days!
+                'status' => 'active',
+                'current_status' => 'paid',
+            ],
+        ];
+
+        $saudiPayCount = 1;
+        foreach ($saudiLeasesConfig as $scfg) {
+            $sLease = Lease::firstOrCreate(
+                [
+                    'workspace_id' => $secondaryWorkspace->id,
+                    'unit_id' => $scfg['unit']->id,
+                    'renter_id' => $scfg['renter']->id,
+                ],
+                [
+                    'starts_on' => $scfg['starts']->toDateString(),
+                    'ends_on' => $scfg['ends']->toDateString(),
+                    'rent_amount' => $scfg['rent'],
+                    'billing_interval' => 'monthly',
+                    'billing_anchor_day' => 1,
+                    'first_due_date' => $scfg['starts']->toDateString(),
+                    'status' => 'active',
+                    'notes' => 'عقد موثق عبر منصة إيجار بالرياض',
+                ]
+            );
+
+            // Seed charges from lease start to current month
+            $sMonth = $scfg['starts']->copy()->startOfMonth();
+            while ($sMonth <= now()->startOfMonth()) {
+                $isCurrent = $sMonth->isSameMonth(now());
+                $sCharge = RentCharge::firstOrCreate(
+                    [
+                        'lease_id' => $sLease->id,
+                        'period_start' => $sMonth->toDateString(),
+                    ],
+                    [
+                        'workspace_id' => $secondaryWorkspace->id,
+                        'period_end' => $sMonth->copy()->endOfMonth()->toDateString(),
+                        'due_date' => $sMonth->toDateString(),
+                        'amount' => $scfg['rent'],
+                    ]
+                );
+
+                if (! $isCurrent || $scfg['current_status'] === 'paid') {
+                    // Paid
+                    $spRef = sprintf('PAY-SAR-%04d-%03d', $sMonth->year, $saudiPayCount++);
+                    $sPayment = Payment::firstOrCreate(
+                        ['workspace_id' => $secondaryWorkspace->id, 'reference' => $spRef],
+                        [
+                            'renter_id' => $scfg['renter']->id,
+                            'recorded_by' => $secondaryOwner->id,
+                            'amount' => $scfg['rent'],
+                            'paid_at' => $sMonth->copy()->addDays(2)->setTime(10, 30),
+                            'payment_method' => 'bank_transfer',
+                            'notes' => 'سداد عبر تحويل بنكي سريع مصرف الراجحي',
+                        ]
+                    );
+
+                    PaymentAllocation::firstOrCreate(
+                        ['payment_id' => $sPayment->id, 'rent_charge_id' => $sCharge->id],
+                        ['workspace_id' => $secondaryWorkspace->id, 'amount' => $scfg['rent']]
+                    );
+                } elseif ($scfg['current_status'] === 'overdue') {
+                    $sCharge->update(['due_date' => now()->subDays(8)->toDateString()]);
+                } elseif ($scfg['current_status'] === 'due_soon') {
+                    $sCharge->update(['due_date' => now()->addDays(4)->toDateString()]);
+                }
+
+                $sMonth->addMonth();
+            }
+        }
+
+        // Secondary Workspace Maintenance
+        MaintenanceRequest::firstOrCreate(
+            ['workspace_id' => $secondaryWorkspace->id, 'title' => 'عطل تكييف مركزي في جناح 102'],
+            [
+                'property_id' => $propRiyadh->id,
+                'unit_id' => $unitsSaudi['STE-102']->id,
+                'reported_by_renter_id' => $saudiRenter2->id,
+                'description' => 'التكييف المركزي يصدر صوتاً عالياً ولا يبرد بالشكل المطلوب.',
+                'status' => 'open',
+                'reported_at' => now()->subDays(2),
             ]
         );
 
-        $saudiCharge = RentCharge::firstOrCreate(
-            ['lease_id' => $saudiLease1->id, 'period_start' => now()->startOfMonth()->toDateString()],
+        MaintenanceRequest::firstOrCreate(
+            ['workspace_id' => $secondaryWorkspace->id, 'title' => 'فحص مضخة الري واللاندسكيب - وحدات النخيل'],
             [
-                'workspace_id' => $secondaryWorkspace->id,
-                'period_end' => now()->endOfMonth()->toDateString(),
-                'due_date' => now()->startOfMonth()->toDateString(),
-                'amount' => 5000.00,
+                'property_id' => $propNakheel->id,
+                'unit_id' => null,
+                'reported_by_renter_id' => null,
+                'description' => 'فحص دوري لمضخات ري المسطحات الخضراء وشبكة التنقيط.',
+                'status' => 'in_progress',
+                'reported_at' => now()->subDays(4),
             ]
         );
 
-        $saudiPay = Payment::firstOrCreate(
-            ['workspace_id' => $secondaryWorkspace->id, 'reference' => 'PAY-SAR-2026-001'],
+        // Secondary Workspace Expenses
+        Expense::firstOrCreate(
+            ['workspace_id' => $secondaryWorkspace->id, 'notes' => 'صيانة دورية للمصاعد وأنظمة السلامة برج العليا'],
             [
-                'renter_id' => $saudiRenter1->id,
+                'property_id' => $propRiyadh->id,
                 'recorded_by' => $secondaryOwner->id,
-                'amount' => 5000.00,
-                'paid_at' => now()->subDays(2),
-                'payment_method' => 'bank_transfer',
-                'notes' => 'سداد عبر تحويل سريع مصرف الراجحي',
+                'category' => 'maintenance',
+                'amount' => 1800.00,
+                'expense_date' => now()->subDays(5)->toDateString(),
             ]
         );
 
-        PaymentAllocation::firstOrCreate(
-            ['payment_id' => $saudiPay->id, 'rent_charge_id' => $saudiCharge->id],
-            ['workspace_id' => $secondaryWorkspace->id, 'amount' => 5000.00]
+        Expense::firstOrCreate(
+            ['workspace_id' => $secondaryWorkspace->id, 'notes' => 'فاتورة الكهرباء الشهرية للمناطق المشتركة برج العليا'],
+            [
+                'property_id' => $propRiyadh->id,
+                'recorded_by' => $secondaryOwner->id,
+                'category' => 'كهرباء ومياه',
+                'amount' => 3200.00,
+                'expense_date' => now()->subDays(7)->toDateString(),
+            ]
         );
+
+        // Secondary Workspace Message Logs
+        $saudiMessages = [
+            ['renter' => $saudiRenter1, 'status' => 'delivered', 'template' => 'payment_receipt_instant_ar', 'days_ago' => 2],
+            ['renter' => $saudiRenter2, 'status' => 'delivered', 'template' => 'rent_due_reminder_ar', 'days_ago' => 3],
+            ['renter' => $saudiRenter3, 'status' => 'delivered', 'template' => 'payment_receipt_instant_ar', 'days_ago' => 1],
+            ['renter' => $saudiRenter4, 'status' => 'delivered', 'template' => 'overdue_notice_ar', 'days_ago' => 5],
+            ['renter' => $saudiRenter5, 'status' => 'sent', 'template' => 'contract_renewal_ar', 'days_ago' => 1],
+        ];
+
+        foreach ($saudiMessages as $idx => $sm) {
+            $dedupKey = sprintf('msg_log_%d_%s_%s', $secondaryWorkspace->id, $sm['renter']->id, $sm['template'].'_'.$idx);
+
+            MessageLog::firstOrCreate(
+                ['workspace_id' => $secondaryWorkspace->id, 'deduplication_key' => $dedupKey],
+                [
+                    'renter_id' => $sm['renter']->id,
+                    'recipient_phone' => $sm['renter']->phone,
+                    'template_name' => $sm['template'],
+                    'provider_message_id' => 'SM_SAR_'.strtoupper(bin2hex(random_bytes(10))),
+                    'status' => $sm['status'],
+                    'provider_cost' => 0.045000,
+                    'provider_cost_currency' => 'USD',
+                    'scheduled_at' => now()->subDays($sm['days_ago'])->setTime(10, 0),
+                    'sent_at' => now()->subDays($sm['days_ago'])->setTime(10, 1),
+                    'created_at' => now()->subDays($sm['days_ago']),
+                    'updated_at' => now()->subDays($sm['days_ago']),
+                ]
+            );
+        }
 
         // -------------------------------------------------------------
         // 8. Maintenance Requests
@@ -920,7 +1130,7 @@ class RentalDemoSeeder extends Seeder
                 'resolved_at' => now()->subDays(14),
             ],
             [
-                'property_id' => $propCompound->id,
+                'property_id' => $propYasminVillas->id,
                 'unit_id' => null,
                 'reported_by_renter_id' => null,
                 'title' => 'صيانة وبرمجة بوابة الجراج الإلكترونية',
@@ -930,8 +1140,8 @@ class RentalDemoSeeder extends Seeder
                 'resolved_at' => null,
             ],
             [
-                'property_id' => $propCompound->id,
-                'unit_id' => $unitsCompound['DUP-01']->id,
+                'property_id' => $propYasminVillas->id,
+                'unit_id' => $unitsYasminVillas['DUP-01']->id,
                 'reported_by_renter_id' => $renters['28607110103456']->id, // حسام مصطفى
                 'title' => 'تسريب مياه بسيط تحت حوض المطبخ',
                 'description' => 'تسريب في ماسورة صرف حوض المطبخ عند استخدام الغسالة.',
@@ -1022,13 +1232,13 @@ class RentalDemoSeeder extends Seeder
                 'notes' => 'شراء كشافات ولمبات LED موفرة لإنارة المداخل وبئر السلم',
             ],
             [
-                'property_id' => $propCompound->id,
+                'property_id' => $propYasminVillas->id,
                 'unit_id' => null,
                 'maintenance_request_id' => $maintenanceRequests[4]->id,
                 'category' => 'maintenance',
                 'amount' => 850.00,
                 'expense_date' => now()->subDays(4)->toDateString(),
-                'notes' => 'صيانة لوحة تحكم وبرمجة ريموتات بوابة الجراج بمجمع الياسمين',
+                'notes' => 'صيانة لوحة تحكم وبرمجة ريموتات بوابة الجراج بفلل الياسمين',
             ],
 
             // Operating: Utilities (كهرباء ومياه)
@@ -1051,13 +1261,13 @@ class RentalDemoSeeder extends Seeder
                 'notes' => 'فاتورة المياه المجمعة لعمارة النور لشهر سبتمبر',
             ],
             [
-                'property_id' => $propCompound->id,
+                'property_id' => $propYasminVillas->id,
                 'unit_id' => null,
                 'maintenance_request_id' => null,
                 'category' => 'كهرباء ومياه',
                 'amount' => 2100.00,
                 'expense_date' => now()->subDays(6)->toDateString(),
-                'notes' => 'استهلاك كهرباء إنارة اللاندسكيب والممرات المشتركة بمجمع الياسمين',
+                'notes' => 'استهلاك كهرباء إنارة المساحات المشتركة بفلل الياسمين',
             ],
 
             // Operating: Cleaning & Services (نظافة وخدمات)
@@ -1071,24 +1281,24 @@ class RentalDemoSeeder extends Seeder
                 'notes' => 'أتعاب شركة النظافة الدورية ومكافحة الحشرات لعمارة النور',
             ],
             [
-                'property_id' => $propCompound->id,
+                'property_id' => $propYasminVillas->id,
                 'unit_id' => null,
                 'maintenance_request_id' => null,
                 'category' => 'نظافة وخدمات',
                 'amount' => 1100.00,
                 'expense_date' => now()->subDays(9)->toDateString(),
-                'notes' => 'أعمال العناية بالحدائق والري الدوري بمجمع الياسمين',
+                'notes' => 'أعمال العناية بالحدائق والري الدوري بفلل الياسمين',
             ],
 
             // Operating: Security (أمن وحراسة)
             [
-                'property_id' => $propCompound->id,
+                'property_id' => $propYasminVillas->id,
                 'unit_id' => null,
                 'maintenance_request_id' => null,
                 'category' => 'أمن وحراسة',
                 'amount' => 3500.00,
                 'expense_date' => now()->subDays(3)->toDateString(),
-                'notes' => 'رواتب وأتعاب طاقم الحراسة والأمن بمجمع الياسمين لشهر أكتوبر',
+                'notes' => 'رواتب وأتعاب طاقم الحراسة والأمن بفلل الياسمين لشهر أكتوبر',
             ],
 
             // Operating: Admin & Licensing (مصاريف إدارية)

@@ -14,7 +14,7 @@ return new class extends Migration
             $table->foreignId('lease_id')->constrained()->restrictOnDelete();
             $table->date('period_start');
             $table->date('period_end');
-            $table->date('due_date');
+            $table->date('due_date')->index();
             // Money: DECIMAL(12,2), never FLOAT
             $table->decimal('amount', 12, 2);
             $table->timestamps();
@@ -22,9 +22,6 @@ return new class extends Migration
             // Prevent duplicate charges for the same billing period on the same lease
             $table->unique(['lease_id', 'period_start']);
 
-            $table->index('workspace_id');
-            $table->index('lease_id');
-            $table->index('due_date');
             $table->index(['workspace_id', 'due_date']);
         });
     }

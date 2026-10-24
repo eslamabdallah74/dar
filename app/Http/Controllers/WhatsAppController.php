@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\MessageLog;
+use App\Models\Workspace;
+use App\Services\WhatsAppService;
 use App\Support\CurrentWorkspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -11,10 +13,33 @@ use Inertia\Response;
 
 class WhatsAppController extends Controller
 {
+    /**
+     * Resolve and authorize the active workspace for the authenticated user.
+     */
+    protected function resolveWorkspace(Request $request): Workspace
+    {
+        $workspace = app(CurrentWorkspace::class)->get();
+
+        if (! $workspace) {
+            abort(403, 'لا توجد مساحة عمل نشطة أو مصرح بها.');
+        }
+
+        $user = $request->user();
+        if (! $user) {
+            abort(401);
+        }
+
+        $isAuthorized = $workspace->owner_user_id === $user->id
+            || $workspace->members()->where('user_id', $user->id)->exists();
+
+        abort_if(! $isAuthorized, 403, 'غير مصرح لك بالوصول لمساحة العمل هذه.');
+
+        return $workspace;
+    }
+
     public function index(Request $request): Response
     {
-        $workspace = app(CurrentWorkspace::class)->get()
-            ?? $request->user()->ownedWorkspaces()->first();
+        $workspace = $this->resolveWorkspace($request);
 
         $logs = $workspace->messageLogs()
             ->with('renter')
@@ -79,28 +104,32 @@ class WhatsAppController extends Controller
 
         $renters = $workspace->renters()->get(['id', 'name', 'phone']);
 
+        $hasCredentials = ! empty(config('services.whatsapp.token')) && ! empty(config('services.whatsapp.phone_number_id'));
+        $totalSentOrDelivered = $logs->whereIn('status', ['sent', 'delivered'])->count();
+        $totalLogsCount = $logs->count();
+        $deliveredRate = $totalLogsCount > 0 ? (int) round(($totalSentOrDelivered / $totalLogsCount) * 100) : 0;
+
         return Inertia::render('WhatsApp/Index', [
             'logs' => $logs,
             'templates' => $templates,
             'renters' => $renters,
             'stats' => [
-                'total_sent' => $logs->whereIn('status', ['sent', 'delivered'])->count(),
-                'delivered_rate' => 98,
+                'total_sent' => $totalSentOrDelivered,
+                'delivered_rate' => $deliveredRate,
                 'active_templates' => 4,
             ],
             'connection' => [
-                'is_connected' => true,
-                'sender_number' => '+20 10 1234 5678',
-                'provider' => 'WhatsApp Cloud API الرسمية',
-                'status_label' => 'متصل ونشط',
+                'is_connected' => $hasCredentials,
+                'sender_number' => config('services.whatsapp.phone_number') ?? ($hasCredentials ? '+20 10 1234 5678' : 'غير مهيأ'),
+                'provider' => 'WhatsApp Cloud API الرسمية (Meta)',
+                'status_label' => $hasCredentials ? 'متصل ونشط' : 'بانتظار ضبط مفاتيح الربط (WHATSAPP_API_TOKEN)',
             ],
         ]);
     }
 
-    public function testSend(Request $request): RedirectResponse
+    public function testSend(Request $request, WhatsAppService $whatsAppService): RedirectResponse
     {
-        $workspace = app(CurrentWorkspace::class)->get()
-            ?? $request->user()->ownedWorkspaces()->first();
+        $workspace = $this->resolveWorkspace($request);
 
         $validated = $request->validate([
             'renter_id' => 'required|exists:renters,id',
@@ -109,17 +138,28 @@ class WhatsAppController extends Controller
 
         $renter = $workspace->renters()->findOrFail($validated['renter_id']);
 
-        $workspace->messageLogs()->create([
-            'renter_id' => $renter->id,
-            'recipient_phone' => $renter->phone,
-            'template_name' => $validated['template_id'],
-            'scheduled_at' => now(),
-            'sent_at' => now(),
-            'status' => 'delivered',
-            'attempts' => 1,
-            'deduplication_key' => 'manual_test_'.time().'_'.$renter->id,
-        ]);
+        $log = $whatsAppService->send(
+            workspaceId: $workspace->id,
+            renterId: $renter->id,
+            phone: $renter->phone,
+            templateName: $validated['template_id'],
+            parameters: [
+                'renter_name' => $renter->name,
+                'unit' => 'الوحدة',
+                'amount' => '5,000',
+                'due_date' => now()->addDays(3)->format('d/m/Y'),
+            ],
+            deduplicationKey: 'manual_test_'.time().'_'.$renter->id
+        );
 
-        return back()->with('success', 'تم إرسال رسالة WhatsApp التجريبية بنجاح وتسليمها للمستأجر');
+        if ($log && in_array($log->status, ['sent', 'delivered'])) {
+            return back()->with('success', 'تم إرسال رسالة WhatsApp بنجاح عبر بوابة Meta Cloud API');
+        }
+
+        if ($log && $log->status === 'failed') {
+            return back()->with('warning', 'فشل الإرسال: '.$log->error_message);
+        }
+
+        return back()->with('info', 'تمت معالجة طلب الإرسال بنجاح');
     }
 }

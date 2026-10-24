@@ -17,11 +17,8 @@ use App\Models\Workspace;
 use App\Models\WorkspaceMember;
 use App\Models\WorkspaceSubscription;
 use Database\Seeders\DatabaseSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Activitylog\Models\Activity;
-
-uses(RefreshDatabase::class);
 
 test('database seeder seeds real data across all entities and tables', function () {
     $this->seed(DatabaseSeeder::class);

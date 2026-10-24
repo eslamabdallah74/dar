@@ -3,12 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Renter;
+use App\Models\RenterDocument;
 use App\Models\Workspace;
 use App\Support\CurrentWorkspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class RenterController extends Controller
 {
@@ -44,7 +48,7 @@ class RenterController extends Controller
 
         $renters = $workspace->renters()
             ->with([
-                'leases' => fn ($q) => $q->with('unit.property')->latest(),
+                'leases' => fn ($q) => $q->with(['unit.property', 'rentCharges.allocations'])->latest(),
                 'payments',
             ])
             ->get()
@@ -55,9 +59,8 @@ class RenterController extends Controller
                 // Determine payment status
                 $hasOverdue = false;
                 if ($activeLease) {
-                    $hasOverdue = $activeLease->rentCharges()
+                    $hasOverdue = $activeLease->rentCharges
                         ->where('due_date', '<', today())
-                        ->get()
                         ->contains(fn ($c) => $c->outstanding_balance > 0);
                 }
 
@@ -175,6 +178,8 @@ class RenterController extends Controller
                 'phone' => $renter->phone,
                 'email' => $renter->email,
                 'national_id' => $renter->national_id ?? '—',
+                'id_card_front_url' => $renter->id_card_front_url,
+                'id_card_back_url' => $renter->id_card_back_url,
                 'whatsapp_opted_in' => (bool) $renter->whatsapp_opt_in_at,
                 'whatsapp_opt_in_date' => $renter->whatsapp_opt_in_at?->format('d/m/Y'),
                 'notes' => $renter->notes,
@@ -185,17 +190,80 @@ class RenterController extends Controller
                 'contract_number' => 'C-02'.($activeLease->id + 4),
                 'unit_name' => $activeLease->unit?->name,
                 'unit_code' => $activeLease->unit?->code,
+                'unit_type' => $activeLease->unit?->unit_type,
+                'unit_type_label' => match ($activeLease->unit?->unit_type) {
+                    'apartment' => 'شقة',
+                    'room' => 'غرفة',
+                    'bed' => 'سرير',
+                    'shop' => 'محل',
+                    default => 'وحدة',
+                },
                 'property_name' => $activeLease->unit?->property?->name,
                 'starts_on' => $activeLease->starts_on?->format('d/m/Y'),
                 'ends_on' => $activeLease->ends_on?->format('d/m/Y'),
                 'rent_amount' => (float) $activeLease->rent_amount,
                 'billing_interval' => 'شهري',
-                'deposit_amount' => 3000.0,
+                'deposit_amount' => (float) $activeLease->security_deposit_amount,
+                'deposit_received' => (float) $activeLease->total_deposit_received,
+                'deposit_status' => $activeLease->security_deposit_status,
+                'deposit_status_label' => match ($activeLease->security_deposit_status) {
+                    'not_required' => 'غير مطلوب',
+                    'due' => 'مستحق السداد',
+                    'partially_received' => 'مدفوع جزئياً',
+                    'held' => 'محتجز قيد العقد',
+                    'under_review' => 'قيد التسوية',
+                    'settled' => 'تمت التسوية',
+                    default => $activeLease->security_deposit_status,
+                },
                 'status' => $activeLease->status,
             ] : null,
+            'security_deposits' => $renter->leases->map(fn ($l) => [
+                'lease_id' => $l->id,
+                'contract_number' => 'C-02'.($l->id + 4),
+                'unit_name' => $l->unit?->name,
+                'unit_type' => $l->unit?->unit_type,
+                'unit_type_label' => match ($l->unit?->unit_type) {
+                    'apartment' => 'شقة',
+                    'room' => 'غرفة',
+                    'bed' => 'سرير',
+                    'shop' => 'محل',
+                    default => 'وحدة',
+                },
+                'agreed_amount' => (float) $l->security_deposit_amount,
+                'total_received' => (float) $l->total_deposit_received,
+                'total_deductions' => (float) $l->total_deposit_deductions,
+                'total_refunded' => (float) $l->total_deposit_refunded,
+                'refundable_balance' => (float) $l->refundable_deposit_balance,
+                'status' => $l->security_deposit_status,
+                'status_label' => match ($l->security_deposit_status) {
+                    'not_required' => 'غير مطلوب',
+                    'due' => 'مستحق السداد',
+                    'partially_received' => 'مدفوع جزئياً',
+                    'held' => 'محتجز قيد العقد',
+                    'under_review' => 'قيد فحص الوحدة والتسوية',
+                    'settled' => 'تمت التسوية',
+                    default => $l->security_deposit_status,
+                },
+            ])->filter(fn ($d) => $d['agreed_amount'] > 0 || $d['total_received'] > 0)->values(),
             'ledger' => $charges,
             'payments' => $paymentsList,
             'whatsapp_logs' => $messageLogsList,
+            'documents' => $renter->documents->map(fn ($doc) => [
+                'id' => $doc->id,
+                'title' => $doc->title ?: ($doc->original_filename ?: 'مستند'),
+                'original_filename' => $doc->original_filename ?? 'document',
+                'document_type' => $doc->document_type,
+                'document_type_label' => match ($doc->document_type) {
+                    'national_id' => 'بطاقة هوية وطنية',
+                    'passport' => 'جواز سفر',
+                    'employment_letter' => 'خطاب تعريف بالعمل / الراتب',
+                    'other' => 'عقد / مستند آخر',
+                    default => $doc->document_type,
+                },
+                'file_size' => $doc->file_size ? round($doc->file_size / 1024, 1).' كيلوبايت' : null,
+                'created_at' => $doc->created_at?->format('d/m/Y H:i') ?? '',
+                'download_url' => route('renters.documents.download', [$renter->id, $doc->id]),
+            ]),
             'summary' => [
                 'total_billed' => (float) $charges->sum('amount'),
                 'total_paid' => (float) $paymentsList->sum('amount'),
@@ -215,9 +283,11 @@ class RenterController extends Controller
             'national_id' => 'nullable|string|max:50',
             'whatsapp_consent' => 'nullable|boolean',
             'notes' => 'nullable|string',
+            'id_card_front' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'id_card_back' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
-        $workspace->renters()->create([
+        $renter = $workspace->renters()->create([
             'name' => $validated['name'],
             'phone' => $validated['phone'],
             'email' => $validated['email'] ?? null,
@@ -226,6 +296,26 @@ class RenterController extends Controller
             'whatsapp_opt_in_at' => ($validated['whatsapp_consent'] ?? true) ? now() : null,
             'whatsapp_opt_in_source' => 'manual_entry',
         ]);
+
+        $updates = [];
+
+        if ($request->hasFile('id_card_front')) {
+            $file = $request->file('id_card_front');
+            $extension = $file->getClientOriginalExtension() ?: 'jpg';
+            $filename = Str::random(40).'.'.strtolower($extension);
+            $updates['id_card_front'] = $file->storeAs("ids/{$renter->id}", $filename, 'public');
+        }
+
+        if ($request->hasFile('id_card_back')) {
+            $file = $request->file('id_card_back');
+            $extension = $file->getClientOriginalExtension() ?: 'jpg';
+            $filename = Str::random(40).'.'.strtolower($extension);
+            $updates['id_card_back'] = $file->storeAs("ids/{$renter->id}", $filename, 'public');
+        }
+
+        if (! empty($updates)) {
+            $renter->update($updates);
+        }
 
         return back()->with('success', 'تمت إضافة المستأجر بنجاح');
     }
@@ -242,10 +332,96 @@ class RenterController extends Controller
             'email' => 'nullable|email|max:255',
             'national_id' => 'nullable|string|max:50',
             'notes' => 'nullable|string',
+            'id_card_front' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+            'id_card_back' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
+
+        if ($request->hasFile('id_card_front')) {
+            if ($renter->id_card_front && Storage::disk('public')->exists($renter->id_card_front)) {
+                Storage::disk('public')->delete($renter->id_card_front);
+            }
+            $file = $request->file('id_card_front');
+            $extension = $file->getClientOriginalExtension() ?: 'jpg';
+            $filename = Str::random(40).'.'.strtolower($extension);
+            $validated['id_card_front'] = $file->storeAs("ids/{$renter->id}", $filename, 'public');
+        } else {
+            unset($validated['id_card_front']);
+        }
+
+        if ($request->hasFile('id_card_back')) {
+            if ($renter->id_card_back && Storage::disk('public')->exists($renter->id_card_back)) {
+                Storage::disk('public')->delete($renter->id_card_back);
+            }
+            $file = $request->file('id_card_back');
+            $extension = $file->getClientOriginalExtension() ?: 'jpg';
+            $filename = Str::random(40).'.'.strtolower($extension);
+            $validated['id_card_back'] = $file->storeAs("ids/{$renter->id}", $filename, 'public');
+        } else {
+            unset($validated['id_card_back']);
+        }
 
         $renter->update($validated);
 
         return back()->with('success', 'تم تحديث بيانات المستأجر بنجاح');
+    }
+
+    public function storeDocument(Request $request, Renter $renter): RedirectResponse
+    {
+        $workspace = $this->resolveWorkspace($request);
+        abort_if($renter->workspace_id !== $workspace->id, 403, 'غير مصرح لك بإدارة مستندات هذا المستأجر.');
+
+        $validated = $request->validate([
+            'document_type' => 'required|in:national_id,passport,employment_letter,other',
+            'title' => 'nullable|string|max:255',
+            'file' => 'required|file|max:10240|mimes:pdf,jpeg,png,jpg,webp,doc,docx',
+        ]);
+
+        $file = $request->file('file');
+        $originalName = $file->getClientOriginalName();
+        $fileSize = $file->getSize();
+        $extension = $file->getClientOriginalExtension() ?: 'bin';
+        $safeName = Str::random(40).'.'.strtolower($extension);
+
+        $path = $file->storeAs("documents/{$workspace->id}/{$renter->id}", $safeName, 'local');
+
+        $renter->documents()->create([
+            'workspace_id' => $workspace->id,
+            'document_type' => $validated['document_type'],
+            'title' => $validated['title'] ?: pathinfo($originalName, PATHINFO_FILENAME),
+            'original_filename' => $originalName,
+            'storage_path' => $path,
+            'file_size' => $fileSize,
+            'uploaded_by' => $request->user()->id,
+        ]);
+
+        return back()->with('success', 'تم رفع المستند بنجاح وحفظه في التخزين الآمن');
+    }
+
+    public function downloadDocument(Request $request, Renter $renter, RenterDocument $document): StreamedResponse
+    {
+        $workspace = $this->resolveWorkspace($request);
+        abort_if($renter->workspace_id !== $workspace->id, 403, 'غير مصرح لك بالوصول لهذا المستأجر.');
+        abort_if($document->workspace_id !== $workspace->id || $document->renter_id !== $renter->id, 403, 'غير مصرح لك بتحميل هذا المستند.');
+
+        if (! Storage::disk('local')->exists($document->storage_path)) {
+            abort(404, 'الملف غير موجود في وحدة التخزين الآمن.');
+        }
+
+        return Storage::disk('local')->download($document->storage_path, $document->original_filename ?: 'document');
+    }
+
+    public function destroyDocument(Request $request, Renter $renter, RenterDocument $document): RedirectResponse
+    {
+        $workspace = $this->resolveWorkspace($request);
+        abort_if($renter->workspace_id !== $workspace->id, 403, 'غير مصرح لك بالوصول لهذا المستأجر.');
+        abort_if($document->workspace_id !== $workspace->id || $document->renter_id !== $renter->id, 403, 'غير مصرح لك بحذف هذا المستند.');
+
+        if (Storage::disk('local')->exists($document->storage_path)) {
+            Storage::disk('local')->delete($document->storage_path);
+        }
+
+        $document->delete();
+
+        return back()->with('success', 'تم حذف المستند بنجاح من النظام والتخزين');
     }
 }

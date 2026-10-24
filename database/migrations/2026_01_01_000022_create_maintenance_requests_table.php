@@ -21,8 +21,6 @@ return new class extends Migration
             $table->timestamp('resolved_at')->nullable();
             $table->timestamps();
 
-            $table->index('workspace_id');
-            $table->index('property_id');
             $table->index(['workspace_id', 'status']);
         });
     }

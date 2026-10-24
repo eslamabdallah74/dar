@@ -54,6 +54,14 @@ class RentCharge extends Model
 
     public function getPaidAmountAttribute(): float
     {
+        if ($this->relationLoaded('allocations')) {
+            return (float) $this->allocations->sum('amount');
+        }
+
+        if ($this->relationLoaded('paymentAllocations')) {
+            return (float) $this->paymentAllocations->sum('amount');
+        }
+
         return (float) $this->allocations()->sum('amount');
     }
 
@@ -70,6 +78,23 @@ class RentCharge extends Model
     public function getIsOverdueAttribute(): bool
     {
         return ! $this->is_fully_paid && $this->due_date->isPast();
+    }
+
+    public function getStatusAttribute(): string
+    {
+        if ($this->is_fully_paid) {
+            return 'paid';
+        }
+
+        if ($this->is_overdue) {
+            return 'overdue';
+        }
+
+        if ($this->paid_amount > 0) {
+            return 'partially_paid';
+        }
+
+        return 'pending';
     }
 
     public function scopeUnpaid(Builder $query): Builder

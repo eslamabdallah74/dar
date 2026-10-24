@@ -13,9 +13,11 @@ import {
     Coins,
     CreditCard,
     DollarSign,
+    Download,
     FileText,
     MessageCircle,
     Plus,
+    Printer,
     Receipt,
     Search,
     TrendingUp,
@@ -106,6 +108,15 @@ const openPaymentForCharge = (charge: ChargeItem) => {
         breadcrumb="الدفعات"
     >
         <template #actions>
+            <a
+                :href="currentTab === 'dues' ? route('reports.collections.export') : route('reports.payments.export')"
+                class="h-11 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F3F7FA] text-sm font-semibold text-[#0F2747] transition flex items-center gap-2 shadow-2xs"
+                title="تصدير السجلات إلى ملف Excel متوافق مع اللغة العربية"
+            >
+                <Download class="h-4 w-4 text-[#0E6E7E]" />
+                <span>تصدير Excel</span>
+            </a>
+
             <button
                 @click="recordPaymentOpen = true"
                 type="button"
@@ -234,7 +245,7 @@ const openPaymentForCharge = (charge: ChargeItem) => {
                                 <th class="py-3.5 px-6">المسدد</th>
                                 <th class="py-3.5 px-6">المتبقي المعلق</th>
                                 <th class="py-3.5 px-6">الحالة</th>
-                                <th class="py-3.5 px-6 text-left">إجراء</th>
+                                <th class="py-3.5 px-6 text-start sm:text-left">إجراء</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-[#D6E0E7]">
@@ -278,7 +289,7 @@ const openPaymentForCharge = (charge: ChargeItem) => {
                                     <StatusBadge :status="c.status" :label="c.status_label" size="sm" />
                                 </td>
 
-                                <td class="py-4 px-6 text-left">
+                                <td class="py-4 px-6 text-start sm:text-left">
                                     <div class="flex items-center justify-end gap-2">
                                         <button
                                             v-if="c.outstanding_balance > 0"
@@ -330,6 +341,7 @@ const openPaymentForCharge = (charge: ChargeItem) => {
                                 <th class="py-3.5 px-6">تاريخ التحصيل</th>
                                 <th class="py-3.5 px-6">طريقة السداد</th>
                                 <th class="py-3.5 px-6">ملاحظات</th>
+                                <th class="py-3.5 px-6 text-center">السند الإلكتروني</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-[#D6E0E7]">
@@ -356,6 +368,17 @@ const openPaymentForCharge = (charge: ChargeItem) => {
                                 </td>
                                 <td class="py-4 px-6 text-xs text-[#5B6770]">
                                     {{ pay.notes || '—' }}
+                                </td>
+                                <td class="py-4 px-6 text-center">
+                                    <a
+                                        :href="route('payments.receipt', pay.id)"
+                                        target="_blank"
+                                        class="h-8 px-3 rounded-lg border border-[#D6E0E7] bg-white hover:bg-slate-50 text-[#0E6E7E] text-xs font-bold transition inline-flex items-center gap-1.5 shadow-2xs"
+                                        title="عرض وطباعة سند القبض الإلكتروني المعتمد"
+                                    >
+                                        <Printer class="w-3.5 h-3.5" />
+                                        <span>عرض السند</span>
+                                    </a>
                                 </td>
                             </tr>
                         </tbody>

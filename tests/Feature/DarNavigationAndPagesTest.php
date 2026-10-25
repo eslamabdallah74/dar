@@ -288,5 +288,6 @@ test('landing page loads successfully with seo tags and logo image', function ()
     $response = $this->get('/');
     $response->assertOk();
     $response->assertSee('images/logo.png');
-    $response->assertSee('دار — منصة إدارة وتأجير العقارات والأملاك');
+    $appName = config('app.name');
+    $response->assertSee("{$appName} — Find Your Spot. Rent the Space You Need.");
 });

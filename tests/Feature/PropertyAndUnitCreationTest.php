@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\PropertyType;
 use App\Models\Lease;
 use App\Models\Plan;
 use App\Models\Property;
@@ -689,7 +690,7 @@ test('user can render the new multi-step property creation wizard page', functio
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('Properties/Create')
-        ->has('property_types', 6)
+        ->has('property_types', 7)
         ->has('amenities_list')
         ->has('finishing_types')
     );
@@ -724,7 +725,7 @@ test('user can create a property with all extended details, location, and amenit
     $property = Property::where('code', 'TOW-01')->firstOrFail();
 
     expect($property->name)->toBe('برج التحرير التجاري')
-        ->and($property->property_type)->toBe('commercial')
+        ->and($property->property_type)->toBe(PropertyType::Commercial)
         ->and($property->city)->toBe('القاهرة')
         ->and($property->district)->toBe('وسط البلد')
         ->and($property->building_number)->toBe('12')

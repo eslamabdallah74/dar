@@ -53,7 +53,7 @@ beforeEach(function () {
     $this->property = Property::create([
         'workspace_id' => $this->workspace->id,
         'name' => 'برج النيل السكني',
-        'type' => 'building',
+        'property_type' => 'building',
     ]);
 
     $this->unit = Unit::create([

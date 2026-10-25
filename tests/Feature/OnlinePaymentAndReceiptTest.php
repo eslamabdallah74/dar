@@ -10,6 +10,8 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\CurrentWorkspace;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -196,4 +198,83 @@ test('payment webhook records payment and allocation idempotently', function () 
     $secondResponse->assertStatus(200);
     expect($secondResponse->json('status'))->toBe('already_processed');
     expect(Payment::where('reference', $externalPaymentId)->count())->toBe(1);
+});
+
+test('recording payment allows uploading an optional receipt photo or screenshot', function () {
+    Storage::fake('local');
+
+    $file = UploadedFile::fake()->image('instapay_transfer.png', 800, 600);
+
+    $response = $this->actingAs($this->user)->post(route('payments.store'), [
+        'renter_id' => $this->renter->id,
+        'amount' => 4500,
+        'paid_at' => now()->toDateString(),
+        'payment_method' => 'bank_transfer',
+        'reference' => 'INSTA-123456',
+        'notes' => 'سداد عبر إنستاباي مع إرفاق لقطة الشاشة',
+        'receipt_image' => $file,
+    ]);
+
+    $response->assertRedirect();
+
+    $payment = Payment::where('reference', 'INSTA-123456')->first();
+    expect($payment)->not->toBeNull()
+        ->and($payment->receipt_path)->not->toBeNull();
+
+    Storage::disk('local')->assertExists($payment->receipt_path);
+
+    // Verify authorized user can download / view the attachment
+    $viewResponse = $this->actingAs($this->user)->get(route('payments.attachment', $payment));
+    $viewResponse->assertStatus(200);
+});
+
+test('recording payment succeeds without receipt image because it is not required', function () {
+    $response = $this->actingAs($this->user)->post(route('payments.store'), [
+        'renter_id' => $this->renter->id,
+        'amount' => 4500,
+        'paid_at' => now()->toDateString(),
+        'payment_method' => 'cash',
+        'reference' => 'CASH-998877',
+        // receipt_image is omitted completely
+    ]);
+
+    $response->assertRedirect();
+
+    $payment = Payment::where('reference', 'CASH-998877')->first();
+    expect($payment)->not->toBeNull()
+        ->and($payment->receipt_path)->toBeNull();
+});
+
+test('unauthorized cross-workspace user cannot access payment attachment', function () {
+    Storage::fake('local');
+    $file = UploadedFile::fake()->image('secret_transfer.jpg');
+    $path = $file->store("payments/{$this->workspace->id}", 'local');
+
+    $payment = Payment::create([
+        'workspace_id' => $this->workspace->id,
+        'renter_id' => $this->renter->id,
+        'recorded_by' => $this->user->id,
+        'amount' => 1000,
+        'payment_method' => 'bank_transfer',
+        'paid_at' => now(),
+        'reference' => 'ATTACH-ISOLATION-01',
+        'receipt_path' => $path,
+    ]);
+
+    $otherUser = User::factory()->create();
+    $otherWorkspace = Workspace::create([
+        'name' => 'شركة أخرى',
+        'slug' => 'other-receipt-space-'.$otherUser->id,
+        'owner_user_id' => $otherUser->id,
+        'status' => 'active',
+    ]);
+    $otherWorkspace->members()->create([
+        'user_id' => $otherUser->id,
+        'role' => 'owner',
+    ]);
+
+    app(CurrentWorkspace::class)->set($otherWorkspace);
+
+    $response = $this->actingAs($otherUser)->get(route('payments.attachment', $payment));
+    expect(in_array($response->status(), [403, 404]))->toBeTrue();
 });

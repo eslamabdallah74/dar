@@ -28,12 +28,14 @@ test('database seeder seeds real data across all entities and tables', function 
         ->and(User::count())->toBeGreaterThanOrEqual(3);
 
     $user = User::where('email', 'test@example.com')->first();
-    expect(Hash::check('password', $user->password))->toBeTrue();
+    expect(Hash::check('password', $user->password))->toBeTrue()
+        ->and($user->isAdmin())->toBeTrue();
 
     // 2. Plans
     expect(Plan::count())->toBe(4)
         ->and(Plan::where('slug', 'growth')->exists())->toBeTrue()
-        ->and(Plan::where('slug', 'pro')->exists())->toBeTrue();
+        ->and(Plan::where('slug', 'pro')->exists())->toBeTrue()
+        ->and(Plan::where('slug', 'enterprise')->exists())->toBeTrue();
 
     // 3. Workspaces & Subscriptions
     expect(Workspace::count())->toBeGreaterThanOrEqual(2)
@@ -43,7 +45,9 @@ test('database seeder seeds real data across all entities and tables', function 
     $workspace = Workspace::where('slug', 'al-nour-real-estate')->first();
     expect($workspace)->not->toBeNull()
         ->and($workspace->currency)->toBe('EGP')
-        ->and($workspace->activeSubscription)->not->toBeNull();
+        ->and($workspace->activeSubscription)->not->toBeNull()
+        ->and($workspace->activeSubscription->plan->slug)->toBe('enterprise')
+        ->and($workspace->activeSubscription->plan->unit_limit)->toBeNull();
 
     // 4. Properties & Units
     expect(Property::where('workspace_id', $workspace->id)->count())->toBe(4)
@@ -113,5 +117,22 @@ test('dashboard page renders with real seeded data without errors', function () 
             ->has('attention_items')
             ->has('upcoming_dues')
             ->where('workspace.name', 'عقارات النور')
+            ->where('workspace.units_limit', null)
+        );
+});
+
+test('first test example has active unlimited enterprise subscription', function () {
+    $this->seed(DatabaseSeeder::class);
+
+    $user = User::where('email', 'test@example.com')->first();
+
+    $response = $this->actingAs($user)->get(route('subscription.index'));
+
+    $response->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Subscription/Index')
+            ->where('current_plan.units_limit', null)
+            ->where('current_plan.name', 'باقة الشركات اللامحدودة (Enterprise)')
+            ->has('plans', 4)
         );
 });

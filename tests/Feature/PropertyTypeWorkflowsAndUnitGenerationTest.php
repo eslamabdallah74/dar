@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\PropertyType;
 use App\Models\Lease;
 use App\Models\Plan;
 use App\Models\Property;
@@ -71,7 +72,7 @@ test('creating a shop generates exactly one independent rentable shop unit by de
 
     $property = Property::where('code', 'SHP-99')->firstOrFail();
 
-    expect($property->property_type)->toBe('shop')
+    expect($property->property_type)->toBe(PropertyType::Shop)
         ->and($property->commercial_activity)->toBe('ملابس وأحذية')
         ->and((float) $property->total_area)->toBe(85.5)
         ->and($property->floors_count)->toBe(1)
@@ -145,7 +146,7 @@ test('creating an apartment in whole rental mode generates 1 rentable apartment 
     $response->assertSessionHasNoErrors();
 
     $property = Property::where('code', 'APT-14')->firstOrFail();
-    expect($property->property_type)->toBe('apartment')
+    expect($property->property_type)->toBe(PropertyType::Apartment)
         ->and($property->floor_number)->toBe('الدور الثاني')
         ->and($property->floors_count)->toBe(1)
         ->and($property->isApartment())->toBeTrue();
@@ -225,7 +226,7 @@ test('creating an apartment in beds rental mode generates apartment -> rooms -> 
 
     foreach ($rooms as $room) {
         expect($room->parent_unit_id)->toBe($parentApt->id)
-            ->and((bool) $room->is_rentable)->toBeFalse();
+            ->and((bool) $room->is_rentable)->toBeTrue(); // Rooms remain rentable for flexible room-or-bed leasing
     }
 
     foreach ($beds as $bed) {
@@ -327,7 +328,7 @@ test('creating units from custom list respects topological sort and parent temp_
     expect($parentApt->parent_unit_id)->toBeNull()
         ->and((bool) $parentApt->is_rentable)->toBeFalse()
         ->and($room->parent_unit_id)->toBe($parentApt->id)
-        ->and((bool) $room->is_rentable)->toBeFalse() // Has child bed, so not rentable leaf
+        ->and((bool) $room->is_rentable)->toBeTrue() // Room remains flexible and rentable
         ->and($bed->parent_unit_id)->toBe($room->id)
         ->and((bool) $bed->is_rentable)->toBeTrue();
 });

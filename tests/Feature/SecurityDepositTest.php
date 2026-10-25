@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\ProcessDepositDeductionJob;
 use App\Models\Lease;
 use App\Models\Payment;
 use App\Models\Plan;
@@ -8,12 +9,14 @@ use App\Models\Renter;
 use App\Models\SecurityDepositDeduction;
 use App\Models\SecurityDepositPayment;
 use App\Models\SecurityDepositRefund;
+use App\Models\SecurityDepositSettlement;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceMember;
 use App\Models\WorkspaceSubscription;
 use App\Support\CurrentWorkspace;
+use Illuminate\Support\Facades\Bus;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -588,6 +591,8 @@ test('15. workspace isolation is preserved for all deposit actions', function ()
         'role' => 'owner',
     ]);
 
+    app(CurrentWorkspace::class)->set($otherWorkspace);
+
     $otherProperty = Property::create([
         'workspace_id' => $otherWorkspace->id,
         'name' => 'عقار آخر',
@@ -616,6 +621,20 @@ test('15. workspace isolation is preserved for all deposit actions', function ()
         'security_deposit_status' => 'due',
     ]);
 
+    SecurityDepositSettlement::create([
+        'workspace_id' => $otherWorkspace->id,
+        'lease_id' => $otherLease->id,
+        'settled_by' => $otherUser->id,
+        'status' => 'settled',
+        'settlement_type' => 'full_refund',
+        'inspection_category' => 'no_issues',
+        'total_received' => 5000.00,
+        'refundable_balance' => 5000.00,
+        'settled_at' => now(),
+    ]);
+
+    app(CurrentWorkspace::class)->set($this->workspace);
+
     // Current user belongs to $this->workspace, attempting to record payment on $otherLease must fail with 404 (due to workspace scope) or 403
     $response = $this->actingAs($this->user)->post(route('leases.security-deposit.payment', $otherLease->id), [
         'amount' => 5000.00,
@@ -623,6 +642,10 @@ test('15. workspace isolation is preserved for all deposit actions', function ()
     ]);
 
     expect(in_array($response->status(), [403, 404], true))->toBeTrue();
+
+    $exportResponse = $this->actingAs($this->user)->get(route('leases.security-deposit.export', $otherLease->id));
+
+    expect(in_array($exportResponse->status(), [403, 404], true))->toBeTrue();
 });
 
 /*
@@ -662,5 +685,161 @@ test('16. lease show page displays complete security deposit section and lifecyc
             ->where('security_deposit.total_received', 8000)
             ->where('security_deposit.refundable_balance', 8000)
             ->where('security_deposit.status', 'held')
+        );
+});
+
+test('deposit issues can be recorded together as separate deductions within the available balance', function () {
+    $lease = Lease::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'unit_id' => $this->unit->id,
+        'renter_id' => $this->renter->id,
+        'security_deposit_amount' => 10000.00,
+        'security_deposit_status' => 'held',
+    ]);
+
+    SecurityDepositPayment::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'amount' => 10000.00,
+    ]);
+
+    Bus::fake([ProcessDepositDeductionJob::class]);
+
+    $response = $this->actingAs($this->user)->post(route('leases.security-deposit.deduction', $lease->id), [
+        'deductions' => [
+            [
+                'category' => 'fixture_damage',
+                'description' => 'إصلاح باب تالف',
+                'amount' => 1200.00,
+            ],
+            [
+                'category' => 'missing_items',
+                'description' => 'استبدال مفتاح مفقود',
+                'amount' => 300.00,
+            ],
+        ],
+    ]);
+
+    $response->assertRedirect();
+    $this->assertDatabaseCount('security_deposit_deductions', 2);
+    $this->assertDatabaseHas('security_deposit_deductions', [
+        'lease_id' => $lease->id,
+        'description' => 'إصلاح باب تالف',
+        'amount' => 1200.00,
+        'status' => 'confirmed',
+    ]);
+    $this->assertDatabaseHas('security_deposit_deductions', [
+        'lease_id' => $lease->id,
+        'description' => 'استبدال مفتاح مفقود',
+        'amount' => 300.00,
+        'status' => 'confirmed',
+    ]);
+    Bus::assertDispatched(ProcessDepositDeductionJob::class, 2);
+
+    expect($lease->fresh()->total_deposit_deductions)->toBe(1500.0)
+        ->and($lease->fresh()->refundable_deposit_balance)->toBe(8500.0);
+});
+
+test('deposit issue deductions are rejected together when their total exceeds the available balance', function () {
+    $lease = Lease::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'unit_id' => $this->unit->id,
+        'renter_id' => $this->renter->id,
+        'security_deposit_amount' => 1000.00,
+        'security_deposit_status' => 'held',
+    ]);
+
+    SecurityDepositPayment::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'amount' => 1000.00,
+    ]);
+
+    Bus::fake([ProcessDepositDeductionJob::class]);
+
+    $response = $this->actingAs($this->user)->post(route('leases.security-deposit.deduction', $lease->id), [
+        'deductions' => [
+            [
+                'category' => 'fixture_damage',
+                'description' => 'إصلاح الباب',
+                'amount' => 700.00,
+            ],
+            [
+                'category' => 'missing_items',
+                'description' => 'تعويض المفتاح',
+                'amount' => 400.00,
+            ],
+        ],
+    ]);
+
+    $response->assertSessionHasErrors('deductions');
+    $this->assertDatabaseCount('security_deposit_deductions', 0);
+    Bus::assertNotDispatched(ProcessDepositDeductionJob::class);
+});
+
+test('final deposit settlement shows its decision and exports itemized totals for Excel', function () {
+    $lease = Lease::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'unit_id' => $this->unit->id,
+        'renter_id' => $this->renter->id,
+        'security_deposit_amount' => 10000.00,
+        'security_deposit_status' => 'held',
+    ]);
+
+    SecurityDepositPayment::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'amount' => 10000.00,
+    ]);
+
+    $this->actingAs($this->user)->post(route('leases.security-deposit.deduction', $lease->id), [
+        'deductions' => [
+            [
+                'category' => 'fixture_damage',
+                'description' => 'إصلاح الباب',
+                'amount' => 1200.00,
+                'notes' => '=HYPERLINK("https://invalid.example","فتح")',
+            ],
+            [
+                'category' => 'missing_items',
+                'description' => 'تعويض مفتاح مفقود',
+                'amount' => 300.00,
+            ],
+        ],
+    ]);
+
+    $this->actingAs($this->user)->get(route('leases.security-deposit.export', $lease->id))
+        ->assertNotFound();
+
+    $this->actingAs($this->user)->post(route('leases.security-deposit.settle', $lease->id), [
+        'inspection_category' => 'fixture_damage',
+        'inspection_notes' => 'تمت معاينة الوحدة',
+    ])->assertRedirect();
+
+    $settlement = $lease->fresh()->securityDepositSettlement;
+    expect($settlement->settlement_type)->toBe('partial_refund')
+        ->and((float) $settlement->total_received)->toBe(10000.0)
+        ->and((float) $settlement->total_deductions)->toBe(1500.0)
+        ->and((float) $settlement->refundable_balance)->toBe(8500.0);
+
+    $response = $this->actingAs($this->user)->get(route('leases.security-deposit.export', $lease->id));
+
+    $response->assertOk()
+        ->assertHeader('content-disposition');
+    expect($response->headers->get('content-disposition'))->toContain('deposit-');
+
+    $content = $response->streamedContent();
+    expect(str_starts_with($content, "\xEF\xBB\xBF"))->toBeTrue()
+        ->and($content)->toContain('إصلاح الباب')
+        ->and($content)->toContain('تعويض مفتاح مفقود')
+        ->and($content)->toContain("'=HYPERLINK")
+        ->and($content)->toContain('1500')
+        ->and($content)->toContain('8500');
+
+    $this->actingAs($this->user)->get(route('leases.show', $lease->id))
+        ->assertInertia(fn ($page) => $page
+            ->where('security_deposit.settlement.settlement_type', 'partial_refund')
+            ->where('security_deposit.deductions.0.description', 'إصلاح الباب')
+            ->where('security_deposit.deductions.1.description', 'تعويض مفتاح مفقود')
         );
 });

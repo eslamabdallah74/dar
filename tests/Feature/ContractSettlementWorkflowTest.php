@@ -566,6 +566,8 @@ test('12. workspace isolation is enforced for extend and settlement actions', fu
         'role' => 'owner',
     ]);
 
+    app(CurrentWorkspace::class)->set($otherWorkspace);
+
     $otherProperty = Property::create([
         'workspace_id' => $otherWorkspace->id,
         'name' => 'عقار آخر',
@@ -593,6 +595,8 @@ test('12. workspace isolation is enforced for extend and settlement actions', fu
         'status' => 'active',
         'security_deposit_amount' => 5000.00,
     ]);
+
+    app(CurrentWorkspace::class)->set($this->workspace);
 
     // Current user belongs to $this->workspace, attempting to extend or terminate $otherLease must fail with 403 or 404
     $extendResponse = $this->actingAs($this->user)->post(route('leases.extend', $otherLease->id), [

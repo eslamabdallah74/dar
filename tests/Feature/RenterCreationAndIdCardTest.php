@@ -13,6 +13,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
     Storage::fake('public');
+    Storage::fake('local');
 
     $this->user = User::factory()->create();
     $this->workspace = Workspace::create([
@@ -101,8 +102,8 @@ test('a user can create a renter with front and back ID images stored cleanly un
     expect($renter->id_card_back)->not->toContain('my_original_id_back');
 
     // Check files actually exist on disk
-    Storage::disk('public')->assertExists($renter->id_card_front);
-    Storage::disk('public')->assertExists($renter->id_card_back);
+    Storage::disk('local')->assertExists($renter->id_card_front);
+    Storage::disk('local')->assertExists($renter->id_card_back);
 
     // Check accessor URLs
     expect($renter->id_card_front_url)->not->toBeNull();
@@ -146,7 +147,7 @@ test('updating renter with new ID images replaces old files and saves cleanly', 
 
     $renter = Renter::where('phone', '01511223344')->first();
     $oldFrontPath = $renter->id_card_front;
-    Storage::disk('public')->assertExists($oldFrontPath);
+    Storage::disk('local')->assertExists($oldFrontPath);
 
     $front2 = UploadedFile::fake()->image('new_front.jpg');
 
@@ -164,8 +165,8 @@ test('updating renter with new ID images replaces old files and saves cleanly', 
     expect($renter->id_card_front)->toStartWith("ids/{$renter->id}/");
 
     // Old file deleted, new file exists
-    Storage::disk('public')->assertMissing($oldFrontPath);
-    Storage::disk('public')->assertExists($renter->id_card_front);
+    Storage::disk('local')->assertMissing($oldFrontPath);
+    Storage::disk('local')->assertExists($renter->id_card_front);
 });
 
 test('renter show page renders with ID card front and back URLs', function () {

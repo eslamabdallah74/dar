@@ -44,7 +44,7 @@ class MoyasarPaymentGateway implements PaymentGatewayInterface
             ->post("{$this->baseUrl}/invoices", [
                 'amount' => $amountInHalalas,
                 'currency' => strtoupper($params['currency'] ?? 'SAR'),
-                'description' => $params['description'] ?? 'سداد إيجار عبر دار',
+                'description' => $params['description'] ?? 'سداد إيجار عبر Nook Mate',
                 'callback_url' => $params['callback_url'],
                 'metadata' => $params['metadata'] ?? [],
             ]);

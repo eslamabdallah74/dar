@@ -26,6 +26,12 @@ class LogPaymentGateway implements PaymentGatewayInterface
 
     public function verifyWebhook(Request $request): bool
     {
+        if (app()->isProduction()) {
+            Log::critical('[Payment Gateway Security] Simulated LogPaymentGateway webhook called in production. Rejecting unauthorized webhook.');
+
+            return false;
+        }
+
         // Safe for local development / testing
         return true;
     }

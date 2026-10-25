@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\Gender;
 use App\Models\Lease;
 use App\Models\Property;
+use App\Models\Renter;
 use App\Models\Unit;
 use App\Models\Workspace;
 use Illuminate\Validation\ValidationException;
@@ -327,5 +329,92 @@ class UnitHierarchyService
         $parts[] = $unit->name;
 
         return implode(' / ', $parts);
+    }
+
+    /**
+     * Compute apartment gender classification from active renters or occupants.
+     *
+     * @param  iterable<mixed>  $rentersOrOccupants
+     * @return array{
+     *     status: 'male'|'female'|'mixed'|'unspecified',
+     *     label: string,
+     *     short_label: string,
+     *     description: string,
+     *     badge_class: string,
+     *     male_count: int,
+     *     female_count: int,
+     *     unspecified_count: int,
+     *     total_active_renters: int
+     * }
+     */
+    public function computeApartmentGender(iterable $rentersOrOccupants): array
+    {
+        $maleCount = 0;
+        $femaleCount = 0;
+        $unspecifiedCount = 0;
+        $total = 0;
+
+        foreach ($rentersOrOccupants as $item) {
+            $total++;
+            $gender = null;
+            if ($item instanceof Renter) {
+                $gender = $item->gender instanceof Gender ? $item->gender->value : $item->gender;
+            } elseif (is_array($item)) {
+                $gender = $item['gender'] ?? null;
+            } elseif (is_object($item)) {
+                $gender = $item->gender ?? null;
+                if ($gender instanceof Gender) {
+                    $gender = $gender->value;
+                }
+            }
+
+            if ($gender === 'male') {
+                $maleCount++;
+            } elseif ($gender === 'female') {
+                $femaleCount++;
+            } else {
+                $unspecifiedCount++;
+            }
+        }
+
+        if ($maleCount > 0 && $femaleCount > 0) {
+            $status = 'mixed';
+            $label = 'سكن مختلط';
+            $shortLabel = 'مختلط';
+            $description = "الشقة تضم حالياً نزلاء ذكور ({$maleCount}) وإناث ({$femaleCount})";
+            $badgeClass = 'bg-amber-50 text-amber-800 border-amber-200';
+        } elseif ($maleCount > 0 && $femaleCount === 0) {
+            $status = 'male';
+            $label = 'سكن شباب (ذكور)';
+            $shortLabel = 'شباب';
+            $description = "الشقة مصنفة سكن شباب لوجود نزلاء ذكور ({$maleCount})";
+            $badgeClass = 'bg-sky-50 text-sky-800 border-sky-200';
+        } elseif ($femaleCount > 0 && $maleCount === 0) {
+            $status = 'female';
+            $label = 'سكن بنات (إناث)';
+            $shortLabel = 'بنات';
+            $description = "الشقة مصنفة سكن بنات لوجود نزيلات إناث ({$femaleCount})";
+            $badgeClass = 'bg-rose-50 text-rose-800 border-rose-200';
+        } else {
+            $status = 'unspecified';
+            $label = 'غير محدد';
+            $shortLabel = 'غير محدد';
+            $description = $total === 0
+                ? 'الشقة شاغرة حالياً — تتحدد فئة السكن تلقائياً مع أول مستأجر'
+                : 'يوجد مستأجرون حاليون دون تحديد الجنس';
+            $badgeClass = 'bg-slate-50 text-slate-600 border-slate-200';
+        }
+
+        return [
+            'status' => $status,
+            'label' => $label,
+            'short_label' => $shortLabel,
+            'description' => $description,
+            'badge_class' => $badgeClass,
+            'male_count' => $maleCount,
+            'female_count' => $femaleCount,
+            'unspecified_count' => $unspecifiedCount,
+            'total_active_renters' => $total,
+        ];
     }
 }

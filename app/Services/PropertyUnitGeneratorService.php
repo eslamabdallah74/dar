@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\PropertyType;
 use App\Models\Property;
 use App\Models\Unit;
 use Illuminate\Support\Collection;
@@ -35,13 +36,17 @@ class PropertyUnitGeneratorService
                 return $this->createFromCustomUnitsList($property, $customUnits);
             }
 
+            $type = $property->property_type instanceof PropertyType
+                ? $property->property_type->value
+                : (string) $property->property_type;
+
             // Otherwise generate according to the property type and its configuration
-            return match ($property->property_type) {
-                'shop' => $this->generateForShop($property, $config),
-                'apartment' => $this->generateForApartment($property, $config),
-                'building' => $this->generateForBuilding($property, $config),
-                'commercial' => $this->generateForCommercial($property, $config),
-                'villa' => $this->generateForVilla($property, $config),
+            return match ($type) {
+                PropertyType::Shop->value => $this->generateForShop($property, $config),
+                PropertyType::Apartment->value => $this->generateForApartment($property, $config),
+                PropertyType::Building->value => $this->generateForBuilding($property, $config),
+                PropertyType::Commercial->value => $this->generateForCommercial($property, $config),
+                PropertyType::Villa->value => $this->generateForVilla($property, $config),
                 default => $this->generateDefaultStandalone($property),
             };
         });
@@ -127,7 +132,7 @@ class PropertyUnitGeneratorService
         for ($r = 1; $r <= $roomsCount; $r++) {
             $roomCode = "{$aptCode}-R{$r}";
             $roomName = "غرفة {$r}";
-            $roomIsRentable = ($rentalMode === 'rooms');
+            $roomIsRentable = true;
 
             $room = Unit::create([
                 'workspace_id' => $property->workspace_id,
@@ -226,7 +231,7 @@ class PropertyUnitGeneratorService
                     for ($r = 1; $r <= $roomsPerApartment; $r++) {
                         $roomCode = "{$aptCode}-R{$r}";
                         $roomName = "غرفة {$r} (شقة {$aptNum})";
-                        $roomIsRentable = ($rentalMode === 'rooms');
+                        $roomIsRentable = true;
 
                         $room = Unit::create([
                             'workspace_id' => $property->workspace_id,
@@ -384,7 +389,7 @@ class PropertyUnitGeneratorService
     public function createFromCustomUnitsList(Property $property, array $customUnits): Collection
     {
         // 1. Validate property type constraints
-        if ($property->property_type === 'shop') {
+        if ($property->isShop()) {
             foreach ($customUnits as $u) {
                 if (($u['unit_type'] ?? '') !== 'shop') {
                     throw ValidationException::withMessages([
@@ -475,9 +480,13 @@ class PropertyUnitGeneratorService
             $pTempId = ! empty($u['parent_temp_id']) ? (string) $u['parent_temp_id'] : null;
             $realParentId = $pTempId ? ($tempToRealId[$pTempId] ?? null) : null;
 
-            // An entity with children is not directly rentable (its leaf children are)
+            // An apartment that has children (rooms) is a building structure/container, not directly rentable.
+            // But a room remains flexible and rentable (as a whole room) even if it has beds, or if it has no beds.
+            $unitType = $u['unit_type'] ?? 'apartment';
             $hasChildren = isset($parentsWithChildren[$tempId]);
-            $isRentable = $hasChildren ? false : ($u['is_rentable'] ?? true);
+            $isRentable = ($unitType === 'apartment' && $hasChildren)
+                ? false
+                : (isset($u['is_rentable']) ? (bool) $u['is_rentable'] : true);
 
             $unit = Unit::create([
                 'workspace_id' => $property->workspace_id,

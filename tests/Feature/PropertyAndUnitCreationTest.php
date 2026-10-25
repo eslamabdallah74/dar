@@ -689,7 +689,7 @@ test('user can render the new multi-step property creation wizard page', functio
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('Properties/Create')
-        ->has('property_types', 5)
+        ->has('property_types', 6)
         ->has('amenities_list')
         ->has('finishing_types')
     );

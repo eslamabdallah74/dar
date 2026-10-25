@@ -88,6 +88,10 @@ test('authenticated user can view the modular dashboard with workspace metrics',
     $response->assertInertia(fn (Assert $page) => $page
         ->component('Dashboard')
         ->has('workspace')
+        ->has('workspace', fn (Assert $workspace) => $workspace
+            ->missing('trial_days_remaining')
+            ->etc()
+        )
         ->has('top_kpis')
         ->where('top_kpis.properties_units.value', '1 / 2')
         ->where('top_kpis.occupancy.value', '50%')
@@ -126,6 +130,8 @@ test('first-time empty workspace shows onboarding state', function () {
     $response->assertInertia(fn (Assert $page) => $page
         ->component('Dashboard')
         ->where('is_empty_workspace', true)
+        ->where('workspace.plan_name', 'باقة الانطلاق (Starter)')
+        ->where('workspace.units_limit', 5)
         ->has('kpis')
         ->where('kpis.properties.value', '0')
         ->where('kpis.units.value', '0')

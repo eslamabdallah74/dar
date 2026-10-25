@@ -17,9 +17,7 @@ const props = withDefaults(
         breadcrumb?: string;
         adminMode?: boolean;
         customNavLinks?: any[];
-        allWorkspacesLabel?: string;
         planName?: string;
-        trialDaysRemaining?: number;
         unitsUsed?: number;
         unitsLimit?: number;
     }>(),
@@ -42,7 +40,6 @@ const recordPaymentOpen = ref(false);
 const showFlash = ref(true);
 
 const user = computed(() => (page.props.auth as any)?.user ?? { name: 'أحمد حسن', email: 'test@example.com', role: 'مالك المنشأة' });
-const workspace = computed(() => (page.props.auth as any)?.workspace ?? { name: 'عقارات النور', currency: 'EGP' });
 const quickRenters = computed(() => (page.props as any)?.quickRenters ?? []);
 const flash = computed(() => (page.props.flash as any) ?? {});
 
@@ -66,14 +63,11 @@ function handleNewAction() {
 
         <!-- 1. الشريط الجانبي الرئيسي (App Sidebar) -->
         <AppSidebar
-            :workspace-name="workspace?.name || 'عقارات النور'"
-            :all-workspaces-label="allWorkspacesLabel"
             :user-name="user?.name || (adminMode ? 'مدير النظام' : 'أحمد حسن')"
             :user-role="adminMode ? 'مدير النظام المركزي' : (user?.role || 'مالك الحساب')"
-            :plan-name="planName || 'Growth • تجريبية'"
-            :trial-days-remaining="trialDaysRemaining ?? 10"
-            :units-used="unitsUsed ?? 18"
-            :units-limit="unitsLimit ?? 24"
+            :plan-name="planName || 'باقة الانطلاق (Starter)'"
+            :units-used="unitsUsed ?? 0"
+            :units-limit="unitsLimit ?? 5"
             :mobile-open="mobileOpen"
             :active-tab="activeTab"
             :admin-mode="adminMode"

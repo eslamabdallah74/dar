@@ -94,6 +94,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/properties/create', [PropertyController::class, 'create'])->name('properties.create');
     Route::post('/properties', [PropertyController::class, 'store'])->name('properties.store');
     Route::get('/properties/{property}', [PropertyController::class, 'show'])->name('properties.show');
+    Route::put('/properties/{property}', [PropertyController::class, 'update'])->name('properties.update');
     Route::post('/properties/{property}/units', [PropertyController::class, 'storeUnit'])->name('properties.units.store');
     Route::put('/properties/{property}/units/{unit}', [PropertyController::class, 'updateUnit'])->name('properties.units.update');
     Route::delete('/properties/{property}/units/{unit}', [PropertyController::class, 'destroyUnit'])->name('properties.units.destroy');

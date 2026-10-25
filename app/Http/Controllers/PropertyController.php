@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Properties\StorePropertyRequest;
 use App\Http\Requests\Properties\StoreUnitRequest;
+use App\Http\Requests\Properties\UpdatePropertyRequest;
 use App\Http\Requests\Properties\UpdateUnitRequest;
 use App\Models\Plan;
 use App\Models\Property;
 use App\Models\Unit;
+use App\Services\PropertyUnitGeneratorService;
 use App\Services\UnitHierarchyService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -49,7 +51,11 @@ class PropertyController extends Controller
                     'property_type' => $property->property_type,
                     'type_label' => match ($property->property_type) {
                         'building' => 'عمارة سكنية',
+                        'apartment' => 'شقة',
+                        'shop' => 'محل تجاري',
+                        'commercial' => 'عقار تجاري / إداري',
                         'villa' => 'فيلا',
+                        'standalone' => 'وحدة مستقلة',
                         default => 'عقار',
                     },
                     'address' => $property->address ?? 'القاهرة، جمهورية مصر العربية',
@@ -376,16 +382,32 @@ class PropertyController extends Controller
                 [
                     'value' => 'building',
                     'label' => 'عمارة سكنية',
-                    'badge' => 'الأكثر استخداماً',
-                    'description' => 'عمارة متعددة الأدوار تحتوي على شقق سكنية أو غرف ومحلات.',
+                    'badge' => 'متعددة الوحدات',
+                    'description' => 'عمارة متعددة الأدوار تحتوي على شقق سكنية أو غرف، مع إمكانية إضافة محلات أرضية.',
                     'icon' => 'building',
-                    'suggested_units' => 'apartments_and_shops',
+                    'suggested_units' => 'building_floors_apartments',
+                ],
+                [
+                    'value' => 'apartment',
+                    'label' => 'شقة',
+                    'badge' => 'كاملة أو غرف وأسرّة',
+                    'description' => 'شقة منفصلة للتأجير بالكامل، أو مقسمة إلى غرف مستقلة، أو بنظام الأسرّة الفردية.',
+                    'icon' => 'home',
+                    'suggested_units' => 'apartment_rental_modes',
+                ],
+                [
+                    'value' => 'shop',
+                    'label' => 'محل تجاري',
+                    'badge' => 'تجاري مستقل',
+                    'description' => 'محل أو معرض تجاري مستقل بذاته بنشاط ومساحة تجارية دون أدوار أو شقق سكنية.',
+                    'icon' => 'store',
+                    'suggested_units' => 'single_shop',
                 ],
                 [
                     'value' => 'commercial',
-                    'label' => 'عقار تجاري / إداري',
+                    'label' => 'مركز / مبنى تجاري',
                     'badge' => 'محلات ومكاتب',
-                    'description' => 'مركز أو برج تجاري يضم محلات تجارية ومكاتب إدارية.',
+                    'description' => 'مركز أو مجمع يضم محلات تجارية ومكاتب إدارية متعددة.',
                     'icon' => 'store',
                     'suggested_units' => 'shops_and_offices',
                 ],
@@ -396,14 +418,6 @@ class PropertyController extends Controller
                     'description' => 'فيلا مستقلة قابلة للتأجير بالكامل أو مقسمة إلى أجنحة وغرف.',
                     'icon' => 'home',
                     'suggested_units' => 'whole_or_rooms',
-                ],
-                [
-                    'value' => 'standalone',
-                    'label' => 'شقة أو محل مستقل',
-                    'badge' => 'وحدة منفصلة',
-                    'description' => 'شقة أو محل تجاري مستقل بذاته في موقع محدد دون عمارة تابعة.',
-                    'icon' => 'door-open',
-                    'suggested_units' => 'single',
                 ],
                 [
                     'value' => 'other',
@@ -439,8 +453,10 @@ class PropertyController extends Controller
         ]);
     }
 
-    public function store(StorePropertyRequest $request): RedirectResponse
-    {
+    public function store(
+        StorePropertyRequest $request,
+        PropertyUnitGeneratorService $generatorService
+    ): RedirectResponse {
         $workspace = $this->resolveWorkspace($request);
         $validated = $request->validated();
 
@@ -461,7 +477,7 @@ class PropertyController extends Controller
             $address = implode('، ', $addressParts);
         }
 
-        $property = DB::transaction(function () use ($workspace, $validated, $coverImagePath, $address) {
+        $property = DB::transaction(function () use ($workspace, $validated, $coverImagePath, $address, $generatorService) {
             $property = $workspace->properties()->create([
                 'name' => $validated['name'],
                 'code' => $validated['code'] ?? null,
@@ -474,7 +490,9 @@ class PropertyController extends Controller
                 'postal_code' => $validated['postal_code'] ?? null,
                 'google_maps_url' => $validated['google_maps_url'] ?? null,
                 'floors_count' => $validated['floors_count'] ?? 1,
+                'floor_number' => $validated['floor_number'] ?? null,
                 'total_area' => $validated['total_area'] ?? null,
+                'commercial_activity' => $validated['commercial_activity'] ?? null,
                 'year_built' => $validated['year_built'] ?? null,
                 'finishing_type' => $validated['finishing_type'] ?? null,
                 'amenities' => $validated['amenities'] ?? [],
@@ -488,28 +506,56 @@ class PropertyController extends Controller
                 'cover_image' => $coverImagePath,
             ]);
 
-            // Auto-generate units if submitted
-            if (! empty($validated['units'])) {
-                foreach ($validated['units'] as $unitData) {
-                    $property->units()->create([
-                        'workspace_id' => $workspace->id,
-                        'name' => $unitData['name'],
-                        'code' => $unitData['code'] ?? null,
-                        'unit_type' => $unitData['unit_type'] ?? 'apartment',
-                        'is_rentable' => $unitData['is_rentable'] ?? true,
-                        'parent_unit_id' => null,
-                    ]);
-                }
-            }
+            // Auto-generate units according to property type and configured rental structure
+            $generatorService->generateForProperty(
+                $property,
+                $validated['generation_config'] ?? null,
+                $validated['units'] ?? null
+            );
 
             return $property;
         });
 
         if ($request->input('after_save') === 'index') {
-            return redirect()->route('properties.index')->with('success', 'تمت إضافة العقار بنجاح');
+            return redirect()->route('properties.index')->with('success', 'تمت إضافة العقار وتجهيز وحداته بنجاح');
         }
 
         return redirect()->route('properties.show', $property->id)->with('success', 'تم إنشاء العقار بنجاح وتجهيز وحداته');
+    }
+
+    public function update(
+        UpdatePropertyRequest $request,
+        Property $property
+    ): RedirectResponse {
+        $workspace = $this->resolveWorkspace($request);
+        abort_if($property->workspace_id !== $workspace->id, 403, 'غير مصرح لك بتعديل هذا العقار.');
+
+        $validated = $request->validated();
+
+        if ($request->hasFile('cover_image_file')) {
+            $validated['cover_image'] = $request->file('cover_image_file')->store('properties', 'public');
+        }
+
+        if (empty($validated['address'])) {
+            $addressParts = array_filter([
+                ! empty($validated['building_number']) ? 'مبنى '.$validated['building_number'] : null,
+                ! empty($validated['street']) ? 'شارع '.$validated['street'] : null,
+                $validated['district'] ?? null,
+                $validated['city'] ?? null,
+            ]);
+            if (! empty($addressParts)) {
+                $validated['address'] = implode('، ', $addressParts);
+            }
+        }
+
+        // Updating property attributes preserves all existing units, contracts, and tenants
+        $property->update($validated);
+
+        if ($request->header('referer')) {
+            return back()->with('success', 'تم تحديث بيانات العقار بنجاح');
+        }
+
+        return redirect()->route('properties.show', $property->id)->with('success', 'تم تحديث بيانات العقار بنجاح');
     }
 
     public function storeUnit(StoreUnitRequest $request, Property $property): RedirectResponse

@@ -194,7 +194,6 @@ const subscriptionForm = useForm({
     workspace_id: 0,
     plan_id: 1,
     status: 'active',
-    trial_days: 14,
 });
 
 // Actions
@@ -274,7 +273,6 @@ function openChangePlan(ws: any) {
     const currentPlan = props.plans.find(p => p.slug === ws.plan_slug) || props.plans[0];
     subscriptionForm.plan_id = currentPlan ? currentPlan.id : 1;
     subscriptionForm.status = ws.subscription_status || 'active';
-    subscriptionForm.trial_days = 14;
     showSubscriptionModal.value = true;
 }
 

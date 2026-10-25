@@ -226,6 +226,11 @@ test('whatsapp, subscription and settings pages render correctly', function () {
         ->assertInertia(fn (Assert $page) => $page
             ->component('Subscription/Index')
             ->has('plans')
+            ->has('current_plan', fn (Assert $currentPlan) => $currentPlan
+                ->missing('trial_days_remaining')
+                ->where('renewal_date', null)
+                ->etc()
+            )
         );
 
     $this->actingAs($this->user)

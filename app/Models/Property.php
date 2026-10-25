@@ -26,7 +26,9 @@ class Property extends Model
         'postal_code',
         'google_maps_url',
         'floors_count',
+        'floor_number',
         'total_area',
+        'commercial_activity',
         'year_built',
         'finishing_type',
         'amenities',
@@ -64,18 +66,56 @@ class Property extends Model
         );
     }
 
+    public function isBuilding(): bool
+    {
+        return $this->property_type === 'building';
+    }
+
+    public function isApartment(): bool
+    {
+        return $this->property_type === 'apartment';
+    }
+
+    public function isShop(): bool
+    {
+        return $this->property_type === 'shop';
+    }
+
+    public function isCommercial(): bool
+    {
+        return $this->property_type === 'commercial';
+    }
+
+    public function isVilla(): bool
+    {
+        return $this->property_type === 'villa';
+    }
+
+    public function getTypeLabelAttribute(): string
+    {
+        return match ($this->property_type) {
+            'building' => 'عمارة سكنية',
+            'apartment' => 'شقة',
+            'shop' => 'محل تجاري',
+            'commercial' => 'عقار تجاري / إداري',
+            'villa' => 'فيلا',
+            'standalone' => 'وحدة مستقلة',
+            default => 'عقار',
+        };
+    }
+
     public function units(): HasMany
     {
         return $this->hasMany(Unit::class);
     }
 
+    public function leases(): HasMany
+    {
+        return $this->hasMany(Lease::class);
+    }
+
     public function maintenanceRequests(): HasMany
     {
         return $this->hasMany(MaintenanceRequest::class);
-    }
-
-    public function expenses(): HasMany
-    {
-        return $this->hasMany(Expense::class);
     }
 }

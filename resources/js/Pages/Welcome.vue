@@ -84,10 +84,10 @@ const mobileMenuOpen = ref(false);
                         "mainEntity": [
                             {
                                 "@type": "Question",
-                                "name": "هل التجربة المجانية تتطلب بطاقة بنكية؟",
+                                "name": "هل يمكنني استخدام دار مجانًا؟",
                                 "acceptedAnswer": {
                                     "@type": "Answer",
-                                    "text": "لا نهائيًا، يمكنك التسجيل والبدء فورًا في إدارة حتى 5 وحدات مجانًا بالكامل دون الحاجة لإدخال أي بطاقة دفع أو التزام مالي."
+                                    "text": "نعم، يمكنك استخدام الباقة المجانية لإدارة حتى 5 وحدات دون الحاجة إلى بطاقة دفع."
                                 }
                             },
                             {
@@ -538,7 +538,7 @@ const mobileMenuOpen = ref(false);
                                 <h3 class="text-xl font-bold text-[#0F2747]">الباقة المجانية</h3>
                                 <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#E8EFF4] text-[#0F2747]">للبدء</span>
                             </div>
-                            <p class="text-sm text-[#5B6770] mb-6">مثالية لصغار الملاك الراغبين في تجربة النظام.</p>
+                            <p class="text-sm text-[#5B6770] mb-6">مثالية لصغار الملاك الراغبين في إدارة أملاكهم دون تكلفة.</p>
                             
                             <div class="flex items-baseline gap-1 mb-8">
                                 <span class="text-4xl font-extrabold text-[#0F2747]">0</span>
@@ -690,7 +690,7 @@ const mobileMenuOpen = ref(false);
                             type="button"
                             class="w-full p-5 text-right flex items-center justify-between gap-4 bg-white hover:bg-[#F3F7FA] transition"
                         >
-                            <span class="text-base font-bold text-[#0F2747]">هل التجربة المجانية تتطلب بطاقة بنكية؟</span>
+                            <span class="text-base font-bold text-[#0F2747]">هل يمكنني استخدام دار مجانًا؟</span>
                             <span class="w-7 h-7 rounded-full bg-[#E8EFF4] text-[#0F2747] flex items-center justify-center shrink-0">
                                 <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': activeFaq === 0 }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M6 9l6 6 6-6"/>
@@ -698,7 +698,7 @@ const mobileMenuOpen = ref(false);
                             </span>
                         </button>
                         <div v-show="activeFaq === 0" class="px-5 pb-5 pt-1 text-sm text-[#5B6770] leading-relaxed border-t border-[#D6E0E7]/60 bg-[#F3F7FA]/50">
-                            لا نهائيًا، يمكنك التسجيل والبدء فورًا في إدارة حتى 5 وحدات مجانًا بالكامل دون الحاجة لإدخال أي بطاقة دفع أو التزام مالي.
+                            نعم، يمكنك استخدام الباقة المجانية لإدارة حتى 5 وحدات دون الحاجة إلى بطاقة دفع.
                         </div>
                     </div>
 

@@ -354,8 +354,8 @@ class DashboardController extends Controller
 
         // 9. Subscription & Plan Info
         $activeSub = $workspace->activeSubscription()->with('plan')->first();
-        $planName = $activeSub?->plan?->name ?? 'باقة النمو (Growth)';
-        $unitsLimit = $activeSub?->plan?->unit_limit ?? 25;
+        $planName = $activeSub?->plan?->name ?? 'باقة الانطلاق (Starter)';
+        $unitsLimit = $activeSub?->plan?->unit_limit ?? 5;
         $unitsUsed = $totalBillableUnits;
         $usagePercentage = $unitsLimit > 0 ? (int) min(100, round(($unitsUsed / $unitsLimit) * 100)) : 0;
 
@@ -397,7 +397,6 @@ class DashboardController extends Controller
                 'currency_symbol' => $currencySymbol,
                 'currency_label' => $currencyLabel,
                 'plan_name' => $planName,
-                'trial_days_remaining' => 10,
                 'units_used' => $unitsUsed,
                 'units_limit' => $unitsLimit,
                 'usage_percentage' => $usagePercentage,

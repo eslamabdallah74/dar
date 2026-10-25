@@ -79,7 +79,7 @@ class AdminDashboardController extends Controller
         $openMaintenanceCount = MaintenanceRequest::whereIn('status', ['open', 'in_progress'])->count();
 
         // Subscriptions & MRR
-        $activeSubscriptions = WorkspaceSubscription::whereIn('status', ['active', 'trial'])->with('plan')->get();
+        $activeSubscriptions = WorkspaceSubscription::where('status', 'active')->with('plan')->get();
         $mrr = (float) $activeSubscriptions->sum(fn ($s) => $s->plan?->monthly_price ?? 0);
 
         // 3. Historical Monthly Collections (Last 6 months across platform)
@@ -196,9 +196,9 @@ class AdminDashboardController extends Controller
                 'units_count' => $w->units_count,
                 'leases_count' => $w->leases_count,
                 'renters_count' => $w->renters_count,
-                'plan_name' => $w->activeSubscription?->plan?->name ?? 'تجريبية / غير محدد',
+                'plan_name' => $w->activeSubscription?->plan?->name ?? 'بدون اشتراك',
                 'plan_slug' => $w->activeSubscription?->plan?->slug ?? 'starter',
-                'subscription_status' => $w->activeSubscription?->status ?? 'trial',
+                'subscription_status' => $w->activeSubscription?->status ?? 'inactive',
                 'created_at' => $w->created_at?->format('d/m/Y H:i'),
             ]);
 

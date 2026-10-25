@@ -70,19 +70,15 @@ class SubscriptionController extends Controller
             ],
         ];
 
-        $planName = $currentPlan?->name ?? 'باقة الانطلاق (المجانية)';
+        $planName = $currentPlan?->name ?? 'باقة الانطلاق (Starter)';
         $unitLimit = $currentPlan?->unit_limit ?? 5;
-        $daysRemaining = $activeSubscription?->ends_at
-            ? max(0, (int) now()->diffInDays($activeSubscription->ends_at, false))
-            : 30;
 
         return Inertia::render('Subscription/Index', [
             'current_plan' => [
                 'name' => $planName,
-                'trial_days_remaining' => $daysRemaining,
                 'units_used' => $totalBillableUnits,
                 'units_limit' => $unitLimit,
-                'renewal_date' => $activeSubscription?->ends_at?->format('d/m/Y') ?? now()->addDays(30)->format('d/m/Y'),
+                'renewal_date' => $activeSubscription?->ends_at?->format('d/m/Y'),
                 'payment_card' => $activeSubscription ? '•••• 4242 (مدى / بطاقة بنكية)' : 'غير محدد',
             ],
             'plans' => $plans,

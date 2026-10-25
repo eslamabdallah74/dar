@@ -33,12 +33,9 @@ interface NavItem {
 }
 
 const props = defineProps<{
-    workspaceName?: string;
-    allWorkspacesLabel?: string;
     userName?: string;
     userRole?: string;
     planName?: string;
-    trialDaysRemaining?: number;
     unitsUsed?: number;
     unitsLimit?: number;
     mobileOpen?: boolean;
@@ -109,6 +106,13 @@ function handleNavClick(link: NavItem) {
 }
 
 const userMenuOpen = ref(false);
+const unitUsagePercentage = computed(() => {
+    const unitsLimit = props.unitsLimit ?? 5;
+
+    return unitsLimit > 0
+        ? Math.min(100, Math.round(((props.unitsUsed ?? 0) / unitsLimit) * 100))
+        : 0;
+});
 
 const closeUserMenu = () => {
     userMenuOpen.value = false;
@@ -131,7 +135,7 @@ onUnmounted(() => {
             mobileOpen ? 'translate-x-0 shadow-2xl' : 'translate-x-full lg:translate-x-0'
         ]"
     >
-        <!-- الجزء العلوي: الشعار + مبدل المحفظة + الروابط -->
+        <!-- الجزء العلوي: الشعار + الروابط -->
         <div class="space-y-6">
             <!-- الشعار وهوية دار (Logo) -->
             <div class="flex items-center justify-between">
@@ -170,24 +174,9 @@ onUnmounted(() => {
                 </button>
             </div>
 
-            <!-- مبدل مساحات العمل أو شارة الإدارة -->
+            <!-- شارة الإدارة -->
             <div
-                v-if="!adminMode"
-                class="w-[182px] rounded-xl bg-[#17334F] p-3 border border-white/5 cursor-pointer hover:bg-[#1D3E5E] transition group"
-            >
-                <div class="flex items-center justify-between">
-                    <span class="text-sm font-semibold text-white truncate max-w-[130px]">
-                        {{ workspaceName || 'عقارات النور' }}
-                    </span>
-                    <span class="text-xs text-[#CDDBE7] group-hover:text-white transition">⌄</span>
-                </div>
-                <span class="text-xs text-[#CDDBE7] font-medium block mt-1">
-                    {{ allWorkspacesLabel || 'كل العقارات ⌄' }}
-                </span>
-            </div>
-
-            <div
-                v-else
+                v-if="adminMode"
                 class="w-[182px] rounded-xl bg-[#17334F] p-3 border border-amber-500/20 text-right space-y-1"
             >
                 <div class="flex items-center justify-between">
@@ -261,16 +250,17 @@ onUnmounted(() => {
             <div v-if="!adminMode" class="w-[182px] rounded-xl bg-[#17334F] p-3.5 border border-white/5 space-y-2">
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-semibold text-white">
-                        {{ planName || 'Growth • تجريبية' }}
+                        {{ planName || 'باقة الانطلاق (Starter)' }}
                     </span>
                 </div>
-                <p class="text-[11px] text-[#CDDBE7]">
-                    متبقي ⁦{{ trialDaysRemaining || 10 }}⁩ أيام للتجربة
-                </p>
+                <div class="flex items-center justify-between text-[11px] text-[#CDDBE7]">
+                    <span>الوحدات المستخدمة</span>
+                    <span>{{ unitsUsed ?? 0 }} / {{ unitsLimit ?? 5 }}</span>
+                </div>
                 <div class="w-full h-1 bg-white/10 rounded-full overflow-hidden">
                     <div
                         class="h-full bg-[#0E6E7E] rounded-full"
-                        :style="{ width: `${Math.round(((unitsUsed || 18) / (unitsLimit || 24)) * 100)}%` }"
+                        :style="{ width: `${unitUsagePercentage}%` }"
                     ></div>
                 </div>
             </div>

@@ -39,10 +39,9 @@ interface InvoiceItem {
 const props = defineProps<{
     current_plan: {
         name: string;
-        trial_days_remaining: number;
         units_used: number;
         units_limit: number;
-        renewal_date: string;
+        renewal_date: string | null;
         payment_card: string;
     };
     plans: PlanItem[];
@@ -80,8 +79,8 @@ const handleUpgradeClick = (plan: PlanItem) => {
                                 نشطة
                             </span>
                         </div>
-                        <p class="text-xs text-[#5B6770] mt-1">
-                            متبقي <span class="font-bold text-[#0F2747] font-mono">{{ current_plan.trial_days_remaining }}</span> أيام للتجربة المجانية الكاملة • التجديد القادم: {{ current_plan.renewal_date }}
+                        <p v-if="current_plan.renewal_date" class="text-xs text-[#5B6770] mt-1">
+                            موعد التجديد القادم: {{ current_plan.renewal_date }}
                         </p>
                     </div>
                 </div>
@@ -260,4 +259,3 @@ const handleUpgradeClick = (plan: PlanItem) => {
         </div>
     </AppLayout>
 </template>
-

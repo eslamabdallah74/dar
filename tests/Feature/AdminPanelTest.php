@@ -230,6 +230,33 @@ test('admin can change workspace subscription plan', function () {
     expect($sub->status)->toBe('active');
 });
 
+test('admin cannot assign a trial subscription status', function () {
+    $admin = User::factory()->create([
+        'is_admin' => true,
+    ]);
+
+    $workspace = Workspace::create([
+        'name' => 'No Trial Workspace',
+        'slug' => 'no-trial-workspace',
+        'owner_user_id' => $admin->id,
+        'currency' => 'EGP',
+    ]);
+
+    $plan = Plan::firstOrCreate(
+        ['slug' => 'pro'],
+        ['name' => 'باقة المحترفين (Pro)', 'monthly_price' => 499.00, 'unit_limit' => 100, 'is_active' => true]
+    );
+
+    $this->actingAs($admin)
+        ->post(route('admin.workspaces.subscription', $workspace), [
+            'plan_id' => $plan->id,
+            'status' => 'trial',
+        ])
+        ->assertSessionHasErrors('status');
+
+    expect($workspace->subscriptions()->exists())->toBeFalse();
+});
+
 test('admin can update lease status', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $workspace = Workspace::create([

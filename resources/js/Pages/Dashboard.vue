@@ -32,12 +32,10 @@ interface Props {
     workspace: {
         id: number;
         name: string;
-        all_workspaces_label?: string;
         currency: string;
         currency_symbol?: string;
         currency_label?: string;
         plan_name: string;
-        trial_days_remaining: number;
         units_used: number;
         units_limit: number;
         usage_percentage?: number;
@@ -218,9 +216,7 @@ function handleAttentionAction(item: any) {
     <AppLayout
         title="الرئيسية — دار لإدارة العقارات"
         active-tab="dashboard"
-        :all-workspaces-label="workspace?.all_workspaces_label"
         :plan-name="workspace?.plan_name"
-        :trial-days-remaining="workspace?.trial_days_remaining"
         :units-used="workspace?.units_used"
         :units-limit="workspace?.units_limit"
     >

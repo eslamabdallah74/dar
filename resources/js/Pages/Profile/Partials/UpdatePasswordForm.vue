@@ -38,8 +38,8 @@ const updatePassword = () => {
 <template>
     <section>
         <header class="pb-4 border-b border-[#E8EFF4]">
-            <h2 class="text-base font-bold text-[#0F2747] flex items-center gap-2">
-                <KeyRound class="w-5 h-5 text-[#0E6E7E]" />
+            <h2 class="text-base font-bold text-[#163E3E] flex items-center gap-2">
+                <KeyRound class="w-5 h-5 text-[#163E3E]" />
                 تغيير كلمة المرور
             </h2>
 
@@ -50,7 +50,7 @@ const updatePassword = () => {
 
         <form @submit.prevent="updatePassword" class="mt-6 space-y-5">
             <div>
-                <InputLabel for="current_password" value="كلمة المرور الحالية" class="text-xs font-bold text-[#0F2747] mb-1.5" />
+                <InputLabel for="current_password" value="كلمة المرور الحالية" class="text-xs font-bold text-[#163E3E] mb-1.5" />
 
                 <div class="relative">
                     <TextInput
@@ -58,7 +58,7 @@ const updatePassword = () => {
                         ref="currentPasswordInput"
                         v-model="form.current_password"
                         type="password"
-                        class="w-full h-11 pr-10 pl-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
+                        class="w-full h-11 pr-10 pl-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                         autocomplete="current-password"
                         placeholder="••••••••••••"
                     />
@@ -72,7 +72,7 @@ const updatePassword = () => {
             </div>
 
             <div>
-                <InputLabel for="password" value="كلمة المرور الجديدة" class="text-xs font-bold text-[#0F2747] mb-1.5" />
+                <InputLabel for="password" value="كلمة المرور الجديدة" class="text-xs font-bold text-[#163E3E] mb-1.5" />
 
                 <div class="relative">
                     <TextInput
@@ -80,7 +80,7 @@ const updatePassword = () => {
                         ref="passwordInput"
                         v-model="form.password"
                         type="password"
-                        class="w-full h-11 pr-10 pl-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
+                        class="w-full h-11 pr-10 pl-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                         autocomplete="new-password"
                         placeholder="8 أحرف على الأقل"
                     />
@@ -94,7 +94,7 @@ const updatePassword = () => {
                 <InputLabel
                     for="password_confirmation"
                     value="تأكيد كلمة المرور الجديدة"
-                    class="text-xs font-bold text-[#0F2747] mb-1.5"
+                    class="text-xs font-bold text-[#163E3E] mb-1.5"
                 />
 
                 <div class="relative">
@@ -102,7 +102,7 @@ const updatePassword = () => {
                         id="password_confirmation"
                         v-model="form.password_confirmation"
                         type="password"
-                        class="w-full h-11 pr-10 pl-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
+                        class="w-full h-11 pr-10 pl-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                         autocomplete="new-password"
                         placeholder="أعد كتابة كلمة المرور"
                     />
@@ -119,7 +119,7 @@ const updatePassword = () => {
                 <button
                     type="submit"
                     :disabled="form.processing"
-                    class="h-10 px-6 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer disabled:opacity-50"
+                    class="h-10 px-6 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer disabled:opacity-50"
                 >
                     <span v-if="form.processing">جاري التحديث...</span>
                     <span v-else>تحديث كلمة المرور</span>

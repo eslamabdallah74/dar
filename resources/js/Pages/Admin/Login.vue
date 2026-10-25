@@ -30,7 +30,7 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="دخول لوحة الإدارة المركزية — دار" />
+        <Head title="دخول لوحة الإدارة المركزية — Nook Mate" />
 
         <div class="mb-6 text-center space-y-2">
             <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400/10 border border-amber-400/20 text-amber-300 text-xs font-bold">
@@ -60,7 +60,7 @@ const submit = () => {
                         required
                         autofocus
                         autocomplete="email"
-                        placeholder="admin@dar.rent"
+                        placeholder="admin@nookmate.com"
                     />
                     <Mail class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
                 </div>

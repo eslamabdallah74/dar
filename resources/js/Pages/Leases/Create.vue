@@ -37,11 +37,25 @@ interface UnitOption {
     property_id: number;
     property_name: string;
     is_occupied: boolean;
+    availability_status?: string;
     unit_type?: string;
     type_label?: string;
+    apartment_gender?: {
+        status: 'male' | 'female' | 'mixed' | 'unspecified';
+        label: string;
+        short_label: string;
+        description: string;
+        badge_class: string;
+        male_count: number;
+        female_count: number;
+        unspecified_count: number;
+        total_active_renters: number;
+    } | null;
     active_leases: Array<{
         id: number;
         renter_name: string;
+        renter_gender?: string | null;
+        renter_gender_label?: string | null;
         starts_on: string;
         ends_on: string;
     }>;
@@ -53,6 +67,8 @@ interface RenterOption {
     phone: string;
     national_id: string | null;
     email?: string | null;
+    gender?: 'male' | 'female' | null;
+    gender_label?: string | null;
 }
 
 const props = defineProps<{
@@ -98,8 +114,36 @@ const form = useForm({
     rent_amount: 3200,
     security_deposit_amount: 0,
     billing_interval: 'monthly',
+    contract_image: null as File | null,
     notes: '',
 });
+
+const contractInputRef = ref<HTMLInputElement | null>(null);
+const contractPreviewUrl = ref<string | null>(null);
+
+const onContractFileChange = (e: Event) => {
+    const target = e.target as HTMLInputElement;
+    if (target.files && target.files.length > 0) {
+        const file = target.files[0];
+        form.contract_image = file;
+        if (file.type.startsWith('image/')) {
+            contractPreviewUrl.value = URL.createObjectURL(file);
+        } else {
+            contractPreviewUrl.value = null;
+        }
+    }
+};
+
+const clearContractFile = () => {
+    if (contractPreviewUrl.value) {
+        URL.revokeObjectURL(contractPreviewUrl.value);
+        contractPreviewUrl.value = null;
+    }
+    form.contract_image = null;
+    if (contractInputRef.value) {
+        contractInputRef.value.value = '';
+    }
+};
 
 watch(filteredUnits, (units) => {
     if (units.length > 0 && !units.some(u => u.id === Number(form.unit_id))) {
@@ -110,6 +154,11 @@ watch(filteredUnits, (units) => {
 const selectedRenterDetails = computed(() => {
     if (!form.renter_id) return null;
     return localRenters.value.find(r => Number(r.id) === Number(form.renter_id)) || null;
+});
+
+const selectedUnitDetails = computed(() => {
+    if (!form.unit_id) return null;
+    return props.units.find(u => Number(u.id) === Number(form.unit_id)) || null;
 });
 
 // Conflict Detection State
@@ -185,6 +234,7 @@ const newRenter = ref({
     phone: '',
     national_id: '',
     email: '',
+    gender: '' as '' | 'male' | 'female',
     whatsapp_consent: true,
     notes: '',
 });
@@ -262,6 +312,14 @@ const checkPhoneExistence = async () => {
         return;
     }
 
+    // Only query backend if plausible Egyptian phone number
+    const egPattern = /^(?:(?:\+|00)?20|0)?1[0125][0-9]{8}$/;
+    if (!egPattern.test(rawPhone.replace(/[\s\-\(\)\.]/g, ''))) {
+        existingRenterFound.value = null;
+        checkingPhone.value = false;
+        return;
+    }
+
     // 2. Server check
     checkingPhone.value = true;
     try {
@@ -306,6 +364,7 @@ const openCreateRenterModal = () => {
         phone: '',
         national_id: '',
         email: '',
+        gender: '',
         whatsapp_consent: true,
         notes: '',
     };
@@ -324,6 +383,7 @@ const closeRenterModal = () => {
         phone: '',
         national_id: '',
         email: '',
+        gender: '',
         whatsapp_consent: true,
         notes: '',
     };
@@ -342,6 +402,8 @@ const selectExistingRenter = (renter: RenterOption) => {
             phone: renter.phone,
             national_id: renter.national_id ?? null,
             email: renter.email ?? null,
+            gender: renter.gender ?? null,
+            gender_label: renter.gender_label ?? null,
         });
     }
 
@@ -359,13 +421,20 @@ const submitNewRenter = async () => {
         return;
     }
 
-    if (!newRenter.value.name.trim()) {
-        renterErrors.value.name = 'يرجى إدخال اسم المستأجر';
+    if (!newRenter.value.name.trim() || newRenter.value.name.trim().length < 3) {
+        renterErrors.value.name = 'يجب ألا يقل اسم المستأجر عن 3 أحرف';
         return;
     }
 
-    if (!newRenter.value.phone.trim()) {
-        renterErrors.value.phone = 'يرجى إدخال رقم هاتف المستأجر';
+    const cleanPhone = newRenter.value.phone.replace(/[\s\-\(\)\.]/g, '');
+    const egPattern = /^(?:(?:\+|00)?20|0)?1[0125][0-9]{8}$/;
+    if (!egPattern.test(cleanPhone)) {
+        renterErrors.value.phone = 'يرجى إدخال رقم هاتف مصري صحيح (مثال: 01012345678 أو +201012345678)';
+        return;
+    }
+
+    if (newRenter.value.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newRenter.value.email.trim())) {
+        renterErrors.value.email = 'يرجى إدخال بريد إلكتروني صالح';
         return;
     }
 
@@ -383,6 +452,9 @@ const submitNewRenter = async () => {
         }
         if (newRenter.value.email) {
             formData.append('email', newRenter.value.email.trim());
+        }
+        if (newRenter.value.gender) {
+            formData.append('gender', newRenter.value.gender);
         }
         formData.append('whatsapp_consent', newRenter.value.whatsapp_consent ? '1' : '0');
         if (newRenter.value.notes) {
@@ -443,7 +515,7 @@ const submitNewRenter = async () => {
 
 <template>
     <AppLayout
-        title="إنشاء عقد إيجار جديد — دار"
+        title="إنشاء عقد إيجار جديد — Nook Mate"
         active-tab="leases"
         header-title="إنشاء عقد إيجار جديد"
         header-subtitle="توثيق بيانات العقد، تحديد الوحدة والمستأجر مع فحص التعارض الزمني التلقائي"
@@ -452,7 +524,7 @@ const submitNewRenter = async () => {
         <template #actions>
             <Link
                 :href="route('leases.index')"
-                class="h-10 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F3F7FA] text-xs font-semibold text-[#5B6770] transition flex items-center gap-1.5"
+                class="h-10 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F8F4EA] text-xs font-semibold text-[#5B6770] transition flex items-center gap-1.5"
             >
                 <ArrowRight class="w-4 h-4" />
                 <span>إلغاء والعودة للعقود</span>
@@ -463,37 +535,97 @@ const submitNewRenter = async () => {
             <!-- 1. بطاقة اختيار العقار والوحدة التأجيرية -->
             <div class="rounded-3xl border border-[#D6E0E7] bg-white p-6 shadow-2xs space-y-5">
                 <div class="flex items-center gap-2.5 pb-3 border-b border-[#D6E0E7]">
-                    <div class="w-8 h-8 rounded-lg bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center">
+                    <div class="w-8 h-8 rounded-lg bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center">
                         <Home class="w-4 h-4" />
                     </div>
                     <div>
-                        <h3 class="text-sm font-bold text-[#0F2747]">1. اختيار العقار والوحدة</h3>
+                        <h3 class="text-sm font-bold text-[#163E3E]">1. اختيار العقار والوحدة</h3>
                         <p class="text-xs text-[#5B6770]">حدد المبنى والوحدة السكنية المراد تأجيرها</p>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">العقار / المبنى *</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">العقار / المبنى *</label>
                         <select
                             v-model="selectedPropertyId"
-                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition"
+                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         >
                             <option v-for="p in properties" :key="p.id" :value="p.id">{{ p.name }}</option>
                         </select>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">الوحدة التأجيرية *</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">الوحدة التأجيرية *</label>
                         <select
                             v-model="form.unit_id"
                             required
-                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition"
+                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         >
                             <option v-for="u in filteredUnits" :key="u.id" :value="u.id">
-                                {{ u.type_label ? '[' + u.type_label + '] ' : '' }}{{ u.name }} {{ u.is_occupied ? '(مشغولة حالياً)' : '(شاغرة)' }}
+                                {{ u.type_label ? '[' + u.type_label + '] ' : '' }}{{ u.name }} {{ u.apartment_gender?.short_label ? '• ' + u.apartment_gender.short_label : '' }} ({{ u.availability_status || (u.is_occupied ? 'مشغولة حالياً' : 'شاغرة') }})
                             </option>
                         </select>
+                    </div>
+                </div>
+
+                <!-- شريط توضيح تصنيف الشقة حسب الجنس (سكن شباب / بنات / مختلط) -->
+                <div
+                    v-if="selectedUnitDetails?.apartment_gender"
+                    class="rounded-2xl border p-4 text-xs transition"
+                    :class="selectedUnitDetails.apartment_gender.status === 'male'
+                        ? 'border-sky-200 bg-sky-50/70 text-sky-950'
+                        : (selectedUnitDetails.apartment_gender.status === 'female'
+                            ? 'border-rose-200 bg-rose-50/70 text-rose-950'
+                            : (selectedUnitDetails.apartment_gender.status === 'mixed'
+                                ? 'border-purple-200 bg-purple-50/70 text-purple-950'
+                                : 'border-[#D6E0E7] bg-[#F8FAFC] text-[#5B6770]'))"
+                >
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex items-center gap-2.5">
+                            <span
+                                class="px-2.5 py-1 rounded-xl text-xs font-bold border shrink-0"
+                                :class="selectedUnitDetails.apartment_gender.badge_class"
+                            >
+                                {{ selectedUnitDetails.apartment_gender.label }}
+                            </span>
+                            <span class="text-xs leading-relaxed font-medium">
+                                {{ selectedUnitDetails.apartment_gender.description }}
+                            </span>
+                        </div>
+
+                        <!-- إحصائية النزلاء الحاليين بالشقة -->
+                        <div class="flex items-center gap-3 text-[11px] font-semibold text-[#5B6770]">
+                            <span v-if="selectedUnitDetails.apartment_gender.male_count > 0" class="text-sky-700">
+                                👨 ذكور: {{ selectedUnitDetails.apartment_gender.male_count }}
+                            </span>
+                            <span v-if="selectedUnitDetails.apartment_gender.female_count > 0" class="text-rose-700">
+                                👩 إناث: {{ selectedUnitDetails.apartment_gender.female_count }}
+                            </span>
+                            <span v-if="selectedUnitDetails.apartment_gender.total_active_renters === 0" class="text-[#8A9AA7]">
+                                الشقة شاغرة بالكامل (سيُحدد تصنيفها مع أول نزيل)
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- توجيه ذكي حسب جنس المستأجر المختار -->
+                    <div
+                        v-if="selectedRenterDetails && selectedRenterDetails.gender"
+                        class="mt-2.5 pt-2 border-t border-current/15 flex items-center gap-2 text-[11px]"
+                    >
+                        <Info class="w-3.5 h-3.5 shrink-0" />
+                        <span v-if="selectedUnitDetails.apartment_gender.status === 'unspecified'">
+                            معلومة: باعتماد هذا العقد لمستأجر ({{ selectedRenterDetails.gender_label }}), سيتم تمييز الشقة تلقائياً كـ <strong>{{ selectedRenterDetails.gender === 'male' ? 'سكن شباب (ذكور)' : 'سكن بنات (إناث)' }}</strong>.
+                        </span>
+                        <span v-else-if="selectedUnitDetails.apartment_gender.status === selectedRenterDetails.gender">
+                            متوافق: المستأجر المختار ({{ selectedRenterDetails.gender_label }}) يتوافق تماماً مع التصنيف الحالي للشقة.
+                        </span>
+                        <span v-else-if="selectedUnitDetails.apartment_gender.status === 'mixed'">
+                            معلومة: الشقة مصنفة كسكن مختلط، وتسجيل هذا المستأجر ({{ selectedRenterDetails.gender_label }}) يندرج ضمن السكن المشترك.
+                        </span>
+                        <span v-else>
+                            تنبيه توضيحي: الشقة مصنفة حالياً كـ ({{ selectedUnitDetails.apartment_gender.short_label }}) والمستأجر المختار ({{ selectedRenterDetails.gender_label }}), وباعتماد هذا العقد سيتحول تصنيف الشقة تلقائياً إلى <strong>سكن مختلط</strong>.
+                        </span>
                     </div>
                 </div>
             </div>
@@ -502,11 +634,11 @@ const submitNewRenter = async () => {
             <div class="rounded-3xl border border-[#D6E0E7] bg-white p-6 shadow-2xs space-y-5">
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
                     <div class="flex items-center gap-2.5">
-                        <div class="w-8 h-8 rounded-lg bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center">
+                        <div class="w-8 h-8 rounded-lg bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center">
                             <User class="w-4 h-4" />
                         </div>
                         <div>
-                            <h3 class="text-sm font-bold text-[#0F2747]">2. المستأجر الطرف الثاني</h3>
+                            <h3 class="text-sm font-bold text-[#163E3E]">2. المستأجر الطرف الثاني</h3>
                             <p class="text-xs text-[#5B6770]">اختر مستأجراً مسجلاً أو أضف مستأجراً جديداً بسهولة تامة</p>
                         </div>
                     </div>
@@ -515,7 +647,7 @@ const submitNewRenter = async () => {
                     <button
                         type="button"
                         @click="openCreateRenterModal"
-                        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition shadow-2xs cursor-pointer"
+                        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition shadow-2xs cursor-pointer"
                     >
                         <UserPlus class="w-4 h-4 stroke-[2.2]" />
                         <span>إضافة مستأجر جديد</span>
@@ -543,11 +675,11 @@ const submitNewRenter = async () => {
                     v-if="localRenters.length === 0"
                     class="rounded-2xl border-2 border-dashed border-[#D6E0E7] bg-[#F8FAFC] p-8 text-center space-y-3"
                 >
-                    <div class="w-12 h-12 rounded-2xl bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center mx-auto">
+                    <div class="w-12 h-12 rounded-2xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center mx-auto">
                         <Users class="w-6 h-6 stroke-[2]" />
                     </div>
                     <div>
-                        <h4 class="text-sm font-bold text-[#0F2747]">لا يوجد مستأجرون مسجلون في هذه المنشأة بعد</h4>
+                        <h4 class="text-sm font-bold text-[#163E3E]">لا يوجد مستأجرون مسجلون في هذه المنشأة بعد</h4>
                         <p class="text-xs text-[#5B6770] mt-1 max-w-md mx-auto leading-relaxed">
                             لتتمكن من إنشاء العقد واعتماده، يمكنك إضافة بيانات المستأجر فوراً من هذه الصفحة دون الحاجة للمغادرة.
                         </p>
@@ -555,7 +687,7 @@ const submitNewRenter = async () => {
                     <button
                         type="button"
                         @click="openCreateRenterModal"
-                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition shadow-xs cursor-pointer"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition shadow-xs cursor-pointer"
                     >
                         <UserPlus class="w-4 h-4 stroke-[2.5]" />
                         <span>إضافة المستأجر الأول الآن</span>
@@ -566,17 +698,17 @@ const submitNewRenter = async () => {
                 <div v-else class="space-y-3">
                     <div>
                         <div class="flex items-center justify-between mb-1.5">
-                            <label class="block text-xs font-bold text-[#0F2747]">المستأجر المعتمد للعقد *</label>
+                            <label class="block text-xs font-bold text-[#163E3E]">المستأجر المعتمد للعقد *</label>
                             <span class="text-[11px] text-[#5B6770]">({{ localRenters.length }} مستأجر مسجل)</span>
                         </div>
                         <select
                             v-model="form.renter_id"
                             required
-                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition"
+                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         >
                             <option value="" disabled>-- اختر المستأجر --</option>
                             <option v-for="r in localRenters" :key="r.id" :value="r.id">
-                                {{ r.name }} — هاتف: {{ r.phone }} {{ r.national_id ? `(هوية: ${r.national_id})` : '' }}
+                                {{ r.name }} {{ r.gender_label ? `(${r.gender_label})` : '' }} — هاتف: {{ r.phone }} {{ r.national_id ? `(هوية: ${r.national_id})` : '' }}
                             </option>
                         </select>
                         <p v-if="form.errors.renter_id" class="text-xs text-rose-600 font-semibold mt-1">
@@ -590,18 +722,31 @@ const submitNewRenter = async () => {
                         class="p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7]/80 flex flex-wrap items-center justify-between gap-3 text-xs"
                     >
                         <div class="flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-xl bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center font-bold">
+                            <div class="w-9 h-9 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center font-bold">
                                 {{ selectedRenterDetails.name.charAt(0) }}
                             </div>
                             <div>
-                                <span class="font-bold text-[#0F2747] block">{{ selectedRenterDetails.name }}</span>
+                                <span class="font-bold text-[#163E3E] block">{{ selectedRenterDetails.name }}</span>
                                 <span class="font-mono text-[#5B6770] text-[11px]">{{ selectedRenterDetails.phone }}</span>
                             </div>
                         </div>
 
                         <div class="flex items-center gap-2.5 text-[11px]">
+                            <span
+                                v-if="selectedRenterDetails.gender"
+                                class="px-2.5 py-1 rounded-lg font-bold border"
+                                :class="selectedRenterDetails.gender === 'male' ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-rose-50 text-rose-700 border-rose-200'"
+                            >
+                                {{ selectedRenterDetails.gender_label || (selectedRenterDetails.gender === 'male' ? 'ذكر' : 'أنثى') }}
+                            </span>
+                            <span
+                                v-else
+                                class="px-2.5 py-1 rounded-lg bg-white border border-[#D6E0E7] text-[#8A9AA7]"
+                            >
+                                الجنس: غير محدد
+                            </span>
                             <span v-if="selectedRenterDetails.national_id" class="px-2.5 py-1 rounded-lg bg-white border border-[#D6E0E7] text-[#5B6770]">
-                                الرقم القومي: <span class="font-mono font-semibold text-[#0F2747]">{{ selectedRenterDetails.national_id }}</span>
+                                الرقم القومي: <span class="font-mono font-semibold text-[#163E3E]">{{ selectedRenterDetails.national_id }}</span>
                             </span>
                             <span class="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg font-semibold border border-emerald-200/60">
                                 <Check class="w-3.5 h-3.5 stroke-[2.5]" />
@@ -615,47 +760,47 @@ const submitNewRenter = async () => {
             <!-- 3. التواريخ والبيانات المالية -->
             <div class="rounded-3xl border border-[#D6E0E7] bg-white p-6 shadow-2xs space-y-5">
                 <div class="flex items-center gap-2.5 pb-3 border-b border-[#D6E0E7]">
-                    <div class="w-8 h-8 rounded-lg bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center">
+                    <div class="w-8 h-8 rounded-lg bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center">
                         <Calendar class="w-4 h-4" />
                     </div>
                     <div>
-                        <h3 class="text-sm font-bold text-[#0F2747]">3. مدة العقد والالتزامات المالية</h3>
+                        <h3 class="text-sm font-bold text-[#163E3E]">3. مدة العقد والالتزامات المالية</h3>
                         <p class="text-xs text-[#5B6770]">تحديد تواريخ السريان والقيمة الإيجارية الشهرية</p>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">تاريخ بداية العقد *</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">تاريخ بداية العقد *</label>
                         <input
                             v-model="form.starts_on"
                             type="date"
                             required
-                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
+                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                         />
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">تاريخ نهاية العقد *</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">تاريخ نهاية العقد *</label>
                         <input
                             v-model="form.ends_on"
                             type="date"
                             required
-                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
+                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                         />
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">القيمة الإيجارية الشهرية *</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">القيمة الإيجارية الشهرية *</label>
                         <div class="relative">
                             <input
                                 v-model="form.rent_amount"
                                 type="number"
                                 step="0.01"
                                 required
-                                class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
+                                class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                             />
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#5B6770]">
                                 ج.م
@@ -664,7 +809,7 @@ const submitNewRenter = async () => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
                             مبلغ التأمين المسترد / الوديعة <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري — صفر في حال عدم طلبه)</span>
                         </label>
                         <div class="relative">
@@ -674,7 +819,7 @@ const submitNewRenter = async () => {
                                 step="0.01"
                                 min="0"
                                 placeholder="0"
-                                class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
+                                class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                             />
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#5B6770]">
                                 {{ currency || 'ج.م' }}
@@ -687,7 +832,86 @@ const submitNewRenter = async () => {
                 </div>
             </div>
 
-            <!-- 4. كارت كشف التعارض الزمني -->
+            <!-- 4. نسخة عقد الإيجار المعتمد (مشفرة ومحمية - اختياري) -->
+            <div class="rounded-3xl border border-[#D6E0E7] bg-white p-6 shadow-2xs space-y-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center font-bold">
+                            <FileText class="w-4 h-4" />
+                        </div>
+                        <div>
+                            <h2 class="text-sm font-bold text-[#163E3E]">نسخة عقد الإيجار المعتمد</h2>
+                            <p class="text-xs text-[#5B6770]">صورة أو مسح ضوئي للعقد الورقي الموقع <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري — مشفرة ومحمية)</span></p>
+                        </div>
+                    </div>
+                    <span class="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                        تشفير أمان AES-256
+                    </span>
+                </div>
+
+                <!-- معاينة الملف المختار -->
+                <div
+                    v-if="form.contract_image"
+                    class="rounded-2xl border border-[#163E3E]/20 bg-[#F8FAFC] p-3 flex items-center justify-between gap-3"
+                >
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div
+                            v-if="contractPreviewUrl"
+                            class="w-12 h-12 rounded-xl overflow-hidden border border-[#D6E0E7] bg-white shrink-0"
+                        >
+                            <img :src="contractPreviewUrl" alt="معاينة العقد" class="w-full h-full object-cover" />
+                        </div>
+                        <div
+                            v-else
+                            class="w-12 h-12 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center shrink-0"
+                        >
+                            <FileText class="w-6 h-6" />
+                        </div>
+
+                        <div class="min-w-0">
+                            <p class="text-xs font-bold text-[#163E3E] truncate">{{ form.contract_image.name }}</p>
+                            <p class="text-[11px] text-[#5B6770] font-mono">{{ (form.contract_image.size / 1024).toFixed(1) }} KB</p>
+                        </div>
+                    </div>
+
+                    <button
+                        type="button"
+                        @click="clearContractFile"
+                        class="p-2 text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer"
+                        title="إزالة المرفق"
+                    >
+                        <Trash2 class="w-4 h-4" />
+                    </button>
+                </div>
+
+                <!-- منطقة اختيار ورفع الملف -->
+                <div
+                    v-else
+                    @click="contractInputRef?.click()"
+                    class="border-2 border-dashed border-[#D6E0E7] hover:border-[#163E3E] rounded-2xl p-6 text-center cursor-pointer bg-[#F8FAFC] hover:bg-[#E8F0F0]/30 transition group"
+                >
+                    <input
+                        ref="contractInputRef"
+                        type="file"
+                        accept="image/jpeg,image/png,image/jpg,image/webp,application/pdf"
+                        class="hidden"
+                        @change="onContractFileChange"
+                    />
+                    <div class="flex flex-col items-center gap-2">
+                        <div class="w-10 h-10 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center group-hover:scale-105 transition">
+                            <Upload class="w-5 h-5" />
+                        </div>
+                        <p class="text-xs font-bold text-[#163E3E]">انقر لاختيار صورة العقد أو لقطة الشاشة أو ملف PDF</p>
+                        <p class="text-[11px] text-[#5B6770]">JPG, PNG, WEBP أو PDF حتى 10 ميجابايت (تُحفظ مشفرة في خوادم آمنة معزولة)</p>
+                    </div>
+                </div>
+
+                <p v-if="form.errors.contract_image" class="text-xs text-rose-600 font-semibold mt-1">
+                    {{ form.errors.contract_image }}
+                </p>
+            </div>
+
+            <!-- 5. كارت كشف التعارض الزمني -->
             <div
                 v-if="conflictData"
                 class="rounded-3xl border p-6 transition-all duration-300"
@@ -701,7 +925,7 @@ const submitNewRenter = async () => {
                             <AlertTriangle class="w-5 h-5 stroke-[2.2]" />
                         </div>
                         <div class="flex-1">
-                            <h4 class="text-sm font-bold text-[#0F2747]">
+                            <h4 class="text-sm font-bold text-[#163E3E]">
                                 تنبيه تعارض زمني: الوحدة محجوزة بالفعل بعقد سارٍ!
                             </h4>
                             <p class="text-xs text-[#5B6770] mt-1 leading-relaxed">
@@ -712,8 +936,8 @@ const submitNewRenter = async () => {
 
                     <div v-if="conflictData.conflicting_lease" class="rounded-2xl border border-amber-300/80 bg-white p-4 space-y-3">
                         <div class="flex items-center justify-between text-xs pb-2 border-b border-amber-100">
-                            <span class="font-bold text-[#0F2747]">تفاصيل العقد القائم المتعارض:</span>
-                            <span class="font-mono font-bold text-[#0E6E7E] bg-[#E3F1F4] px-2 py-0.5 rounded">
+                            <span class="font-bold text-[#163E3E]">تفاصيل العقد القائم المتعارض:</span>
+                            <span class="font-mono font-bold text-[#163E3E] bg-[#E8F0F0] px-2 py-0.5 rounded">
                                 {{ conflictData.conflicting_lease.contract_number }}
                             </span>
                         </div>
@@ -721,17 +945,17 @@ const submitNewRenter = async () => {
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                             <div>
                                 <span class="text-[#5B6770] block">المستأجر الحالي:</span>
-                                <span class="font-bold text-[#0F2747]">{{ conflictData.conflicting_lease.renter_name }}</span>
+                                <span class="font-bold text-[#163E3E]">{{ conflictData.conflicting_lease.renter_name }}</span>
                             </div>
                             <div>
                                 <span class="text-[#5B6770] block">فترة العقد الحالي:</span>
-                                <span class="font-mono text-[#0F2747]">
+                                <span class="font-mono text-[#163E3E]">
                                     {{ conflictData.conflicting_lease.starts_on }} — {{ conflictData.conflicting_lease.ends_on }}
                                 </span>
                             </div>
                             <div>
                                 <span class="text-[#5B6770] block">القيمة الإيجارية:</span>
-                                <span class="font-mono font-bold text-[#0F2747]">{{ conflictData.conflicting_lease.rent_amount }} ج.م</span>
+                                <span class="font-mono font-bold text-[#163E3E]">{{ conflictData.conflicting_lease.rent_amount }} ج.م</span>
                             </div>
                         </div>
 
@@ -771,7 +995,7 @@ const submitNewRenter = async () => {
                 <button
                     type="submit"
                     :disabled="form.processing || !form.renter_id || !form.unit_id || (conflictData?.has_conflict ?? false)"
-                    class="h-11 px-6 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-sm font-bold transition flex items-center gap-2 shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    class="h-11 px-6 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-sm font-bold transition flex items-center gap-2 shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                     <Check class="w-4 h-4 stroke-[2.5]" />
                     <span>{{ form.processing ? 'جاري الاعتماد...' : 'اعتماد وتفعيل العقد' }}</span>
@@ -784,18 +1008,18 @@ const submitNewRenter = async () => {
             <div
                 v-if="showRenterModal"
                 dir="rtl"
-                class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#0F2747]/50 p-4 backdrop-blur-xs"
+                class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#163E3E]/50 p-4 backdrop-blur-xs"
                 @click.self="closeRenterModal"
             >
                 <div class="my-8 w-full max-w-xl overflow-hidden rounded-3xl border border-[#D6E0E7] bg-white shadow-xl animate-in fade-in zoom-in-95 duration-200">
                     <!-- الرأس -->
                     <div class="flex items-center justify-between gap-4 border-b border-[#D6E0E7] bg-[#F8FAFC] px-5 py-5 sm:px-6">
                         <div class="flex min-w-0 items-center gap-3">
-                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#E3F1F4] text-[#0E6E7E]">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#E8F0F0] text-[#163E3E]">
                                 <UserPlus class="w-5 h-5 stroke-[2.2]" />
                             </div>
                             <div class="min-w-0">
-                                <h3 class="text-base font-bold text-[#0F2747]">إضافة مستأجر جديد للعقد</h3>
+                                <h3 class="text-base font-bold text-[#163E3E]">إضافة مستأجر جديد للعقد</h3>
                                 <p class="mt-0.5 text-xs leading-relaxed text-[#5B6770]">تسجيل بيانات المستأجر واختياره مباشرة لهذا العقد</p>
                             </div>
                         </div>
@@ -818,13 +1042,13 @@ const submitNewRenter = async () => {
 
                     <!-- اسم المستأجر -->
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">اسم المستأجر بالكامل *</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">اسم المستأجر بالكامل *</label>
                         <input
                             v-model="newRenter.name"
                             type="text"
                             placeholder="مثال: أحمد عبد الله محمد"
                             required
-                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
+                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                         />
                         <p v-if="renterErrors.name" class="text-xs text-rose-600 font-semibold mt-1">
                             {{ renterErrors.name }}
@@ -834,8 +1058,8 @@ const submitNewRenter = async () => {
                     <!-- رقم الهاتف مع الفحص الفوري والتنبيه الذكي -->
                     <div class="space-y-2">
                         <div class="flex items-center justify-between">
-                            <label class="block text-xs font-bold text-[#0F2747]">رقم الهاتف *</label>
-                            <span v-if="checkingPhone" class="inline-flex items-center gap-1 text-[11px] text-[#0E6E7E]">
+                            <label class="block text-xs font-bold text-[#163E3E]">رقم الهاتف *</label>
+                            <span v-if="checkingPhone" class="inline-flex items-center gap-1 text-[11px] text-[#163E3E]">
                                 <Loader2 class="w-3 h-3 animate-spin" />
                                 <span>جاري التحقق من الرقم...</span>
                             </span>
@@ -847,15 +1071,18 @@ const submitNewRenter = async () => {
                                 type="tel"
                                 placeholder="01XXXXXXXXX"
                                 required
-                                class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#0F2747] focus:bg-white focus:ring-1 transition text-right font-mono"
+                                class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#163E3E] focus:bg-white focus:ring-1 transition text-right font-mono"
                                 :class="existingRenterFound
                                     ? 'border-amber-400 focus:border-amber-500 focus:ring-amber-500'
-                                    : (renterErrors.phone ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500' : 'border-[#D6E0E7] focus:border-[#0E6E7E] focus:ring-[#0E6E7E]')"
+                                    : (renterErrors.phone ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500' : 'border-[#D6E0E7] focus:border-[#163E3E] focus:ring-[#163E3E]')"
                             />
                         </div>
 
                         <p v-if="renterErrors.phone" class="text-xs text-rose-600 font-semibold mt-1">
                             {{ renterErrors.phone }}
+                        </p>
+                        <p v-else class="text-[11px] text-[#5B6770]">
+                            رقم مصري (مثال: 01012345678 أو +201012345678)
                         </p>
 
                         <!-- التنبيه الذكي: المستأجر موجود بالفعل في المنشأة مع زر اختياره مباشرة للعقد -->
@@ -891,7 +1118,7 @@ const submitNewRenter = async () => {
                                 <button
                                     type="button"
                                     @click="selectExistingRenter(existingRenterFound)"
-                                    class="h-9 px-4 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer shrink-0"
+                                    class="h-9 px-4 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer shrink-0"
                                 >
                                     <Check class="w-4 h-4 stroke-[2.5]" />
                                     <span>نعم، اختياره للعقد</span>
@@ -900,17 +1127,50 @@ const submitNewRenter = async () => {
                         </div>
                     </div>
 
+                    <!-- الجنس (النوع) - اختياري لتصنيف الشقة -->
+                    <div>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
+                            الجنس <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري — لتحديد تصنيف سكن الشقة شباب / بنات)</span>
+                        </label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button
+                                type="button"
+                                @click="newRenter.gender = ''"
+                                class="h-10 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                                :class="!newRenter.gender ? 'bg-[#163E3E] text-white border-[#163E3E] shadow-2xs' : 'bg-[#F8FAFC] text-[#5B6770] border-[#D6E0E7] hover:bg-slate-100'"
+                            >
+                                <span>غير محدد</span>
+                            </button>
+                            <button
+                                type="button"
+                                @click="newRenter.gender = 'male'"
+                                class="h-10 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                                :class="newRenter.gender === 'male' ? 'bg-sky-600 text-white border-sky-600 shadow-2xs' : 'bg-sky-50/50 text-sky-700 border-sky-200 hover:bg-sky-100/60'"
+                            >
+                                <span>ذكر (شباب)</span>
+                            </button>
+                            <button
+                                type="button"
+                                @click="newRenter.gender = 'female'"
+                                class="h-10 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                                :class="newRenter.gender === 'female' ? 'bg-rose-600 text-white border-rose-600 shadow-2xs' : 'bg-rose-50/50 text-rose-700 border-rose-200 hover:bg-rose-100/60'"
+                            >
+                                <span>أنثى (بنات)</span>
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- الرقم القومي والبريد -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-bold text-[#0F2747] mb-1.5">
+                            <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
                                 الرقم القومي / الهوية <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span>
                             </label>
                             <input
                                 v-model="newRenter.national_id"
                                 type="text"
                                 placeholder="14 رقم"
-                                class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
+                                class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                             />
                             <p v-if="renterErrors.national_id" class="text-xs text-rose-600 font-semibold mt-1">
                                 {{ renterErrors.national_id }}
@@ -918,14 +1178,14 @@ const submitNewRenter = async () => {
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-[#0F2747] mb-1.5">
+                            <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
                                 البريد الإلكتروني <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span>
                             </label>
                             <input
                                 v-model="newRenter.email"
                                 type="email"
                                 placeholder="name@example.com"
-                                class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
+                                class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                             />
                             <p v-if="renterErrors.email" class="text-xs text-rose-600 font-semibold mt-1">
                                 {{ renterErrors.email }}
@@ -939,9 +1199,9 @@ const submitNewRenter = async () => {
                             id="modal_whatsapp_consent"
                             v-model="newRenter.whatsapp_consent"
                             type="checkbox"
-                            class="w-4 h-4 rounded text-[#0E6E7E] focus:ring-[#0E6E7E] cursor-pointer"
+                            class="w-4 h-4 rounded text-[#163E3E] focus:ring-[#163E3E] cursor-pointer"
                         />
-                        <label for="modal_whatsapp_consent" class="text-xs font-semibold text-[#0F2747] cursor-pointer">
+                        <label for="modal_whatsapp_consent" class="text-xs font-semibold text-[#163E3E] cursor-pointer">
                             الموافقة على استقبال إشعارات الاستحقاق وسندات القبض عبر WhatsApp تلقائياً
                         </label>
                     </div>
@@ -949,7 +1209,7 @@ const submitNewRenter = async () => {
                     <!-- صور بطاقة الهوية (اختياري) -->
                     <div class="space-y-2 pt-2 border-t border-[#D6E0E7]/60">
                         <div class="flex items-center justify-between">
-                            <label class="block text-xs font-bold text-[#0F2747]">
+                            <label class="block text-xs font-bold text-[#163E3E]">
                                 صورة بطاقة الهوية <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span>
                             </label>
                             <span class="text-[11px] text-[#5B6770]">JPG, PNG, WEBP</span>
@@ -967,14 +1227,14 @@ const submitNewRenter = async () => {
                                 />
                                 <div
                                     v-if="idFrontPreview"
-                                    class="relative rounded-xl border border-[#0E6E7E]/30 bg-[#F8FAFC] overflow-hidden group h-24 flex items-center justify-center"
+                                    class="relative rounded-xl border border-[#163E3E]/30 bg-[#F8FAFC] overflow-hidden group h-24 flex items-center justify-center"
                                 >
                                     <img :src="idFrontPreview" alt="الوجه الأمامي" class="w-full h-full object-cover" />
-                                    <div class="absolute inset-0 bg-[#0F2747]/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1.5">
+                                    <div class="absolute inset-0 bg-[#163E3E]/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1.5">
                                         <button
                                             type="button"
                                             @click="frontInputRef?.click()"
-                                            class="px-2 py-1 rounded bg-white text-[10px] font-bold text-[#0F2747]"
+                                            class="px-2 py-1 rounded bg-white text-[10px] font-bold text-[#163E3E]"
                                         >
                                             تغيير
                                         </button>
@@ -990,10 +1250,10 @@ const submitNewRenter = async () => {
                                 <div
                                     v-else
                                     @click="frontInputRef?.click()"
-                                    class="h-24 rounded-xl border-2 border-dashed border-[#D6E0E7] hover:border-[#0E6E7E] bg-[#F8FAFC] transition cursor-pointer flex flex-col items-center justify-center p-2 text-center gap-1"
+                                    class="h-24 rounded-xl border-2 border-dashed border-[#D6E0E7] hover:border-[#163E3E] bg-[#F8FAFC] transition cursor-pointer flex flex-col items-center justify-center p-2 text-center gap-1"
                                 >
                                     <Upload class="w-4 h-4 text-[#5B6770]" />
-                                    <span class="text-[11px] font-bold text-[#0F2747]">الوجه الأمامي</span>
+                                    <span class="text-[11px] font-bold text-[#163E3E]">الوجه الأمامي</span>
                                 </div>
                             </div>
 
@@ -1008,14 +1268,14 @@ const submitNewRenter = async () => {
                                 />
                                 <div
                                     v-if="idBackPreview"
-                                    class="relative rounded-xl border border-[#0E6E7E]/30 bg-[#F8FAFC] overflow-hidden group h-24 flex items-center justify-center"
+                                    class="relative rounded-xl border border-[#163E3E]/30 bg-[#F8FAFC] overflow-hidden group h-24 flex items-center justify-center"
                                 >
                                     <img :src="idBackPreview" alt="الوجه الخلفي" class="w-full h-full object-cover" />
-                                    <div class="absolute inset-0 bg-[#0F2747]/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1.5">
+                                    <div class="absolute inset-0 bg-[#163E3E]/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1.5">
                                         <button
                                             type="button"
                                             @click="backInputRef?.click()"
-                                            class="px-2 py-1 rounded bg-white text-[10px] font-bold text-[#0F2747]"
+                                            class="px-2 py-1 rounded bg-white text-[10px] font-bold text-[#163E3E]"
                                         >
                                             تغيير
                                         </button>
@@ -1031,10 +1291,10 @@ const submitNewRenter = async () => {
                                 <div
                                     v-else
                                     @click="backInputRef?.click()"
-                                    class="h-24 rounded-xl border-2 border-dashed border-[#D6E0E7] hover:border-[#0E6E7E] bg-[#F8FAFC] transition cursor-pointer flex flex-col items-center justify-center p-2 text-center gap-1"
+                                    class="h-24 rounded-xl border-2 border-dashed border-[#D6E0E7] hover:border-[#163E3E] bg-[#F8FAFC] transition cursor-pointer flex flex-col items-center justify-center p-2 text-center gap-1"
                                 >
                                     <Upload class="w-4 h-4 text-[#5B6770]" />
-                                    <span class="text-[11px] font-bold text-[#0F2747]">الوجه الخلفي</span>
+                                    <span class="text-[11px] font-bold text-[#163E3E]">الوجه الخلفي</span>
                                 </div>
                             </div>
                         </div>
@@ -1053,7 +1313,7 @@ const submitNewRenter = async () => {
                         <button
                             type="submit"
                             :disabled="isSubmittingRenter || !!existingRenterFound || !newRenter.name || !newRenter.phone"
-                            class="h-10 px-5 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                            class="h-10 px-5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                             <Loader2 v-if="isSubmittingRenter" class="w-4 h-4 animate-spin" />
                             <Check v-else class="w-4 h-4 stroke-[2.5]" />

@@ -57,7 +57,7 @@ const areaD = `${pathD} L ${points[points.length - 1].x} ${svgHeight} L ${points
         <!-- الرأس -->
         <div class="flex items-start justify-between">
             <div>
-                <h3 class="text-base font-bold text-[#0F2747]">{{ title || 'اتجاه الإشغال' }}</h3>
+                <h3 class="text-base font-bold text-[#163E3E]">{{ title || 'اتجاه الإشغال' }}</h3>
                 <p class="text-xs text-[#5B6770] font-medium mt-0.5">
                     {{ subtitle || 'مايو – أكتوبر 2026 • كل العقارات' }}
                 </p>
@@ -65,10 +65,10 @@ const areaD = `${pathD} L ${points[points.length - 1].x} ${svgHeight} L ${points
 
             <!-- النسبة وشارة التغيير المطابقة لنوتس فيجما تباين AA -->
             <div class="flex items-center gap-2.5">
-                <span class="text-2xl font-black text-[#0F2747]">
+                <span class="text-2xl font-black text-[#163E3E]">
                     {{ currentRate || '75%' }}
                 </span>
-                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-bold text-[#0F2747]">
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-bold text-[#163E3E]">
                     <ArrowUpRight class="h-3.5 w-3.5 text-emerald-600 stroke-[2.5]" />
                     <span>{{ badge || '+8 نقاط منذ مايو' }}</span>
                 </span>
@@ -85,8 +85,8 @@ const areaD = `${pathD} L ${points[points.length - 1].x} ${svgHeight} L ${points
                 <defs>
                     <!-- تدرج لوني ناعم تحت المنحنى -->
                     <linearGradient id="occupancyGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#0E6E7E" stop-opacity="0.25" />
-                        <stop offset="100%" stop-color="#0E6E7E" stop-opacity="0.0" />
+                        <stop offset="0%" stop-color="#163E3E" stop-opacity="0.25" />
+                        <stop offset="100%" stop-color="#163E3E" stop-opacity="0.0" />
                     </linearGradient>
                 </defs>
 
@@ -103,7 +103,7 @@ const areaD = `${pathD} L ${points[points.length - 1].x} ${svgHeight} L ${points
                 <path
                     :d="pathD"
                     fill="none"
-                    stroke="#0E6E7E"
+                    stroke="#163E3E"
                     stroke-width="3"
                     stroke-linecap="round"
                 />
@@ -115,7 +115,7 @@ const areaD = `${pathD} L ${points[points.length - 1].x} ${svgHeight} L ${points
                         :cy="p.y"
                         r="5"
                         fill="#FFFFFF"
-                        stroke="#0E6E7E"
+                        stroke="#163E3E"
                         stroke-width="3"
                         class="cursor-pointer transition-transform hover:scale-125"
                         @mouseenter="hoveredIndex = i"
@@ -130,7 +130,7 @@ const areaD = `${pathD} L ${points[points.length - 1].x} ${svgHeight} L ${points
                     v-for="(m, i) in activeMonths"
                     :key="m"
                     class="transition-colors"
-                    :class="hoveredIndex === i ? 'text-[#0E6E7E] font-bold' : ''"
+                    :class="hoveredIndex === i ? 'text-[#163E3E] font-bold' : ''"
                 >
                     {{ m }}
                 </span>

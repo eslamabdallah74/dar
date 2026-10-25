@@ -22,7 +22,7 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="تأكيد كلمة المرور — دار" />
+        <Head title="تأكيد كلمة المرور — Nook Mate" />
 
         <div class="mb-6 text-center">
             <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">

@@ -249,8 +249,6 @@ function generateUnitsForApartment() {
             floor_name: `${floorLabel} (رئيسية)`,
         });
 
-        const isRoomsOnly = aptRentalMode.value === 'rooms';
-
         for (let r = 1; r <= aptRoomsCount.value; r++) {
             const roomTempId = `room-${r}`;
             const roomCode = `${baseCode}-R${r}`;
@@ -263,7 +261,7 @@ function generateUnitsForApartment() {
                 name: roomName,
                 code: roomCode,
                 unit_type: 'room',
-                is_rentable: isRoomsOnly,
+                is_rentable: true,
                 floor_name: 'غرفة بالشقة',
             });
 
@@ -600,8 +598,8 @@ const selectedTypeDetails = computed(() => {
 function goToStep(step: number) {
     if (step > currentStep.value) {
         if (currentStep.value === 1) {
-            if (!form.name.trim()) {
-                form.setError('name', 'اسم العقار مطلوب للاستمرار.');
+            if (!form.name.trim() || form.name.trim().length < 3) {
+                form.setError('name', 'يجب ألا يقل اسم العقار عن 3 أحرف للاستمرار.');
                 return;
             }
             form.clearErrors('name');
@@ -645,7 +643,7 @@ function submit() {
     <AppLayout title="إضافة عقار جديد">
         <Head title="إضافة عقار جديد" />
 
-        <div class="-mx-4 -my-6 min-h-[calc(100dvh-5rem)] bg-[#F3F7FA] px-4 pb-10 pt-6 sm:-mx-8 sm:-my-8 sm:px-8 sm:pb-12 sm:pt-8" dir="rtl">
+        <div class="-mx-4 -my-6 min-h-[calc(100dvh-5rem)] bg-[#F8F4EA] px-4 pb-10 pt-6 sm:-mx-8 sm:-my-8 sm:px-8 sm:pb-12 sm:pt-8" dir="rtl">
             <div class="mx-auto max-w-6xl">
                 <!-- Header & Breadcrumbs -->
                 <nav class="mb-6 flex items-center gap-2 text-xs font-semibold text-[#65766F]">
@@ -666,7 +664,7 @@ function submit() {
                                 <Boxes v-else class="size-5" />
                             </span>
                             <div>
-                                <h1 class="text-2xl font-black tracking-tight text-[#0F2747] sm:text-3xl">إضافة عقار جديد</h1>
+                                <h1 class="text-2xl font-black tracking-tight text-[#163E3E] sm:text-3xl">إضافة عقار جديد</h1>
                                 <p class="mt-1 max-w-2xl text-sm leading-6 text-[#5B6770]">
                                     اختر نوع العقار لتخصيص الحقول المناسبة له وتوليد الوحدات المتوافقة مع طبيعته الاستثمارية.
                                 </p>
@@ -675,7 +673,7 @@ function submit() {
                     </div>
                     <Link
                         :href="route('properties.index')"
-                        class="inline-flex items-center justify-center gap-2 rounded-xl border border-[#D6E0E7] bg-white px-4 py-2.5 text-xs font-bold text-[#0F2747] shadow-2xs transition hover:border-[#0E6E7E] hover:text-[#0E6E7E]"
+                        class="inline-flex items-center justify-center gap-2 rounded-xl border border-[#D6E0E7] bg-white px-4 py-2.5 text-xs font-bold text-[#163E3E] shadow-2xs transition hover:border-[#163E3E] hover:text-[#163E3E]"
                     >
                         <ArrowRight class="size-4" />
                         العودة لقائمة العقارات
@@ -823,6 +821,7 @@ function submit() {
                                     v-model="form.name"
                                     type="text"
                                     required
+                                    minlength="3"
                                     :placeholder="
                                         form.property_type === 'shop'
                                             ? 'مثال: محل البركة التجاري - المعادي'
@@ -1323,6 +1322,9 @@ function submit() {
                                             placeholder="مثال: عم محمد"
                                             class="h-11 w-full rounded-xl border border-[#D8E4DC] bg-[#FAFDFB] px-3 text-xs text-[#18372E] focus:border-[#18705A] focus:bg-white"
                                         />
+                                        <p v-if="form.errors.guard_name" class="mt-1 text-xs font-bold text-rose-500">
+                                            {{ form.errors.guard_name }}
+                                        </p>
                                     </div>
 
                                     <div>
@@ -1333,6 +1335,9 @@ function submit() {
                                             placeholder="010XXXXXXXX"
                                             class="h-11 w-full rounded-xl border border-[#D8E4DC] bg-[#FAFDFB] px-3 text-xs text-[#18372E] focus:border-[#18705A] focus:bg-white"
                                         />
+                                        <p v-if="form.errors.guard_phone" class="mt-1 text-xs font-bold text-rose-500">
+                                            {{ form.errors.guard_phone }}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -1538,14 +1543,14 @@ function submit() {
                                     >
                                         <div>
                                             <div class="flex items-center justify-between">
-                                                <span class="text-xs font-black text-[#18372E]">3. تأجير الأسرّة الفردية</span>
+                                                <span class="text-xs font-black text-[#18372E]">3. تأجير الأسرّة / تأجير مرن</span>
                                                 <Bed class="size-4 text-[#18705A]" />
                                             </div>
                                             <p class="mt-1.5 text-[11px] leading-4 text-[#65766F]">
-                                                تأجير كل سرير داخل الغرفة بعقد منفصل (سكن طلاب / كوادر).
+                                                تأجير بالسرير أو بالغرفة بالكامل بمرونة (سكن طلاب / كوادر / شباب وبنات).
                                             </p>
                                         </div>
-                                        <span class="mt-3 text-[10px] font-bold text-[#18705A]">الأسرّة فقط قابلة للتأجير</span>
+                                        <span class="mt-3 text-[10px] font-bold text-[#18705A]">مرونة كاملة: بالسرير أو بالغرفة</span>
                                     </button>
                                 </div>
 
@@ -1584,6 +1589,11 @@ function submit() {
                                                 <span>تطبيق وإعادة التوليد</span>
                                             </button>
                                         </div>
+                                    </div>
+
+                                    <div v-if="aptRentalMode === 'beds'" class="mt-3 p-3 rounded-xl bg-[#EFF7F2] border border-[#D8E4DC] text-[11px] text-[#18705A] flex items-center gap-2">
+                                        <Info class="size-4 shrink-0" />
+                                        <span>مرونة كاملة: يمكنك تأجير بعض الغرف كأسرّة فردية وغرف أخرى كغرفة مستقلة بالكامل (مثلاً غرفتان بالأسرّة وغرفة كغرفة كاملة)، أو حذف الأسرّة من أي غرفة في خطوة المراجعة التالية.</span>
                                     </div>
                                 </div>
                             </div>
@@ -1742,7 +1752,7 @@ function submit() {
                                         <span class="rounded-full bg-[#E5EEE8] px-2.5 py-0.5 text-xs font-black text-[#18705A]">
                                             {{ form.units.length }} وحدة إجمالية
                                         </span>
-                                        <span class="rounded-full bg-[#EFF7F2] px-2.5 py-0.5 text-xs font-bold text-[#0E6E7E] border border-[#DCEDE3]">
+                                        <span class="rounded-full bg-[#EFF7F2] px-2.5 py-0.5 text-xs font-bold text-[#163E3E] border border-[#DCEDE3]">
                                             {{ totalBillableUnitsCount }} قابلة للتأجير المباشر
                                         </span>
                                     </div>
@@ -1783,7 +1793,7 @@ function submit() {
                                                 <td class="p-2.5">
                                                     <div class="flex items-center gap-1.5" :style="{ paddingRight: unit.unit_type === 'room' ? '1.25rem' : unit.unit_type === 'bed' ? '2.5rem' : '0' }">
                                                         <span v-if="unit.unit_type === 'room'" class="text-[#18705A]">↳</span>
-                                                        <span v-else-if="unit.unit_type === 'bed'" class="text-[#0E6E7E]">↳↳</span>
+                                                        <span v-else-if="unit.unit_type === 'bed'" class="text-[#163E3E]">↳↳</span>
                                                         <input
                                                             v-model="unit.name"
                                                             type="text"
@@ -1865,12 +1875,22 @@ function submit() {
                                                 <!-- Rentable Status -->
                                                 <td class="p-2.5 text-center">
                                                     <span
-                                                        class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold"
-                                                        :class="unit.is_rentable ? 'bg-[#DCEDE3] text-[#18705A]' : 'bg-[#EAEFEA] text-[#65766F]'"
+                                                        v-if="unit.unit_type === 'apartment' && form.units.some(u => u.parent_temp_id === unit.temp_id)"
+                                                        class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold bg-[#EAEFEA] text-[#65766F]"
+                                                        title="شقة رئيسية مقسمة لغرف - يتم تأجير الغرف أو الأسرّة بداخلها"
+                                                    >
+                                                        شقة أب (غير مؤجرة مباشرة)
+                                                    </span>
+                                                    <button
+                                                        v-else
+                                                        type="button"
+                                                        @click="unit.is_rentable = !unit.is_rentable"
+                                                        class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold cursor-pointer transition"
+                                                        :class="unit.is_rentable ? 'bg-[#DCEDE3] text-[#18705A] hover:bg-[#c9e4d3]' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'"
                                                     >
                                                         <CheckCircle2 v-if="unit.is_rentable" class="size-3" />
-                                                        <span>{{ unit.is_rentable ? 'قابلة للتأجير' : 'وحدة أب غير قابلة للتأجير' }}</span>
-                                                    </span>
+                                                        <span>{{ unit.is_rentable ? (unit.unit_type === 'room' && form.units.some(u => u.parent_temp_id === unit.temp_id) ? 'قابلة للتأجير (غرفة/أسرّة)' : 'قابلة للتأجير') : 'معطلة' }}</span>
+                                                    </button>
                                                 </td>
 
                                                 <!-- Action: Remove -->

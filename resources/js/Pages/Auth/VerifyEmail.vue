@@ -22,7 +22,7 @@ const verificationLinkSent = computed(
 
 <template>
     <GuestLayout>
-        <Head title="تأكيد البريد الإلكتروني — دار" />
+        <Head title="تأكيد البريد الإلكتروني — Nook Mate" />
 
         <div class="mb-6 text-center">
             <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -30,7 +30,7 @@ const verificationLinkSent = computed(
             </div>
             <h1 class="text-2xl font-bold text-white">تأكيد البريد الإلكتروني</h1>
             <p class="mt-1.5 text-xs text-zinc-300 font-medium">
-                شكراً لانضمامك إلى دار! لقد أرسلنا رابط تحقق إلى بريدك الإلكتروني. يُرجى النقر على الرابط لتفعيل حسابك بالكامل.
+                شكراً لانضمامك إلى Nook Mate! لقد أرسلنا رابط تحقق إلى بريدك الإلكتروني. يُرجى النقر على الرابط لتفعيل حسابك بالكامل.
             </p>
         </div>
 

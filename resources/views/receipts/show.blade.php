@@ -15,8 +15,8 @@
         }
         body {
             font-family: 'Cairo', 'Tajawal', sans-serif;
-            background-color: #F8FAFC;
-            color: #0F2747;
+            background-color: #F8F4EA;
+            color: #163E3E;
             padding: 30px 15px;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
@@ -26,8 +26,8 @@
             margin: 0 auto;
             background: #ffffff;
             border-radius: 24px;
-            border: 1px solid #D6E0E7;
-            box-shadow: 0 4px 20px rgba(15, 39, 71, 0.06);
+            border: 1px solid #E2DDD2;
+            box-shadow: 0 4px 20px rgba(22, 62, 62, 0.08);
             padding: 40px;
             position: relative;
         }
@@ -35,14 +35,14 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            border-bottom: 2px dashed #D6E0E7;
+            border-bottom: 2px dashed #E2DDD2;
             padding-bottom: 25px;
             margin-bottom: 25px;
         }
         .brand-title {
             font-size: 26px;
             font-weight: 800;
-            color: #0E6E7E;
+            color: #163E3E;
             margin-bottom: 4px;
         }
         .brand-sub {
@@ -56,15 +56,15 @@
         .receipt-title {
             font-size: 20px;
             font-weight: 800;
-            color: #0F2747;
+            color: #163E3E;
             margin-bottom: 4px;
         }
         .receipt-no {
             font-family: monospace;
             font-size: 16px;
             font-weight: 700;
-            color: #0E6E7E;
-            background: #E3F1F4;
+            color: #163E3E;
+            background: #E8F0F0;
             padding: 4px 12px;
             border-radius: 8px;
             display: inline-block;
@@ -73,8 +73,8 @@
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 16px;
-            background: #F8FAFC;
-            border: 1px solid #E2E8F0;
+            background: #F8F4EA;
+            border: 1px solid #E2DDD2;
             border-radius: 16px;
             padding: 20px;
             margin-bottom: 25px;
@@ -89,11 +89,11 @@
             margin-bottom: 4px;
         }
         .meta-val {
-            color: #0F2747;
+            color: #163E3E;
             font-weight: 700;
         }
         .amount-box {
-            background: linear-gradient(135deg, #0E6E7E 0%, #094752 100%);
+            background: linear-gradient(135deg, #163E3E 0%, #102F2F 100%);
             color: #ffffff;
             border-radius: 16px;
             padding: 24px;
@@ -160,12 +160,12 @@
             transition: all 0.2s ease;
         }
         .btn-primary {
-            background: #0E6E7E;
+            background: #163E3E;
             color: #ffffff;
             border: none;
         }
         .btn-primary:hover {
-            background: #0B5A68;
+            background: #102F2F;
         }
         .btn-outline {
             background: #ffffff;
@@ -324,7 +324,7 @@
                             <td style="font-weight: 700;">إيجار شهري تعاقدي</td>
                             <td>{{ $charge?->period_start?->format('m/Y') ?? '—' }}</td>
                             <td>{{ $charge?->due_date?->format('d/m/Y') ?? '—' }}</td>
-                            <td style="font-weight: 700; color: #0E6E7E;">{{ number_format((float) $alloc->amount, 2) }} {{ $workspace->currency }}</td>
+                            <td style="font-weight: 700; color: #163E3E;">{{ number_format((float) $alloc->amount, 2) }} {{ $workspace->currency }}</td>
                             <td>{{ number_format((float) ($charge?->outstanding_balance ?? 0), 2) }} {{ $workspace->currency }}</td>
                         </tr>
                     @endforeach
@@ -333,9 +333,23 @@
         @endif
 
         @if($payment->notes)
-            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px; font-size: 13px; margin-bottom: 25px;">
-                <span style="font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">ملاحظات إضافية:</span>
+            <div style="background: #F8F4EA; border: 1px solid #E2DDD2; border-radius: 12px; padding: 14px; font-size: 13px; margin-bottom: 25px;">
+                <span style="font-weight: 700; color: #163E3E; display: block; margin-bottom: 4px;">ملاحظات إضافية:</span>
                 <span style="color: #1E293B;">{{ $payment->notes }}</span>
+            </div>
+        @endif
+
+        @if($payment->receipt_path)
+            <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 12px; padding: 14px; font-size: 13px; margin-bottom: 25px; display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#166534" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                    </svg>
+                    <span style="font-weight: 700; color: #166534;">مرفق إثبات الدفع / إشعار التحويل</span>
+                </div>
+                <a href="{{ route('payments.attachment', $payment) }}" target="_blank" class="no-print" style="color: #15803D; font-weight: 700; text-decoration: underline;">
+                    عرض المستند المرفق &larr;
+                </a>
             </div>
         @endif
 
@@ -343,15 +357,14 @@
         <div class="footer">
             <div>
                 <p>حرر بواسطة: {{ $payment->recordedBy?->name ?? 'إدارة العقار' }}</p>
-                <p style="margin-top: 4px; font-size: 11px;">هذا السند إلكتروني ومعتمد ومسجل بسجلات منصة «دار» لإدارة الإيجار.</p>
+                <p style="margin-top: 4px; font-size: 11px;">هذا السند إلكتروني ومعتمد ومسجل بسجلات منصة «Nook Mate» لإدارة وتأجير العقارات والأملاك.</p>
             </div>
 
             <div class="stamp-box">
                 <span style="display: block; font-size: 11px; color: #64748B; margin-bottom: 6px;">الختم والتوقيع المعتمد</span>
-                <div style="font-weight: 800; color: #0E6E7E; font-size: 14px;">{{ $workspace->name }}</div>
+                <div style="font-weight: 800; color: #163E3E; font-size: 14px;">{{ $workspace->name }}</div>
             </div>
         </div>
     </div>
 </body>
 </html>
-

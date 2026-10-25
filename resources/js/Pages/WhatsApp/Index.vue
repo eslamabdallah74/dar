@@ -76,7 +76,7 @@ const sendTestMessage = () => {
 
 <template>
     <AppLayout
-        title="تذكيرات WhatsApp — دار"
+        title="تذكيرات WhatsApp — Nook Mate"
         active-tab="whatsapp"
         header-title="تذكيرات وإشعارات WhatsApp"
         header-subtitle="إدارة قوالب الرسائل التلقائية، سندات القبض الفورية وسجل الرسائل المرسلة"
@@ -125,8 +125,8 @@ const sendTestMessage = () => {
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
                 <span class="text-xs font-semibold text-[#5B6770]">إجمالي الرسائل المرسلة</span>
                 <div class="flex items-baseline justify-between">
-                    <span class="text-2xl font-bold text-[#0F2747] font-mono">{{ stats.total_sent }}</span>
-                    <span class="text-xs text-[#0E6E7E] font-medium">إشعار وتذكير</span>
+                    <span class="text-2xl font-bold text-[#163E3E] font-mono">{{ stats.total_sent }}</span>
+                    <span class="text-xs text-[#163E3E] font-medium">إشعار وتذكير</span>
                 </div>
             </div>
 
@@ -143,7 +143,7 @@ const sendTestMessage = () => {
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
                 <span class="text-xs font-semibold text-[#5B6770]">القوالب النشطة تلقائياً</span>
                 <div class="flex items-baseline justify-between">
-                    <span class="text-2xl font-bold text-[#0F2747] font-mono">{{ stats.active_templates }}</span>
+                    <span class="text-2xl font-bold text-[#163E3E] font-mono">{{ stats.active_templates }}</span>
                     <span class="text-xs text-[#5B6770]">قوالب معتمدة</span>
                 </div>
             </div>
@@ -151,7 +151,7 @@ const sendTestMessage = () => {
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
                 <span class="text-xs font-semibold text-[#5B6770]">متوسط سرعة الإرسال</span>
                 <div class="flex items-baseline justify-between">
-                    <span class="text-2xl font-bold text-[#0F2747] font-mono">1.2 <span class="text-xs font-sans font-normal text-[#5B6770]">ثانية</span></span>
+                    <span class="text-2xl font-bold text-[#163E3E] font-mono">1.2 <span class="text-xs font-sans font-normal text-[#5B6770]">ثانية</span></span>
                     <span class="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md font-semibold">
                         فوري
                     </span>
@@ -163,8 +163,8 @@ const sendTestMessage = () => {
         <div class="space-y-4">
             <div class="flex items-center justify-between pb-2 border-b border-[#D6E0E7]">
                 <div class="flex items-center gap-2">
-                    <Zap class="w-5 h-5 text-[#0E6E7E]" />
-                    <h2 class="text-lg font-bold text-[#0F2747]">قوالب الرسائل والتذكيرات الآلية</h2>
+                    <Zap class="w-5 h-5 text-[#163E3E]" />
+                    <h2 class="text-lg font-bold text-[#163E3E]">قوالب الرسائل والتذكيرات الآلية</h2>
                 </div>
                 <span class="text-xs text-[#5B6770]">يتم إرسالها تلقائياً للمستأجرين بناءً على المواعيد المحددة</span>
             </div>
@@ -173,12 +173,12 @@ const sendTestMessage = () => {
                 <div
                     v-for="tpl in templates"
                     :key="tpl.id"
-                    class="rounded-3xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-3.5 flex flex-col justify-between hover:border-[#0E6E7E]/40 transition"
+                    class="rounded-3xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-3.5 flex flex-col justify-between hover:border-[#163E3E]/40 transition"
                 >
                     <div class="space-y-3">
                         <div class="flex items-center justify-between">
-                            <h3 class="text-sm font-bold text-[#0F2747] flex items-center gap-2">
-                                <MessageSquare class="w-4 h-4 text-[#0E6E7E]" />
+                            <h3 class="text-sm font-bold text-[#163E3E] flex items-center gap-2">
+                                <MessageSquare class="w-4 h-4 text-[#163E3E]" />
                                 <span>{{ tpl.title }}</span>
                             </h3>
                             <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
@@ -192,7 +192,7 @@ const sendTestMessage = () => {
                         </div>
 
                         <!-- نص المعاينة للرسالة -->
-                        <div class="p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] text-xs text-[#0F2747] leading-relaxed font-sans">
+                        <div class="p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] text-xs text-[#163E3E] leading-relaxed font-sans">
                             {{ tpl.sample }}
                         </div>
                     </div>
@@ -212,8 +212,8 @@ const sendTestMessage = () => {
         <div class="space-y-4">
             <div class="flex items-center justify-between pb-2 border-b border-[#D6E0E7]">
                 <div class="flex items-center gap-2">
-                    <Clock class="w-5 h-5 text-[#0E6E7E]" />
-                    <h2 class="text-lg font-bold text-[#0F2747]">سجل الرسائل المرسلة (Outbox)</h2>
+                    <Clock class="w-5 h-5 text-[#163E3E]" />
+                    <h2 class="text-lg font-bold text-[#163E3E]">سجل الرسائل المرسلة (Outbox)</h2>
                 </div>
                 <span class="text-xs text-[#5B6770]">تحديث لحظي لجميع إشعارات النظام</span>
             </div>
@@ -232,14 +232,14 @@ const sendTestMessage = () => {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-[#D6E0E7]">
-                            <tr v-for="log in logs" :key="log.id" class="hover:bg-[#F3F7FA] transition">
-                                <td class="py-4 px-6 font-bold text-[#0F2747]">
+                            <tr v-for="log in logs" :key="log.id" class="hover:bg-[#F8F4EA] transition">
+                                <td class="py-4 px-6 font-bold text-[#163E3E]">
                                     {{ log.renter_name }}
                                 </td>
                                 <td class="py-4 px-6 font-mono text-xs text-[#5B6770]" dir="ltr">
                                     {{ log.recipient_phone }}
                                 </td>
-                                <td class="py-4 px-6 text-xs text-[#0F2747]">
+                                <td class="py-4 px-6 text-xs text-[#163E3E]">
                                     {{ log.template_name }}
                                 </td>
                                 <td class="py-4 px-6 font-mono text-xs text-[#5B6770]">
@@ -264,22 +264,22 @@ const sendTestMessage = () => {
 
         <!-- نافذة إرسال رسالة تجريبية -->
         <div v-if="showTestModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-            <div @click="showTestModal = false" class="fixed inset-0 bg-[#0F2747]/60 backdrop-blur-xs"></div>
+            <div @click="showTestModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
             <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-6 z-10 animate-in fade-in zoom-in-95" dir="rtl">
                 <div class="flex items-center justify-between pb-4 border-b border-[#D6E0E7] mb-5">
-                    <h3 class="text-base font-bold text-[#0F2747]">إرسال رسالة WhatsApp تجريبية</h3>
-                    <button @click="showTestModal = false" type="button" class="p-1.5 text-[#5B6770] hover:text-[#0F2747]">
+                    <h3 class="text-base font-bold text-[#163E3E]">إرسال رسالة WhatsApp تجريبية</h3>
+                    <button @click="showTestModal = false" type="button" class="p-1.5 text-[#5B6770] hover:text-[#163E3E]">
                         <X class="w-5 h-5" />
                     </button>
                 </div>
 
                 <form @submit.prevent="sendTestMessage" class="space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">اختر المستأجر المستلم *</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">اختر المستأجر المستلم *</label>
                         <select
                             v-model="testForm.renter_id"
                             required
-                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition"
+                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         >
                             <option v-for="r in renters" :key="r.id" :value="r.id">
                                 {{ r.name }} ({{ r.phone }})
@@ -288,11 +288,11 @@ const sendTestMessage = () => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">اختر قالب الرسالة *</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">اختر قالب الرسالة *</label>
                         <select
                             v-model="testForm.template_id"
                             required
-                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition"
+                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         >
                             <option v-for="t in templates" :key="t.id" :value="t.id">
                                 {{ t.title }}
@@ -322,4 +322,3 @@ const sendTestMessage = () => {
         </div>
     </AppLayout>
 </template>
-

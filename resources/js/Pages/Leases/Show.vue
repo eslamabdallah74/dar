@@ -3,6 +3,9 @@ import { ref, computed } from 'vue';
 import { Link, useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
+import DeductionForm from '@/Components/Leases/SecurityDeposit/DeductionForm.vue';
+import DeductionSection from '@/Components/Leases/SecurityDeposit/DeductionSection.vue';
+import SettlementSummary from '@/Components/Leases/SecurityDeposit/SettlementSummary.vue';
 import {
     AlertCircle,
     AlertTriangle,
@@ -25,6 +28,7 @@ import {
     Info,
     MessageCircle,
     MinusCircle,
+    Paperclip,
     Phone,
     Plus,
     RotateCcw,
@@ -33,6 +37,7 @@ import {
     ShieldCheck,
     Store,
     Trash2,
+    Upload,
     User,
     Wrench,
     X,
@@ -104,6 +109,8 @@ const props = defineProps<{
         is_past_end_date?: boolean;
         is_expiring_soon?: boolean;
         notes: string | null;
+        contract_image_url?: string | null;
+        has_contract_image?: boolean;
         created_at: string;
     };
     unit: {
@@ -115,6 +122,17 @@ const props = defineProps<{
         property_id: number;
         property_name: string;
         property_address: string | null;
+        apartment_gender?: {
+            status: 'male' | 'female' | 'mixed' | 'unspecified';
+            label: string;
+            short_label: string;
+            description: string;
+            badge_class: string;
+            male_count: number;
+            female_count: number;
+            unspecified_count: number;
+            total_active_renters: number;
+        } | null;
     };
     renter: {
         id: number;
@@ -122,6 +140,8 @@ const props = defineProps<{
         phone: string;
         national_id: string | null;
         email: string | null;
+        gender?: 'male' | 'female' | null;
+        gender_label?: string | null;
     };
     security_deposit: {
         agreed_amount: number;
@@ -248,13 +268,6 @@ const settlementForm = useForm({
     inspection_notes: '',
 });
 
-const deductionForm = useForm({
-    category: 'furniture_damage',
-    description: '',
-    amount: 0,
-    deducted_at: todayDate,
-});
-
 const refundForm = useForm({
     amount: props.security_deposit.refundable_balance,
     payment_method: 'bank_transfer',
@@ -263,40 +276,69 @@ const refundForm = useForm({
     notes: '',
 });
 
-const finalizeSettlementForm = useForm({
+const finalizeSettlementForm = useForm<{
+    inspection_category: string;
+    inspection_notes: string;
+    notes: string;
+    deductions: DeductionDraft[];
+    refund_status: 'pending' | 'refunded' | 'not_applicable';
+    refund_method: string;
+    refund_payment_date: string;
+    refund_reference: string;
+}>({
     inspection_category: props.security_deposit.settlement?.inspection_category || 'no_issues',
     inspection_notes: props.security_deposit.settlement?.inspection_notes || '',
     notes: '',
+    deductions: [],
+    refund_status: 'pending',
+    refund_method: 'bank_transfer',
+    refund_payment_date: todayDate,
+    refund_reference: '',
 });
 
 const reversePaymentForm = useForm({
     reversal_reason: '',
 });
 
-// Settlement calculations
-const addDeductionRow = () => {
-    terminateForm.deductions.push({
-        category: 'furniture_damage',
-        amount: 0,
-        description: '',
-        notes: '',
-        attachment: null,
+const showEditDeductionModal = ref(false);
+const editingDeductionId = ref<number | null>(null);
+const editDeductionForm = useForm<{
+    category: string;
+    amount: number | string;
+    description: string;
+    notes: string;
+    attachment: File | null;
+}>({
+    category: 'unit_damage',
+    amount: '',
+    description: '',
+    notes: '',
+    attachment: null,
+});
+
+const openEditDeductionModal = (deduction: DepositDeduction) => {
+    editingDeductionId.value = deduction.id;
+    editDeductionForm.category = deduction.category;
+    editDeductionForm.amount = deduction.amount;
+    editDeductionForm.description = deduction.description;
+    editDeductionForm.notes = deduction.notes || '';
+    editDeductionForm.attachment = null;
+    showEditDeductionModal.value = true;
+};
+
+const submitEditDeduction = () => {
+    if (!editingDeductionId.value) return;
+    editDeductionForm.post(route('leases.security-deposit.deductions.update', [props.lease.id, editingDeductionId.value]), {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            showEditDeductionModal.value = false;
+            editingDeductionId.value = null;
+        },
     });
 };
 
-const removeDeductionRow = (index: number) => {
-    terminateForm.deductions.splice(index, 1);
-};
-
-const handleAttachmentChange = (index: number, event: Event) => {
-    const target = event.target as HTMLInputElement;
-    if (target.files && target.files.length > 0) {
-        terminateForm.deductions[index].attachment = target.files[0];
-    } else {
-        terminateForm.deductions[index].attachment = null;
-    }
-};
-
+// Settlement calculations
 const totalNewDeductions = computed(() => {
     if (terminateForm.settlement_type !== 'partial_refund') return 0;
     return terminateForm.deductions.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
@@ -307,6 +349,62 @@ const availableDepositForSettlement = computed(() => {
     const previouslyRefunded = Number(props.security_deposit.total_refunded) || 0;
     const previouslyDeducted = Number(props.security_deposit.total_deductions) || 0;
     return Math.max(0, received - previouslyRefunded - previouslyDeducted);
+});
+
+const finalizeTotalDeductions = computed(() => {
+    return Math.round(
+        finalizeSettlementForm.deductions.reduce((sum, d) => sum + (Number(d.amount) || 0), 0) * 100
+    ) / 100;
+});
+
+const finalizeRefundDue = computed(() => {
+    return Math.max(0, Math.round((availableDepositForSettlement.value - finalizeTotalDeductions.value) * 100) / 100);
+});
+
+const finalizeRetainedAmount = computed(() => {
+    return finalizeTotalDeductions.value;
+});
+
+const finalizeExceedsBalance = computed(() => {
+    return finalizeTotalDeductions.value > availableDepositForSettlement.value;
+});
+
+const finalizeCalculatedOutcome = computed(() => {
+    if (finalizeTotalDeductions.value <= 0) {
+        return {
+            type: 'full_refund' as const,
+            title: 'رد كامل مبلغ التأمين (Full Refund)',
+            description: `لا توجد خصومات؛ سيتم صرف كامل الرصيد المتاح (${availableDepositForSettlement.value.toLocaleString()} ${props.currency_symbol}) للمستأجر.`,
+            badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-300',
+        };
+    }
+    if (finalizeRefundDue.value > 0) {
+        return {
+            type: 'partial_refund' as const,
+            title: 'رد جزئي مع تطبيق خصومات (Partial Refund)',
+            description: `سيتم احتجاز ${finalizeTotalDeductions.value.toLocaleString()} ${props.currency_symbol} للمالك، ورد ${finalizeRefundDue.value.toLocaleString()} ${props.currency_symbol} للمستأجر.`,
+            badgeClass: 'bg-amber-50 text-amber-800 border-amber-300',
+        };
+    }
+    return {
+        type: 'no_refund' as const,
+        title: 'احتجاز كامل التأمين (No Refund)',
+        description: `تغطي الخصومات كامل رصيد التأمين (${finalizeTotalDeductions.value.toLocaleString()} ${props.currency_symbol})؛ لن يتم رد أي مبالغ للمستأجر.`,
+        badgeClass: 'bg-rose-50 text-rose-800 border-rose-300',
+    };
+});
+
+const confirmedDepositDeductions = computed(() => props.security_deposit.deductions.filter((deduction) => deduction.status === 'confirmed'));
+const finalSettlementDecision = computed(() => {
+    const refundDue = props.security_deposit.refundable_balance;
+
+    if (props.security_deposit.total_deductions <= 0) {
+        return refundDue > 0 ? 'رد كامل الرصيد المتبقي للمستأجر' : 'لا يوجد مبلغ متبقٍ للرد';
+    }
+
+    return refundDue > 0
+        ? `خصم البنود المعتمدة ورد ${refundDue.toLocaleString()} ${props.currency_symbol} للمستأجر`
+        : 'استهلاك الرصيد المتبقي في الخصومات المعتمدة، ولا يوجد مبلغ إضافي للرد';
 });
 
 const calculatedRefundDue = computed(() => {
@@ -337,6 +435,8 @@ const openTerminateWorkflow = () => {
 
 const submitTerminateWithSettlement = () => {
     terminateForm.post(route('leases.terminate', props.lease.id), {
+        forceFormData: true,
+        preserveScroll: true,
         onSuccess: () => {
             showTerminateWithSettlementModal.value = false;
         },
@@ -378,15 +478,6 @@ const submitStartSettlement = () => {
     });
 };
 
-const submitDeduction = () => {
-    deductionForm.post(route('leases.security-deposit.deduction', props.lease.id), {
-        onSuccess: () => {
-            deductionForm.reset();
-            showRecordDeductionModal.value = false;
-        },
-    });
-};
-
 const deleteDeduction = (deductionId: number) => {
     if (confirm('هل أنت متأكد من إلغاء بند الخصم هذا من سجل التأمين؟')) {
         router.delete(route('leases.security-deposit.deduction.delete', [props.lease.id, deductionId]));
@@ -402,8 +493,37 @@ const submitRefund = () => {
     });
 };
 
+const openFinalizeSettlementModal = () => {
+    finalizeSettlementForm.reset();
+    finalizeSettlementForm.inspection_category = props.security_deposit.settlement?.inspection_category || 'no_issues';
+    finalizeSettlementForm.inspection_notes = props.security_deposit.settlement?.inspection_notes || '';
+    finalizeSettlementForm.notes = '';
+    finalizeSettlementForm.refund_status = 'pending';
+    finalizeSettlementForm.refund_method = 'bank_transfer';
+    finalizeSettlementForm.refund_payment_date = todayDate;
+    finalizeSettlementForm.refund_reference = '';
+
+    if (props.security_deposit.deductions && props.security_deposit.deductions.length > 0) {
+        finalizeSettlementForm.deductions = props.security_deposit.deductions.map((d) => ({
+            id: d.id,
+            category: d.category,
+            description: d.description,
+            amount: d.amount,
+            notes: d.notes || '',
+            attachment: null,
+            attachment_url: d.attachment_url || null,
+        }));
+    } else {
+        finalizeSettlementForm.deductions = [];
+    }
+
+    showFinalizeSettlementModal.value = true;
+};
+
 const submitFinalizeSettlement = () => {
     finalizeSettlementForm.post(route('leases.security-deposit.settle', props.lease.id), {
+        forceFormData: true,
+        preserveScroll: true,
         onSuccess: () => {
             showFinalizeSettlementModal.value = false;
         },
@@ -432,6 +552,37 @@ const terminateLease = () => {
     }
 };
 
+// ----------------------------------------------------
+// وثيقة العقد المعتمد (Contract Document Upload / Delete)
+// ----------------------------------------------------
+const showContractUploadModal = ref(false);
+const contractUploadForm = useForm({
+    contract_image: null as File | null,
+});
+
+const onShowContractFileChange = (e: Event) => {
+    const target = e.target as HTMLInputElement;
+    if (target.files && target.files.length > 0) {
+        contractUploadForm.contract_image = target.files[0];
+    }
+};
+
+const submitContractUpload = () => {
+    if (!contractUploadForm.contract_image) return;
+    contractUploadForm.post(route('leases.contract-image.store', props.lease.id), {
+        onSuccess: () => {
+            contractUploadForm.reset();
+            showContractUploadModal.value = false;
+        },
+    });
+};
+
+const deleteContractImage = () => {
+    if (confirm('هل أنت متأكد من رغبتك بحذف وثيقة العقد المرفقة نهائياً؟')) {
+        router.delete(route('leases.contract-image.destroy', props.lease.id));
+    }
+};
+
 const depositPercentReceived = computed(() => {
     if (!props.security_deposit.agreed_amount || props.security_deposit.agreed_amount <= 0) return 0;
     return Math.min(100, Math.round((props.security_deposit.total_received / props.security_deposit.agreed_amount) * 100));
@@ -457,7 +608,7 @@ const depositBadgeClass = computed(() => {
 
 <template>
     <AppLayout
-        :title="`عقد ${lease.contract_number} — ${unit.name} — دار`"
+        :title="`عقد ${lease.contract_number} — ${unit.name} — Nook Mate`"
         active-tab="leases"
         :header-title="`عقد إيجار ${lease.contract_number}`"
         :header-subtitle="`${unit.name} • ${unit.property_name} • المستأجر: ${renter.name}`"
@@ -467,7 +618,7 @@ const depositBadgeClass = computed(() => {
             <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                 <Link
                     :href="route('leases.index')"
-                    class="h-10 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F3F7FA] text-xs font-bold text-[#5B6770] hover:text-[#0F2747] transition flex items-center justify-center gap-1.5 shadow-2xs flex-1 sm:flex-initial"
+                    class="h-10 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F8F4EA] text-xs font-bold text-[#5B6770] hover:text-[#163E3E] transition flex items-center justify-center gap-1.5 shadow-2xs flex-1 sm:flex-initial"
                 >
                     <ArrowRight class="w-4 h-4" />
                     <span>العودة لقائمة العقود</span>
@@ -477,7 +628,7 @@ const depositBadgeClass = computed(() => {
                     v-if="lease.status === 'active'"
                     @click="showExtendModal = true"
                     type="button"
-                    class="h-10 px-4 rounded-xl border border-[#0E6E7E] bg-[#E3F1F4] hover:bg-[#0E6E7E] hover:text-white text-[#0E6E7E] text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs flex-1 sm:flex-initial"
+                    class="h-10 px-4 rounded-xl border border-[#163E3E] bg-[#E8F0F0] hover:bg-[#163E3E] hover:text-white text-[#163E3E] text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs flex-1 sm:flex-initial"
                 >
                     <RotateCcw class="w-4 h-4" />
                     <span>تجديد / تمديد العقد</span>
@@ -542,15 +693,15 @@ const depositBadgeClass = computed(() => {
         <!-- 1. كروت الملخص المالي السريع للعقد والتأمين (4 KPIs) - متجاوبة تماماً للموبايل -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <!-- كارت الإيجار الشهري -->
-            <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-3.5 sm:p-5 shadow-2xs space-y-2 hover:border-[#0E6E7E]/40 transition">
+            <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-3.5 sm:p-5 shadow-2xs space-y-2 hover:border-[#163E3E]/40 transition">
                 <div class="flex items-center justify-between">
                     <span class="text-[11px] sm:text-xs font-semibold text-[#5B6770]">الإيجار الشهري</span>
-                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center">
                         <Coins class="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2]" />
                     </div>
                 </div>
                 <div class="flex items-baseline justify-between gap-1 flex-wrap">
-                    <span class="text-xl sm:text-2xl font-black text-[#0F2747] font-mono">
+                    <span class="text-xl sm:text-2xl font-black text-[#163E3E] font-mono">
                         {{ lease.rent_amount.toLocaleString() }}
                         <span class="text-[10px] sm:text-xs font-sans font-normal text-[#5B6770]">{{ currency_symbol }}</span>
                     </span>
@@ -559,15 +710,15 @@ const depositBadgeClass = computed(() => {
             </div>
 
             <!-- كارت التأمين المتفق عليه -->
-            <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-3.5 sm:p-5 shadow-2xs space-y-2 hover:border-[#0E6E7E]/40 transition">
+            <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-3.5 sm:p-5 shadow-2xs space-y-2 hover:border-[#163E3E]/40 transition">
                 <div class="flex items-center justify-between">
                     <span class="text-[11px] sm:text-xs font-semibold text-[#5B6770]">تأمين الوحدة المتفق عليه</span>
-                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center">
                         <Shield class="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2]" />
                     </div>
                 </div>
                 <div class="flex items-baseline justify-between gap-1 flex-wrap">
-                    <span class="text-xl sm:text-2xl font-black text-[#0F2747] font-mono">
+                    <span class="text-xl sm:text-2xl font-black text-[#163E3E] font-mono">
                         {{ security_deposit.agreed_amount.toLocaleString() }}
                         <span class="text-[10px] sm:text-xs font-sans font-normal text-[#5B6770]">{{ currency_symbol }}</span>
                     </span>
@@ -601,15 +752,15 @@ const depositBadgeClass = computed(() => {
             </div>
 
             <!-- كارت الرصيد القابل للرد حالياً -->
-            <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-3.5 sm:p-5 shadow-2xs space-y-2 hover:border-[#0E6E7E]/40 transition">
+            <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-3.5 sm:p-5 shadow-2xs space-y-2 hover:border-[#163E3E]/40 transition">
                 <div class="flex items-center justify-between">
                     <span class="text-[11px] sm:text-xs font-semibold text-[#5B6770]">الرصيد القابل للرد</span>
-                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center">
                         <RotateCcw class="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2]" />
                     </div>
                 </div>
                 <div class="flex items-baseline justify-between gap-1 flex-wrap">
-                    <span class="text-xl sm:text-2xl font-black text-[#0E6E7E] font-mono">
+                    <span class="text-xl sm:text-2xl font-black text-[#163E3E] font-mono">
                         {{ security_deposit.refundable_balance.toLocaleString() }}
                         <span class="text-[10px] sm:text-xs font-sans font-normal text-[#5B6770]">{{ currency_symbol }}</span>
                     </span>
@@ -628,43 +779,52 @@ const depositBadgeClass = computed(() => {
                 <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-4 sm:p-6 shadow-2xs space-y-4">
                     <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
                         <div class="flex items-center gap-2.5">
-                            <div class="w-10 h-10 rounded-xl bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center shrink-0">
+                            <div class="w-10 h-10 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center shrink-0">
                                 <Store v-if="unit.unit_type === 'shop'" class="w-5 h-5 stroke-[2.2]" />
                                 <Home v-else class="w-5 h-5 stroke-[2.2]" />
                             </div>
                             <div>
-                                <h3 class="text-sm font-bold text-[#0F2747]">{{ unit.name }}</h3>
+                                <h3 class="text-sm font-bold text-[#163E3E]">{{ unit.name }}</h3>
                                 <span class="text-xs text-[#5B6770] font-mono">{{ unit.code }}</span>
                             </div>
                         </div>
-                        <span class="text-xs font-bold bg-[#F8FAFC] text-[#0E6E7E] px-2.5 py-1 rounded-lg border border-[#D6E0E7]">
-                            {{ unit.unit_type_label }}
-                        </span>
+                        <div class="flex items-center gap-1.5">
+                            <span
+                                v-if="unit.apartment_gender"
+                                class="text-[11px] font-bold px-2 py-0.5 rounded-lg border"
+                                :class="unit.apartment_gender.badge_class"
+                            >
+                                {{ unit.apartment_gender.short_label }}
+                            </span>
+                            <span class="text-xs font-bold bg-[#F8FAFC] text-[#163E3E] px-2.5 py-1 rounded-lg border border-[#D6E0E7]">
+                                {{ unit.unit_type_label }}
+                            </span>
+                        </div>
                     </div>
 
                     <div class="space-y-2.5 text-xs">
                         <div class="flex items-center justify-between py-1">
                             <span class="text-[#5B6770]">العقار / المبنى:</span>
-                            <span class="font-bold text-[#0F2747] flex items-center gap-1">
+                            <span class="font-bold text-[#163E3E] flex items-center gap-1">
                                 <Building2 class="w-3.5 h-3.5 text-[#5B6770]" />
                                 <span>{{ unit.property_name }}</span>
                             </span>
                         </div>
                         <div class="flex items-center justify-between py-1" v-if="unit.property_address">
                             <span class="text-[#5B6770]">العنوان:</span>
-                            <span class="text-[#0F2747] truncate max-w-[200px]">{{ unit.property_address }}</span>
+                            <span class="text-[#163E3E] truncate max-w-[200px]">{{ unit.property_address }}</span>
                         </div>
                         <div class="flex items-center justify-between py-1 border-t border-[#D6E0E7]/60">
                             <span class="text-[#5B6770]">تاريخ البداية:</span>
-                            <span class="font-mono font-bold text-[#0F2747]">{{ lease.starts_on }}</span>
+                            <span class="font-mono font-bold text-[#163E3E]">{{ lease.starts_on }}</span>
                         </div>
                         <div class="flex items-center justify-between py-1">
                             <span class="text-[#5B6770]">تاريخ النهاية:</span>
-                            <span class="font-mono font-bold text-[#0F2747]">{{ lease.ends_on }}</span>
+                            <span class="font-mono font-bold text-[#163E3E]">{{ lease.ends_on }}</span>
                         </div>
                         <div class="flex items-center justify-between py-1 border-t border-[#D6E0E7]/60">
                             <span class="text-[#5B6770]">دورية الاستحقاق:</span>
-                            <span class="font-bold text-[#0E6E7E] bg-[#E3F1F4] px-2 py-0.5 rounded-md">
+                            <span class="font-bold text-[#163E3E] bg-[#E8F0F0] px-2 py-0.5 rounded-md">
                                 {{ lease.billing_interval === 'monthly' ? 'شهري' : lease.billing_interval }}
                             </span>
                         </div>
@@ -675,13 +835,13 @@ const depositBadgeClass = computed(() => {
                 <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-4 sm:p-6 shadow-2xs space-y-4">
                     <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
                         <div class="flex items-center gap-2.5">
-                            <div class="w-10 h-10 rounded-xl bg-[#0E6E7E] text-white flex items-center justify-center font-black text-sm shrink-0">
+                            <div class="w-10 h-10 rounded-xl bg-[#163E3E] text-white flex items-center justify-center font-black text-sm shrink-0">
                                 {{ renter.name.charAt(0) }}
                             </div>
                             <div>
                                 <Link
                                     :href="route('renters.show', renter.id)"
-                                    class="text-sm font-bold text-[#0F2747] hover:text-[#0E6E7E] transition block"
+                                    class="text-sm font-bold text-[#163E3E] hover:text-[#163E3E] transition block"
                                 >
                                     {{ renter.name }}
                                 </Link>
@@ -703,7 +863,7 @@ const depositBadgeClass = computed(() => {
                             <a
                                 v-if="renter.phone"
                                 :href="`tel:${renter.phone}`"
-                                class="p-2 rounded-xl bg-slate-100 text-[#0F2747] hover:bg-slate-200 transition shadow-2xs"
+                                class="p-2 rounded-xl bg-slate-100 text-[#163E3E] hover:bg-slate-200 transition shadow-2xs"
                                 title="اتصال هاتفي"
                             >
                                 <Phone class="w-4 h-4" />
@@ -713,19 +873,30 @@ const depositBadgeClass = computed(() => {
 
                     <div class="space-y-2.5 text-xs">
                         <div class="flex items-center justify-between py-1">
+                            <span class="text-[#5B6770]">الجنس:</span>
+                            <span
+                                v-if="renter.gender"
+                                class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold border"
+                                :class="renter.gender === 'male' ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-rose-50 text-rose-700 border-rose-200'"
+                            >
+                                {{ renter.gender_label || (renter.gender === 'male' ? 'ذكر' : 'أنثى') }}
+                            </span>
+                            <span v-else class="text-[#8A9AA7] text-[11px]">غير محدد</span>
+                        </div>
+                        <div class="flex items-center justify-between py-1">
                             <span class="text-[#5B6770]">رقم الهوية / الإقامة:</span>
-                            <span class="font-mono font-bold text-[#0F2747] bg-[#F8FAFC] px-2 py-0.5 rounded-md border border-[#D6E0E7]">
+                            <span class="font-mono font-bold text-[#163E3E] bg-[#F8FAFC] px-2 py-0.5 rounded-md border border-[#D6E0E7]">
                                 {{ renter.national_id || 'غير مسجل' }}
                             </span>
                         </div>
                         <div v-if="renter.email" class="flex items-center justify-between py-1">
                             <span class="text-[#5B6770]">البريد الإلكتروني:</span>
-                            <span class="font-mono text-[#0F2747] truncate max-w-[180px]">{{ renter.email }}</span>
+                            <span class="font-mono text-[#163E3E] truncate max-w-[180px]">{{ renter.email }}</span>
                         </div>
                         <div class="pt-2 border-t border-[#D6E0E7]/60">
                             <Link
                                 :href="route('renters.show', renter.id)"
-                                class="w-full h-9 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] hover:bg-white text-xs font-bold text-[#0E6E7E] flex items-center justify-center gap-1 transition"
+                                class="w-full h-9 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] hover:bg-white text-xs font-bold text-[#163E3E] flex items-center justify-center gap-1 transition"
                             >
                                 <span>عرض السجل الكامل للمستأجر</span>
                                 <ExternalLink class="w-3.5 h-3.5" />
@@ -733,22 +904,101 @@ const depositBadgeClass = computed(() => {
                         </div>
                     </div>
                 </div>
+
+                <!-- بطاقة وثيقة العقد المعتمد (مشفرة ومحمية) -->
+                <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-4 sm:p-6 shadow-2xs space-y-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center font-bold">
+                                <FileCheck class="w-4 h-4 stroke-[2.2]" />
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-sm text-[#163E3E]">وثيقة العقد المعتمد</h3>
+                                <p class="text-[11px] text-[#5B6770]">صورة العقد الموقّع والمسح الضوئي</p>
+                            </div>
+                        </div>
+
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            <ShieldCheck class="w-3 h-3 text-emerald-600" />
+                            <span>تشفير AES-256</span>
+                        </span>
+                    </div>
+
+                    <!-- حالة وجود مرفق عقد محفوظ -->
+                    <div v-if="lease.has_contract_image && lease.contract_image_url" class="space-y-3">
+                        <div class="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200 flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-2.5 min-w-0">
+                                <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                                    <FileText class="w-5 h-5" />
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="text-xs font-bold text-[#163E3E] truncate">نسخة العقد المعتمدة</p>
+                                    <p class="text-[11px] text-emerald-800 font-medium">مشفر ومحمي في خوادم النظام</p>
+                                </div>
+                            </div>
+
+                            <a
+                                :href="lease.contract_image_url"
+                                target="_blank"
+                                class="h-9 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition inline-flex items-center gap-1.5 shadow-2xs shrink-0"
+                            >
+                                <ExternalLink class="w-3.5 h-3.5" />
+                                <span>عرض / تحميل</span>
+                            </a>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button
+                                @click="showContractUploadModal = true"
+                                type="button"
+                                class="flex-1 h-9 rounded-xl border border-[#D6E0E7] bg-white hover:bg-slate-50 text-[#163E3E] text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                            >
+                                <Upload class="w-3.5 h-3.5 text-[#163E3E]" />
+                                <span>استبدال المرفق</span>
+                            </button>
+                            <button
+                                @click="deleteContractImage"
+                                type="button"
+                                class="h-9 px-3 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
+                                title="حذف المرفق"
+                            >
+                                <Trash2 class="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- حالة عدم وجود مرفق حتى الآن -->
+                    <div v-else class="space-y-3">
+                        <div class="p-3.5 rounded-2xl bg-[#F8FAFC] border border-dashed border-[#D6E0E7] text-center space-y-1.5">
+                            <p class="text-xs font-bold text-[#5B6770]">لم يتم إرفاق نسخة العقد الورقي بعد</p>
+                            <p class="text-[11px] text-[#8A9AA7]">يمكنك إرفاق صورة العقد أو ملف PDF لحفظه مشفراً بخصوصية تامة.</p>
+                        </div>
+
+                        <button
+                            @click="showContractUploadModal = true"
+                            type="button"
+                            class="w-full h-10 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                        >
+                            <Upload class="w-4 h-4" />
+                            <span>إرفاق وثيقة العقد الآن</span>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- العمود الأيسر (8 أعمدة على الديسكتوب): قسم تأمين الوحدة الشامل + فواتير الإيجار -->
             <div class="lg:col-span-8 space-y-5 sm:space-y-6">
                 <!-- الصندوق الرئيسي لتأمين الوحدة المسترد (Security Deposit Hero Box) -->
-                <div class="rounded-2xl sm:rounded-3xl border-2 border-[#0E6E7E]/30 bg-white p-4 sm:p-7 shadow-xs space-y-6">
+                <div class="rounded-2xl sm:rounded-3xl border-2 border-[#163E3E]/30 bg-white p-4 sm:p-7 shadow-xs space-y-6">
                     <!-- عنوان القسم وحالة دورة الحياة -->
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#D6E0E7]">
                         <div class="flex items-start sm:items-center gap-3">
-                            <div class="w-11 h-11 rounded-2xl bg-[#0E6E7E] text-white flex items-center justify-center shadow-xs shrink-0">
+                            <div class="w-11 h-11 rounded-2xl bg-[#163E3E] text-white flex items-center justify-center shadow-xs shrink-0">
                                 <ShieldCheck class="w-6 h-6 stroke-[2]" />
                             </div>
                             <div>
-                                <h3 class="text-base sm:text-lg font-bold text-[#0F2747] flex items-center gap-2">
+                                <h3 class="text-base sm:text-lg font-bold text-[#163E3E] flex items-center gap-2">
                                     <span>تأمين الوحدة المسترد</span>
-                                    <span class="text-xs font-semibold text-[#5B6770] font-sans">Security Deposit</span>
                                 </h3>
                                 <p class="text-xs text-[#5B6770] mt-0.5">
                                     مبلغ مالي لحماية الوحدة أثناء العقد، محفوظ بشكل مستقل ولا يختلط بإيراد الإيجار
@@ -771,7 +1021,7 @@ const depositBadgeClass = computed(() => {
                             v-if="security_deposit.actions.can_record_payment"
                             @click="showRecordPaymentModal = true"
                             type="button"
-                            class="h-10 px-4 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                            class="h-10 px-4 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
                         >
                             <CreditCard class="w-3.5 h-3.5" />
                             <span>تسجيل استلام دفعة تأمين</span>
@@ -782,7 +1032,7 @@ const depositBadgeClass = computed(() => {
                             v-if="security_deposit.actions.can_start_settlement"
                             @click="showStartSettlementModal = true"
                             type="button"
-                            class="h-10 px-4 rounded-xl border border-[#0E6E7E] text-[#0E6E7E] hover:bg-[#E3F1F4] text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                            class="h-10 px-4 rounded-xl border border-[#163E3E] text-[#163E3E] hover:bg-[#E8F0F0] text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
                         >
                             <Wrench class="w-3.5 h-3.5" />
                             <span>بدء فحص الوحدة والتسوية</span>
@@ -813,9 +1063,9 @@ const depositBadgeClass = computed(() => {
                         <!-- زر اعتماد التسوية النهائية -->
                         <button
                             v-if="security_deposit.actions.can_settle"
-                            @click="showFinalizeSettlementModal = true"
+                            @click="openFinalizeSettlementModal"
                             type="button"
-                            class="h-10 px-4 rounded-xl bg-[#0F2747] hover:bg-[#1E3A5F] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                            class="h-10 px-4 rounded-xl bg-[#163E3E] hover:bg-[#1E3A5F] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
                         >
                             <FileCheck class="w-3.5 h-3.5" />
                             <span>اعتماد التسوية النهائية</span>
@@ -827,7 +1077,7 @@ const depositBadgeClass = computed(() => {
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 text-xs">
                             <div class="p-3 sm:p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] space-y-1">
                                 <span class="text-[#5B6770] block text-[11px]">التأمين المتفق عليه</span>
-                                <span class="font-black text-[#0F2747] font-mono text-base block">
+                                <span class="font-black text-[#163E3E] font-mono text-base block">
                                     {{ security_deposit.agreed_amount.toLocaleString() }}
                                     <span class="text-[10px] font-sans font-normal text-[#5B6770]">{{ currency_symbol }}</span>
                                 </span>
@@ -849,11 +1099,11 @@ const depositBadgeClass = computed(() => {
                                 </span>
                             </div>
 
-                            <div class="p-3 sm:p-3.5 rounded-2xl bg-[#E3F1F4] border border-[#0E6E7E]/30 space-y-1">
-                                <span class="text-[#0E6E7E] block text-[11px] font-bold">الرصيد المتاح للرد</span>
-                                <span class="font-black text-[#0E6E7E] font-mono text-base block">
+                            <div class="p-3 sm:p-3.5 rounded-2xl bg-[#E8F0F0] border border-[#163E3E]/30 space-y-1">
+                                <span class="text-[#163E3E] block text-[11px] font-bold">الرصيد المتاح للرد</span>
+                                <span class="font-black text-[#163E3E] font-mono text-base block">
                                     {{ security_deposit.refundable_balance.toLocaleString() }}
-                                    <span class="text-[10px] font-sans font-normal text-[#0E6E7E]">{{ currency_symbol }}</span>
+                                    <span class="text-[10px] font-sans font-normal text-[#163E3E]">{{ currency_symbol }}</span>
                                 </span>
                             </div>
                         </div>
@@ -862,17 +1112,35 @@ const depositBadgeClass = computed(() => {
                         <div v-if="security_deposit.agreed_amount > 0" class="p-3 rounded-xl bg-[#F8FAFC] border border-[#D6E0E7] space-y-1.5">
                             <div class="flex items-center justify-between text-[11px] text-[#5B6770] font-semibold">
                                 <span>نسبة استيفاء مبلغ التأمين من المستأجر:</span>
-                                <span class="font-mono font-bold text-[#0F2747]">{{ depositPercentReceived }}%</span>
+                                <span class="font-mono font-bold text-[#163E3E]">{{ depositPercentReceived }}%</span>
                             </div>
                             <div class="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                                 <div
                                     class="h-full rounded-full transition-all duration-500"
-                                    :class="depositPercentReceived >= 100 ? 'bg-emerald-600' : 'bg-[#0E6E7E]'"
+                                    :class="depositPercentReceived >= 100 ? 'bg-emerald-600' : 'bg-[#163E3E]'"
                                     :style="{ width: `${depositPercentReceived}%` }"
                                 ></div>
                             </div>
                         </div>
                     </div>
+
+                    <SettlementSummary
+                        v-if="security_deposit.settlement"
+                        :settlement="security_deposit.settlement"
+                        :deductions="security_deposit.deductions"
+                        :currency-symbol="currency_symbol"
+                        :export-url="route('leases.security-deposit.export', lease.id)"
+                        :statement-url="route('leases.security-deposit.statement', lease.id)"
+                    />
+
+                    <details class="rounded-2xl border border-[#D6E0E7] bg-white">
+                        <summary class="flex cursor-pointer flex-wrap items-center justify-between gap-2 px-4 py-3 text-xs font-bold text-[#163E3E]">
+                            <span>سجل الحركات التفصيلي</span>
+                            <span class="font-normal text-[#5B6770]">
+                                {{ security_deposit.payments.length }} دفعات · {{ security_deposit.deductions.length }} خصومات · {{ security_deposit.refunds.length }} عمليات رد
+                            </span>
+                        </summary>
+                        <div class="space-y-4 border-t border-[#D6E0E7] p-3 sm:p-4">
 
                     <!-- ملخص تسوية المبلغ التأميني المعتمد وسجل التدقيق الشامل -->
                     <div v-if="security_deposit.settlement" class="p-4 sm:p-6 rounded-3xl border-2 border-blue-200 bg-gradient-to-br from-blue-50/70 to-white space-y-4 text-xs shadow-2xs">
@@ -897,7 +1165,7 @@ const depositBadgeClass = computed(() => {
                         <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-center">
                             <div class="p-2.5 rounded-xl bg-white border border-blue-200/80 space-y-1">
                                 <span class="text-[10px] text-[#5B6770] block font-semibold">التأمين الأصلي</span>
-                                <span class="font-mono font-bold text-xs text-[#0F2747] block">
+                                <span class="font-mono font-bold text-xs text-[#163E3E] block">
                                     {{ (security_deposit.settlement.original_deposit || security_deposit.agreed_amount).toLocaleString() }}
                                     <span class="text-[9px] font-sans text-[#5B6770]">{{ currency_symbol }}</span>
                                 </span>
@@ -909,11 +1177,11 @@ const depositBadgeClass = computed(() => {
                                     <span class="text-[9px] font-sans text-rose-600">{{ currency_symbol }}</span>
                                 </span>
                             </div>
-                            <div class="p-2.5 rounded-xl bg-white border border-[#0E6E7E]/40 space-y-1">
-                                <span class="text-[10px] text-[#0E6E7E] block font-semibold">المستحق رده</span>
-                                <span class="font-mono font-bold text-xs text-[#0E6E7E] block">
+                            <div class="p-2.5 rounded-xl bg-white border border-[#163E3E]/40 space-y-1">
+                                <span class="text-[10px] text-[#163E3E] block font-semibold">المستحق رده</span>
+                                <span class="font-mono font-bold text-xs text-[#163E3E] block">
                                     {{ ((security_deposit.settlement.refundable_balance || 0) + (security_deposit.settlement.total_refunded || 0)).toLocaleString() }}
-                                    <span class="text-[9px] font-sans text-[#0E6E7E]">{{ currency_symbol }}</span>
+                                    <span class="text-[9px] font-sans text-[#163E3E]">{{ currency_symbol }}</span>
                                 </span>
                             </div>
                             <div class="p-2.5 rounded-xl bg-white border border-emerald-200/80 space-y-1">
@@ -924,8 +1192,8 @@ const depositBadgeClass = computed(() => {
                                 </span>
                             </div>
                             <div class="p-2.5 rounded-xl bg-white border border-blue-200/80 space-y-1 col-span-2 sm:col-span-1">
-                                <span class="text-[10px] text-[#0F2747] block font-semibold">المتبقي للصرف</span>
-                                <span class="font-mono font-bold text-xs text-[#0F2747] block">
+                                <span class="text-[10px] text-[#163E3E] block font-semibold">المتبقي للصرف</span>
+                                <span class="font-mono font-bold text-xs text-[#163E3E] block">
                                     {{ (security_deposit.settlement.refundable_balance || 0).toLocaleString() }}
                                     <span class="text-[9px] font-sans text-[#5B6770]">{{ currency_symbol }}</span>
                                 </span>
@@ -992,8 +1260,8 @@ const depositBadgeClass = computed(() => {
                     <!-- سجل الحركات المالية الموثقة للتأمين (Audit Trail) -->
                     <div class="space-y-6 pt-2">
                         <div class="flex items-center gap-2 pb-2 border-b border-[#D6E0E7]">
-                            <History class="w-4 h-4 text-[#0E6E7E]" />
-                            <h4 class="text-sm font-bold text-[#0F2747]">سجل الحركات المالية الموثقة للتأمين</h4>
+                            <History class="w-4 h-4 text-[#163E3E]" />
+                            <h4 class="text-sm font-bold text-[#163E3E]">سجل الحركات المالية الموثقة للتأمين</h4>
                         </div>
 
                         <!-- 1. سندات استلام التأمين -->
@@ -1012,12 +1280,12 @@ const depositBadgeClass = computed(() => {
                                         :class="p.is_reversed ? 'opacity-60 bg-slate-50' : ''"
                                     >
                                         <div class="flex items-center justify-between text-xs">
-                                            <span class="font-mono font-bold text-[#0E6E7E]">{{ p.reference }}</span>
+                                            <span class="font-mono font-bold text-[#163E3E]">{{ p.reference }}</span>
                                             <span v-if="p.is_reversed" class="text-rose-700 bg-rose-50 px-2 py-0.5 rounded font-bold text-[10px]">ملغاة</span>
                                             <span v-else class="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-bold text-[10px]">سارية</span>
                                         </div>
                                         <div class="flex items-baseline justify-between">
-                                            <span class="font-mono font-black text-base text-[#0F2747]">
+                                            <span class="font-mono font-black text-base text-[#163E3E]">
                                                 {{ p.amount.toLocaleString() }} {{ currency_symbol }}
                                             </span>
                                             <span class="text-xs text-[#5B6770]">{{ p.payment_method_label }}</span>
@@ -1054,8 +1322,8 @@ const depositBadgeClass = computed(() => {
                                         </thead>
                                         <tbody class="divide-y divide-[#D6E0E7]">
                                             <tr v-for="p in security_deposit.payments" :key="p.id" :class="p.is_reversed ? 'bg-slate-50 opacity-60 line-through' : 'hover:bg-[#F8FAFC] transition'">
-                                                <td class="py-3 px-4 font-mono font-bold text-[#0E6E7E]">{{ p.reference }}</td>
-                                                <td class="py-3 px-4 font-mono font-bold text-[#0F2747]">{{ p.amount.toLocaleString() }} {{ currency_symbol }}</td>
+                                                <td class="py-3 px-4 font-mono font-bold text-[#163E3E]">{{ p.reference }}</td>
+                                                <td class="py-3 px-4 font-mono font-bold text-[#163E3E]">{{ p.amount.toLocaleString() }} {{ currency_symbol }}</td>
                                                 <td class="py-3 px-4">{{ p.payment_method_label }}</td>
                                                 <td class="py-3 px-4 font-mono text-[#5B6770]">{{ p.paid_at }}</td>
                                                 <td class="py-3 px-4 text-[#5B6770]">{{ p.recorded_by }}</td>
@@ -1087,10 +1355,10 @@ const depositBadgeClass = computed(() => {
                             </p>
                         </div>
 
-                        <!-- 2. الخصومات المعتمدة للأضرار -->
+                        <!-- 2. خصومات التأمين -->
                         <div class="space-y-2.5">
                             <div class="flex items-center justify-between">
-                                <span class="text-xs font-bold text-[#5B6770]">الخصومات المبررة للأضرار ({{ security_deposit.deductions.length }})</span>
+                                <span class="text-xs font-bold text-[#5B6770]">خصومات التأمين ({{ security_deposit.deductions.length }})</span>
                             </div>
 
                             <div v-if="security_deposit.deductions.length > 0">
@@ -1107,25 +1375,33 @@ const depositBadgeClass = computed(() => {
                                                 -{{ d.amount.toLocaleString() }} {{ currency_symbol }}
                                             </span>
                                         </div>
-                                        <p class="text-xs text-[#0F2747] leading-relaxed">{{ d.description }}</p>
+                                        <p class="text-xs text-[#163E3E] leading-relaxed">{{ d.description }}</p>
                                         <p v-if="d.notes" class="text-[11px] text-[#5B6770] bg-white/70 p-2 rounded-lg border border-rose-200/60">{{ d.notes }}</p>
                                         <div v-if="d.attachment_url" class="pt-0.5">
-                                            <a :href="d.attachment_url" target="_blank" class="inline-flex items-center gap-1 text-[11px] text-[#0E6E7E] hover:underline font-bold">
+                                            <a :href="d.attachment_url" target="_blank" class="inline-flex items-center gap-1 text-[11px] text-[#163E3E] hover:underline font-bold">
                                                 <FileText class="w-3 h-3" />
                                                 <span>عرض المرفق / الفاتورة</span>
                                             </a>
                                         </div>
                                         <div class="flex items-center justify-between text-[11px] text-[#5B6770] pt-1.5 border-t border-rose-200/60">
                                             <span class="font-mono">{{ d.deducted_at }}</span>
-                                            <button
-                                                v-if="security_deposit.status !== 'settled'"
-                                                @click="deleteDeduction(d.id)"
-                                                type="button"
-                                                class="text-rose-700 hover:text-rose-900 font-bold flex items-center gap-1 cursor-pointer"
-                                            >
-                                                <Trash2 class="w-3.5 h-3.5" />
-                                                <span>حذف البند</span>
-                                            </button>
+                                            <div v-if="security_deposit.status !== 'settled'" class="flex items-center gap-2">
+                                                <button
+                                                    @click="openEditDeductionModal(d)"
+                                                    type="button"
+                                                    class="text-[#163E3E] hover:text-[#1E3A5F] font-bold text-xs cursor-pointer"
+                                                >
+                                                    تعديل
+                                                </button>
+                                                <button
+                                                    @click="deleteDeduction(d.id)"
+                                                    type="button"
+                                                    class="text-rose-700 hover:text-rose-900 font-bold flex items-center gap-1 cursor-pointer"
+                                                >
+                                                    <Trash2 class="w-3.5 h-3.5" />
+                                                    <span>حذف</span>
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1140,18 +1416,18 @@ const depositBadgeClass = computed(() => {
                                                 <th class="py-3 px-4">الوصف والمبرر</th>
                                                 <th class="py-3 px-4">التاريخ</th>
                                                 <th class="py-3 px-4">المسجل</th>
-                                                <th class="py-3 px-4 text-left" v-if="security_deposit.status !== 'settled'">إلغاء</th>
+                                                <th class="py-3 px-4 text-left" v-if="security_deposit.status !== 'settled'">إجراءات</th>
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-[#D6E0E7]">
                                             <tr v-for="d in security_deposit.deductions" :key="d.id" class="hover:bg-[#F8FAFC] transition">
-                                                <td class="py-3 px-4 font-bold text-[#0F2747]">{{ d.category_label }}</td>
+                                                <td class="py-3 px-4 font-bold text-[#163E3E]">{{ d.category_label }}</td>
                                                 <td class="py-3 px-4 font-mono font-bold text-rose-700">{{ d.amount.toLocaleString() }} {{ currency_symbol }}</td>
                                                 <td class="py-3 px-4 text-[#5B6770]">
                                                     <div>{{ d.description }}</div>
                                                     <div v-if="d.notes" class="text-[11px] text-[#5B6770]/80 mt-0.5">{{ d.notes }}</div>
                                                     <div v-if="d.attachment_url" class="mt-1">
-                                                        <a :href="d.attachment_url" target="_blank" class="inline-flex items-center gap-1 text-[#0E6E7E] hover:underline font-bold text-[11px]">
+                                                        <a :href="d.attachment_url" target="_blank" class="inline-flex items-center gap-1 text-[#163E3E] hover:underline font-bold text-[11px]">
                                                             <FileText class="w-3 h-3" />
                                                             <span>عرض المرفق</span>
                                                         </a>
@@ -1160,14 +1436,24 @@ const depositBadgeClass = computed(() => {
                                                 <td class="py-3 px-4 font-mono text-[#5B6770]">{{ d.deducted_at }}</td>
                                                 <td class="py-3 px-4 text-[#5B6770]">{{ d.recorded_by }}</td>
                                                 <td class="py-3 px-4 text-left" v-if="security_deposit.status !== 'settled'">
-                                                    <button
-                                                        @click="deleteDeduction(d.id)"
-                                                        type="button"
-                                                        class="text-rose-600 hover:text-rose-800 p-1 rounded hover:bg-rose-50 cursor-pointer"
-                                                        title="إلغاء الخصم"
-                                                    >
-                                                        <Trash2 class="w-3.5 h-3.5" />
-                                                    </button>
+                                                    <div class="flex items-center gap-2.5 justify-end">
+                                                        <button
+                                                            @click="openEditDeductionModal(d)"
+                                                            type="button"
+                                                            class="text-[#163E3E] hover:text-[#1E3A5F] font-bold text-xs cursor-pointer"
+                                                            title="تعديل بند الخصم"
+                                                        >
+                                                            تعديل
+                                                        </button>
+                                                        <button
+                                                            @click="deleteDeduction(d.id)"
+                                                            type="button"
+                                                            class="text-rose-600 hover:text-rose-800 p-1 rounded hover:bg-rose-50 cursor-pointer"
+                                                            title="إلغاء الخصم"
+                                                        >
+                                                            <Trash2 class="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         </tbody>
@@ -1203,7 +1489,7 @@ const depositBadgeClass = computed(() => {
                                             <span>طريقة التحويل: {{ r.payment_method_label }}</span>
                                             <span class="font-mono">{{ r.refunded_at }}</span>
                                         </div>
-                                        <p v-if="r.notes" class="text-xs text-[#0F2747] pt-1 border-t border-emerald-200/60">{{ r.notes }}</p>
+                                        <p v-if="r.notes" class="text-xs text-[#163E3E] pt-1 border-t border-emerald-200/60">{{ r.notes }}</p>
                                     </div>
                                 </div>
 
@@ -1238,14 +1524,16 @@ const depositBadgeClass = computed(() => {
                             </p>
                         </div>
                     </div>
+                        </div>
+                    </details>
                 </div>
 
                 <!-- جدول استحقاقات وفواتير الإيجار (Rent Charges) للتمييز التام والواضح -->
                 <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-4 sm:p-6 shadow-2xs space-y-4">
                     <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
                         <div class="flex items-center gap-2">
-                            <FileText class="w-4 h-4 text-[#0E6E7E]" />
-                            <h3 class="text-sm font-bold text-[#0F2747]">فواتير واستحقاقات الإيجار (منفصلة تماماً عن التأمين)</h3>
+                            <FileText class="w-4 h-4 text-[#163E3E]" />
+                            <h3 class="text-sm font-bold text-[#163E3E]">فواتير واستحقاقات الإيجار (منفصلة تماماً عن التأمين)</h3>
                         </div>
                         <span class="text-xs text-[#5B6770]">{{ rent_charges.length }} فترة إيجارية</span>
                     </div>
@@ -1258,7 +1546,7 @@ const depositBadgeClass = computed(() => {
                             class="p-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] space-y-2.5 shadow-2xs"
                         >
                             <div class="flex items-center justify-between text-xs">
-                                <span class="font-bold text-[#0F2747]">{{ c.period }}</span>
+                                <span class="font-bold text-[#163E3E]">{{ c.period }}</span>
                                 <span v-if="c.status === 'paid'" class="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-bold text-[10px]">مسدد بالكامل</span>
                                 <span v-else-if="c.status === 'overdue'" class="text-rose-700 bg-rose-50 px-2 py-0.5 rounded font-bold text-[10px]">متأخر</span>
                                 <span v-else class="text-amber-700 bg-amber-50 px-2 py-0.5 rounded font-bold text-[10px]">مستحق</span>
@@ -1266,7 +1554,7 @@ const depositBadgeClass = computed(() => {
                             <div class="grid grid-cols-3 gap-2 text-xs">
                                 <div>
                                     <span class="text-[10px] text-[#5B6770] block">المطلوب</span>
-                                    <span class="font-mono font-bold text-[#0F2747]">{{ c.amount.toLocaleString() }}</span>
+                                    <span class="font-mono font-bold text-[#163E3E]">{{ c.amount.toLocaleString() }}</span>
                                 </div>
                                 <div>
                                     <span class="text-[10px] text-[#5B6770] block">المسدد</span>
@@ -1300,9 +1588,9 @@ const depositBadgeClass = computed(() => {
                             </thead>
                             <tbody class="divide-y divide-[#D6E0E7]">
                                 <tr v-for="c in rent_charges" :key="c.id" class="hover:bg-[#F8FAFC] transition">
-                                    <td class="py-3 px-4 font-bold text-[#0F2747]">{{ c.period }}</td>
+                                    <td class="py-3 px-4 font-bold text-[#163E3E]">{{ c.period }}</td>
                                     <td class="py-3 px-4 font-mono text-[#5B6770]">{{ c.due_date }}</td>
-                                    <td class="py-3 px-4 font-mono font-bold text-[#0F2747]">{{ c.amount.toLocaleString() }} {{ currency_symbol }}</td>
+                                    <td class="py-3 px-4 font-mono font-bold text-[#163E3E]">{{ c.amount.toLocaleString() }} {{ currency_symbol }}</td>
                                     <td class="py-3 px-4 font-mono text-emerald-700 font-bold">{{ c.paid_amount.toLocaleString() }} {{ currency_symbol }}</td>
                                     <td class="py-3 px-4 font-mono font-bold" :class="c.outstanding_balance > 0 ? 'text-amber-700' : 'text-slate-400'">
                                         {{ c.outstanding_balance.toLocaleString() }} {{ currency_symbol }}
@@ -1322,10 +1610,10 @@ const depositBadgeClass = computed(() => {
 
         <!-- مودال 1: تسجيل استلام دفعة تأمين -->
         <div v-if="showRecordPaymentModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-            <div @click="showRecordPaymentModal = false" class="fixed inset-0 bg-[#0F2747]/60 backdrop-blur-xs"></div>
+            <div @click="showRecordPaymentModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
             <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right animate-in fade-in zoom-in-95" dir="rtl">
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7] mb-4">
-                    <h3 class="text-sm font-bold text-[#0F2747]">تسجيل استلام دفعة تأمين</h3>
+                    <h3 class="text-sm font-bold text-[#163E3E]">تسجيل استلام دفعة تأمين</h3>
                     <button @click="showRecordPaymentModal = false" type="button" class="p-1 text-slate-400 hover:text-slate-600">
                         <X class="w-5 h-5" />
                     </button>
@@ -1333,7 +1621,7 @@ const depositBadgeClass = computed(() => {
 
                 <form @submit.prevent="submitPayment" class="space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">المبلغ المحصل *</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">المبلغ المحصل *</label>
                         <div class="relative">
                             <input
                                 v-model="paymentForm.amount"
@@ -1350,7 +1638,7 @@ const depositBadgeClass = computed(() => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">طريقة السداد *</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">طريقة السداد *</label>
                         <select v-model="paymentForm.payment_method" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs">
                             <option value="cash">نقدي (كاش)</option>
                             <option value="bank_transfer">تحويل بنكي</option>
@@ -1360,23 +1648,23 @@ const depositBadgeClass = computed(() => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">تاريخ التحصيل *</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">تاريخ التحصيل *</label>
                         <input v-model="paymentForm.paid_at" type="date" required class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right" />
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">رقم المرجع / الإيصال</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">رقم المرجع / الإيصال</label>
                         <input v-model="paymentForm.reference" type="text" placeholder="مثال: REC-10293" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right" />
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">ملاحظات إضافية</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">ملاحظات إضافية</label>
                         <textarea v-model="paymentForm.notes" rows="2" class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right"></textarea>
                     </div>
 
                     <div class="pt-3 border-t border-[#D6E0E7] flex justify-end gap-2">
                         <button @click="showRecordPaymentModal = false" type="button" class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold">إلغاء</button>
-                        <button type="submit" class="h-10 px-4 rounded-xl bg-[#0E6E7E] text-white text-xs font-bold">تأكيد تسجيل الدفعة</button>
+                        <button type="submit" class="h-10 px-4 rounded-xl bg-[#163E3E] text-white text-xs font-bold">تأكيد تسجيل الدفعة</button>
                     </div>
                 </form>
             </div>
@@ -1384,10 +1672,10 @@ const depositBadgeClass = computed(() => {
 
         <!-- مودال 2: بدء فحص الوحدة والتسوية -->
         <div v-if="showStartSettlementModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-            <div @click="showStartSettlementModal = false" class="fixed inset-0 bg-[#0F2747]/60 backdrop-blur-xs"></div>
+            <div @click="showStartSettlementModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
             <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right animate-in fade-in zoom-in-95" dir="rtl">
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7] mb-4">
-                    <h3 class="text-sm font-bold text-[#0F2747]">بدء فحص حالة الوحدة والتسوية</h3>
+                    <h3 class="text-sm font-bold text-[#163E3E]">بدء فحص حالة الوحدة والتسوية</h3>
                     <button @click="showStartSettlementModal = false" type="button" class="p-1 text-slate-400 hover:text-slate-600">
                         <X class="w-5 h-5" />
                     </button>
@@ -1395,7 +1683,7 @@ const depositBadgeClass = computed(() => {
 
                 <form @submit.prevent="submitStartSettlement" class="space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">نتيجة فحص الوحدة *</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">نتيجة فحص الوحدة *</label>
                         <select v-model="settlementForm.inspection_category" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs">
                             <option value="no_issues">لا توجد ملاحظات أو أضرار (حالة ممتازة)</option>
                             <option value="furniture_damage">تلف أثاث أو أجهزة</option>
@@ -1406,90 +1694,31 @@ const depositBadgeClass = computed(() => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">ملاحظات وتقرير الفحص الميداني</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">ملاحظات وتقرير الفحص الميداني</label>
                         <textarea v-model="settlementForm.inspection_notes" rows="3" placeholder="وصف حالة الوحدة عند التسليم، الجدران، الأرضيات، التركيبات..." class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right"></textarea>
                     </div>
 
                     <div class="pt-3 border-t border-[#D6E0E7] flex justify-end gap-2">
                         <button @click="showStartSettlementModal = false" type="button" class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold">إلغاء</button>
-                        <button type="submit" class="h-10 px-4 rounded-xl bg-[#0E6E7E] text-white text-xs font-bold">بدء التسوية</button>
+                        <button type="submit" class="h-10 px-4 rounded-xl bg-[#163E3E] text-white text-xs font-bold">بدء التسوية</button>
                     </div>
                 </form>
             </div>
         </div>
 
-        <!-- مودال 3: إضافة خصم تعويض أضرار -->
-        <div v-if="showRecordDeductionModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-            <div @click="showRecordDeductionModal = false" class="fixed inset-0 bg-[#0F2747]/60 backdrop-blur-xs"></div>
-            <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right animate-in fade-in zoom-in-95" dir="rtl">
-                <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7] mb-4">
-                    <h3 class="text-sm font-bold text-[#0F2747]">إضافة خصم مبرر من مبلغ التأمين</h3>
-                    <button @click="showRecordDeductionModal = false" type="button" class="p-1 text-slate-400 hover:text-slate-600">
-                        <X class="w-5 h-5" />
-                    </button>
-                </div>
-
-                <div v-if="deductionForm.errors.amount" class="p-3 mb-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
-                    {{ deductionForm.errors.amount }}
-                </div>
-
-                <form @submit.prevent="submitDeduction" class="space-y-4">
-                    <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900">
-                        الحد الأقصى المتاح للخصم حالياً: <strong>{{ security_deposit.refundable_balance.toLocaleString() }} {{ currency_symbol }}</strong>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">تصنيف الضرر / الخصم *</label>
-                        <select v-model="deductionForm.category" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs">
-                            <option value="furniture_damage">تلف أثاث أو أجهزة</option>
-                            <option value="fixture_damage">تلف تركيبات ومرافق</option>
-                            <option value="missing_items">مفقودات ومحتويات ناقصة</option>
-                            <option value="other_damage">أضرار موثقة أخرى</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">وصف ومبرر الخصم *</label>
-                        <input v-model="deductionForm.description" type="text" placeholder="مثال: إصلاح باب الحمام المكسور، استبدال مفاتيح الإنارة" required class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right" />
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">مبلغ الخصم *</label>
-                        <div class="relative">
-                            <input
-                                v-model="deductionForm.amount"
-                                type="number"
-                                step="0.01"
-                                min="0.01"
-                                :max="security_deposit.refundable_balance"
-                                required
-                                class="w-full h-11 pl-12 pr-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-mono font-bold"
-                            />
-                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#5B6770] font-semibold">
-                                {{ currency_symbol }}
-                            </span>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">تاريخ الخصم *</label>
-                        <input v-model="deductionForm.deducted_at" type="date" required class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right" />
-                    </div>
-
-                    <div class="pt-3 border-t border-[#D6E0E7] flex justify-end gap-2">
-                        <button @click="showRecordDeductionModal = false" type="button" class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold">إلغاء</button>
-                        <button type="submit" class="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold">اعتماد الخصم</button>
-                    </div>
-                </form>
-            </div>
-        </div>
+        <DeductionForm
+            v-model:show="showRecordDeductionModal"
+            :lease-id="lease.id"
+            :available-balance="security_deposit.refundable_balance"
+            :currency-symbol="currency_symbol"
+        />
 
         <!-- مودال 4: تسجيل رد التأمين -->
         <div v-if="showRecordRefundModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-            <div @click="showRecordRefundModal = false" class="fixed inset-0 bg-[#0F2747]/60 backdrop-blur-xs"></div>
+            <div @click="showRecordRefundModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
             <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right animate-in fade-in zoom-in-95" dir="rtl">
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7] mb-4">
-                    <h3 class="text-sm font-bold text-[#0F2747]">تسجيل رد مبلغ التأمين للمستأجر</h3>
+                    <h3 class="text-sm font-bold text-[#163E3E]">تسجيل رد مبلغ التأمين للمستأجر</h3>
                     <button @click="showRecordRefundModal = false" type="button" class="p-1 text-slate-400 hover:text-slate-600">
                         <X class="w-5 h-5" />
                     </button>
@@ -1508,7 +1737,7 @@ const depositBadgeClass = computed(() => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">المبلغ المردود *</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">المبلغ المردود *</label>
                         <div class="relative">
                             <input
                                 v-model="refundForm.amount"
@@ -1526,7 +1755,7 @@ const depositBadgeClass = computed(() => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">طريقة الرد *</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">طريقة الرد *</label>
                         <select v-model="refundForm.payment_method" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs">
                             <option value="bank_transfer">تحويل بنكي</option>
                             <option value="cash">نقدي (كاش)</option>
@@ -1536,17 +1765,17 @@ const depositBadgeClass = computed(() => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">تاريخ الرد الفعلي *</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">تاريخ الرد الفعلي *</label>
                         <input v-model="refundForm.refunded_at" type="date" required class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right" />
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">رقم مرجع التحويل / الإيصال</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">رقم مرجع التحويل / الإيصال</label>
                         <input v-model="refundForm.reference" type="text" placeholder="مثال: TXN-54321" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right" />
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">ملاحظات الرد</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">ملاحظات الرد</label>
                         <textarea v-model="refundForm.notes" rows="2" class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right"></textarea>
                     </div>
 
@@ -1558,56 +1787,272 @@ const depositBadgeClass = computed(() => {
             </div>
         </div>
 
-        <!-- مودال 5: اعتماد التسوية النهائية -->
+        <!-- مودال 5: اعتماد التسوية النهائية للتأمين -->
         <div v-if="showFinalizeSettlementModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-            <div @click="showFinalizeSettlementModal = false" class="fixed inset-0 bg-[#0F2747]/60 backdrop-blur-xs"></div>
-            <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right animate-in fade-in zoom-in-95" dir="rtl">
-                <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7] mb-4">
-                    <h3 class="text-sm font-bold text-[#0F2747]">اعتماد وإغلاق التسوية النهائية</h3>
-                    <button @click="showFinalizeSettlementModal = false" type="button" class="p-1 text-slate-400 hover:text-slate-600">
+            <div @click="showFinalizeSettlementModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
+            <div class="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95" dir="rtl">
+                <!-- Header -->
+                <div class="flex items-center justify-between pb-3.5 border-b border-[#D6E0E7] mb-5">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-2xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center">
+                            <FileCheck class="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-[#163E3E]">اعتماد وإغلاق تسوية التأمين</h3>
+                            <p class="text-xs text-[#5B6770]">مراجعة الخصومات، احتساب المستحق رده تلقائياً، وتأكيد التسوية</p>
+                        </div>
+                    </div>
+                    <button @click="showFinalizeSettlementModal = false" type="button" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition">
                         <X class="w-5 h-5" />
                     </button>
                 </div>
 
-                <form @submit.prevent="submitFinalizeSettlement" class="space-y-4">
-                    <div class="p-3.5 bg-slate-50 rounded-2xl border border-[#D6E0E7] space-y-1.5 text-xs">
-                        <div class="flex justify-between">
-                            <span class="text-[#5B6770]">المحصل من التأمين:</span>
-                            <span class="font-bold font-mono">{{ security_deposit.total_received.toLocaleString() }} {{ currency_symbol }}</span>
+                <!-- Errors -->
+                <div v-if="Object.keys(finalizeSettlementForm.errors).length > 0" class="p-3.5 mb-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs space-y-1">
+                    <div v-for="(err, k) in finalizeSettlementForm.errors" :key="k">{{ err }}</div>
+                </div>
+
+                <form @submit.prevent="submitFinalizeSettlement" class="space-y-5">
+                    <!-- قسم خصومات التأمين -->
+                    <DeductionSection
+                        v-model="finalizeSettlementForm.deductions"
+                        :available-deposit="availableDepositForSettlement"
+                        :currency-symbol="currency_symbol"
+                        :errors="finalizeSettlementForm.errors"
+                    />
+
+                    <!-- ملخص الحساب المالي والقرار النهائي -->
+                    <div class="rounded-2xl border p-4 text-xs space-y-3" :class="finalizeCalculatedOutcome.badgeClass">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-sm text-[#163E3E] flex items-center gap-2">
+                                <Coins class="w-4 h-4" />
+                                <span>{{ finalizeCalculatedOutcome.title }}</span>
+                            </span>
+                            <span class="font-mono font-bold text-xs">
+                                الرصيد الأصلي المتاح: {{ availableDepositForSettlement.toLocaleString() }} {{ currency_symbol }}
+                            </span>
                         </div>
-                        <div class="flex justify-between">
-                            <span class="text-[#5B6770]">إجمالي الخصومات:</span>
-                            <span class="font-bold font-mono text-rose-700">{{ security_deposit.total_deductions.toLocaleString() }} {{ currency_symbol }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-[#5B6770]">إجمالي المردود:</span>
-                            <span class="font-bold font-mono text-emerald-700">{{ security_deposit.total_refunded.toLocaleString() }} {{ currency_symbol }}</span>
-                        </div>
-                        <div class="flex justify-between pt-1.5 border-t border-[#D6E0E7]">
-                            <span class="font-bold text-[#0F2747]">المتبقي القابل للرد:</span>
-                            <span class="font-bold font-mono text-[#0E6E7E]">{{ security_deposit.refundable_balance.toLocaleString() }} {{ currency_symbol }}</span>
+                        <p class="text-xs leading-relaxed text-[#163E3E]">
+                            {{ finalizeCalculatedOutcome.description }}
+                        </p>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-black/10">
+                            <div class="p-2.5 bg-white/80 rounded-xl">
+                                <span class="text-[10px] text-[#5B6770] block">التأمين المستلم:</span>
+                                <strong class="text-xs font-mono font-bold text-[#163E3E] block mt-0.5">
+                                    {{ security_deposit.total_received.toLocaleString() }} {{ currency_symbol }}
+                                </strong>
+                            </div>
+                            <div class="p-2.5 bg-white/80 rounded-xl">
+                                <span class="text-[10px] text-rose-700 block font-semibold">إجمالي الخصومات:</span>
+                                <strong class="text-xs font-mono font-bold text-rose-700 block mt-0.5">
+                                    {{ finalizeTotalDeductions.toLocaleString() }} {{ currency_symbol }}
+                                </strong>
+                            </div>
+                            <div class="p-2.5 bg-white/80 rounded-xl">
+                                <span class="text-[10px] text-amber-800 block font-semibold">المحتفظ به للمالك:</span>
+                                <strong class="text-xs font-mono font-bold text-amber-700 block mt-0.5">
+                                    {{ finalizeRetainedAmount.toLocaleString() }} {{ currency_symbol }}
+                                </strong>
+                            </div>
+                            <div class="p-2.5 bg-white/80 rounded-xl">
+                                <span class="text-[10px] text-emerald-800 block font-bold">المستحق رده:</span>
+                                <strong class="text-xs font-mono font-bold text-emerald-700 block mt-0.5">
+                                    {{ finalizeRefundDue.toLocaleString() }} {{ currency_symbol }}
+                                </strong>
+                            </div>
                         </div>
                     </div>
 
+                    <!-- حالة وتوثيق الرد الفعلي إذا كان هناك مبلغ مستحق رده -->
+                    <div v-if="finalizeRefundDue > 0" class="space-y-3 p-4 bg-emerald-50/50 rounded-2xl border border-emerald-200">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-emerald-950">
+                                توثيق الرد الفعلي للمبلغ المستحق ({{ finalizeRefundDue.toLocaleString() }} {{ currency_symbol }})
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <label
+                                :class="[
+                                    'p-3 rounded-xl border cursor-pointer text-right flex items-center justify-between transition',
+                                    finalizeSettlementForm.refund_status === 'pending'
+                                        ? 'border-amber-500 bg-white ring-2 ring-amber-500/20'
+                                        : 'border-emerald-200 bg-white/70 hover:bg-white'
+                                ]"
+                            >
+                                <div class="space-y-0.5">
+                                    <span class="text-xs font-bold text-[#163E3E] block">لم يُرد بعد (معلق)</span>
+                                    <span class="text-[10px] text-[#5B6770] block">حفظ التسوية وتوثيق التحويل لاحقاً بعد التسليم الفعلي</span>
+                                </div>
+                                <input
+                                    type="radio"
+                                    value="pending"
+                                    v-model="finalizeSettlementForm.refund_status"
+                                    class="text-amber-600 focus:ring-amber-500"
+                                />
+                            </label>
+
+                            <label
+                                :class="[
+                                    'p-3 rounded-xl border cursor-pointer text-right flex items-center justify-between transition',
+                                    finalizeSettlementForm.refund_status === 'refunded'
+                                        ? 'border-emerald-600 bg-white ring-2 ring-emerald-600/20'
+                                        : 'border-emerald-200 bg-white/70 hover:bg-white'
+                                ]"
+                            >
+                                <div class="space-y-0.5">
+                                    <span class="text-xs font-bold text-emerald-900 block">تم الرد الفعلي الآن</span>
+                                    <span class="text-[10px] text-[#5B6770] block">تم تحويل أو تسليم المبلغ بالفعل للمستأجر</span>
+                                </div>
+                                <input
+                                    type="radio"
+                                    value="refunded"
+                                    v-model="finalizeSettlementForm.refund_status"
+                                    class="text-emerald-600 focus:ring-emerald-500"
+                                />
+                            </label>
+                        </div>
+
+                        <!-- تفاصيل الدفع الفعلي -->
+                        <div v-if="finalizeSettlementForm.refund_status === 'refunded'" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-emerald-200/60">
+                            <div>
+                                <label class="block text-[11px] font-bold text-emerald-950 mb-1">طريقة الرد *</label>
+                                <select v-model="finalizeSettlementForm.refund_method" class="w-full h-10 px-2.5 rounded-xl border border-emerald-200 bg-white text-xs">
+                                    <option value="bank_transfer">تحويل بنكي</option>
+                                    <option value="cash">نقدي (كاش)</option>
+                                    <option value="cheque">شيك</option>
+                                    <option value="other">إنستاباي / أخرى</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-emerald-950 mb-1">تاريخ الرد الفعلي *</label>
+                                <input v-model="finalizeSettlementForm.refund_payment_date" type="date" required class="w-full h-10 px-2.5 rounded-xl border border-emerald-200 bg-white text-xs text-right font-mono" />
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-emerald-950 mb-1">رقم المرجع / الإيصال</label>
+                                <input v-model="finalizeSettlementForm.refund_reference" type="text" placeholder="TXN-..." class="w-full h-10 px-2.5 rounded-xl border border-emerald-200 bg-white text-xs text-right font-mono" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- تقرير فحص الوحدة وملاحظات التسوية -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#D6E0E7]">
+                        <div>
+                            <label class="block text-xs font-bold text-[#163E3E] mb-1">التقرير النهائي لفحص الوحدة *</label>
+                            <select v-model="finalizeSettlementForm.inspection_category" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs">
+                                <option value="no_issues">لا توجد ملاحظات أو أضرار (حالة سليمة)</option>
+                                <option value="furniture_damage">تلف أثاث أو أجهزة</option>
+                                <option value="fixture_damage">تلف تركيبات ومرافق</option>
+                                <option value="missing_items">مفقودات ومحتويات ناقصة</option>
+                                <option value="other_damage">أضرار موثقة أخرى</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-[#163E3E] mb-1">ملاحظات الإغلاق النهائي للتسوية</label>
+                            <input v-model="finalizeSettlementForm.notes" type="text" placeholder="أي ملاحظات ختامية للتسوية..." class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right" />
+                        </div>
+                    </div>
+
+                    <!-- أزرار الإجراءات -->
+                    <div class="pt-4 border-t border-[#D6E0E7] flex justify-end gap-2.5">
+                        <button @click="showFinalizeSettlementModal = false" type="button" class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold hover:bg-slate-50 cursor-pointer">
+                            إلغاء
+                        </button>
+                        <button
+                            type="submit"
+                            :disabled="finalizeSettlementForm.processing || finalizeExceedsBalance"
+                            class="h-10 px-5 rounded-xl bg-[#163E3E] hover:bg-[#1E3A5F] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs disabled:opacity-50 cursor-pointer"
+                        >
+                            <FileCheck class="w-4 h-4" />
+                            <span>تأكيد واعتماد التسوية النهائية</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- مودال تعديل بند خصم -->
+        <div v-if="showEditDeductionModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+            <div @click="showEditDeductionModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
+            <div class="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right animate-in fade-in zoom-in-95" dir="rtl">
+                <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7] mb-4">
+                    <h3 class="text-sm font-bold text-[#163E3E]">تعديل بند الخصم</h3>
+                    <button @click="showEditDeductionModal = false" type="button" class="p-1 text-slate-400 hover:text-slate-600">
+                        <X class="w-5 h-5" />
+                    </button>
+                </div>
+
+                <div v-if="Object.keys(editDeductionForm.errors).length > 0" class="p-3 mb-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs space-y-1">
+                    <div v-for="(err, k) in editDeductionForm.errors" :key="k">{{ err }}</div>
+                </div>
+
+                <form @submit.prevent="submitEditDeduction" class="space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">التقرير النهائي لفحص الوحدة *</label>
-                        <select v-model="finalizeSettlementForm.inspection_category" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs">
-                            <option value="no_issues">لا توجد ملاحظات أو أضرار</option>
-                            <option value="furniture_damage">تلف أثاث أو أجهزة</option>
-                            <option value="fixture_damage">تلف تركيبات ومرافق</option>
-                            <option value="missing_items">مفقودات ومحتويات ناقصة</option>
-                            <option value="other_damage">أضرار موثقة أخرى</option>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">سبب / تصنيف الخصم *</label>
+                        <select v-model="editDeductionForm.category" required class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs">
+                            <option value="unit_damage">تلفيات في الوحدة</option>
+                            <option value="maintenance">إصلاحات وصيانة</option>
+                            <option value="unpaid_dues">مستحقات غير مدفوعة</option>
+                            <option value="cleaning">تنظيف الوحدة</option>
+                            <option value="other">أخرى</option>
                         </select>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">ملاحظات الإغلاق النهائي للتسوية</label>
-                        <textarea v-model="finalizeSettlementForm.notes" rows="2" class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right"></textarea>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">مبلغ الخصم (بالجنيه المصري) *</label>
+                        <div class="relative">
+                            <input
+                                v-model="editDeductionForm.amount"
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                required
+                                class="w-full h-11 pl-12 pr-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-mono font-bold"
+                            />
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#5B6770] font-semibold">{{ currency_symbol }}</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">
+                            {{ editDeductionForm.category === 'other' ? 'توضيح سبب الخصم (مطلوب عند اختيار أخرى) *' : 'بيان ومبرر الخصم *' }}
+                        </label>
+                        <input
+                            v-model="editDeductionForm.description"
+                            type="text"
+                            required
+                            maxlength="1000"
+                            placeholder="وصف وتوضيح سبب الاستقطاع..."
+                            class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs"
+                        />
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-[#5B6770] mb-1">ملاحظات إضافية (اختياري)</label>
+                        <textarea
+                            v-model="editDeductionForm.notes"
+                            rows="2"
+                            maxlength="1000"
+                            class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right"
+                        ></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-[#5B6770] mb-1">مرفق إثبات جديد (اختياري)</label>
+                        <input
+                            type="file"
+                            accept=".jpg,.jpeg,.png,.webp,.pdf"
+                            @change="(e: Event) => {
+                                const target = e.target as HTMLInputElement;
+                                editDeductionForm.attachment = target.files?.[0] || null;
+                            }"
+                            class="w-full text-xs text-slate-500 file:ml-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#E8F0F0] file:text-[#163E3E]"
+                        />
                     </div>
 
                     <div class="pt-3 border-t border-[#D6E0E7] flex justify-end gap-2">
-                        <button @click="showFinalizeSettlementModal = false" type="button" class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold">إلغاء</button>
-                        <button type="submit" class="h-10 px-4 rounded-xl bg-[#0F2747] hover:bg-[#1E3A5F] text-white text-xs font-bold">إغلاق واعتماد التسوية</button>
+                        <button @click="showEditDeductionModal = false" type="button" class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold">إلغاء</button>
+                        <button type="submit" :disabled="editDeductionForm.processing" class="h-10 px-5 rounded-xl bg-[#163E3E] hover:bg-[#1E3A5F] text-white text-xs font-bold">حفظ التعديلات</button>
                     </div>
                 </form>
             </div>
@@ -1615,7 +2060,7 @@ const depositBadgeClass = computed(() => {
 
         <!-- مودال 6: عكس دفعة تأمين -->
         <div v-if="showReversePaymentModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-            <div @click="showReversePaymentModal = false" class="fixed inset-0 bg-[#0F2747]/60 backdrop-blur-xs"></div>
+            <div @click="showReversePaymentModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
             <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right animate-in fade-in zoom-in-95" dir="rtl">
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7] mb-4">
                     <h3 class="text-sm font-bold text-rose-700">عكس وإلغاء دفعة تأمين مسجلة</h3>
@@ -1630,12 +2075,12 @@ const depositBadgeClass = computed(() => {
 
                 <form @submit.prevent="submitReversePayment" class="space-y-4">
                     <div v-if="activePaymentForReversal" class="p-3 bg-slate-50 rounded-xl border border-[#D6E0E7] text-xs space-y-1">
-                        <div>المرجع: <strong class="font-mono text-[#0E6E7E]">{{ activePaymentForReversal.reference }}</strong></div>
+                        <div>المرجع: <strong class="font-mono text-[#163E3E]">{{ activePaymentForReversal.reference }}</strong></div>
                         <div>المبلغ: <strong class="font-mono">{{ activePaymentForReversal.amount.toLocaleString() }} {{ currency_symbol }}</strong></div>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">سبب إلغاء وعكس الدفعة *</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">سبب إلغاء وعكس الدفعة *</label>
                         <textarea v-model="reversePaymentForm.reversal_reason" rows="3" placeholder="اذكر سبب الإلغاء (سداد بالخطأ، شيك مرتجع، تصحيح محاسبي)..." required class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right"></textarea>
                     </div>
 
@@ -1649,15 +2094,15 @@ const depositBadgeClass = computed(() => {
 
         <!-- مودال تمديد / تجديد العقد -->
         <div v-if="showExtendModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-            <div @click="showExtendModal = false" class="fixed inset-0 bg-[#0F2747]/60 backdrop-blur-xs"></div>
+            <div @click="showExtendModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
             <div class="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right animate-in fade-in zoom-in-95" dir="rtl">
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7] mb-4">
                     <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 rounded-xl bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center">
+                        <div class="w-8 h-8 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center">
                             <Clock class="w-4 h-4" />
                         </div>
                         <div>
-                            <h3 class="text-sm font-bold text-[#0F2747]">تجديد وتمديد عقد الإيجار</h3>
+                            <h3 class="text-sm font-bold text-[#163E3E]">تجديد وتمديد عقد الإيجار</h3>
                             <p class="text-[11px] text-[#5B6770]">تمديد فترة العقد وتحديث القيمة الإيجارية الشهرية إن لزم الأمر</p>
                         </div>
                     </div>
@@ -1674,16 +2119,16 @@ const depositBadgeClass = computed(() => {
                     <div class="p-3 bg-slate-50 rounded-2xl border border-[#D6E0E7] grid grid-cols-2 gap-3 text-xs">
                         <div>
                             <span class="text-[#5B6770] block text-[11px]">نهاية العقد الحالية:</span>
-                            <span class="font-bold text-[#0F2747] font-mono">{{ lease.ends_on }}</span>
+                            <span class="font-bold text-[#163E3E] font-mono">{{ lease.ends_on }}</span>
                         </div>
                         <div>
                             <span class="text-[#5B6770] block text-[11px]">الإيجار الشهري الحالي:</span>
-                            <span class="font-bold text-[#0F2747] font-mono">{{ lease.rent_amount.toLocaleString() }} {{ currency_symbol }}</span>
+                            <span class="font-bold text-[#163E3E] font-mono">{{ lease.rent_amount.toLocaleString() }} {{ currency_symbol }}</span>
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">تاريخ نهاية العقد الجديد *</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">تاريخ نهاية العقد الجديد *</label>
                         <input
                             v-model="extendForm.ends_on"
                             type="date"
@@ -1695,7 +2140,7 @@ const depositBadgeClass = computed(() => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">القيمة الإيجارية الشهرية الجديدة</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">القيمة الإيجارية الشهرية الجديدة</label>
                         <div class="relative">
                             <input
                                 v-model="extendForm.rent_amount"
@@ -1712,7 +2157,7 @@ const depositBadgeClass = computed(() => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">ملاحظات التجديد</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">ملاحظات التجديد</label>
                         <textarea
                             v-model="extendForm.notes"
                             rows="2"
@@ -1726,7 +2171,7 @@ const depositBadgeClass = computed(() => {
                         <button
                             type="submit"
                             :disabled="extendForm.processing"
-                            class="h-10 px-5 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+                            class="h-10 px-5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs disabled:opacity-50"
                         >
                             <Clock class="w-3.5 h-3.5" />
                             <span>تأكيد التجديد والتمديد</span>
@@ -1738,7 +2183,7 @@ const depositBadgeClass = computed(() => {
 
         <!-- مودال إنهاء العقد مع تسوية التأمين الشاملة -->
         <div v-if="showTerminateWithSettlementModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-            <div @click="showTerminateWithSettlementModal = false" class="fixed inset-0 bg-[#0F2747]/60 backdrop-blur-xs"></div>
+            <div @click="showTerminateWithSettlementModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
             <div class="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95" dir="rtl">
                 <!-- Header -->
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7] mb-4">
@@ -1747,7 +2192,7 @@ const depositBadgeClass = computed(() => {
                             <ShieldAlert class="w-5 h-5" />
                         </div>
                         <div>
-                            <h3 class="text-base font-bold text-[#0F2747]">تسوية مبلغ التأمين وإنهاء العقد</h3>
+                            <h3 class="text-base font-bold text-[#163E3E]">تسوية مبلغ التأمين وإنهاء العقد</h3>
                             <p class="text-xs text-[#5B6770]">تحديد مصير مبلغ التأمين واعتماد الإخلاء وتغيير حالة العقد لمنتهٍ</p>
                         </div>
                     </div>
@@ -1764,11 +2209,11 @@ const depositBadgeClass = computed(() => {
                 <form @submit.prevent="submitTerminateWithSettlement" class="space-y-5">
                     <!-- 1. ملخص التأمين المالي -->
                     <div class="p-4 bg-slate-50 rounded-2xl border border-[#D6E0E7] space-y-3">
-                        <span class="text-xs font-bold text-[#0F2747] block">ملخص حساب التأمين:</span>
+                        <span class="text-xs font-bold text-[#163E3E] block">ملخص حساب التأمين:</span>
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
                             <div class="p-2.5 bg-white rounded-xl border border-[#D6E0E7]">
                                 <span class="text-[#5B6770] block text-[11px]">التأمين المستلم:</span>
-                                <span class="font-bold text-[#0F2747] font-mono text-sm block">
+                                <span class="font-bold text-[#163E3E] font-mono text-sm block">
                                     {{ security_deposit.total_received.toLocaleString() }} {{ currency_symbol }}
                                 </span>
                             </div>
@@ -1795,13 +2240,13 @@ const depositBadgeClass = computed(() => {
 
                     <!-- 2. خيارات مصير التأمين الثلاثة -->
                     <div class="space-y-2">
-                        <label class="block text-xs font-bold text-[#0F2747]">حدد نوع التسوية ومصير التأمين *</label>
+                        <label class="block text-xs font-bold text-[#163E3E]">حدد نوع التسوية ومصير التأمين *</label>
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <label
                                 :class="[
                                     'p-3.5 rounded-2xl border cursor-pointer transition text-right flex flex-col justify-between space-y-2',
                                     terminateForm.settlement_type === 'full_refund'
-                                        ? 'border-[#0E6E7E] bg-[#E3F1F4]/40 ring-2 ring-[#0E6E7E]/20'
+                                        ? 'border-[#163E3E] bg-[#E8F0F0]/40 ring-2 ring-[#163E3E]/20'
                                         : 'border-[#D6E0E7] bg-white hover:bg-slate-50'
                                 ]"
                             >
@@ -1810,9 +2255,9 @@ const depositBadgeClass = computed(() => {
                                         type="radio"
                                         value="full_refund"
                                         v-model="terminateForm.settlement_type"
-                                        class="text-[#0E6E7E] focus:ring-[#0E6E7E] mt-1"
+                                        class="text-[#163E3E] focus:ring-[#163E3E] mt-1"
                                     />
-                                    <span class="text-xs font-bold text-[#0F2747]">رد المبلغ بالكامل</span>
+                                    <span class="text-xs font-bold text-[#163E3E]">رد المبلغ بالكامل</span>
                                 </div>
                                 <p class="text-[11px] text-[#5B6770]">
                                     لا توجد أي أضرار؛ رد كامل الرصيد المتاح ({{ availableDepositForSettlement.toLocaleString() }} {{ currency_symbol }}) للمستأجر.
@@ -1834,7 +2279,7 @@ const depositBadgeClass = computed(() => {
                                         v-model="terminateForm.settlement_type"
                                         class="text-amber-600 focus:ring-amber-500 mt-1"
                                     />
-                                    <span class="text-xs font-bold text-[#0F2747]">رد جزء مع خصومات</span>
+                                    <span class="text-xs font-bold text-[#163E3E]">رد جزء مع خصومات</span>
                                 </div>
                                 <p class="text-[11px] text-[#5B6770]">
                                     تحديد خصومات معتمدة (تلفيات أو مستحقات غير مدفوعة) ورد المبلغ المتبقي للمستأجر.
@@ -1866,101 +2311,13 @@ const depositBadgeClass = computed(() => {
                     </div>
 
                     <!-- 3. بنود الخصومات في حالة رد جزء من المبلغ -->
-                    <div v-if="terminateForm.settlement_type === 'partial_refund'" class="space-y-3 p-4 bg-slate-50 rounded-2xl border border-amber-200">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-bold text-[#0F2747]">بنود الخصومات المعتمدة من التأمين:</span>
-                            <button
-                                type="button"
-                                @click="addDeductionRow"
-                                class="h-8 px-3 rounded-lg bg-white border border-[#D6E0E7] text-xs font-bold text-[#0E6E7E] hover:bg-slate-50 transition flex items-center gap-1 cursor-pointer shadow-2xs"
-                            >
-                                <Plus class="w-3.5 h-3.5" />
-                                <span>إضافة بند خصم</span>
-                            </button>
-                        </div>
-
-                        <div v-if="terminateForm.deductions.length === 0" class="p-3 bg-white rounded-xl border border-dashed border-[#D6E0E7] text-center text-xs text-[#5B6770]">
-                            لم يتم إضافة أي بنود خصم بعد. اضغط على "إضافة بند خصم" لتسجيل تلفيات أو مستحقات.
-                        </div>
-
-                        <div v-for="(item, idx) in terminateForm.deductions" :key="idx" class="p-3 bg-white rounded-xl border border-[#D6E0E7] space-y-3">
-                            <div class="flex items-center justify-between">
-                                <span class="text-xs font-bold text-[#0F2747]">خصم رقم {{ idx + 1 }}</span>
-                                <button
-                                    type="button"
-                                    @click="removeDeductionRow(idx)"
-                                    class="text-rose-600 hover:text-rose-800 p-1 text-xs flex items-center gap-1 cursor-pointer"
-                                >
-                                    <Trash2 class="w-3.5 h-3.5" />
-                                    <span>حذف البند</span>
-                                </button>
-                            </div>
-
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                <div>
-                                    <label class="block text-[11px] font-bold text-[#0F2747] mb-1">نوع وتصنيف الخصم *</label>
-                                    <select v-model="item.category" class="w-full h-10 px-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs">
-                                        <option value="furniture_damage">تلف أثاث أو أجهزة</option>
-                                        <option value="fixture_damage">تلف تركيبات وتشطيبات ومرافق</option>
-                                        <option value="unpaid_dues">مستحقات وفواتير غير مدفوعة</option>
-                                        <option value="missing_items">مفقودات ومحتويات ناقصة</option>
-                                        <option value="other_damage">أضرار أو خصومات أخرى</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] font-bold text-[#0F2747] mb-1">مبلغ الخصم *</label>
-                                    <div class="relative">
-                                        <input
-                                            v-model="item.amount"
-                                            type="number"
-                                            step="0.01"
-                                            min="0.01"
-                                            required
-                                            placeholder="0.00"
-                                            class="w-full h-10 pl-12 pr-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs font-mono font-bold"
-                                        />
-                                        <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-[#5B6770] font-semibold">{{ currency_symbol }}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="block text-[11px] font-bold text-[#0F2747] mb-1">وصف ومبرر الخصم *</label>
-                                <input
-                                    v-model="item.description"
-                                    type="text"
-                                    placeholder="مثال: إصلاح باب مكسور، فاتورة كهرباء متأخرة..."
-                                    required
-                                    class="w-full h-10 px-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs"
-                                />
-                            </div>
-
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                <div>
-                                    <label class="block text-[11px] font-semibold text-[#5B6770] mb-1">ملاحظات توضيحية (اختياري)</label>
-                                    <input
-                                        v-model="item.notes"
-                                        type="text"
-                                        placeholder="تفاصيل إضافية..."
-                                        class="w-full h-10 px-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs"
-                                    />
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] font-semibold text-[#5B6770] mb-1">مرفق إثبات (صورة/فاتورة - اختياري)</label>
-                                    <input
-                                        type="file"
-                                        accept="image/*,.pdf"
-                                        @change="handleAttachmentChange(idx, $event)"
-                                        class="w-full text-xs text-slate-500 file:ml-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#E3F1F4] file:text-[#0E6E7E] hover:file:bg-[#D0EBF0]"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div v-if="totalNewDeductions > availableDepositForSettlement" class="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-1.5">
-                            <AlertTriangle class="w-4 h-4 shrink-0" />
-                            <span>تنبيه: إجمالي الخصومات ({{ totalNewDeductions.toLocaleString() }}) يتجاوز رصيد التأمين المتاح ({{ availableDepositForSettlement.toLocaleString() }})!</span>
-                        </div>
+                    <div v-if="terminateForm.settlement_type === 'partial_refund'" class="space-y-3">
+                        <DeductionSection
+                            v-model="terminateForm.deductions"
+                            :available-deposit="availableDepositForSettlement"
+                            :currency-symbol="currency_symbol"
+                            :errors="terminateForm.errors"
+                        />
                     </div>
 
                     <!-- 4. سبب احتجاز المبلغ بالكامل في حالة عدم الرد -->
@@ -1993,7 +2350,7 @@ const depositBadgeClass = computed(() => {
                                 ]"
                             >
                                 <div class="space-y-0.5">
-                                    <span class="text-xs font-bold text-[#0F2747] block">لم يُرد بعد (معلق)</span>
+                                    <span class="text-xs font-bold text-[#163E3E] block">لم يُرد بعد (معلق)</span>
                                     <span class="text-[10px] text-[#5B6770] block">سيتم التحويل الفعلي لاحقاً للمستأجر</span>
                                 </div>
                                 <input
@@ -2050,7 +2407,7 @@ const depositBadgeClass = computed(() => {
                     <!-- 6. حالة فحص الوحدة وملاحظات الإنهاء -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#D6E0E7]">
                         <div>
-                            <label class="block text-xs font-bold text-[#0F2747] mb-1">حالة فحص واستلام الوحدة *</label>
+                            <label class="block text-xs font-bold text-[#163E3E] mb-1">حالة فحص واستلام الوحدة *</label>
                             <select v-model="terminateForm.inspection_category" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs">
                                 <option value="no_issues">سليمة بدون أضرار (حالة ممتازة)</option>
                                 <option value="furniture_damage">تلف أثاث أو أجهزة</option>
@@ -2060,7 +2417,7 @@ const depositBadgeClass = computed(() => {
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-[#0F2747] mb-1">ملاحظات ختامية على إنهاء العقد</label>
+                            <label class="block text-xs font-bold text-[#163E3E] mb-1">ملاحظات ختامية على إنهاء العقد</label>
                             <input v-model="terminateForm.notes" type="text" placeholder="أي ملاحظات نهائية..." class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right" />
                         </div>
                     </div>
@@ -2085,7 +2442,7 @@ const depositBadgeClass = computed(() => {
 
         <!-- مودال تسجيل صرف المبلغ المتبقي المعلق -->
         <div v-if="showPendingRefundModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-            <div @click="showPendingRefundModal = false" class="fixed inset-0 bg-[#0F2747]/60 backdrop-blur-xs"></div>
+            <div @click="showPendingRefundModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
             <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right animate-in fade-in zoom-in-95" dir="rtl">
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7] mb-4">
                     <div class="flex items-center gap-2">
@@ -2093,7 +2450,7 @@ const depositBadgeClass = computed(() => {
                             <RotateCcw class="w-4 h-4" />
                         </div>
                         <div>
-                            <h3 class="text-sm font-bold text-[#0F2747]">صرف التأمين المعلق للمستأجر</h3>
+                            <h3 class="text-sm font-bold text-[#163E3E]">صرف التأمين المعلق للمستأجر</h3>
                             <p class="text-[11px] text-[#5B6770]">توثيق تسليم أو تحويل المبلغ المتبقي المستحق للمستأجر</p>
                         </div>
                     </div>
@@ -2115,7 +2472,7 @@ const depositBadgeClass = computed(() => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">المبلغ المصروف *</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">المبلغ المصروف *</label>
                         <div class="relative">
                             <input
                                 v-model="pendingRefundForm.amount"
@@ -2133,7 +2490,7 @@ const depositBadgeClass = computed(() => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">طريقة الصرف *</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">طريقة الصرف *</label>
                         <select v-model="pendingRefundForm.payment_method" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs">
                             <option value="bank_transfer">تحويل بنكي</option>
                             <option value="cash">نقدي (كاش)</option>
@@ -2143,23 +2500,95 @@ const depositBadgeClass = computed(() => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">تاريخ الصرف والتحويل الفعلي *</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">تاريخ الصرف والتحويل الفعلي *</label>
                         <input v-model="pendingRefundForm.refunded_at" type="date" required class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right font-mono" />
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">رقم مرجع الحوالة / الإيصال</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">رقم مرجع الحوالة / الإيصال</label>
                         <input v-model="pendingRefundForm.reference" type="text" placeholder="TXN-123456" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right font-mono" />
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1">ملاحظات الصرف</label>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1">ملاحظات الصرف</label>
                         <textarea v-model="pendingRefundForm.notes" rows="2" class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right"></textarea>
                     </div>
 
                     <div class="pt-3 border-t border-[#D6E0E7] flex justify-end gap-2">
                         <button @click="showPendingRefundModal = false" type="button" class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold hover:bg-slate-50 cursor-pointer">إلغاء</button>
                         <button type="submit" :disabled="pendingRefundForm.processing" class="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs disabled:opacity-50 cursor-pointer">توثيق الصرف الفعلي</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- نافذة رفع / تحديث وثيقة العقد المعتمد -->
+        <div
+            v-if="showContractUploadModal"
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
+        >
+            <div class="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl space-y-4">
+                <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center font-bold">
+                            <Upload class="w-4 h-4" />
+                        </div>
+                        <h3 class="font-bold text-sm text-[#163E3E]">
+                            {{ lease.has_contract_image ? 'استبدال وثيقة العقد' : 'إرفاق وثيقة العقد المعتمد' }}
+                        </h3>
+                    </div>
+                    <button
+                        @click="showContractUploadModal = false"
+                        type="button"
+                        class="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
+                    >
+                        <X class="w-5 h-5" />
+                    </button>
+                </div>
+
+                <div v-if="Object.keys(contractUploadForm.errors).length > 0" class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
+                    <div v-for="(err, k) in contractUploadForm.errors" :key="k">{{ err }}</div>
+                </div>
+
+                <form @submit.prevent="submitContractUpload" class="space-y-4">
+                    <div class="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-950 space-y-1">
+                        <div class="flex items-center gap-1.5 font-bold">
+                            <ShieldCheck class="w-4 h-4 text-emerald-700" />
+                            <span>تشفير أمان تلقائي</span>
+                        </div>
+                        <p class="text-[11px] text-emerald-900/80 leading-relaxed">
+                            يتم تشفير الملف فور رفعه بخوارزمية AES ولا يمكن لأي طرف خارجي الوصول إليه إلا بصلاحيات معتمدة.
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-2">اختر ملف العقد (صورة أو PDF) *</label>
+                        <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/jpg,image/webp,application/pdf"
+                            required
+                            @change="onShowContractFileChange"
+                            class="w-full text-xs text-slate-600 file:ml-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#E8F0F0] file:text-[#163E3E] hover:file:bg-[#163E3E] hover:file:text-white file:transition cursor-pointer"
+                        />
+                        <p class="text-[11px] text-[#8A9AA7] mt-1.5">الحد الأقصى للملف: 10 ميجابايت (JPEG, PNG, WEBP, PDF)</p>
+                    </div>
+
+                    <div class="pt-3 border-t border-[#D6E0E7] flex justify-end gap-2">
+                        <button
+                            @click="showContractUploadModal = false"
+                            type="button"
+                            class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold hover:bg-slate-50 cursor-pointer"
+                        >
+                            إلغاء
+                        </button>
+                        <button
+                            type="submit"
+                            :disabled="contractUploadForm.processing || !contractUploadForm.contract_image"
+                            class="h-10 px-5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs disabled:opacity-50 cursor-pointer"
+                        >
+                            <Upload class="w-3.5 h-3.5" />
+                            <span>{{ contractUploadForm.processing ? 'جاري التشفير والرفع...' : 'حفظ وتشفير الوثيقة' }}</span>
+                        </button>
                     </div>
                 </form>
             </div>

@@ -42,7 +42,7 @@ function getIcon(type: string) {
         <!-- الرأس وزر عرض الكل -->
         <div class="flex items-center justify-between pb-3 border-b border-[#E8EFF4]">
             <div>
-                <h3 class="text-base font-bold text-[#0F2747]">أحدث العقارات المسجلة</h3>
+                <h3 class="text-base font-bold text-[#163E3E]">أحدث العقارات المسجلة</h3>
                 <p class="text-xs text-[#5B6770] font-medium mt-0.5">
                     متابعة فورية ومباشرة لحالة الإشغال في كل عقار
                 </p>
@@ -50,7 +50,7 @@ function getIcon(type: string) {
 
             <Link
                 :href="route('properties.index')"
-                class="text-xs font-bold text-[#0E6E7E] hover:text-[#0B5A68] transition flex items-center gap-1 group"
+                class="text-xs font-bold text-[#163E3E] hover:text-[#102F2F] transition flex items-center gap-1 group"
             >
                 <span>عرض كل العقارات</span>
                 <ArrowLeft class="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
@@ -63,12 +63,12 @@ function getIcon(type: string) {
                 v-for="prop in properties"
                 :key="prop.id"
                 :href="route('properties.show', prop.id)"
-                class="p-4 rounded-2xl border border-[#E8EFF4] hover:border-[#0E6E7E]/50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 bg-[#FBFDFF] group flex flex-col justify-between"
+                class="p-4 rounded-2xl border border-[#E8EFF4] hover:border-[#163E3E]/50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 bg-[#FBFDFF] group flex flex-col justify-between"
             >
                 <div>
                     <!-- النوع والشارة والأيقونة -->
                     <div class="flex items-center justify-between gap-2">
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[#E8F3F5] text-[#0E6E7E]">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[#E8F0F0] text-[#163E3E]">
                             <component :is="getIcon(prop.property_type)" class="w-3.5 h-3.5" />
                             <span>{{ prop.property_type_label }}</span>
                         </span>
@@ -82,10 +82,10 @@ function getIcon(type: string) {
 
                     <!-- اسم العقار -->
                     <div class="flex items-start justify-between gap-2 mt-3">
-                        <h4 class="text-sm font-bold text-[#0F2747] group-hover:text-[#0E6E7E] transition line-clamp-1">
+                        <h4 class="text-sm font-bold text-[#163E3E] group-hover:text-[#163E3E] transition line-clamp-1">
                             {{ prop.name }}
                         </h4>
-                        <ArrowUpLeft class="w-4 h-4 text-[#8E9CA6] group-hover:text-[#0E6E7E] group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0 mt-0.5 opacity-0 group-hover:opacity-100" />
+                        <ArrowUpLeft class="w-4 h-4 text-[#8E9CA6] group-hover:text-[#163E3E] group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0 mt-0.5 opacity-0 group-hover:opacity-100" />
                     </div>
 
                     <!-- العنوان -->

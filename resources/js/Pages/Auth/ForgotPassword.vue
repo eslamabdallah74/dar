@@ -22,7 +22,7 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="استعادة كلمة المرور — دار" />
+        <Head title="استعادة كلمة المرور — Nook Mate" />
 
         <div class="mb-6 text-center">
             <h1 class="text-2xl font-bold text-white">استعادة كلمة المرور</h1>

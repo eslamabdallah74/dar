@@ -31,7 +31,7 @@ const safeItems = computed(() => props.items || []);
         <div class="space-y-4">
             <!-- العنوان وعدد التنبيهات -->
             <div class="flex items-center justify-between">
-                <h3 class="text-base font-bold text-[#0F2747]">
+                <h3 class="text-base font-bold text-[#163E3E]">
                     {{ title || 'تحتاج انتباهك' }}
                 </h3>
                 <span
@@ -71,7 +71,7 @@ const safeItems = computed(() => props.items || []);
                             :class="[
                                 item.severity === 'danger' ? 'bg-rose-50 text-rose-600 border border-rose-100' :
                                 item.severity === 'warning' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
-                                'bg-[#E3F1F4] text-[#0E6E7E] border border-[#0E6E7E]/10'
+                                'bg-[#E8F0F0] text-[#163E3E] border border-[#163E3E]/10'
                             ]"
                         >
                             <AlertTriangle v-if="item.severity === 'danger'" class="h-4 w-4" />
@@ -80,7 +80,7 @@ const safeItems = computed(() => props.items || []);
                         </div>
 
                         <div class="min-w-0">
-                            <h4 class="text-xs font-bold text-[#0F2747] group-hover:text-[#0E6E7E] transition truncate">
+                            <h4 class="text-xs font-bold text-[#163E3E] group-hover:text-[#163E3E] transition truncate">
                                 {{ item.title }}
                             </h4>
                             <p class="text-[11px] text-[#5B6770] font-medium mt-0.5 truncate">
@@ -89,7 +89,7 @@ const safeItems = computed(() => props.items || []);
                         </div>
                     </div>
 
-                    <ChevronLeft class="h-4 w-4 text-[#B6C5D0] group-hover:text-[#0E6E7E] group-hover:-translate-x-1 transition shrink-0" />
+                    <ChevronLeft class="h-4 w-4 text-[#B6C5D0] group-hover:text-[#163E3E] group-hover:-translate-x-1 transition shrink-0" />
                 </div>
             </div>
         </div>
@@ -99,7 +99,7 @@ const safeItems = computed(() => props.items || []);
             <button
                 @click="emit('viewAll')"
                 type="button"
-                class="w-full text-center text-xs font-bold text-[#0E6E7E] hover:text-[#0B5A68] transition py-1 flex items-center justify-center gap-1.5"
+                class="w-full text-center text-xs font-bold text-[#163E3E] hover:text-[#102F2F] transition py-1 flex items-center justify-center gap-1.5"
             >
                 <span>متابعة كافة المستحقات والعقود</span>
                 <ArrowLeft class="h-3.5 w-3.5" />

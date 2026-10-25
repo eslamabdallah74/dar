@@ -37,7 +37,7 @@ interface Props {
         currency_label?: string;
         plan_name: string;
         units_used: number;
-        units_limit: number;
+        units_limit: number | null;
         usage_percentage?: number;
     };
     is_empty_workspace?: boolean;
@@ -126,7 +126,7 @@ interface Props {
     };
     subscription_usage?: {
         units_used: number;
-        units_limit: number;
+        units_limit: number | null;
         percentage: number;
         plan_name: string;
         days_remaining: number;
@@ -214,7 +214,7 @@ function handleAttentionAction(item: any) {
 
 <template>
     <AppLayout
-        title="الرئيسية — دار لإدارة العقارات"
+        title="الرئيسية — Nook Mate لإدارة العقارات"
         active-tab="dashboard"
         :plan-name="workspace?.plan_name"
         :units-used="workspace?.units_used"
@@ -223,8 +223,8 @@ function handleAttentionAction(item: any) {
         <!-- قسم الترحيب الرئيسي (Welcome Hero Section) -->
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[#E8EFF4]">
                     <div>
-                        <h1 class="text-2xl sm:text-3xl font-black text-[#0F2747] tracking-tight">
-                            {{ header?.greeting || 'مرحباً، أهلاً بك في دار 👋' }}
+                        <h1 class="text-2xl sm:text-3xl font-black text-[#163E3E] tracking-tight">
+                            {{ header?.greeting || 'مرحباً، أهلاً بك في Nook Mate 👋' }}
                         </h1>
                         <p class="text-xs sm:text-sm text-[#5B6770] font-medium mt-1">
                             {{ header?.subtitle }}
@@ -237,7 +237,7 @@ function handleAttentionAction(item: any) {
                         <button
                             type="button"
                             @click="addProperty"
-                            class="h-11 px-5 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-sm font-bold transition shadow-xs flex items-center justify-center gap-2"
+                            class="h-11 px-5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-sm font-bold transition shadow-xs flex items-center justify-center gap-2"
                         >
                             <Plus class="h-4 w-4 stroke-[2.5]" />
                             <span>إضافة عقار جديد</span>
@@ -247,9 +247,9 @@ function handleAttentionAction(item: any) {
                         <button
                             @click="handleRecordPayment()"
                             type="button"
-                            class="h-11 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F8FAFC] text-[#0F2747] text-sm font-semibold transition shadow-2xs flex items-center justify-center gap-2"
+                            class="h-11 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F8FAFC] text-[#163E3E] text-sm font-semibold transition shadow-2xs flex items-center justify-center gap-2"
                         >
-                            <CreditCard class="h-4 w-4 text-[#0E6E7E]" />
+                            <CreditCard class="h-4 w-4 text-[#163E3E]" />
                             <span>تسجيل دفعة</span>
                         </button>
                     </div>
@@ -304,11 +304,11 @@ function handleAttentionAction(item: any) {
                     >
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E8EFF4]">
                             <div class="flex items-center gap-2.5">
-                                <div class="w-8 h-8 rounded-xl bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center">
+                                <div class="w-8 h-8 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center">
                                     <Shield class="w-4 h-4 stroke-[2.2]" />
                                 </div>
                                 <div>
-                                    <h3 class="text-xs sm:text-sm font-bold text-[#0F2747]">
+                                    <h3 class="text-xs sm:text-sm font-bold text-[#163E3E]">
                                         صندوق تأمين الوحدات المسترد (محفوظ ومفصول عن إيراد الإيجار)
                                     </h3>
                                     <span class="text-[11px] text-[#5B6770]">أموال تأمين مستردة للمستأجرين عند انتهاء العقود</span>
@@ -316,7 +316,7 @@ function handleAttentionAction(item: any) {
                             </div>
                             <Link
                                 :href="route('leases.index')"
-                                class="text-xs font-bold text-[#0E6E7E] hover:underline flex items-center gap-1 self-start sm:self-auto"
+                                class="text-xs font-bold text-[#163E3E] hover:underline flex items-center gap-1 self-start sm:self-auto"
                             >
                                 <span>متابعة عقود التأمين</span>
                                 <span>←</span>
@@ -338,7 +338,7 @@ function handleAttentionAction(item: any) {
                             </div>
                             <div>
                                 <span class="text-xs text-[#5B6770] block">مبالغ مستحقة الرد للمستأجرين</span>
-                                <span class="text-lg font-bold text-[#0E6E7E] font-mono mt-0.5 block">
+                                <span class="text-lg font-bold text-[#163E3E] font-mono mt-0.5 block">
                                     {{ security_deposits.refunds_outstanding.toLocaleString() }} {{ security_deposits.currency_symbol || 'ج.م' }}
                                 </span>
                             </div>

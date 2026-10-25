@@ -13,31 +13,55 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['"IBM Plex Sans Arabic"', 'Alexandria', 'Cairo', 'system-ui', ...defaultTheme.fontFamily.sans],
+                sans: ['Montserrat', '"IBM Plex Sans Arabic"', 'Poppins', 'Alexandria', 'Cairo', 'system-ui', ...defaultTheme.fontFamily.sans],
+                montserrat: ['Montserrat', 'sans-serif'],
+                poppins: ['Poppins', 'sans-serif'],
                 ibm: ['"IBM Plex Sans Arabic"', 'sans-serif'],
                 alexandria: ['Alexandria', 'sans-serif'],
                 cairo: ['Cairo', 'sans-serif'],
                 mono: ['"JetBrains Mono"', ...defaultTheme.fontFamily.mono],
             },
             colors: {
-                miftah: {
-                    navy: '#0F2747',
+                brand: {
+                    flat: '#163E3E',
+                    room: '#F8F4EA',
+                    bed: '#F7C33D',
+                    tech: '#163E3E',
+                },
+                nook: {
+                    flat: '#163E3E',
+                    room: '#F8F4EA',
+                    bed: '#F7C33D',
+                    tech: '#163E3E',
                     primary: {
-                        DEFAULT: '#0E6E7E',
-                        hover: '#0B5A68',
-                        tint: '#E3F1F4',
+                        DEFAULT: '#163E3E',
+                        hover: '#102F2F',
+                        tint: '#E8F0F0',
                     },
-                    page: '#F3F7FA',
+                    accent: {
+                        DEFAULT: '#F7C33D',
+                        hover: '#E5B12B',
+                        tint: '#FEF7E6',
+                    },
+                },
+                miftah: {
+                    navy: '#163E3E',
+                    primary: {
+                        DEFAULT: '#163E3E',
+                        hover: '#102F2F',
+                        tint: '#E8F0F0',
+                    },
+                    page: '#F8F4EA',
                     surface: '#FFFFFF',
-                    muted: '#E8EFF4',
+                    muted: '#EFECE2',
                     text: {
-                        primary: '#0F2747',
+                        primary: '#163E3E',
                         body: '#334155',
                         muted: '#5B6770',
                     },
                     border: {
-                        DEFAULT: '#D6E0E7',
-                        strong: '#B6C5D0',
+                        DEFAULT: '#E2DDD2',
+                        strong: '#C5BCAC',
                     },
                 },
             },

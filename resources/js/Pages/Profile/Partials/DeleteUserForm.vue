@@ -71,7 +71,7 @@ const closeModal = () => {
                     <button
                         type="button"
                         @click="closeModal"
-                        class="p-1 rounded-lg text-[#8E9CA6] hover:text-[#0F2747] hover:bg-[#F3F7FA] transition"
+                        class="p-1 rounded-lg text-[#8E9CA6] hover:text-[#163E3E] hover:bg-[#F8F4EA] transition"
                     >
                         <X class="w-5 h-5" />
                     </button>
@@ -85,7 +85,7 @@ const closeModal = () => {
                     <InputLabel
                         for="password"
                         value="كلمة المرور لتأكيد الحذف"
-                        class="text-xs font-bold text-[#0F2747] mb-1.5"
+                        class="text-xs font-bold text-[#163E3E] mb-1.5"
                     />
 
                     <div class="relative">
@@ -94,7 +94,7 @@ const closeModal = () => {
                             ref="passwordInput"
                             v-model="form.password"
                             type="password"
-                            class="w-full h-11 pr-10 pl-3.5 rounded-xl border border-rose-200 bg-[#F8FAFC] text-sm text-[#0F2747] focus:border-rose-500 focus:bg-white focus:ring-1 focus:ring-rose-500 transition text-right"
+                            class="w-full h-11 pr-10 pl-3.5 rounded-xl border border-rose-200 bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-rose-500 focus:bg-white focus:ring-1 focus:ring-rose-500 transition text-right"
                             placeholder="••••••••••••"
                             @keyup.enter="deleteUser"
                         />
@@ -119,7 +119,7 @@ const closeModal = () => {
                     <button
                         type="button"
                         @click="closeModal"
-                        class="h-10 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F3F7FA] text-[#0F2747] text-xs font-bold transition cursor-pointer"
+                        class="h-10 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F8F4EA] text-[#163E3E] text-xs font-bold transition cursor-pointer"
                     >
                         إلغاء
                     </button>

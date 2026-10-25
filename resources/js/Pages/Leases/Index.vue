@@ -15,6 +15,7 @@ import {
     FileText,
     Home,
     MessageCircle,
+    Paperclip,
     Phone,
     Plus,
     Search,
@@ -48,6 +49,8 @@ interface LeaseItem {
     status_label: string;
     is_expiring_soon: boolean;
     is_past_end_date?: boolean;
+    contract_image_url?: string | null;
+    has_contract_image?: boolean;
 }
 
 const props = defineProps<{
@@ -111,7 +114,7 @@ const depositStatusClass = (status?: string) => {
 
 <template>
     <AppLayout
-        title="عقود الإيجار والتأمين — دار"
+        title="عقود الإيجار والتأمين — Nook Mate"
         active-tab="leases"
         header-title="عقود الإيجار والتأمين"
         header-subtitle="إدارة وتوثيق عقود الإيجار السكنية والتجارية، متابعة التأمين المسترد وتواريخ التجديد"
@@ -120,7 +123,7 @@ const depositStatusClass = (status?: string) => {
         <template #actions>
             <Link
                 :href="route('leases.create')"
-                class="w-full sm:w-auto h-11 px-5 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs sm:text-sm font-bold transition shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                class="w-full sm:w-auto h-11 px-5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs sm:text-sm font-bold transition shadow-xs flex items-center justify-center gap-2 cursor-pointer"
             >
                 <Plus class="h-4 w-4 stroke-[2.5]" />
                 <span>إنشاء عقد إيجار جديد</span>
@@ -130,16 +133,16 @@ const depositStatusClass = (status?: string) => {
         <!-- كروت مؤشرات العقود الأربعة المتجاوبة للموبايل والشاشات الكبيرة -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <!-- 1. العقود السارية -->
-            <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-3.5 sm:p-5 shadow-2xs space-y-2 hover:border-[#0E6E7E]/40 transition">
+            <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-3.5 sm:p-5 shadow-2xs space-y-2 hover:border-[#163E3E]/40 transition">
                 <div class="flex items-center justify-between">
                     <span class="text-[11px] sm:text-xs font-semibold text-[#5B6770]">العقود السارية</span>
-                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center">
                         <FileCheck class="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2]" />
                     </div>
                 </div>
                 <div class="flex items-baseline justify-between gap-1">
-                    <span class="text-xl sm:text-2xl font-black text-[#0F2747] font-mono">{{ stats.active_leases }}</span>
-                    <span class="text-[10px] sm:text-xs text-[#0E6E7E] font-semibold bg-[#E3F1F4] px-1.5 sm:px-2 py-0.5 rounded-md">عقد نشط</span>
+                    <span class="text-xl sm:text-2xl font-black text-[#163E3E] font-mono">{{ stats.active_leases }}</span>
+                    <span class="text-[10px] sm:text-xs text-[#163E3E] font-semibold bg-[#E8F0F0] px-1.5 sm:px-2 py-0.5 rounded-md">عقد نشط</span>
                 </div>
             </div>
 
@@ -160,15 +163,15 @@ const depositStatusClass = (status?: string) => {
             </div>
 
             <!-- 3. إجمالي الإيجار السنوي -->
-            <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-3.5 sm:p-5 shadow-2xs space-y-2 hover:border-[#0E6E7E]/40 transition">
+            <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-3.5 sm:p-5 shadow-2xs space-y-2 hover:border-[#163E3E]/40 transition">
                 <div class="flex items-center justify-between">
                     <span class="text-[11px] sm:text-xs font-semibold text-[#5B6770]">القيمة السنوية للعقود</span>
-                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center">
                         <Coins class="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2]" />
                     </div>
                 </div>
                 <div class="flex items-baseline justify-between gap-1">
-                    <span class="text-lg sm:text-2xl font-black text-[#0F2747] font-mono truncate">
+                    <span class="text-lg sm:text-2xl font-black text-[#163E3E] font-mono truncate">
                         {{ Math.round(stats.total_annual_value ?? 0).toLocaleString() }}
                         <span class="text-[10px] sm:text-xs font-sans font-normal text-[#5B6770]">{{ currencySymbol }}</span>
                     </span>
@@ -223,7 +226,7 @@ const depositStatusClass = (status?: string) => {
                     v-model="searchQuery"
                     type="text"
                     placeholder="ابحث برقم العقد، اسم المستأجر، رقم الهاتف أو الوحدة..."
-                    class="w-full h-11 pr-10 pl-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs sm:text-sm text-[#0F2747] placeholder:text-[#5B6770] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
+                    class="w-full h-11 pr-10 pl-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs sm:text-sm text-[#163E3E] placeholder:text-[#5B6770] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                 />
                 <Search class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#5B6770]" />
                 <button
@@ -251,8 +254,8 @@ const depositStatusClass = (status?: string) => {
                     type="button"
                     class="px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0"
                     :class="statusFilter === f.id
-                        ? 'bg-[#0E6E7E] text-white shadow-2xs'
-                        : 'bg-[#F8FAFC] text-[#5B6770] hover:text-[#0F2747] border border-[#D6E0E7]'"
+                        ? 'bg-[#163E3E] text-white shadow-2xs'
+                        : 'bg-[#F8FAFC] text-[#5B6770] hover:text-[#163E3E] border border-[#D6E0E7]'"
                 >
                     {{ f.label }}
                 </button>
@@ -269,7 +272,7 @@ const depositStatusClass = (status?: string) => {
                 <!-- رأس البطاقة: رقم العقد + الحالة -->
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
                     <div class="flex items-center gap-2">
-                        <span class="font-mono font-bold text-xs px-2.5 py-1 rounded-lg bg-[#E3F1F4] text-[#0E6E7E] flex items-center gap-1">
+                        <span class="font-mono font-bold text-xs px-2.5 py-1 rounded-lg bg-[#E8F0F0] text-[#163E3E] flex items-center gap-1">
                             <FileText class="w-3 h-3" />
                             <span>{{ lease.contract_number }}</span>
                         </span>
@@ -291,13 +294,13 @@ const depositStatusClass = (status?: string) => {
                 <!-- الوحدة والعقار -->
                 <div class="flex items-start justify-between gap-3">
                     <div class="flex items-center gap-2.5">
-                        <div class="w-9 h-9 rounded-xl bg-[#F8FAFC] border border-[#D6E0E7] text-[#0E6E7E] flex items-center justify-center shrink-0">
+                        <div class="w-9 h-9 rounded-xl bg-[#F8FAFC] border border-[#D6E0E7] text-[#163E3E] flex items-center justify-center shrink-0">
                             <Store v-if="lease.unit_type === 'shop'" class="w-4 h-4 stroke-[2.2]" />
                             <Home v-else class="w-4 h-4 stroke-[2.2]" />
                         </div>
                         <div>
                             <div class="flex items-center gap-1.5 flex-wrap">
-                                <span class="font-bold text-sm text-[#0F2747]">{{ lease.unit_name }}</span>
+                                <span class="font-bold text-sm text-[#163E3E]">{{ lease.unit_name }}</span>
                                 <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-[#5B6770] font-bold">
                                     {{ lease.unit_type_label }}
                                 </span>
@@ -313,13 +316,13 @@ const depositStatusClass = (status?: string) => {
                 <!-- المستأجر ومعلومات الاتصال -->
                 <div class="p-3 rounded-xl bg-[#F8FAFC] border border-[#D6E0E7] flex items-center justify-between gap-3">
                     <div class="flex items-center gap-2.5 min-w-0">
-                        <div class="w-8 h-8 rounded-lg bg-[#0E6E7E] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                        <div class="w-8 h-8 rounded-lg bg-[#163E3E] text-white flex items-center justify-center font-bold text-xs shrink-0">
                             {{ lease.renter_name.charAt(0) }}
                         </div>
                         <div class="min-w-0">
                             <Link
                                 :href="route('renters.show', lease.renter_id)"
-                                class="font-bold text-xs text-[#0F2747] hover:text-[#0E6E7E] transition truncate block"
+                                class="font-bold text-xs text-[#163E3E] hover:text-[#163E3E] transition truncate block"
                             >
                                 {{ lease.renter_name }}
                             </Link>
@@ -343,7 +346,7 @@ const depositStatusClass = (status?: string) => {
                         <a
                             v-if="lease.renter_phone"
                             :href="`tel:${lease.renter_phone}`"
-                            class="p-2 rounded-lg bg-slate-100 text-[#0F2747] hover:bg-slate-200 transition"
+                            class="p-2 rounded-lg bg-slate-100 text-[#163E3E] hover:bg-slate-200 transition"
                             title="اتصال هاتفي"
                         >
                             <Phone class="w-4 h-4" />
@@ -356,7 +359,7 @@ const depositStatusClass = (status?: string) => {
                     <!-- الإيجار الشهري -->
                     <div class="p-2.5 rounded-xl border border-[#D6E0E7] bg-white space-y-1">
                         <span class="text-[11px] text-[#5B6770] block">الإيجار الشهري</span>
-                        <div class="font-mono font-black text-sm text-[#0F2747]">
+                        <div class="font-mono font-black text-sm text-[#163E3E]">
                             {{ (lease.rent_amount ?? 0).toLocaleString() }}
                             <span class="text-[10px] font-sans font-normal text-[#5B6770]">{{ currencySymbol }}</span>
                         </div>
@@ -366,7 +369,7 @@ const depositStatusClass = (status?: string) => {
                     <div class="p-2.5 rounded-xl border border-[#D6E0E7] bg-white space-y-1">
                         <div class="flex items-center justify-between">
                             <span class="text-[11px] text-[#5B6770] flex items-center gap-1">
-                                <Shield class="w-3 h-3 text-[#0E6E7E]" />
+                                <Shield class="w-3 h-3 text-[#163E3E]" />
                                 <span>التأمين</span>
                             </span>
                         </div>
@@ -392,17 +395,30 @@ const depositStatusClass = (status?: string) => {
                         <Calendar class="w-3.5 h-3.5 text-[#5B6770]" />
                         <span>{{ lease.starts_on }} ➔ {{ lease.ends_on }}</span>
                     </span>
-                    <span class="text-[11px] font-semibold text-[#0E6E7E]">{{ lease.billing_interval }}</span>
+                    <span class="text-[11px] font-semibold text-[#163E3E]">{{ lease.billing_interval }}</span>
                 </div>
 
                 <!-- زر تفاصيل العقد والتأمين الكامل -->
-                <Link
-                    :href="route('leases.show', lease.id)"
-                    class="w-full h-11 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-2xs"
-                >
-                    <span>تفاصيل العقد والتأمين</span>
-                    <ArrowLeft class="w-4 h-4" />
-                </Link>
+                <div class="flex items-center gap-2 pt-1">
+                    <a
+                        v-if="lease.has_contract_image && lease.contract_image_url"
+                        :href="lease.contract_image_url"
+                        target="_blank"
+                        class="h-11 px-3.5 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs shrink-0"
+                        title="عرض وثيقة العقد المعتمد"
+                    >
+                        <Paperclip class="w-4 h-4 text-emerald-700" />
+                        <span>العقد</span>
+                    </a>
+
+                    <Link
+                        :href="route('leases.show', lease.id)"
+                        class="flex-1 h-11 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-2xs"
+                    >
+                        <span>تفاصيل العقد والتأمين</span>
+                        <ArrowLeft class="w-4 h-4" />
+                    </Link>
+                </div>
             </div>
         </div>
 
@@ -426,13 +442,13 @@ const depositStatusClass = (status?: string) => {
                         <tr
                             v-for="lease in filteredLeases"
                             :key="lease.id"
-                            class="hover:bg-[#F3F7FA] transition group"
+                            class="hover:bg-[#F8F4EA] transition group"
                         >
                             <!-- رقم العقد -->
                             <td class="py-4 px-6">
                                 <Link
                                     :href="route('leases.show', lease.id)"
-                                    class="font-mono font-bold text-xs px-2.5 py-1 rounded-lg bg-[#E3F1F4] text-[#0E6E7E] hover:bg-[#0E6E7E] hover:text-white transition inline-flex items-center gap-1 shadow-2xs"
+                                    class="font-mono font-bold text-xs px-2.5 py-1 rounded-lg bg-[#E8F0F0] text-[#163E3E] hover:bg-[#163E3E] hover:text-white transition inline-flex items-center gap-1 shadow-2xs"
                                 >
                                     <FileText class="w-3.5 h-3.5" />
                                     <span>{{ lease.contract_number }}</span>
@@ -442,13 +458,13 @@ const depositStatusClass = (status?: string) => {
                             <!-- المستأجر -->
                             <td class="py-4 px-6">
                                 <div class="flex items-center gap-2.5">
-                                    <div class="w-8 h-8 rounded-lg bg-[#0E6E7E] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                                    <div class="w-8 h-8 rounded-lg bg-[#163E3E] text-white flex items-center justify-center font-bold text-xs shrink-0">
                                         {{ lease.renter_name.charAt(0) }}
                                     </div>
                                     <div>
                                         <Link
                                             :href="route('renters.show', lease.renter_id)"
-                                            class="font-bold text-xs text-[#0F2747] hover:text-[#0E6E7E] transition block"
+                                            class="font-bold text-xs text-[#163E3E] hover:text-[#163E3E] transition block"
                                         >
                                             {{ lease.renter_name }}
                                         </Link>
@@ -458,9 +474,9 @@ const depositStatusClass = (status?: string) => {
                             </td>
 
                             <!-- العقار والوحدة -->
-                            <td class="py-4 px-6 text-xs text-[#0F2747]">
+                            <td class="py-4 px-6 text-xs text-[#163E3E]">
                                 <div class="flex items-center gap-2">
-                                    <div class="w-7 h-7 rounded-lg bg-[#F8FAFC] border border-[#D6E0E7] text-[#0E6E7E] flex items-center justify-center shrink-0">
+                                    <div class="w-7 h-7 rounded-lg bg-[#F8FAFC] border border-[#D6E0E7] text-[#163E3E] flex items-center justify-center shrink-0">
                                         <Store v-if="lease.unit_type === 'shop'" class="w-3.5 h-3.5 stroke-[2.2]" />
                                         <Home v-else class="w-3.5 h-3.5 stroke-[2.2]" />
                                     </div>
@@ -487,7 +503,7 @@ const depositStatusClass = (status?: string) => {
 
                             <!-- الإيجار الشهري -->
                             <td class="py-4 px-6 text-xs">
-                                <div class="flex items-baseline gap-1.5 whitespace-nowrap font-mono font-bold text-sm text-[#0F2747]">
+                                <div class="flex items-baseline gap-1.5 whitespace-nowrap font-mono font-bold text-sm text-[#163E3E]">
                                     <span>
                                         {{ (lease.rent_amount ?? 0).toLocaleString() }}
                                         <span class="text-[10px] font-sans font-normal text-[#5B6770]">{{ currencySymbol }}</span>
@@ -524,13 +540,26 @@ const depositStatusClass = (status?: string) => {
 
                             <!-- إجراءات -->
                             <td class="py-4 px-6 text-left whitespace-nowrap">
-                                <Link
-                                    :href="route('leases.show', lease.id)"
-                                    class="my-2 px-3.5 py-2 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#0E6E7E] hover:text-white hover:border-[#0E6E7E] text-[#0E6E7E] text-xs font-bold transition inline-flex items-center gap-1.5 whitespace-nowrap shadow-2xs group/btn"
-                                >
-                                    <span>تفاصيل العقد والتأمين</span>
-                                    <ArrowLeft class="w-3.5 h-3.5 group-hover/btn:-translate-x-0.5 transition-transform" />
-                                </Link>
+                                <div class="flex items-center justify-end gap-2">
+                                    <a
+                                        v-if="lease.has_contract_image && lease.contract_image_url"
+                                        :href="lease.contract_image_url"
+                                        target="_blank"
+                                        class="my-2 px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition inline-flex items-center gap-1.5 shadow-2xs"
+                                        title="عرض وثيقة العقد المشفرة"
+                                    >
+                                        <Paperclip class="w-3.5 h-3.5 text-emerald-700" />
+                                        <span>وثيقة العقد</span>
+                                    </a>
+
+                                    <Link
+                                        :href="route('leases.show', lease.id)"
+                                        class="my-2 px-3.5 py-2 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#163E3E] hover:text-white hover:border-[#163E3E] text-[#163E3E] text-xs font-bold transition inline-flex items-center gap-1.5 whitespace-nowrap shadow-2xs group/btn"
+                                    >
+                                        <span>تفاصيل العقد والتأمين</span>
+                                        <ArrowLeft class="w-3.5 h-3.5 group-hover/btn:-translate-x-0.5 transition-transform" />
+                                    </Link>
+                                </div>
                             </td>
                         </tr>
                     </tbody>

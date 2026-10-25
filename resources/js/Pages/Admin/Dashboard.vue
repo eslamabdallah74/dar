@@ -295,7 +295,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
 
 <template>
     <AppLayout
-        title="دار — لوحة الإدارة المركزية والتحكم الشامل"
+        title="Nook Mate — لوحة الإدارة المركزية والتحكم الشامل"
         header-title="لوحة الإدارة المركزية والرقابة العامة"
         header-subtitle="رؤية شاملة وتحكم في كافة مساحات العمل والمستخدمين والعمليات المالية والاشتراكات"
         breadcrumb="لوحة القيادة المركزية"
@@ -310,7 +310,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                 <button
                     @click="router.reload()"
                     type="button"
-                    class="h-10 px-3.5 rounded-xl border border-[#D6E0E7] bg-white text-xs font-semibold text-[#0F2747] hover:bg-[#F3F7FA] flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                    class="h-10 px-3.5 rounded-xl border border-[#D6E0E7] bg-white text-xs font-semibold text-[#163E3E] hover:bg-[#F8F4EA] flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
                     title="تحديث البيانات"
                 >
                     <RefreshCw class="w-3.5 h-3.5 text-[#5B6770]" />
@@ -319,7 +319,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
 
                 <PrimaryButton
                     @click="openCreateUser"
-                    class="!py-2.5 !text-xs !bg-[#0F2747] !text-white !shadow-none hover:!bg-[#17334F] cursor-pointer"
+                    class="!py-2.5 !text-xs !bg-[#163E3E] !text-white !shadow-none hover:!bg-[#17334F] cursor-pointer"
                 >
                     <Plus class="w-4 h-4 ml-1.5" />
                     <span>إضافة مستخدم</span>
@@ -336,14 +336,14 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                     </div>
                     <div>
                         <div class="flex items-center gap-2">
-                            <h2 class="text-base font-bold text-[#0F2747]">مؤشرات المنصة والخدمات المركزية</h2>
+                            <h2 class="text-base font-bold text-[#163E3E]">مؤشرات المنصة والخدمات المركزية</h2>
                             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
                                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                                 متصل ونشط
                             </span>
                         </div>
                         <p class="text-xs text-[#5B6770] font-medium mt-0.5">
-                            المسؤول المسجل حالياً: <strong class="text-[#0F2747]">{{ adminUser.name }}</strong> ({{ adminUser.email }})
+                            المسؤول المسجل حالياً: <strong class="text-[#163E3E]">{{ adminUser.name }}</strong> ({{ adminUser.email }})
                         </p>
                     </div>
                 </div>
@@ -354,7 +354,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                         v-model="searchQuery"
                         type="text"
                         placeholder="فلترة الجداول..."
-                        class="h-9 px-3 rounded-lg border border-[#D6E0E7] bg-white text-xs text-[#0F2747] focus:ring-1 focus:ring-[#0E6E7E] focus:border-[#0E6E7E] text-right"
+                        class="h-9 px-3 rounded-lg border border-[#D6E0E7] bg-white text-xs text-[#163E3E] focus:ring-1 focus:ring-[#163E3E] focus:border-[#163E3E] text-right"
                     />
                 </div>
             </div>
@@ -363,15 +363,15 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2 border-t border-amber-200/50">
                 <div class="p-3 rounded-xl bg-white border border-[#D6E0E7] shadow-2xs text-right">
                     <span class="text-[11px] font-medium text-[#5B6770] block">مساحات العمل</span>
-                    <span class="text-xl font-bold text-[#0F2747] block mt-0.5">{{ platformSummary.total_workspaces }}</span>
+                    <span class="text-xl font-bold text-[#163E3E] block mt-0.5">{{ platformSummary.total_workspaces }}</span>
                 </div>
                 <div class="p-3 rounded-xl bg-white border border-[#D6E0E7] shadow-2xs text-right">
                     <span class="text-[11px] font-medium text-[#5B6770] block">المستخدمين المسجلين</span>
-                    <span class="text-xl font-bold text-[#0F2747] block mt-0.5">{{ platformSummary.total_users }}</span>
+                    <span class="text-xl font-bold text-[#163E3E] block mt-0.5">{{ platformSummary.total_users }}</span>
                 </div>
                 <div class="p-3 rounded-xl bg-white border border-[#D6E0E7] shadow-2xs text-right">
                     <span class="text-[11px] font-medium text-[#5B6770] block">إجمالي العقود</span>
-                    <span class="text-xl font-bold text-[#0F2747] block mt-0.5">{{ platformSummary.total_leases }}</span>
+                    <span class="text-xl font-bold text-[#163E3E] block mt-0.5">{{ platformSummary.total_leases }}</span>
                 </div>
                 <div class="p-3 rounded-xl bg-white border border-[#D6E0E7] shadow-2xs text-right">
                     <span class="text-[11px] font-medium text-[#5B6770] block">إيراد الباقات الشهري</span>
@@ -397,15 +397,15 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                 type="button"
                 class="min-h-11 shrink-0 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
                 :class="currentTab === tab.key
-                    ? 'bg-[#0F2747] text-white shadow-xs'
-                    : 'bg-white border border-[#D6E0E7] text-[#5B6770] hover:bg-[#F3F7FA] hover:text-[#0F2747]'"
+                    ? 'bg-[#163E3E] text-white shadow-xs'
+                    : 'bg-white border border-[#D6E0E7] text-[#5B6770] hover:bg-[#F8F4EA] hover:text-[#163E3E]'"
             >
                 <component :is="tab.icon" class="w-4 h-4 shrink-0" />
                 <span>{{ tab.name }}</span>
                 <span
                     v-if="tab.count !== undefined"
                     class="px-1.5 py-0.5 rounded-full text-[10px]"
-                    :class="currentTab === tab.key ? 'bg-white/20 text-white' : 'bg-[#E8EFF4] text-[#0F2747]'"
+                    :class="currentTab === tab.key ? 'bg-white/20 text-white' : 'bg-[#E8EFF4] text-[#163E3E]'"
                 >
                     {{ tab.count }}
                 </span>
@@ -457,7 +457,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
         <div v-show="currentTab === 'workspaces'" class="space-y-4 animate-in fade-in">
             <div class="flex items-center justify-between">
                 <div>
-                    <h3 class="text-lg font-bold text-[#0F2747]">مساحات العمل المسجلة (Workspaces)</h3>
+                    <h3 class="text-lg font-bold text-[#163E3E]">مساحات العمل المسجلة (Workspaces)</h3>
                     <p class="text-xs text-[#5B6770]">عرض شامل والتحكم في كل مساحة عمل، ترقية الباقات، أو الدخول كمدير نظام.</p>
                 </div>
             </div>
@@ -480,23 +480,23 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                         </thead>
                         <tbody class="divide-y divide-[#E8EFF4]">
                             <tr v-for="ws in filteredWorkspaces" :key="ws.id" class="hover:bg-[#F8FAFC] transition">
-                                <td class="p-3.5 font-bold text-[#0F2747]">
+                                <td class="p-3.5 font-bold text-[#163E3E]">
                                     <div class="flex items-center gap-2">
-                                        <div class="w-7 h-7 rounded-lg bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center font-bold">
+                                        <div class="w-7 h-7 rounded-lg bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center font-bold">
                                             <Building2 class="w-4 h-4" />
                                         </div>
                                         <span>{{ ws.name }}</span>
                                     </div>
                                 </td>
                                 <td class="p-3.5">
-                                    <div class="font-semibold text-[#0F2747]">{{ ws.owner_name }}</div>
+                                    <div class="font-semibold text-[#163E3E]">{{ ws.owner_name }}</div>
                                     <div class="text-[11px] text-[#5B6770]">{{ ws.owner_email }}</div>
                                 </td>
                                 <td class="p-3.5 text-center font-bold">{{ ws.properties_count }}</td>
                                 <td class="p-3.5 text-center font-bold">{{ ws.units_count }}</td>
                                 <td class="p-3.5 text-center font-bold">{{ ws.leases_count }}</td>
                                 <td class="p-3.5">
-                                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#E8F3F5] text-[#0E6E7E]">
+                                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#E8F0F0] text-[#163E3E]">
                                         {{ ws.plan_name }}
                                     </span>
                                 </td>
@@ -518,7 +518,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                         <button
                                             @click="openChangePlan(ws)"
                                             type="button"
-                                            class="px-2.5 py-1.5 rounded-lg bg-[#E8F3F5] text-[#0E6E7E] hover:bg-[#D4EAEF] font-bold transition flex items-center gap-1 cursor-pointer"
+                                            class="px-2.5 py-1.5 rounded-lg bg-[#E8F0F0] text-[#163E3E] hover:bg-[#D4EAEF] font-bold transition flex items-center gap-1 cursor-pointer"
                                             title="ترقية / تغيير الباقة"
                                         >
                                             <Layers class="w-3.5 h-3.5" />
@@ -527,7 +527,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                         <button
                                             @click="openEditWorkspace(ws)"
                                             type="button"
-                                            class="p-1.5 rounded-lg text-[#5B6770] hover:text-[#0F2747] hover:bg-[#F3F7FA] transition cursor-pointer"
+                                            class="p-1.5 rounded-lg text-[#5B6770] hover:text-[#163E3E] hover:bg-[#F8F4EA] transition cursor-pointer"
                                             title="تعديل البيانات"
                                         >
                                             <Edit3 class="w-4 h-4" />
@@ -556,10 +556,10 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
         <div v-show="currentTab === 'users'" class="space-y-4 animate-in fade-in">
             <div class="flex items-center justify-between">
                 <div>
-                    <h3 class="text-lg font-bold text-[#0F2747]">المستخدمون والمسؤولون (Platform Users)</h3>
+                    <h3 class="text-lg font-bold text-[#163E3E]">المستخدمون والمسؤولون (Platform Users)</h3>
                     <p class="text-xs text-[#5B6770]">إدارة كاملة للمستخدمين، وتعيين أو سحب صلاحيات الإدارة المركزية.</p>
                 </div>
-                <PrimaryButton @click="openCreateUser" class="!py-2 !text-xs !bg-[#0F2747] !text-white !shadow-none hover:!bg-[#17334F]">
+                <PrimaryButton @click="openCreateUser" class="!py-2 !text-xs !bg-[#163E3E] !text-white !shadow-none hover:!bg-[#17334F]">
                     <Plus class="w-3.5 h-3.5 ml-1" />
                     <span>مستخدم جديد</span>
                 </PrimaryButton>
@@ -581,18 +581,18 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                         </thead>
                         <tbody class="divide-y divide-[#E8EFF4]">
                             <tr v-for="u in filteredUsers" :key="u.id" class="hover:bg-[#F8FAFC] transition">
-                                <td class="p-3.5 font-bold text-[#0F2747]">
+                                <td class="p-3.5 font-bold text-[#163E3E]">
                                     <div class="flex items-center gap-2">
                                         <div
                                             class="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs"
-                                            :class="u.is_admin ? 'bg-amber-400 text-slate-950 font-black' : 'bg-[#E3F1F4] text-[#0E6E7E]'"
+                                            :class="u.is_admin ? 'bg-amber-400 text-slate-950 font-black' : 'bg-[#E8F0F0] text-[#163E3E]'"
                                         >
                                             {{ u.name.charAt(0) }}
                                         </div>
                                         <span>{{ u.name }}</span>
                                     </div>
                                 </td>
-                                <td class="p-3.5 font-mono text-[#0F2747]">{{ u.email }}</td>
+                                <td class="p-3.5 font-mono text-[#163E3E]">{{ u.email }}</td>
                                 <td class="p-3.5 text-center">
                                     <span
                                         class="px-2.5 py-0.5 rounded-full text-[10px] font-black inline-flex items-center gap-1"
@@ -626,7 +626,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                         <button
                                             @click="openEditUser(u)"
                                             type="button"
-                                            class="p-1.5 rounded-lg text-[#5B6770] hover:text-[#0F2747] hover:bg-[#F3F7FA] transition cursor-pointer"
+                                            class="p-1.5 rounded-lg text-[#5B6770] hover:text-[#163E3E] hover:bg-[#F8F4EA] transition cursor-pointer"
                                             title="تعديل المستخدم"
                                         >
                                             <Edit3 class="w-4 h-4" />
@@ -651,7 +651,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
         <!-- TAB 4: العقارات والوحدات (Properties Tab) -->
         <div v-show="currentTab === 'properties'" class="space-y-4 animate-in fade-in">
             <div>
-                <h3 class="text-lg font-bold text-[#0F2747]">العقارات والوحدات عبر المنصة</h3>
+                <h3 class="text-lg font-bold text-[#163E3E]">العقارات والوحدات عبر المنصة</h3>
                 <p class="text-xs text-[#5B6770]">مراقبة كافة المباني والوحدات السكنية والتجارية في كل مساحات العمل.</p>
             </div>
 
@@ -670,15 +670,15 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                         </thead>
                         <tbody class="divide-y divide-[#E8EFF4]">
                             <tr v-for="p in filteredProperties" :key="p.id" class="hover:bg-[#F8FAFC] transition">
-                                <td class="p-3.5 font-bold text-[#0F2747]">{{ p.name }}</td>
+                                <td class="p-3.5 font-bold text-[#163E3E]">{{ p.name }}</td>
                                 <td class="p-3.5">
-                                    <span class="px-2 py-0.5 rounded-md bg-[#E8F3F5] text-[#0E6E7E] font-semibold text-[11px]">
+                                    <span class="px-2 py-0.5 rounded-md bg-[#E8F0F0] text-[#163E3E] font-semibold text-[11px]">
                                         {{ p.workspace_name }}
                                     </span>
                                 </td>
                                 <td class="p-3.5 font-medium">{{ p.property_type }}</td>
                                 <td class="p-3.5 text-[#5B6770]">{{ p.city }} • {{ p.address }}</td>
-                                <td class="p-3.5 text-center font-bold text-[#0F2747]">{{ p.units_count }}</td>
+                                <td class="p-3.5 text-center font-bold text-[#163E3E]">{{ p.units_count }}</td>
                                 <td class="p-3.5 text-[#5B6770]">{{ p.created_at }}</td>
                             </tr>
                         </tbody>
@@ -690,7 +690,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
         <!-- TAB 5: العقود والمستأجرون (Leases Tab) -->
         <div v-show="currentTab === 'leases'" class="space-y-4 animate-in fade-in">
             <div>
-                <h3 class="text-lg font-bold text-[#0F2747]">العقود الإيجارية (Platform Leases)</h3>
+                <h3 class="text-lg font-bold text-[#163E3E]">العقود الإيجارية (Platform Leases)</h3>
                 <p class="text-xs text-[#5B6770]">مراقبة سريان العقود، القيم الإيجارية، وتغيير حالات العقود مركزياً.</p>
             </div>
 
@@ -711,11 +711,11 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                         </thead>
                         <tbody class="divide-y divide-[#E8EFF4]">
                             <tr v-for="l in filteredLeases" :key="l.id" class="hover:bg-[#F8FAFC] transition">
-                                <td class="p-3.5 font-bold font-mono text-[#0F2747]">{{ l.lease_number }}</td>
-                                <td class="p-3.5 font-medium text-[#0E6E7E]">{{ l.workspace_name }}</td>
-                                <td class="p-3.5 font-semibold text-[#0F2747]">{{ l.renter_name }}</td>
+                                <td class="p-3.5 font-bold font-mono text-[#163E3E]">{{ l.lease_number }}</td>
+                                <td class="p-3.5 font-medium text-[#163E3E]">{{ l.workspace_name }}</td>
+                                <td class="p-3.5 font-semibold text-[#163E3E]">{{ l.renter_name }}</td>
                                 <td class="p-3.5 text-[#5B6770]">{{ l.unit_name }}</td>
-                                <td class="p-3.5 font-bold text-[#0F2747]">{{ l.rent_amount.toLocaleString() }} ج.م</td>
+                                <td class="p-3.5 font-bold text-[#163E3E]">{{ l.rent_amount.toLocaleString() }} ج.م</td>
                                 <td class="p-3.5 text-[11px] text-[#5B6770]">{{ l.starts_on }} ← {{ l.ends_on }}</td>
                                 <td class="p-3.5">
                                     <StatusBadge :status="l.status" />
@@ -724,7 +724,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                     <select
                                         :value="l.status"
                                         @change="updateLeaseStatus(l.id, ($event.target as HTMLSelectElement).value)"
-                                        class="h-7 px-2 rounded-lg border border-[#D6E0E7] bg-white text-[11px] font-semibold text-[#0F2747] cursor-pointer"
+                                        class="h-7 px-2 rounded-lg border border-[#D6E0E7] bg-white text-[11px] font-semibold text-[#163E3E] cursor-pointer"
                                     >
                                         <option value="active">نشط (Active)</option>
                                         <option value="draft">مسودة (Draft)</option>
@@ -742,7 +742,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
         <!-- TAB 6: المالية والمدفوعات (Payments Tab) -->
         <div v-show="currentTab === 'payments'" class="space-y-4 animate-in fade-in">
             <div>
-                <h3 class="text-lg font-bold text-[#0F2747]">سجل الدفعات والتحصيلات في المنصة</h3>
+                <h3 class="text-lg font-bold text-[#163E3E]">سجل الدفعات والتحصيلات في المنصة</h3>
                 <p class="text-xs text-[#5B6770]">كافة المعاملات المالية وسندات القبض المسجلة في مختلف مساحات العمل.</p>
             </div>
 
@@ -762,9 +762,9 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                         </thead>
                         <tbody class="divide-y divide-[#E8EFF4]">
                             <tr v-for="p in filteredPayments" :key="p.id" class="hover:bg-[#F8FAFC] transition">
-                                <td class="p-3.5 font-bold font-mono text-[#0F2747]">{{ p.payment_number }}</td>
-                                <td class="p-3.5 font-semibold text-[#0E6E7E]">{{ p.workspace_name }}</td>
-                                <td class="p-3.5 font-semibold text-[#0F2747]">{{ p.renter_name }}</td>
+                                <td class="p-3.5 font-bold font-mono text-[#163E3E]">{{ p.payment_number }}</td>
+                                <td class="p-3.5 font-semibold text-[#163E3E]">{{ p.workspace_name }}</td>
+                                <td class="p-3.5 font-semibold text-[#163E3E]">{{ p.renter_name }}</td>
                                 <td class="p-3.5 font-bold text-emerald-700">{{ p.amount.toLocaleString() }} ج.م</td>
                                 <td class="p-3.5 font-medium">{{ p.method }}</td>
                                 <td class="p-3.5 font-mono text-[#5B6770]">{{ p.reference }}</td>
@@ -779,7 +779,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
         <!-- TAB 7: طلبات الصيانة (Maintenance Tab) -->
         <div v-show="currentTab === 'maintenance'" class="space-y-4 animate-in fade-in">
             <div>
-                <h3 class="text-lg font-bold text-[#0F2747]">طلبات الصيانة المركزية</h3>
+                <h3 class="text-lg font-bold text-[#163E3E]">طلبات الصيانة المركزية</h3>
                 <p class="text-xs text-[#5B6770]">متابعة كافة طلبات الصيانة والإصلاح في الوحدات العقارية والتحكم بحالاتها.</p>
             </div>
 
@@ -799,8 +799,8 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                         </thead>
                         <tbody class="divide-y divide-[#E8EFF4]">
                             <tr v-for="mr in maintenanceRequests" :key="mr.id" class="hover:bg-[#F8FAFC] transition">
-                                <td class="p-3.5 font-bold text-[#0F2747]">{{ mr.title }}</td>
-                                <td class="p-3.5 text-[#0E6E7E] font-medium">{{ mr.workspace_name }}</td>
+                                <td class="p-3.5 font-bold text-[#163E3E]">{{ mr.title }}</td>
+                                <td class="p-3.5 text-[#163E3E] font-medium">{{ mr.workspace_name }}</td>
                                 <td class="p-3.5">
                                     <span
                                         class="px-2 py-0.5 rounded-full text-[10px] font-bold"
@@ -818,7 +818,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                     <select
                                         :value="mr.status"
                                         @change="updateMaintenanceStatus(mr.id, ($event.target as HTMLSelectElement).value)"
-                                        class="h-7 px-2 rounded-lg border border-[#D6E0E7] bg-white text-[11px] font-semibold text-[#0F2747] cursor-pointer"
+                                        class="h-7 px-2 rounded-lg border border-[#D6E0E7] bg-white text-[11px] font-semibold text-[#163E3E] cursor-pointer"
                                     >
                                         <option value="open">مفتوح (Open)</option>
                                         <option value="in_progress">قيد التنفيذ (In Progress)</option>
@@ -836,7 +836,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
         <!-- TAB 8: الباقات والاشتراكات (Subscriptions Tab) -->
         <div v-show="currentTab === 'subscriptions'" class="space-y-6 animate-in fade-in">
             <div>
-                <h3 class="text-lg font-bold text-[#0F2747]">باقات الاشتراك الرسمية للمنصة</h3>
+                <h3 class="text-lg font-bold text-[#163E3E]">باقات الاشتراك الرسمية للمنصة</h3>
                 <p class="text-xs text-[#5B6770]">إدارة تسعير الخطط والحدود القصوى للوحدات.</p>
             </div>
 
@@ -848,14 +848,14 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                     class="p-5 rounded-2xl border border-[#D6E0E7] bg-white shadow-2xs space-y-3"
                 >
                     <div class="flex items-center justify-between">
-                        <span class="text-sm font-bold text-[#0F2747]">{{ plan.name }}</span>
+                        <span class="text-sm font-bold text-[#163E3E]">{{ plan.name }}</span>
                         <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">نشطة</span>
                     </div>
-                    <div class="text-2xl font-black text-[#0E6E7E]">
+                    <div class="text-2xl font-black text-[#163E3E]">
                         {{ plan.monthly_price }} <span class="text-xs font-medium text-[#5B6770]">ج.م / شهرياً</span>
                     </div>
                     <div class="text-xs text-[#5B6770] font-medium pt-2 border-t border-[#E8EFF4]">
-                        حد الوحدات: <strong class="text-[#0F2747]">{{ plan.unit_limit ? plan.unit_limit + ' وحدة' : 'غير محدود' }}</strong>
+                        حد الوحدات: <strong class="text-[#163E3E]">{{ plan.unit_limit ? plan.unit_limit + ' وحدة' : 'غير محدود' }}</strong>
                     </div>
                 </div>
             </div>
@@ -864,7 +864,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
         <!-- TAB 9: سجل رسائل واتساب (WhatsApp Logs Tab) -->
         <div v-show="currentTab === 'logs'" class="space-y-4 animate-in fade-in">
             <div>
-                <h3 class="text-lg font-bold text-[#0F2747]">سجل رسائل واتساب الرسمية (WhatsApp Cloud API)</h3>
+                <h3 class="text-lg font-bold text-[#163E3E]">سجل رسائل واتساب الرسمية (WhatsApp Cloud API)</h3>
                 <p class="text-xs text-[#5B6770]">مراقبة تسليم قوالب التذكيرات التلقائية وحالات الرسائل عبر المنصة.</p>
             </div>
 
@@ -884,9 +884,9 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                         </thead>
                         <tbody class="divide-y divide-[#E8EFF4]">
                             <tr v-for="log in messageLogs" :key="log.id" class="hover:bg-[#F8FAFC] transition">
-                                <td class="p-3.5 font-bold text-[#0F2747]">{{ log.renter_name }}</td>
+                                <td class="p-3.5 font-bold text-[#163E3E]">{{ log.renter_name }}</td>
                                 <td class="p-3.5 font-mono text-[#5B6770]" dir="ltr">{{ log.recipient_phone }}</td>
-                                <td class="p-3.5 text-[#0E6E7E] font-medium">{{ log.workspace_name }}</td>
+                                <td class="p-3.5 text-[#163E3E] font-medium">{{ log.workspace_name }}</td>
                                 <td class="p-3.5 font-mono text-xs">{{ log.template_name }}</td>
                                 <td class="p-3.5">
                                     <StatusBadge :status="log.status" />
@@ -907,8 +907,8 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
         <Modal :show="showCreateUserModal" @close="showCreateUserModal = false" max-width="md">
             <div class="p-6 text-right" dir="rtl">
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
-                    <h3 class="text-base font-bold text-[#0F2747]">إضافة مستخدم جديد للنظام</h3>
-                    <button @click="showCreateUserModal = false" type="button" class="text-[#5B6770] hover:text-[#0F2747] p-1">
+                    <h3 class="text-base font-bold text-[#163E3E]">إضافة مستخدم جديد للنظام</h3>
+                    <button @click="showCreateUserModal = false" type="button" class="text-[#5B6770] hover:text-[#163E3E] p-1">
                         <X class="w-5 h-5" />
                     </button>
                 </div>
@@ -952,8 +952,8 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
         <Modal :show="showEditUserModal" @close="showEditUserModal = false" max-width="md">
             <div class="p-6 text-right" dir="rtl">
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
-                    <h3 class="text-base font-bold text-[#0F2747]">تعديل بيانات المستخدم</h3>
-                    <button @click="showEditUserModal = false" type="button" class="text-[#5B6770] hover:text-[#0F2747] p-1">
+                    <h3 class="text-base font-bold text-[#163E3E]">تعديل بيانات المستخدم</h3>
+                    <button @click="showEditUserModal = false" type="button" class="text-[#5B6770] hover:text-[#163E3E] p-1">
                         <X class="w-5 h-5" />
                     </button>
                 </div>
@@ -996,8 +996,8 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
         <Modal :show="showEditWorkspaceModal" @close="showEditWorkspaceModal = false" max-width="md">
             <div class="p-6 text-right" dir="rtl">
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
-                    <h3 class="text-base font-bold text-[#0F2747]">تعديل مساحة العمل</h3>
-                    <button @click="showEditWorkspaceModal = false" type="button" class="text-[#5B6770] hover:text-[#0F2747] p-1">
+                    <h3 class="text-base font-bold text-[#163E3E]">تعديل مساحة العمل</h3>
+                    <button @click="showEditWorkspaceModal = false" type="button" class="text-[#5B6770] hover:text-[#163E3E] p-1">
                         <X class="w-5 h-5" />
                     </button>
                 </div>
@@ -1050,8 +1050,8 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
         <Modal :show="showSubscriptionModal" @close="showSubscriptionModal = false" max-width="md">
             <div class="p-6 text-right" dir="rtl">
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
-                    <h3 class="text-base font-bold text-[#0F2747]">تغيير باقة مساحة العمل</h3>
-                    <button @click="showSubscriptionModal = false" type="button" class="text-[#5B6770] hover:text-[#0F2747] p-1">
+                    <h3 class="text-base font-bold text-[#163E3E]">تغيير باقة مساحة العمل</h3>
+                    <button @click="showSubscriptionModal = false" type="button" class="text-[#5B6770] hover:text-[#163E3E] p-1">
                         <X class="w-5 h-5" />
                     </button>
                 </div>
@@ -1059,7 +1059,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                 <form @submit.prevent="submitSubscription" class="mt-4 space-y-4">
                     <div>
                         <InputLabel value="مساحة العمل" />
-                        <div class="p-3 rounded-xl bg-[#F8FAFC] border border-[#D6E0E7] font-bold text-[#0F2747] text-sm">
+                        <div class="p-3 rounded-xl bg-[#F8FAFC] border border-[#D6E0E7] font-bold text-[#163E3E] text-sm">
                             {{ selectedWorkspace?.name }}
                         </div>
                     </div>

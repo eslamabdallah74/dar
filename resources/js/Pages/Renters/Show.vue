@@ -21,7 +21,9 @@ import {
     MessageCircle,
     MessageSquare,
     Paperclip,
+    Pencil,
     Phone,
+    Printer,
     Shield,
     ShieldCheck,
     Store,
@@ -51,6 +53,8 @@ interface PaymentItem {
     paid_at: string;
     payment_method: string;
     notes: string | null;
+    has_receipt?: boolean;
+    receipt_url?: string | null;
 }
 
 interface WhatsAppLogItem {
@@ -80,6 +84,8 @@ const props = defineProps<{
         phone: string;
         email: string | null;
         national_id: string;
+        gender?: 'male' | 'female' | null;
+        gender_label?: string | null;
         whatsapp_opted_in: boolean;
         whatsapp_opt_in_date: string | null;
         notes: string | null;
@@ -93,6 +99,13 @@ const props = defineProps<{
         unit_type?: string;
         unit_type_label?: string;
         property_name: string;
+        apartment_gender?: {
+            status: string;
+            label: string;
+            short_label: string;
+            description: string;
+            badge_class: string;
+        } | null;
         starts_on: string;
         ends_on: string;
         rent_amount: number;
@@ -130,6 +143,18 @@ const props = defineProps<{
 
 const activeTab = ref<'ledger' | 'payments' | 'deposits' | 'whatsapp' | 'documents'>('ledger');
 const recordPaymentOpen = ref(false);
+const noActiveLeaseWarning = ref(false);
+
+const handleOpenPayment = () => {
+    if (!props.active_lease) {
+        noActiveLeaseWarning.value = true;
+        setTimeout(() => {
+            noActiveLeaseWarning.value = false;
+        }, 6000);
+        return;
+    }
+    recordPaymentOpen.value = true;
+};
 
 const documentUploadOpen = ref(false);
 const docForm = useForm({
@@ -155,6 +180,34 @@ const submitDocument = () => {
     });
 };
 
+const showEditModal = ref(false);
+const editForm = useForm({
+    name: props.renter.name,
+    phone: props.renter.phone,
+    national_id: props.renter.national_id === '—' ? '' : props.renter.national_id,
+    email: props.renter.email || '',
+    gender: (props.renter.gender || '') as '' | 'male' | 'female',
+    notes: props.renter.notes || '',
+});
+
+const openEditModal = () => {
+    editForm.name = props.renter.name;
+    editForm.phone = props.renter.phone;
+    editForm.national_id = props.renter.national_id === '—' ? '' : props.renter.national_id;
+    editForm.email = props.renter.email || '';
+    editForm.gender = (props.renter.gender || '') as '' | 'male' | 'female';
+    editForm.notes = props.renter.notes || '';
+    showEditModal.value = true;
+};
+
+const submitEdit = () => {
+    editForm.put(route('renters.update', props.renter.id), {
+        onSuccess: () => {
+            showEditModal.value = false;
+        },
+    });
+};
+
 const deleteDocument = (docId: number) => {
     if (confirm('هل أنت متأكد من رغبتك بحذف هذا المستند نهائياً؟')) {
         router.delete(route('renters.documents.destroy', [props.renter.id, docId]));
@@ -164,7 +217,7 @@ const deleteDocument = (docId: number) => {
 
 <template>
     <AppLayout
-        :title="`ملف المستأجر ${renter?.name || ''} — دار`"
+        :title="`ملف المستأجر ${renter?.name || ''} — Nook Mate`"
         active-tab="renters"
         :header-title="renter?.name || 'مستأجر'"
         :header-subtitle="`ملف المستأجر • هوية رقم: ${renter?.national_id || '—'}`"
@@ -173,11 +226,20 @@ const deleteDocument = (docId: number) => {
         <template #actions>
             <Link
                 :href="route('renters.index')"
-                class="h-10 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F3F7FA] text-xs font-semibold text-[#5B6770] transition flex items-center gap-1.5"
+                class="h-10 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F8F4EA] text-xs font-semibold text-[#5B6770] transition flex items-center gap-1.5"
             >
                 <ArrowRight class="w-4 h-4" />
                 <span>العودة للمستأجرين</span>
             </Link>
+
+            <button
+                @click="openEditModal"
+                type="button"
+                class="h-10 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-slate-50 text-xs font-semibold text-[#163E3E] transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            >
+                <Pencil class="w-3.5 h-3.5 text-[#163E3E]" />
+                <span>تعديل البيانات</span>
+            </button>
 
             <a
                 v-if="renter?.phone"
@@ -190,21 +252,45 @@ const deleteDocument = (docId: number) => {
             </a>
 
             <button
-                @click="recordPaymentOpen = true"
+                @click="handleOpenPayment"
                 type="button"
-                class="h-10 px-5 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer"
+                :class="[
+                    'h-10 px-5 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-xs',
+                    active_lease
+                        ? 'bg-[#163E3E] hover:bg-[#102F2F] text-white cursor-pointer'
+                        : 'bg-slate-100 hover:bg-slate-200 text-[#8A9AA7] border border-[#D6E0E7] cursor-not-allowed'
+                ]"
+                :title="!active_lease ? 'المستأجر لا يستأجر أي وحدة حالياً' : 'تسجيل دفعة يدوية'"
             >
                 <CreditCard class="w-4 h-4" />
                 <span>تسجيل دفعة يدوية</span>
             </button>
         </template>
 
+        <!-- تنبيه في حال محاولة تسجيل دفعة لمستأجر ليس لديه عقد نشط -->
+        <div
+            v-if="noActiveLeaseWarning"
+            class="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-xs font-semibold text-amber-900 flex items-center justify-between gap-3 shadow-xs"
+        >
+            <div class="flex items-center gap-2.5">
+                <AlertCircle class="w-5 h-5 text-amber-600 shrink-0" />
+                <span>لا يمكن تسجيل دفعة: هذا المستأجر لا يستأجر أي وحدة حالياً (لا يوجد عقد إيجار سارٍ).</span>
+            </div>
+            <button
+                @click="noActiveLeaseWarning = false"
+                type="button"
+                class="text-amber-700 hover:text-amber-950 p-1 rounded-lg hover:bg-amber-100/50"
+            >
+                <X class="w-4 h-4" />
+            </button>
+        </div>
+
         <!-- كروت الملخص المالي للمستأجر (3 KPIs) -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
                 <span class="text-xs font-semibold text-[#5B6770]">إجمالي المطالبات المفوترة</span>
                 <div class="flex items-baseline justify-between">
-                    <span class="text-2xl font-bold text-[#0F2747] font-mono">{{ summary.total_billed.toLocaleString() }} <span class="text-xs font-sans font-normal text-[#5B6770]">ج.م</span></span>
+                    <span class="text-2xl font-bold text-[#163E3E] font-mono">{{ summary.total_billed.toLocaleString() }} <span class="text-xs font-sans font-normal text-[#5B6770]">ج.م</span></span>
                     <span class="text-xs text-[#5B6770]">إجمالي الفترات</span>
                 </div>
             </div>
@@ -222,7 +308,7 @@ const deleteDocument = (docId: number) => {
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
                 <span class="text-xs font-semibold text-[#5B6770]">المتبقي المستحق</span>
                 <div class="flex items-baseline justify-between">
-                    <span class="text-2xl font-bold font-mono" :class="summary.total_outstanding > 0 ? 'text-rose-600' : 'text-[#0F2747]'">
+                    <span class="text-2xl font-bold font-mono" :class="summary.total_outstanding > 0 ? 'text-rose-600' : 'text-[#163E3E]'">
                         {{ summary.total_outstanding.toLocaleString() }} <span class="text-xs font-sans font-normal text-[#5B6770]">ج.م</span>
                     </span>
                     <span
@@ -242,11 +328,11 @@ const deleteDocument = (docId: number) => {
                 <!-- بطاقة البيانات الشخصية للمستأجر -->
                 <div class="rounded-3xl border border-[#D6E0E7] bg-white p-6 shadow-2xs space-y-4">
                     <div class="flex items-center gap-3 pb-3 border-b border-[#D6E0E7]">
-                        <div class="w-12 h-12 rounded-2xl bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center font-bold text-base">
+                        <div class="w-12 h-12 rounded-2xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center font-bold text-base">
                             {{ renter.name.charAt(0) }}
                         </div>
                         <div>
-                            <h3 class="text-base font-bold text-[#0F2747]">{{ renter.name }}</h3>
+                            <h3 class="text-base font-bold text-[#163E3E]">{{ renter.name }}</h3>
                             <span class="text-xs text-[#5B6770]">مسجل منذ {{ renter.created_at }}</span>
                         </div>
                     </div>
@@ -257,7 +343,22 @@ const deleteDocument = (docId: number) => {
                                 <Phone class="w-3.5 h-3.5" />
                                 <span>الجوال:</span>
                             </span>
-                            <span class="font-mono font-bold text-[#0F2747]" dir="ltr">{{ renter.phone }}</span>
+                            <span class="font-mono font-bold text-[#163E3E]" dir="ltr">{{ renter.phone }}</span>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <span class="text-[#5B6770] flex items-center gap-1.5">
+                                <User class="w-3.5 h-3.5" />
+                                <span>الجنس:</span>
+                            </span>
+                            <span
+                                v-if="renter.gender"
+                                class="inline-flex items-center gap-1 font-bold px-2.5 py-0.5 rounded-lg border text-xs"
+                                :class="renter.gender === 'female' ? 'bg-rose-50 text-rose-800 border-rose-200' : 'bg-sky-50 text-sky-800 border-sky-200'"
+                            >
+                                <span>{{ renter.gender_label || (renter.gender === 'female' ? 'أنثى' : 'ذكر') }}</span>
+                            </span>
+                            <span v-else class="text-[#8E9CA6] font-normal text-xs">— (غير محدد)</span>
                         </div>
 
                         <div class="flex items-center justify-between">
@@ -265,7 +366,7 @@ const deleteDocument = (docId: number) => {
                                 <ShieldCheck class="w-3.5 h-3.5" />
                                 <span>رقم الهوية:</span>
                             </span>
-                            <span class="font-mono font-bold text-[#0F2747]">{{ renter.national_id }}</span>
+                            <span class="font-mono font-bold text-[#163E3E]">{{ renter.national_id }}</span>
                         </div>
 
                         <div v-if="renter.email" class="flex items-center justify-between">
@@ -273,7 +374,7 @@ const deleteDocument = (docId: number) => {
                                 <Mail class="w-3.5 h-3.5" />
                                 <span>البريد:</span>
                             </span>
-                            <span class="font-mono text-[#0F2747]">{{ renter.email }}</span>
+                            <span class="font-mono text-[#163E3E]">{{ renter.email }}</span>
                         </div>
 
                         <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
@@ -288,19 +389,19 @@ const deleteDocument = (docId: number) => {
                     </div>
 
                     <div v-if="renter.notes" class="p-3 rounded-xl bg-[#F8FAFC] border border-[#D6E0E7] text-xs text-[#5B6770]">
-                        <span class="font-bold text-[#0F2747] block mb-1">ملاحظات الإدارة:</span>
+                        <span class="font-bold text-[#163E3E] block mb-1">ملاحظات الإدارة:</span>
                         {{ renter.notes }}
                     </div>
                 </div>
 
                 <!-- بطاقة العقد الساري -->
-                <div v-if="active_lease" class="rounded-3xl border border-[#0E6E7E]/30 bg-[#E3F1F4]/20 p-6 shadow-2xs space-y-4">
-                    <div class="flex items-center justify-between border-b border-[#0E6E7E]/10 pb-3">
+                <div v-if="active_lease" class="rounded-3xl border border-[#163E3E]/30 bg-[#E8F0F0]/20 p-6 shadow-2xs space-y-4">
+                    <div class="flex items-center justify-between border-b border-[#163E3E]/10 pb-3">
                         <div class="flex items-center gap-2">
-                            <FileText class="w-4 h-4 text-[#0E6E7E]" />
-                            <span class="text-sm font-bold text-[#0F2747]">عقد الإيجار الساري</span>
+                            <FileText class="w-4 h-4 text-[#163E3E]" />
+                            <span class="text-sm font-bold text-[#163E3E]">عقد الإيجار الساري</span>
                         </div>
-                        <span class="font-mono text-xs font-bold text-[#0E6E7E] bg-white px-2 py-0.5 rounded border border-[#0E6E7E]/20">
+                        <span class="font-mono text-xs font-bold text-[#163E3E] bg-white px-2 py-0.5 rounded border border-[#163E3E]/20">
                             {{ active_lease.contract_number }}
                         </span>
                     </div>
@@ -308,24 +409,40 @@ const deleteDocument = (docId: number) => {
                     <div class="space-y-2.5 text-xs">
                         <div class="flex items-center justify-between">
                             <span class="text-[#5B6770]">العقار والوحدة:</span>
-                            <span class="font-bold text-[#0F2747] flex items-center gap-1">
-                                <Store v-if="active_lease.unit_type === 'shop'" class="w-3.5 h-3.5 text-[#0E6E7E]" />
+                            <span class="font-bold text-[#163E3E] flex items-center gap-1">
+                                <Store v-if="active_lease.unit_type === 'shop'" class="w-3.5 h-3.5 text-[#163E3E]" />
                                 <span>{{ active_lease.unit_name }} ({{ active_lease.property_name }})</span>
+                            </span>
+                        </div>
+
+                        <div v-if="active_lease.apartment_gender && active_lease.apartment_gender.status !== 'unspecified'" class="flex items-center justify-between">
+                            <span class="text-[#5B6770]">تصنيف سكن الشقة:</span>
+                            <span
+                                class="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-md border text-[11px]"
+                                :class="[
+                                    active_lease.apartment_gender.status === 'male' ? 'bg-sky-50 text-sky-800 border-sky-200' :
+                                    active_lease.apartment_gender.status === 'female' ? 'bg-rose-50 text-rose-800 border-rose-200' :
+                                    'bg-amber-50 text-amber-800 border-amber-200'
+                                ]"
+                            >
+                                <User v-if="active_lease.apartment_gender.status === 'male' || active_lease.apartment_gender.status === 'female'" class="w-3 h-3" />
+                                <Users v-else class="w-3 h-3" />
+                                <span>{{ active_lease.apartment_gender.label }}</span>
                             </span>
                         </div>
 
                         <div class="flex items-center justify-between">
                             <span class="text-[#5B6770]">القيمة الإيجارية:</span>
-                            <span class="font-bold text-[#0E6E7E] font-mono text-sm">
+                            <span class="font-bold text-[#163E3E] font-mono text-sm">
                                 {{ active_lease.rent_amount.toLocaleString() }} ج.م / شهرياً
                             </span>
                         </div>
 
                         <div class="flex items-center justify-between">
                             <span class="text-[#5B6770]">مبلغ التأمين المسترد:</span>
-                            <span class="font-mono font-bold text-[#0F2747]">
+                            <span class="font-mono font-bold text-[#163E3E]">
                                 {{ active_lease.deposit_amount.toLocaleString() }} ج.م
-                                <span v-if="active_lease.deposit_status_label" class="text-[10px] text-[#0E6E7E] font-sans font-semibold">
+                                <span v-if="active_lease.deposit_status_label" class="text-[10px] text-[#163E3E] font-sans font-semibold">
                                     ({{ active_lease.deposit_status_label }})
                                 </span>
                             </span>
@@ -340,15 +457,15 @@ const deleteDocument = (docId: number) => {
 
                         <div class="flex items-center justify-between">
                             <span class="text-[#5B6770]">مدة العقد:</span>
-                            <span class="font-mono text-[#0F2747]">
+                            <span class="font-mono text-[#163E3E]">
                                 {{ active_lease.starts_on }} — {{ active_lease.ends_on }}
                             </span>
                         </div>
 
-                        <div class="pt-2 border-t border-[#0E6E7E]/10">
+                        <div class="pt-2 border-t border-[#163E3E]/10">
                             <Link
                                 :href="route('leases.show', active_lease.id)"
-                                class="w-full h-8 rounded-lg bg-white border border-[#0E6E7E]/30 hover:bg-[#E3F1F4] text-[#0E6E7E] text-[11px] font-bold transition flex items-center justify-center gap-1 shadow-2xs"
+                                class="w-full h-8 rounded-lg bg-white border border-[#163E3E]/30 hover:bg-[#E8F0F0] text-[#163E3E] text-[11px] font-bold transition flex items-center justify-center gap-1 shadow-2xs"
                             >
                                 <span>عرض تفاصيل العقد والتأمين</span>
                                 <span>←</span>
@@ -367,8 +484,8 @@ const deleteDocument = (docId: number) => {
                         type="button"
                         class="px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2"
                         :class="activeTab === 'ledger'
-                            ? 'bg-[#0E6E7E] text-white shadow-2xs'
-                            : 'bg-white text-[#5B6770] hover:text-[#0F2747] border border-[#D6E0E7]'"
+                            ? 'bg-[#163E3E] text-white shadow-2xs'
+                            : 'bg-white text-[#5B6770] hover:text-[#163E3E] border border-[#D6E0E7]'"
                     >
                         <FileText class="w-3.5 h-3.5" />
                         <span>سجل الاستحقاقات والفواتير ({{ ledger.length }})</span>
@@ -379,8 +496,8 @@ const deleteDocument = (docId: number) => {
                         type="button"
                         class="px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2"
                         :class="activeTab === 'payments'
-                            ? 'bg-[#0E6E7E] text-white shadow-2xs'
-                            : 'bg-white text-[#5B6770] hover:text-[#0F2747] border border-[#D6E0E7]'"
+                            ? 'bg-[#163E3E] text-white shadow-2xs'
+                            : 'bg-white text-[#5B6770] hover:text-[#163E3E] border border-[#D6E0E7]'"
                     >
                         <CreditCard class="w-3.5 h-3.5" />
                         <span>سندات القبض المسددة ({{ payments.length }})</span>
@@ -391,8 +508,8 @@ const deleteDocument = (docId: number) => {
                         type="button"
                         class="px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2"
                         :class="activeTab === 'deposits'
-                            ? 'bg-[#0E6E7E] text-white shadow-2xs'
-                            : 'bg-white text-[#5B6770] hover:text-[#0F2747] border border-[#D6E0E7]'"
+                            ? 'bg-[#163E3E] text-white shadow-2xs'
+                            : 'bg-white text-[#5B6770] hover:text-[#163E3E] border border-[#D6E0E7]'"
                     >
                         <Shield class="w-3.5 h-3.5" />
                         <span>سجل التأمين المسترد ({{ security_deposits?.length || 0 }})</span>
@@ -403,8 +520,8 @@ const deleteDocument = (docId: number) => {
                         type="button"
                         class="px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2"
                         :class="activeTab === 'whatsapp'
-                            ? 'bg-[#0E6E7E] text-white shadow-2xs'
-                            : 'bg-white text-[#5B6770] hover:text-[#0F2747] border border-[#D6E0E7]'"
+                            ? 'bg-[#163E3E] text-white shadow-2xs'
+                            : 'bg-white text-[#5B6770] hover:text-[#163E3E] border border-[#D6E0E7]'"
                     >
                         <MessageSquare class="w-3.5 h-3.5" />
                         <span>سجل رسائل WhatsApp ({{ whatsapp_logs.length }})</span>
@@ -415,8 +532,8 @@ const deleteDocument = (docId: number) => {
                         type="button"
                         class="px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2"
                         :class="activeTab === 'documents'
-                            ? 'bg-[#0E6E7E] text-white shadow-2xs'
-                            : 'bg-white text-[#5B6770] hover:text-[#0F2747] border border-[#D6E0E7]'"
+                            ? 'bg-[#163E3E] text-white shadow-2xs'
+                            : 'bg-white text-[#5B6770] hover:text-[#163E3E] border border-[#D6E0E7]'"
                     >
                         <Paperclip class="w-3.5 h-3.5" />
                         <span>المستندات والوثائق ({{ documents?.length || 0 }})</span>
@@ -437,10 +554,10 @@ const deleteDocument = (docId: number) => {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-[#D6E0E7]">
-                            <tr v-for="item in ledger" :key="item.id" class="hover:bg-[#F3F7FA] transition">
-                                <td class="py-3.5 px-5 font-mono font-bold text-[#0F2747]">{{ item.period }}</td>
+                            <tr v-for="item in ledger" :key="item.id" class="hover:bg-[#F8F4EA] transition">
+                                <td class="py-3.5 px-5 font-mono font-bold text-[#163E3E]">{{ item.period }}</td>
                                 <td class="py-3.5 px-5 font-mono text-[#5B6770]">{{ item.due_date }}</td>
-                                <td class="py-3.5 px-5 font-mono font-bold text-[#0F2747]">{{ item.amount.toLocaleString() }} ج.م</td>
+                                <td class="py-3.5 px-5 font-mono font-bold text-[#163E3E]">{{ item.amount.toLocaleString() }} ج.م</td>
                                 <td class="py-3.5 px-5 font-mono font-bold text-emerald-700">{{ item.paid_amount.toLocaleString() }} ج.م</td>
                                 <td class="py-3.5 px-5 font-mono" :class="item.outstanding_balance > 0 ? 'text-rose-600 font-bold' : 'text-[#5B6770]'">
                                     {{ item.outstanding_balance.toLocaleString() }} ج.م
@@ -463,15 +580,40 @@ const deleteDocument = (docId: number) => {
                                 <th class="py-3 px-5">المبلغ</th>
                                 <th class="py-3 px-5">طريقة الدفع</th>
                                 <th class="py-3 px-5">ملاحظات</th>
+                                <th class="py-3 px-5 text-center">المرفقات والسند</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-[#D6E0E7]">
-                            <tr v-for="pay in payments" :key="pay.id" class="hover:bg-[#F3F7FA] transition">
-                                <td class="py-3.5 px-5 font-mono font-bold text-[#0E6E7E]">{{ pay.reference }}</td>
+                            <tr v-for="pay in payments" :key="pay.id" class="hover:bg-[#F8F4EA] transition">
+                                <td class="py-3.5 px-5 font-mono font-bold text-[#163E3E]">{{ pay.reference }}</td>
                                 <td class="py-3.5 px-5 font-mono text-[#5B6770]">{{ pay.paid_at }}</td>
-                                <td class="py-3.5 px-5 font-mono font-bold text-[#0F2747]">{{ pay.amount.toLocaleString() }} ج.م</td>
-                                <td class="py-3.5 px-5 text-[#0F2747]">{{ pay.payment_method }}</td>
+                                <td class="py-3.5 px-5 font-mono font-bold text-[#163E3E]">{{ pay.amount.toLocaleString() }} ج.م</td>
+                                <td class="py-3.5 px-5 text-[#163E3E]">{{ pay.payment_method }}</td>
                                 <td class="py-3.5 px-5 text-[#5B6770]">{{ pay.notes || '—' }}</td>
+                                <td class="py-3.5 px-5 text-center">
+                                    <div class="flex items-center justify-center gap-2">
+                                        <a
+                                            v-if="pay.has_receipt && pay.receipt_url"
+                                            :href="pay.receipt_url"
+                                            target="_blank"
+                                            class="h-7 px-2.5 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-bold transition inline-flex items-center gap-1 shadow-2xs"
+                                            title="عرض إشعار التحويل المرفق"
+                                        >
+                                            <Paperclip class="w-3 h-3 text-emerald-700" />
+                                            <span>إشعار التحويل</span>
+                                        </a>
+
+                                        <a
+                                            :href="route('payments.receipt', pay.id)"
+                                            target="_blank"
+                                            class="h-7 px-2.5 rounded-lg border border-[#D6E0E7] bg-white hover:bg-slate-50 text-[#163E3E] text-[11px] font-bold transition inline-flex items-center gap-1 shadow-2xs"
+                                            title="عرض وطباعة سند القبض"
+                                        >
+                                            <Printer class="w-3 h-3" />
+                                            <span>السند</span>
+                                        </a>
+                                    </div>
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -494,25 +636,25 @@ const deleteDocument = (docId: number) => {
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-[#D6E0E7]">
-                                <tr v-for="dep in security_deposits" :key="dep.lease_id" class="hover:bg-[#F3F7FA] transition">
-                                    <td class="py-3.5 px-5 font-mono font-bold text-[#0E6E7E]">
+                                <tr v-for="dep in security_deposits" :key="dep.lease_id" class="hover:bg-[#F8F4EA] transition">
+                                    <td class="py-3.5 px-5 font-mono font-bold text-[#163E3E]">
                                         <Link :href="route('leases.show', dep.lease_id)" class="hover:underline">
                                             {{ dep.contract_number }}
                                         </Link>
                                     </td>
                                     <td class="py-3.5 px-5">
-                                        <div class="flex items-center gap-1 font-bold text-[#0F2747]">
-                                            <Store v-if="dep.unit_type === 'shop'" class="w-3.5 h-3.5 text-[#0E6E7E]" />
+                                        <div class="flex items-center gap-1 font-bold text-[#163E3E]">
+                                            <Store v-if="dep.unit_type === 'shop'" class="w-3.5 h-3.5 text-[#163E3E]" />
                                             <span>{{ dep.unit_name }}</span>
                                         </div>
                                     </td>
                                     <td class="py-3.5 px-5 font-mono">{{ dep.agreed_amount.toLocaleString() }} ج.م</td>
                                     <td class="py-3.5 px-5 font-mono font-bold text-emerald-700">{{ dep.total_received.toLocaleString() }} ج.م</td>
                                     <td class="py-3.5 px-5 font-mono text-rose-700">{{ dep.total_deductions.toLocaleString() }} ج.م</td>
-                                    <td class="py-3.5 px-5 font-mono text-[#0E6E7E]">{{ dep.total_refunded.toLocaleString() }} ج.م</td>
-                                    <td class="py-3.5 px-5 font-mono font-bold text-[#0F2747]">{{ dep.refundable_balance.toLocaleString() }} ج.م</td>
+                                    <td class="py-3.5 px-5 font-mono text-[#163E3E]">{{ dep.total_refunded.toLocaleString() }} ج.م</td>
+                                    <td class="py-3.5 px-5 font-mono font-bold text-[#163E3E]">{{ dep.refundable_balance.toLocaleString() }} ج.م</td>
                                     <td class="py-3.5 px-5">
-                                        <span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-[#E3F1F4] text-[#0E6E7E]">
+                                        <span class="text-xs font-semibold px-2 py-0.5 rounded-md bg-[#E8F0F0] text-[#163E3E]">
                                             {{ dep.status_label }}
                                         </span>
                                     </td>
@@ -537,8 +679,8 @@ const deleteDocument = (docId: number) => {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-[#D6E0E7]">
-                            <tr v-for="log in whatsapp_logs" :key="log.id" class="hover:bg-[#F3F7FA] transition">
-                                <td class="py-3.5 px-5 font-bold text-[#0F2747] flex items-center gap-2">
+                            <tr v-for="log in whatsapp_logs" :key="log.id" class="hover:bg-[#F8F4EA] transition">
+                                <td class="py-3.5 px-5 font-bold text-[#163E3E] flex items-center gap-2">
                                     <MessageCircle class="w-4 h-4 text-emerald-600 shrink-0" />
                                     <span>{{ log.template }}</span>
                                 </td>
@@ -556,13 +698,13 @@ const deleteDocument = (docId: number) => {
                 <div v-if="activeTab === 'documents'" class="space-y-4">
                     <div class="flex items-center justify-between bg-white p-5 rounded-3xl border border-[#D6E0E7] shadow-2xs">
                         <div>
-                            <h4 class="text-sm font-bold text-[#0F2747]">المستندات والوثائق الخاصة</h4>
+                            <h4 class="text-sm font-bold text-[#163E3E]">المستندات والوثائق الخاصة</h4>
                             <p class="text-xs text-[#5B6770] mt-0.5">تخزين آمن ومحمي للهويات الوطنية، عقود الإيجار، والخطابات الرسمية</p>
                         </div>
                         <button
                             @click="documentUploadOpen = !documentUploadOpen"
                             type="button"
-                            class="h-9 px-4 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                            class="h-9 px-4 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
                         >
                             <Upload class="w-3.5 h-3.5" />
                             <span>{{ documentUploadOpen ? 'إلغاء الرفع' : '+ رفع مستند جديد' }}</span>
@@ -570,10 +712,10 @@ const deleteDocument = (docId: number) => {
                     </div>
 
                     <!-- نموذج رفع مستند جديد -->
-                    <div v-if="documentUploadOpen" class="rounded-3xl border border-[#0E6E7E]/30 bg-[#E3F1F4]/20 p-5 shadow-2xs space-y-4 animate-in fade-in duration-200">
-                        <div class="flex items-center justify-between border-b border-[#0E6E7E]/10 pb-3">
-                            <span class="text-xs font-bold text-[#0F2747] flex items-center gap-1.5">
-                                <Upload class="w-4 h-4 text-[#0E6E7E]" />
+                    <div v-if="documentUploadOpen" class="rounded-3xl border border-[#163E3E]/30 bg-[#E8F0F0]/20 p-5 shadow-2xs space-y-4 animate-in fade-in duration-200">
+                        <div class="flex items-center justify-between border-b border-[#163E3E]/10 pb-3">
+                            <span class="text-xs font-bold text-[#163E3E] flex items-center gap-1.5">
+                                <Upload class="w-4 h-4 text-[#163E3E]" />
                                 <span>رفع مستند جديد للمستأجر</span>
                             </span>
                         </div>
@@ -581,11 +723,11 @@ const deleteDocument = (docId: number) => {
                         <form @submit.prevent="submitDocument" class="space-y-4">
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
-                                    <label class="block text-xs font-bold text-[#0F2747] mb-1">نوع المستند *</label>
+                                    <label class="block text-xs font-bold text-[#163E3E] mb-1">نوع المستند *</label>
                                     <select
                                         v-model="docForm.document_type"
                                         required
-                                        class="w-full h-10 px-3 rounded-xl border border-[#D6E0E7] bg-white text-xs text-[#0F2747] focus:border-[#0E6E7E] focus:ring-1 focus:ring-[#0E6E7E]"
+                                        class="w-full h-10 px-3 rounded-xl border border-[#D6E0E7] bg-white text-xs text-[#163E3E] focus:border-[#163E3E] focus:ring-1 focus:ring-[#163E3E]"
                                     >
                                         <option value="national_id">بطاقة هوية وطنية</option>
                                         <option value="passport">جواز سفر</option>
@@ -595,31 +737,31 @@ const deleteDocument = (docId: number) => {
                                 </div>
 
                                 <div>
-                                    <label class="block text-xs font-bold text-[#0F2747] mb-1">عنوان / وصف المستند</label>
+                                    <label class="block text-xs font-bold text-[#163E3E] mb-1">عنوان / وصف المستند</label>
                                     <input
                                         v-model="docForm.title"
                                         type="text"
                                         placeholder="مثال: صورة عقد إيجار موثق أو بطاقة ضامنة"
-                                        class="w-full h-10 px-3 rounded-xl border border-[#D6E0E7] bg-white text-xs text-[#0F2747] focus:border-[#0E6E7E] focus:ring-1 focus:ring-[#0E6E7E]"
+                                        class="w-full h-10 px-3 rounded-xl border border-[#D6E0E7] bg-white text-xs text-[#163E3E] focus:border-[#163E3E] focus:ring-1 focus:ring-[#163E3E]"
                                     />
                                 </div>
                             </div>
 
                             <div>
-                                <label class="block text-xs font-bold text-[#0F2747] mb-1">الملف (PDF، صورة، DOCX بحد أقصى 10 ميجابايت) *</label>
+                                <label class="block text-xs font-bold text-[#163E3E] mb-1">الملف (PDF، صورة، DOCX بحد أقصى 10 ميجابايت) *</label>
                                 <input
                                     type="file"
                                     required
                                     accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
                                     @change="onFileSelected"
-                                    class="w-full text-xs text-[#5B6770] file:mr-0 file:ml-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#0E6E7E] file:text-white hover:file:bg-[#0B5A68] cursor-pointer"
+                                    class="w-full text-xs text-[#5B6770] file:mr-0 file:ml-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-[#163E3E] file:text-white hover:file:bg-[#102F2F] cursor-pointer"
                                 />
                                 <span v-if="docForm.errors.file" class="text-xs text-rose-600 block mt-1">
                                     {{ docForm.errors.file }}
                                 </span>
                             </div>
 
-                            <div class="flex items-center justify-end gap-2 pt-2 border-t border-[#0E6E7E]/10">
+                            <div class="flex items-center justify-end gap-2 pt-2 border-t border-[#163E3E]/10">
                                 <button
                                     type="button"
                                     @click="documentUploadOpen = false"
@@ -630,7 +772,7 @@ const deleteDocument = (docId: number) => {
                                 <button
                                     type="submit"
                                     :disabled="docForm.processing || !docForm.file"
-                                    class="h-9 px-5 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
+                                    class="h-9 px-5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
                                 >
                                     <Upload class="w-3.5 h-3.5" />
                                     <span>{{ docForm.processing ? 'جاري الرفع والتخزين الآمن...' : 'حفظ المستند' }}</span>
@@ -658,10 +800,10 @@ const deleteDocument = (docId: number) => {
                                         <span>لا توجد مستندات مرفقة لهذا المستأجر حتى الآن.</span>
                                     </td>
                                 </tr>
-                                <tr v-for="doc in documents" :key="doc.id" class="hover:bg-[#F3F7FA] transition">
-                                    <td class="py-3.5 px-5 font-bold text-[#0F2747]">
+                                <tr v-for="doc in documents" :key="doc.id" class="hover:bg-[#F8F4EA] transition">
+                                    <td class="py-3.5 px-5 font-bold text-[#163E3E]">
                                         <div class="flex items-center gap-2">
-                                            <FileText class="w-4 h-4 text-[#0E6E7E] shrink-0" />
+                                            <FileText class="w-4 h-4 text-[#163E3E] shrink-0" />
                                             <div>
                                                 <span>{{ doc.title }}</span>
                                                 <span class="block text-[10px] text-[#8A9AA7] font-mono mt-0.5">{{ doc.original_filename }}</span>
@@ -679,7 +821,7 @@ const deleteDocument = (docId: number) => {
                                         <div class="flex items-center justify-center gap-1.5">
                                             <a
                                                 :href="doc.download_url"
-                                                class="h-7 px-2.5 rounded-lg border border-[#D6E0E7] bg-white hover:bg-slate-50 text-[#0E6E7E] text-[11px] font-bold transition flex items-center gap-1 shadow-2xs"
+                                                class="h-7 px-2.5 rounded-lg border border-[#D6E0E7] bg-white hover:bg-slate-50 text-[#163E3E] text-[11px] font-bold transition flex items-center gap-1 shadow-2xs"
                                                 title="تحميل المستند"
                                             >
                                                 <Download class="w-3 h-3" />
@@ -703,6 +845,158 @@ const deleteDocument = (docId: number) => {
             </div>
         </div>
 
+        <!-- نافذة تعديل بيانات المستأجر -->
+        <div
+            v-if="showEditModal"
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
+        >
+            <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-xl border border-[#D6E0E7] max-h-[90vh] overflow-y-auto">
+                <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
+                    <div class="flex items-center gap-2">
+                        <div class="w-9 h-9 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center">
+                            <Pencil class="w-4 h-4" />
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-[#163E3E]">تعديل بيانات المستأجر</h3>
+                            <p class="text-xs text-[#5B6770]">تحديث معلومات الاتصال، الهوية، والجنس</p>
+                        </div>
+                    </div>
+                    <button
+                        @click="showEditModal = false"
+                        type="button"
+                        class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#5B6770] flex items-center justify-center transition cursor-pointer"
+                    >
+                        <X class="w-4 h-4" />
+                    </button>
+                </div>
+
+                <form @submit.prevent="submitEdit" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">الاسم بالكامل *</label>
+                        <input
+                            v-model="editForm.name"
+                            type="text"
+                            required
+                            minlength="3"
+                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
+                        />
+                        <p v-if="editForm.errors.name" class="text-xs text-rose-600 font-semibold mt-1">
+                            {{ editForm.errors.name }}
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-[#163E3E] mb-1.5">رقم الهاتف *</label>
+                            <input
+                                v-model="editForm.phone"
+                                type="tel"
+                                required
+                                class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition font-mono text-right"
+                            />
+                            <p v-if="editForm.errors.phone" class="text-xs text-rose-600 font-semibold mt-1">
+                                {{ editForm.errors.phone }}
+                            </p>
+                            <p v-else class="text-[11px] text-[#5B6770] mt-1">
+                                رقم مصري (مثال: 01012345678 أو +201012345678)
+                            </p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-[#163E3E] mb-1.5">الرقم القومي / الهوية</label>
+                            <input
+                                v-model="editForm.national_id"
+                                type="text"
+                                class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
+                            />
+                            <p v-if="editForm.errors.national_id" class="text-xs text-rose-600 font-semibold mt-1">
+                                {{ editForm.errors.national_id }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- حقل الجنس -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="block text-xs font-bold text-[#163E3E]">
+                                الجنس <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span>
+                            </label>
+                            <span class="text-[10px] text-[#5B6770]">يحدد فئة سكن الشقة (شباب / بنات)</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button
+                                type="button"
+                                @click="editForm.gender = ''"
+                                class="h-10 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                                :class="!editForm.gender ? 'border-[#163E3E] bg-[#E8F0F0] text-[#163E3E]' : 'border-[#D6E0E7] bg-white text-[#5B6770] hover:bg-slate-50'"
+                            >
+                                <span>غير محدد</span>
+                            </button>
+                            <button
+                                type="button"
+                                @click="editForm.gender = 'male'"
+                                class="h-10 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                                :class="editForm.gender === 'male' ? 'border-sky-500 bg-sky-50 text-sky-800 ring-1 ring-sky-400' : 'border-[#D6E0E7] bg-white text-[#5B6770] hover:bg-sky-50/50'"
+                            >
+                                <User class="w-3.5 h-3.5 text-sky-600" />
+                                <span>ذكر (شباب)</span>
+                            </button>
+                            <button
+                                type="button"
+                                @click="editForm.gender = 'female'"
+                                class="h-10 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                                :class="editForm.gender === 'female' ? 'border-rose-500 bg-rose-50 text-rose-800 ring-1 ring-rose-400' : 'border-[#D6E0E7] bg-white text-[#5B6770] hover:bg-rose-50/50'"
+                            >
+                                <User class="w-3.5 h-3.5 text-rose-600" />
+                                <span>أنثى (بنات)</span>
+                            </button>
+                        </div>
+                        <p v-if="editForm.errors.gender" class="text-xs text-rose-600 font-semibold mt-1">
+                            {{ editForm.errors.gender }}
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">البريد الإلكتروني</label>
+                        <input
+                            v-model="editForm.email"
+                            type="email"
+                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
+                        />
+                        <p v-if="editForm.errors.email" class="text-xs text-rose-600 font-semibold mt-1">
+                            {{ editForm.errors.email }}
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">ملاحظات الإدارة</label>
+                        <textarea
+                            v-model="editForm.notes"
+                            rows="2"
+                            class="w-full p-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition resize-none"
+                        ></textarea>
+                    </div>
+
+                    <div class="pt-3 flex items-center justify-end gap-3 border-t border-[#D6E0E7]">
+                        <button
+                            @click="showEditModal = false"
+                            type="button"
+                            class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold text-[#5B6770] hover:bg-slate-50 transition"
+                        >
+                            إلغاء
+                        </button>
+                        <button
+                            type="submit"
+                            :disabled="editForm.processing"
+                            class="h-10 px-5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                        >
+                            <span>{{ editForm.processing ? 'جاري الحفظ...' : 'حفظ التعديلات' }}</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <!-- نافذة تسجيل دفعة -->
         <ModalRecordPayment
             :show="recordPaymentOpen"
@@ -713,4 +1007,3 @@ const deleteDocument = (docId: number) => {
         />
     </AppLayout>
 </template>
-

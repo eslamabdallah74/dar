@@ -24,12 +24,12 @@ const safeActivities = computed(() => props.activities || []);
             <!-- الرأس -->
             <div class="flex items-center justify-between pb-3 border-b border-[#E8EFF4]">
                 <div>
-                    <h3 class="text-base font-bold text-[#0F2747]">سجل النشاط الأخير</h3>
+                    <h3 class="text-base font-bold text-[#163E3E]">سجل النشاط الأخير</h3>
                     <p class="text-xs text-[#5B6770] font-medium mt-0.5">
                         آخر العمليات الإدارية والمالية في مساحة العمل
                     </p>
                 </div>
-                <div class="w-8 h-8 rounded-lg bg-[#E8F3F5] text-[#0E6E7E] flex items-center justify-center">
+                <div class="w-8 h-8 rounded-lg bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center">
                     <Activity class="h-4 w-4" />
                 </div>
             </div>
@@ -48,7 +48,7 @@ const safeActivities = computed(() => props.activities || []);
                             act.type === 'payment' ? 'bg-emerald-50 text-emerald-700' :
                             act.type === 'lease' ? 'bg-sky-50 text-sky-700' :
                             act.type === 'maintenance' ? 'bg-amber-50 text-amber-700' :
-                            'bg-[#E8F3F5] text-[#0E6E7E]'
+                            'bg-[#E8F0F0] text-[#163E3E]'
                         ]"
                     >
                         <CreditCard v-if="act.type === 'payment'" class="h-4 w-4" />
@@ -59,7 +59,7 @@ const safeActivities = computed(() => props.activities || []);
 
                     <!-- التفاصيل -->
                     <div class="flex-1 min-w-0">
-                        <h4 class="text-xs font-bold text-[#0F2747] truncate">
+                        <h4 class="text-xs font-bold text-[#163E3E] truncate">
                             {{ act.title }}
                         </h4>
                         <p class="text-[11px] text-[#5B6770] font-medium mt-0.5 truncate">

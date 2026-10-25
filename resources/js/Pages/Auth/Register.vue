@@ -5,7 +5,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, CheckCircle2, Lock, Mail, User } from 'lucide-vue-next';
+import { ArrowLeft, Lock, Mail, User } from 'lucide-vue-next';
 
 const form = useForm({
     name: '',
@@ -25,19 +25,13 @@ const submit = () => {
 
 <template>
     <GuestLayout image-background>
-        <Head title="إنشاء حساب جديد — دار" />
+        <Head title="إنشاء حساب جديد — Nook Mate" />
 
         <div class="mb-3 text-center sm:mb-6">
             <h1 class="text-2xl font-bold text-white">ابدأ بأول عقار لك</h1>
             <p class="mt-1.5 text-xs text-zinc-300 font-medium">
                 أنشئ حسابك، ثم أضف عقارك الأول مباشرة من لوحة التحكم.
             </p>
-        </div>
-
-        <!-- شارة البداية السريعة -->
-        <div class="mb-3 flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs font-semibold text-emerald-400 sm:mb-5">
-            <CheckCircle2 class="h-4 w-4 shrink-0 text-emerald-400" />
-            <span>أول 5 وحدات مجاناً بالكامل • بدون أي كروت بنكية</span>
         </div>
 
         <form @submit.prevent="submit" class="space-y-2 sm:space-y-4">
@@ -67,7 +61,7 @@ const submit = () => {
                     <TextInput
                         id="email"
                         type="email"
-                        class="block w-full pr-10 text-left"
+                        class="block w-full pr-10 text-right"
                         v-model="form.email"
                         required
                         autocomplete="email"

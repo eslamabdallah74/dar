@@ -139,6 +139,7 @@ function closeDrawer() {
                                 id="property-name"
                                 v-model="form.name"
                                 type="text"
+                                minlength="3"
                                 maxlength="255"
                                 required
                                 autofocus

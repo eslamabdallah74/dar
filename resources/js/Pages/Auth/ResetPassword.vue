@@ -30,7 +30,7 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="تعيين كلمة المرور الجديدة — دار" />
+        <Head title="تعيين كلمة المرور الجديدة — Nook Mate" />
 
         <div class="mb-6 text-center">
             <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">

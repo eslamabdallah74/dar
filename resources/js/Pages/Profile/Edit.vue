@@ -12,7 +12,7 @@ defineProps<{
 
 <template>
     <AppLayout
-        title="الملف الشخصي والحساب — دار"
+        title="الملف الشخصي والحساب — Nook Mate"
         active-tab="settings"
         header-title="الملف الشخصي والحساب"
         header-subtitle="إدارة بياناتك الشخصية وكلمة المرور والأمان"

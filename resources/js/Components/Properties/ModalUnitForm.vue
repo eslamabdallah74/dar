@@ -169,21 +169,21 @@ const submit = () => {
 <template>
     <div v-if="show" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4" dir="rtl">
         <!-- Backdrop -->
-        <div @click="emit('close')" class="fixed inset-0 bg-[#0F2747]/60 backdrop-blur-xs transition-opacity"></div>
+        <div @click="emit('close')" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs transition-opacity"></div>
 
         <!-- Modal Box -->
         <div class="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-6 z-10 animate-in fade-in zoom-in-95 my-8">
             <!-- Header -->
             <div class="flex items-center justify-between pb-4 border-b border-[#D6E0E7] mb-5">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center shrink-0">
+                    <div class="w-10 h-10 rounded-2xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center shrink-0">
                         <component
                             :is="form.unit_type === 'apartment' ? Home : form.unit_type === 'room' ? DoorClosed : form.unit_type === 'bed' ? Bed : Store"
                             class="w-5 h-5 stroke-[2]"
                         />
                     </div>
                     <div>
-                        <h3 class="text-base font-bold text-[#0F2747]">
+                        <h3 class="text-base font-bold text-[#163E3E]">
                             {{ mode === 'create' ? 'إضافة وحدة جديدة' : 'تعديل بيانات الوحدة' }}
                         </h3>
                         <p class="text-xs text-[#5B6770]">
@@ -195,7 +195,7 @@ const submit = () => {
                 <button
                     @click="emit('close')"
                     type="button"
-                    class="p-1.5 text-[#5B6770] hover:text-[#0F2747] hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                    class="p-1.5 text-[#5B6770] hover:text-[#163E3E] hover:bg-slate-100 rounded-xl transition cursor-pointer"
                 >
                     <X class="w-5 h-5" />
                 </button>
@@ -206,13 +206,13 @@ const submit = () => {
                 <!-- Preset Context Banner -->
                 <div
                     v-if="isParentLocked && presetParentUnit"
-                    class="p-3.5 rounded-2xl bg-[#E3F1F4]/70 border border-[#0E6E7E]/30 flex items-start gap-2.5 text-xs text-[#0F2747]"
+                    class="p-3.5 rounded-2xl bg-[#E8F0F0]/70 border border-[#163E3E]/30 flex items-start gap-2.5 text-xs text-[#163E3E]"
                 >
-                    <Info class="w-4 h-4 text-[#0E6E7E] shrink-0 mt-0.5" />
+                    <Info class="w-4 h-4 text-[#163E3E] shrink-0 mt-0.5" />
                     <div class="leading-relaxed">
                         <span class="font-bold">سياق التقسيم الهرمي:</span>
                         يتم إنشاء هذا
-                        <span class="font-bold text-[#0E6E7E]">{{ form.unit_type === 'room' ? 'الأوضة' : 'السرير' }}</span>
+                        <span class="font-bold text-[#163E3E]">{{ form.unit_type === 'room' ? 'الأوضة' : 'السرير' }}</span>
                         مباشرة كتابع لـ:
                         <span class="font-bold underline">{{ presetParentUnit.name }}</span>
                         ({{ presetParentUnit.type_label }}).
@@ -243,7 +243,7 @@ const submit = () => {
 
                 <!-- Unit Name -->
                 <div>
-                    <label class="block text-xs font-bold text-[#0F2747] mb-1.5">
+                    <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
                         اسم الوحدة *
                     </label>
                     <input
@@ -252,8 +252,8 @@ const submit = () => {
                         maxlength="255"
                         :placeholder="form.unit_type === 'apartment' ? 'مثال: شقة 101 (الدور الأول)' : form.unit_type === 'room' ? 'مثال: أوضة 1 (غرفة النوم الرئيسية)' : form.unit_type === 'bed' ? 'مثال: سرير أ (بجوار النافذة)' : 'مثال: محل رقم 1 (واجهة رئيسية)'"
                         required
-                        class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#0F2747] transition"
-                        :class="form.errors.name ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500' : 'border-[#D6E0E7] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E]'"
+                        class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#163E3E] transition"
+                        :class="form.errors.name ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500' : 'border-[#D6E0E7] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E]'"
                     />
                     <p v-if="form.errors.name" class="mt-1 text-xs text-rose-600 font-medium">
                         {{ form.errors.name }}
@@ -264,7 +264,7 @@ const submit = () => {
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <!-- Unit Code -->
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
                             كود الوحدة <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span>
                         </label>
                         <input
@@ -272,8 +272,8 @@ const submit = () => {
                             type="text"
                             maxlength="50"
                             placeholder="APT-101 / RM-1"
-                            class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#0F2747] font-mono transition"
-                            :class="form.errors.code ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500' : 'border-[#D6E0E7] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E]'"
+                            class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#163E3E] font-mono transition"
+                            :class="form.errors.code ? 'border-rose-400 bg-rose-50/20 focus:border-rose-500' : 'border-[#D6E0E7] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E]'"
                         />
                         <p v-if="form.errors.code" class="mt-1 text-xs text-rose-600 font-medium">
                             {{ form.errors.code }}
@@ -282,14 +282,14 @@ const submit = () => {
 
                     <!-- Unit Type Selector -->
                     <div>
-                        <label class="block text-xs font-bold text-[#0F2747] mb-1.5">
+                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
                             نوع المستوى الهرمي *
                         </label>
                         <select
                             v-model="form.unit_type"
                             :disabled="isTypeLocked"
-                            class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#0F2747] transition disabled:opacity-75 disabled:cursor-not-allowed"
-                            :class="form.errors.unit_type ? 'border-rose-400 bg-rose-50/20' : 'border-[#D6E0E7] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E]'"
+                            class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#163E3E] transition disabled:opacity-75 disabled:cursor-not-allowed"
+                            :class="form.errors.unit_type ? 'border-rose-400 bg-rose-50/20' : 'border-[#D6E0E7] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E]'"
                         >
                             <option value="apartment">🏠 شقة (مستوى رئيسي)</option>
                             <option value="room">🚪 أوضة (داخل شقة)</option>
@@ -305,7 +305,7 @@ const submit = () => {
                 <!-- Parent Unit (Context-Aware) -->
                 <!-- 1. Apartment or Shop: No parent allowed -->
                 <div v-if="form.unit_type === 'apartment' || form.unit_type === 'shop'" class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-[#5B6770] flex items-center gap-2">
-                    <Info class="w-4 h-4 text-[#0E6E7E] shrink-0" />
+                    <Info class="w-4 h-4 text-[#163E3E] shrink-0" />
                     <span>
                         {{ form.unit_type === 'apartment' ? 'الشقة وحدة رئيسية بالعقار، ولا يمكن ربطها بوحدة أب.' : 'المحل التجاري وحدة مستقلة بالعقار، لا يقبل وحدة أب أو وحدات تابعة.' }}
                     </span>
@@ -313,15 +313,15 @@ const submit = () => {
 
                 <!-- 2. Room: Parent MUST be an Apartment -->
                 <div v-else-if="form.unit_type === 'room'">
-                    <label class="block text-xs font-bold text-[#0F2747] mb-1.5">
+                    <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
                         الشقة التابع لها (الوحدة الأب) *
                     </label>
                     <select
                         v-model="form.parent_unit_id"
                         :disabled="isParentLocked"
                         required
-                        class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#0F2747] transition disabled:opacity-75 disabled:cursor-not-allowed"
-                        :class="form.errors.parent_unit_id ? 'border-rose-400 bg-rose-50/20' : 'border-[#D6E0E7] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E]'"
+                        class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#163E3E] transition disabled:opacity-75 disabled:cursor-not-allowed"
+                        :class="form.errors.parent_unit_id ? 'border-rose-400 bg-rose-50/20' : 'border-[#D6E0E7] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E]'"
                     >
                         <option :value="null" disabled>-- اختر الشقة التابع لها هذا الأوضة --</option>
                         <option v-for="apt in availableApartments" :key="apt.id" :value="apt.id">
@@ -338,15 +338,15 @@ const submit = () => {
 
                 <!-- 3. Bed: Parent MUST be a Room -->
                 <div v-else-if="form.unit_type === 'bed'">
-                    <label class="block text-xs font-bold text-[#0F2747] mb-1.5">
+                    <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
                         الأوضة التابع لها (الوحدة الأب) *
                     </label>
                     <select
                         v-model="form.parent_unit_id"
                         :disabled="isParentLocked"
                         required
-                        class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#0F2747] transition disabled:opacity-75 disabled:cursor-not-allowed"
-                        :class="form.errors.parent_unit_id ? 'border-rose-400 bg-rose-50/20' : 'border-[#D6E0E7] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E]'"
+                        class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#163E3E] transition disabled:opacity-75 disabled:cursor-not-allowed"
+                        :class="form.errors.parent_unit_id ? 'border-rose-400 bg-rose-50/20' : 'border-[#D6E0E7] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E]'"
                     >
                         <option :value="null" disabled>-- اختر الأوضة التابع لها هذا السرير --</option>
                         <option v-for="rm in availableRooms" :key="rm.id" :value="rm.id">
@@ -367,9 +367,9 @@ const submit = () => {
                         id="is_rentable_checkbox"
                         v-model="form.is_rentable"
                         type="checkbox"
-                        class="w-4 h-4 rounded text-[#0E6E7E] focus:ring-[#0E6E7E] border-[#D6E0E7]"
+                        class="w-4 h-4 rounded text-[#163E3E] focus:ring-[#163E3E] border-[#D6E0E7]"
                     />
-                    <label for="is_rentable_checkbox" class="text-xs font-bold text-[#0F2747] cursor-pointer">
+                    <label for="is_rentable_checkbox" class="text-xs font-bold text-[#163E3E] cursor-pointer">
                         الوحدة قابلة للتأجير بشكل مستقل (تُحتسب في باقة الاشتراك إذا لم تكن مقسمة)
                     </label>
                 </div>
@@ -389,7 +389,7 @@ const submit = () => {
                     <button
                         type="submit"
                         :disabled="form.processing || (form.unit_type === 'room' && !form.parent_unit_id) || (form.unit_type === 'bed' && !form.parent_unit_id)"
-                        class="h-10 px-5 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] disabled:opacity-50 text-white text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-xs"
+                        class="h-10 px-5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] disabled:opacity-50 text-white text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-xs"
                     >
                         <Check class="w-4 h-4" />
                         <span>{{ form.processing ? 'جاري الحفظ...' : (mode === 'create' ? 'حفظ الوحدة' : 'حفظ التعديلات') }}</span>

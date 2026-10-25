@@ -30,7 +30,7 @@ const emit = defineEmits<{
         <!-- Backdrop -->
         <div
             @click="emit('close')"
-            class="fixed inset-0 bg-[#0F2747]/60 backdrop-blur-xs transition-opacity"
+            class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs transition-opacity"
         ></div>
 
         <!-- Modal Dialog -->
@@ -40,13 +40,13 @@ const emit = defineEmits<{
         >
             <div class="flex items-center justify-between pb-4 border-b border-[#D6E0E7] mb-5">
                 <div>
-                    <h3 class="text-base font-bold text-[#0F2747]">إجراء سريع جديد</h3>
+                    <h3 class="text-base font-bold text-[#163E3E]">إجراء سريع جديد</h3>
                     <p class="text-xs text-[#5B6770]">اختر نوع العملية التي ترغب بإنشائها</p>
                 </div>
                 <button
                     @click="emit('close')"
                     type="button"
-                    class="p-2 text-[#5B6770] hover:text-[#0F2747] hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                    class="p-2 text-[#5B6770] hover:text-[#163E3E] hover:bg-slate-100 rounded-xl transition cursor-pointer"
                 >
                     <X class="w-5 h-5" />
                 </button>
@@ -57,13 +57,13 @@ const emit = defineEmits<{
                 <Link
                     :href="route('leases.create')"
                     @click="emit('close')"
-                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#0E6E7E] hover:bg-[#F3F7FA] transition group text-right"
+                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#163E3E] hover:bg-[#F8F4EA] transition group text-right"
                 >
-                    <div class="w-11 h-11 rounded-xl bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center shrink-0 group-hover:bg-[#0E6E7E] group-hover:text-white transition">
+                    <div class="w-11 h-11 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center shrink-0 group-hover:bg-[#163E3E] group-hover:text-white transition">
                         <FilePlus class="w-5 h-5" />
                     </div>
                     <div>
-                        <div class="text-sm font-bold text-[#0F2747] group-hover:text-[#0E6E7E] transition">
+                        <div class="text-sm font-bold text-[#163E3E] group-hover:text-[#163E3E] transition">
                             عقد إيجار جديد
                         </div>
                         <div class="text-xs text-[#5B6770]">
@@ -76,13 +76,13 @@ const emit = defineEmits<{
                 <button
                     @click="() => { emit('close'); emit('recordPayment'); }"
                     type="button"
-                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#0E6E7E] hover:bg-[#F3F7FA] transition group text-right cursor-pointer w-full"
+                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#163E3E] hover:bg-[#F8F4EA] transition group text-right cursor-pointer w-full"
                 >
-                    <div class="w-11 h-11 rounded-xl bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center shrink-0 group-hover:bg-[#0E6E7E] group-hover:text-white transition">
+                    <div class="w-11 h-11 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center shrink-0 group-hover:bg-[#163E3E] group-hover:text-white transition">
                         <CreditCard class="w-5 h-5" />
                     </div>
                     <div>
-                        <div class="text-sm font-bold text-[#0F2747] group-hover:text-[#0E6E7E] transition">
+                        <div class="text-sm font-bold text-[#163E3E] group-hover:text-[#163E3E] transition">
                             تسجيل دفعة يدوية
                         </div>
                         <div class="text-xs text-[#5B6770]">
@@ -95,13 +95,13 @@ const emit = defineEmits<{
                 <button
                     type="button"
                     @click="() => { emit('close'); emit('addProperty'); }"
-                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#0E6E7E] hover:bg-[#F3F7FA] transition group text-right w-full"
+                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#163E3E] hover:bg-[#F8F4EA] transition group text-right w-full"
                 >
-                    <div class="w-11 h-11 rounded-xl bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center shrink-0 group-hover:bg-[#0E6E7E] group-hover:text-white transition">
+                    <div class="w-11 h-11 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center shrink-0 group-hover:bg-[#163E3E] group-hover:text-white transition">
                         <Building2 class="w-5 h-5" />
                     </div>
                     <div>
-                        <div class="text-sm font-bold text-[#0F2747] group-hover:text-[#0E6E7E] transition">
+                        <div class="text-sm font-bold text-[#163E3E] group-hover:text-[#163E3E] transition">
                             إضافة عقار أو مبنى
                         </div>
                         <div class="text-xs text-[#5B6770]">
@@ -114,13 +114,13 @@ const emit = defineEmits<{
                 <Link
                     :href="route('renters.index')"
                     @click="emit('close')"
-                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#0E6E7E] hover:bg-[#F3F7FA] transition group text-right"
+                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#163E3E] hover:bg-[#F8F4EA] transition group text-right"
                 >
-                    <div class="w-11 h-11 rounded-xl bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center shrink-0 group-hover:bg-[#0E6E7E] group-hover:text-white transition">
+                    <div class="w-11 h-11 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center shrink-0 group-hover:bg-[#163E3E] group-hover:text-white transition">
                         <UserPlus class="w-5 h-5" />
                     </div>
                     <div>
-                        <div class="text-sm font-bold text-[#0F2747] group-hover:text-[#0E6E7E] transition">
+                        <div class="text-sm font-bold text-[#163E3E] group-hover:text-[#163E3E] transition">
                             إضافة مستأجر جديد
                         </div>
                         <div class="text-xs text-[#5B6770]">
@@ -133,13 +133,13 @@ const emit = defineEmits<{
                 <Link
                     :href="route('maintenance.index')"
                     @click="emit('close')"
-                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#0E6E7E] hover:bg-[#F3F7FA] transition group text-right"
+                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#163E3E] hover:bg-[#F8F4EA] transition group text-right"
                 >
-                    <div class="w-11 h-11 rounded-xl bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center shrink-0 group-hover:bg-[#0E6E7E] group-hover:text-white transition">
+                    <div class="w-11 h-11 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center shrink-0 group-hover:bg-[#163E3E] group-hover:text-white transition">
                         <Wrench class="w-5 h-5" />
                     </div>
                     <div>
-                        <div class="text-sm font-bold text-[#0F2747] group-hover:text-[#0E6E7E] transition">
+                        <div class="text-sm font-bold text-[#163E3E] group-hover:text-[#163E3E] transition">
                             طلب صيانة جديد
                         </div>
                         <div class="text-xs text-[#5B6770]">

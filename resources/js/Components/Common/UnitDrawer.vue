@@ -141,7 +141,7 @@ const canDelete = computed(() => {
         <!-- Backdrop -->
         <div
             @click="emit('close')"
-            class="absolute inset-0 bg-[#0F2747]/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
+            class="absolute inset-0 bg-[#163E3E]/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
         ></div>
 
         <div class="fixed inset-y-0 right-0 max-w-full flex pr-0 sm:pr-6">
@@ -157,17 +157,17 @@ const canDelete = computed(() => {
                                     unit.unit_type === 'shop' ? 'bg-purple-100 text-purple-700' :
                                     unit.unit_type === 'room' ? 'bg-teal-100 text-teal-800' :
                                     unit.unit_type === 'bed' ? 'bg-amber-100 text-amber-800' :
-                                    'bg-[#E8F3F5] text-[#0E6E7E]'
+                                    'bg-[#E8F0F0] text-[#163E3E]'
                                 ]"
                             >
                                 <component :is="unitIcon" class="w-6 h-6 stroke-[2]" />
                             </div>
                             <div class="min-w-0">
                                 <div class="flex items-center gap-2 flex-wrap">
-                                    <h3 class="text-lg font-bold text-[#0F2747] truncate">
+                                    <h3 class="text-lg font-bold text-[#163E3E] truncate">
                                         {{ unit.name }}
                                     </h3>
-                                    <span v-if="unit.code" class="text-xs font-mono font-bold text-[#0E6E7E] bg-[#E3F1F4] px-2.5 py-0.5 rounded-lg border border-[#0E6E7E]/20">
+                                    <span v-if="unit.code" class="text-xs font-mono font-bold text-[#163E3E] bg-[#E8F0F0] px-2.5 py-0.5 rounded-lg border border-[#163E3E]/20">
                                         {{ unit.code }}
                                     </span>
                                 </div>
@@ -181,7 +181,7 @@ const canDelete = computed(() => {
                         <button
                             @click="emit('close')"
                             type="button"
-                            class="p-2 text-[#5B6770] hover:text-[#0F2747] hover:bg-[#F3F7FA] rounded-xl transition cursor-pointer shrink-0"
+                            class="p-2 text-[#5B6770] hover:text-[#163E3E] hover:bg-[#F8F4EA] rounded-xl transition cursor-pointer shrink-0"
                             title="إغلاق"
                         >
                             <X class="w-5 h-5" />
@@ -192,7 +192,7 @@ const canDelete = computed(() => {
                     <div class="mt-4 flex items-center justify-between gap-2 p-2.5 rounded-xl bg-[#F8FAFC] border border-[#E8EFF4]">
                         <div class="flex items-center gap-2">
                             <span class="text-xs text-[#5B6770] font-medium">نوع الوحدة:</span>
-                            <span class="text-xs font-bold text-[#0F2747] bg-white px-2 py-0.5 rounded-md border border-[#D6E0E7]">
+                            <span class="text-xs font-bold text-[#163E3E] bg-white px-2 py-0.5 rounded-md border border-[#D6E0E7]">
                                 {{ unit.type_label || 'وحدة' }}
                             </span>
                         </div>
@@ -212,7 +212,7 @@ const canDelete = computed(() => {
                                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
                                 <span class="text-xs font-bold text-emerald-950">بيانات عقد الإيجار الساري</span>
                             </div>
-                            <span v-if="unit.active_lease.contract_number" class="text-xs font-mono font-bold text-[#0E6E7E]">
+                            <span v-if="unit.active_lease.contract_number" class="text-xs font-mono font-bold text-[#163E3E]">
                                 {{ unit.active_lease.contract_number }}
                             </span>
                         </div>
@@ -220,13 +220,13 @@ const canDelete = computed(() => {
                         <!-- Renter Profile Summary -->
                         <div class="flex items-center justify-between gap-3 p-3 bg-white rounded-xl border border-emerald-100">
                             <div class="flex items-center gap-3 min-w-0">
-                                <div class="w-10 h-10 rounded-xl bg-[#0E6E7E] text-white flex items-center justify-center font-bold text-sm shrink-0">
+                                <div class="w-10 h-10 rounded-xl bg-[#163E3E] text-white flex items-center justify-center font-bold text-sm shrink-0">
                                     {{ unit.active_lease.renter_name.charAt(0) }}
                                 </div>
                                 <div class="min-w-0">
                                     <Link
                                         :href="route('renters.show', unit.active_lease.renter_id)"
-                                        class="font-bold text-sm text-[#0F2747] hover:text-[#0E6E7E] transition truncate block"
+                                        class="font-bold text-sm text-[#163E3E] hover:text-[#163E3E] transition truncate block"
                                     >
                                         {{ unit.active_lease.renter_name }}
                                     </Link>
@@ -250,7 +250,7 @@ const canDelete = computed(() => {
                                 <a
                                     v-if="unit.active_lease.renter_phone"
                                     :href="`tel:${unit.active_lease.renter_phone}`"
-                                    class="p-2 rounded-xl bg-slate-100 text-[#0F2747] hover:bg-slate-200 transition"
+                                    class="p-2 rounded-xl bg-slate-100 text-[#163E3E] hover:bg-slate-200 transition"
                                     title="اتصال هاتفي"
                                 >
                                     <Phone class="w-4 h-4" />
@@ -262,7 +262,7 @@ const canDelete = computed(() => {
                         <div class="grid grid-cols-2 gap-3 pt-1">
                             <div class="p-3 bg-white rounded-xl border border-emerald-100/70">
                                 <span class="text-[11px] text-[#5B6770] font-medium block">القيمة الإيجارية</span>
-                                <span class="text-base font-black text-[#0F2747] block mt-0.5">
+                                <span class="text-base font-black text-[#163E3E] block mt-0.5">
                                     {{ unit.active_lease.rent_amount.toLocaleString() }} {{ currencySymbol }}
                                 </span>
                                 <span class="text-[10px] text-[#5B6770]">دفع شهري</span>
@@ -270,7 +270,7 @@ const canDelete = computed(() => {
 
                             <div class="p-3 bg-white rounded-xl border border-emerald-100/70">
                                 <span class="text-[11px] text-[#5B6770] font-medium block">المدة المتبقية</span>
-                                <span class="text-base font-black text-[#0E6E7E] block mt-0.5">
+                                <span class="text-base font-black text-[#163E3E] block mt-0.5">
                                     {{ unit.active_lease.days_remaining !== null ? unit.active_lease.days_remaining + ' يوم' : 'مستمر' }}
                                 </span>
                                 <span class="text-[10px] text-[#5B6770]">
@@ -282,10 +282,10 @@ const canDelete = computed(() => {
                         <!-- Security Deposit info (if exists) -->
                         <div v-if="unit.active_lease.security_deposit_amount" class="p-3 bg-white rounded-xl border border-emerald-100/70 flex items-center justify-between text-xs">
                             <span class="text-[#5B6770] flex items-center gap-1.5">
-                                <Shield class="w-4 h-4 text-[#0E6E7E]" />
+                                <Shield class="w-4 h-4 text-[#163E3E]" />
                                 <span>مبلغ التأمين المسترد:</span>
                             </span>
-                            <span class="font-bold text-[#0F2747]">
+                            <span class="font-bold text-[#163E3E]">
                                 {{ unit.active_lease.security_deposit_amount.toLocaleString() }} {{ currencySymbol }}
                                 <span v-if="unit.active_lease.security_deposit_status" class="text-[10px] text-[#5B6770] font-normal mr-1">
                                     ({{ unit.active_lease.security_deposit_status }})
@@ -312,7 +312,7 @@ const canDelete = computed(() => {
                             <button
                                 @click="emit('recordPayment', unit.active_lease.id, unit.active_lease.renter_id, unit.active_lease.rent_amount)"
                                 type="button"
-                                class="w-full h-11 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                                class="w-full h-11 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                             >
                                 <CreditCard class="w-4 h-4" />
                                 <span>تسجيل دفعة إيجار لهذا العقد</span>
@@ -326,7 +326,7 @@ const canDelete = computed(() => {
                             <Tag class="w-7 h-7 stroke-[2]" />
                         </div>
                         <div>
-                            <h4 class="text-base font-bold text-[#0F2747]">الوحدة شاغرة حالياً</h4>
+                            <h4 class="text-base font-bold text-[#163E3E]">الوحدة شاغرة حالياً</h4>
                             <p class="text-xs text-[#5B6770] leading-relaxed mt-1 max-w-sm mx-auto">
                                 لا يوجد عقد إيجار نشط حالياً لهذه الوحدة.
                             </p>
@@ -345,7 +345,7 @@ const canDelete = computed(() => {
                         <div v-else-if="unit.can_rent" class="pt-2">
                             <Link
                                 :href="route('leases.create', { unit_id: unit.id })"
-                                class="inline-flex items-center justify-center gap-2 w-full h-11 px-5 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition shadow-xs cursor-pointer"
+                                class="inline-flex items-center justify-center gap-2 w-full h-11 px-5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition shadow-xs cursor-pointer"
                             >
                                 <Plus class="w-4 h-4" />
                                 <span>إنشاء عقد إيجار لهذه الوحدة الآن</span>
@@ -357,11 +357,11 @@ const canDelete = computed(() => {
                     <div v-if="unit.unit_type === 'apartment' || unit.unit_type === 'room'" class="rounded-2xl border border-[#D6E0E7] bg-white p-5 space-y-4 shadow-2xs">
                         <div class="flex items-center justify-between pb-3 border-b border-[#E8EFF4]">
                             <div class="flex items-center gap-2">
-                                <Layers class="w-4 h-4 text-[#0E6E7E]" />
-                                <h4 class="text-xs font-bold text-[#0F2747]">
+                                <Layers class="w-4 h-4 text-[#163E3E]" />
+                                <h4 class="text-xs font-bold text-[#163E3E]">
                                     {{ unit.unit_type === 'apartment' ? 'الغرف التابعة لهذه الشقة' : 'الأسِرَّة التابعة لهذه الغرفة' }}
                                 </h4>
-                                <span class="text-[11px] font-bold text-[#5B6770] bg-[#F3F7FA] px-2 py-0.5 rounded-full">
+                                <span class="text-[11px] font-bold text-[#5B6770] bg-[#F8F4EA] px-2 py-0.5 rounded-full">
                                     {{ unit.child_units?.length || 0 }}
                                 </span>
                             </div>
@@ -370,7 +370,7 @@ const canDelete = computed(() => {
                                 v-if="canAddChild"
                                 @click="emit('addSubUnit', unit.id, unit.unit_type === 'apartment' ? 'room' : 'bed')"
                                 type="button"
-                                class="text-xs font-bold text-[#0E6E7E] hover:underline flex items-center gap-1 cursor-pointer"
+                                class="text-xs font-bold text-[#163E3E] hover:underline flex items-center gap-1 cursor-pointer"
                             >
                                 <Plus class="w-3.5 h-3.5" />
                                 <span>{{ unit.unit_type === 'apartment' ? 'إضافة أوضة' : 'إضافة سرير' }}</span>
@@ -383,12 +383,12 @@ const canDelete = computed(() => {
                                 v-for="child in unit.child_units"
                                 :key="child.id"
                                 @click="emit('selectUnit', child.id)"
-                                class="p-3 rounded-xl border border-[#E8EFF4] bg-[#F8FAFC] hover:bg-[#E3F1F4]/40 hover:border-[#0E6E7E]/40 transition flex items-center justify-between cursor-pointer group"
+                                class="p-3 rounded-xl border border-[#E8EFF4] bg-[#F8FAFC] hover:bg-[#E8F0F0]/40 hover:border-[#163E3E]/40 transition flex items-center justify-between cursor-pointer group"
                             >
                                 <div class="flex items-center gap-2.5">
                                     <span class="w-2 h-2 rounded-full" :class="child.status === 'occupied' ? 'bg-emerald-500' : 'bg-amber-400'"></span>
                                     <div>
-                                        <span class="text-xs font-bold text-[#0F2747] group-hover:text-[#0E6E7E] transition block">
+                                        <span class="text-xs font-bold text-[#163E3E] group-hover:text-[#163E3E] transition block">
                                             {{ child.name }}
                                         </span>
                                         <span class="text-[10px] text-[#5B6770] font-mono">
@@ -399,7 +399,7 @@ const canDelete = computed(() => {
 
                                 <div class="flex items-center gap-2">
                                     <StatusBadge :status="child.status" :label="child.status_label" size="sm" />
-                                    <span class="text-xs text-[#8E9CA6] group-hover:text-[#0E6E7E] transition">←</span>
+                                    <span class="text-xs text-[#8E9CA6] group-hover:text-[#163E3E] transition">←</span>
                                 </div>
                             </div>
                         </div>
@@ -415,12 +415,12 @@ const canDelete = computed(() => {
                     <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 space-y-3 shadow-2xs">
                         <div class="flex items-center justify-between pb-3 border-b border-[#E8EFF4]">
                             <div class="flex items-center gap-2">
-                                <Wrench class="w-4 h-4 text-[#0E6E7E]" />
-                                <h4 class="text-xs font-bold text-[#0F2747]">سجل الصيانة والبلاغات</h4>
+                                <Wrench class="w-4 h-4 text-[#163E3E]" />
+                                <h4 class="text-xs font-bold text-[#163E3E]">سجل الصيانة والبلاغات</h4>
                             </div>
                             <Link
                                 :href="route('maintenance.index')"
-                                class="text-xs font-bold text-[#0E6E7E] hover:underline flex items-center gap-1"
+                                class="text-xs font-bold text-[#163E3E] hover:underline flex items-center gap-1"
                             >
                                 <Plus class="w-3.5 h-3.5" />
                                 <span>طلب صيانة</span>
@@ -434,7 +434,7 @@ const canDelete = computed(() => {
                                 class="p-3 rounded-xl border border-amber-200/60 bg-amber-50/40 flex items-center justify-between"
                             >
                                 <div>
-                                    <span class="text-xs font-bold text-[#0F2747] block">{{ ticket.title }}</span>
+                                    <span class="text-xs font-bold text-[#163E3E] block">{{ ticket.title }}</span>
                                     <span class="text-[10px] text-[#5B6770]">{{ ticket.reported_at }}</span>
                                 </div>
                                 <span class="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
@@ -455,13 +455,13 @@ const canDelete = computed(() => {
                     <div class="rounded-2xl border border-[#D6E0E7] bg-[#F8FAFC] p-4 text-xs space-y-2.5">
                         <div class="flex items-center justify-between text-[#5B6770]">
                             <span>احتساب الوحدة في باقة الاشتراك:</span>
-                            <span class="font-bold text-[#0F2747]">
+                            <span class="font-bold text-[#163E3E]">
                                 {{ unit.is_rentable ? 'وحدة قابلة للتأجير' : 'حاوية هيكلية (غير محتسبة)' }}
                             </span>
                         </div>
                         <div v-if="unit.parent_unit_name" class="flex items-center justify-between text-[#5B6770]">
                             <span>الوحدة الأم / المستوى الأعلى:</span>
-                            <span class="font-bold text-[#0E6E7E]">{{ unit.parent_unit_name }}</span>
+                            <span class="font-bold text-[#163E3E]">{{ unit.parent_unit_name }}</span>
                         </div>
                     </div>
                 </div>
@@ -473,9 +473,9 @@ const canDelete = computed(() => {
                         <button
                             @click="emit('editUnit', unit)"
                             type="button"
-                            class="h-10 px-3.5 rounded-xl border border-[#D6E0E7] hover:bg-[#F3F7FA] text-xs font-bold text-[#0F2747] transition flex items-center gap-1.5 cursor-pointer"
+                            class="h-10 px-3.5 rounded-xl border border-[#D6E0E7] hover:bg-[#F8F4EA] text-xs font-bold text-[#163E3E] transition flex items-center gap-1.5 cursor-pointer"
                         >
-                            <Edit3 class="w-4 h-4 text-[#0E6E7E]" />
+                            <Edit3 class="w-4 h-4 text-[#163E3E]" />
                             <span>تعديل</span>
                         </button>
 
@@ -496,16 +496,16 @@ const canDelete = computed(() => {
                         <Link
                             v-if="unit.active_lease"
                             :href="route('renters.show', unit.active_lease.renter_id)"
-                            class="h-10 px-4 rounded-xl border border-[#D6E0E7] hover:bg-[#F3F7FA] text-xs font-bold text-[#0F2747] transition flex items-center gap-1.5"
+                            class="h-10 px-4 rounded-xl border border-[#D6E0E7] hover:bg-[#F8F4EA] text-xs font-bold text-[#163E3E] transition flex items-center gap-1.5"
                         >
-                            <User class="w-4 h-4 text-[#0E6E7E]" />
+                            <User class="w-4 h-4 text-[#163E3E]" />
                             <span>ملف المستأجر</span>
                         </Link>
 
                         <button
                             @click="emit('close')"
                             type="button"
-                            class="h-10 px-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs font-bold text-[#5B6770] hover:text-[#0F2747] hover:bg-slate-200/60 transition cursor-pointer"
+                            class="h-10 px-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs font-bold text-[#5B6770] hover:text-[#163E3E] hover:bg-slate-200/60 transition cursor-pointer"
                         >
                             إغلاق
                         </button>

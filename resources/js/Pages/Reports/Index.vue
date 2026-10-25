@@ -34,11 +34,13 @@ interface Stats {
     total_collected: number;
     total_billed: number;
     total_outstanding: number;
+    total_advance?: number;
     total_expenses: number;
     net_cash_flow: number;
     collection_rate: number;
 
-    // Pending Expenses
+    // Pending & Maintenance Expenses
+    actual_maintenance_expenses?: number;
     pending_expenses_count: number;
     pending_expenses_amount: number;
     pending_cost_count: number;
@@ -144,17 +146,17 @@ const resetFilters = () => {
     applyFilters();
 };
 
-const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('ar-EG', {
+const formatCurrency = (amount: number | null | undefined): string => {
+    return new Intl.NumberFormat('en-US', {
         minimumFractionDigits: 0,
         maximumFractionDigits: 2,
-    }).format(amount);
+    }).format(Number(amount ?? 0));
 };
 </script>
 
 <template>
     <AppLayout
-        title="التقارير المالية والتحليلات — دار"
+        title="التقارير المالية والتحليلات — Nook Mate"
         active-tab="reports"
         header-title="التقارير والتحليلات المالية"
         header-subtitle="تتبع دقيق وشامل لجميع التدفقات النقدية الواردة والمنصرفة، مبالغ التأمين، والمصروفات المعتمدة"
@@ -165,7 +167,7 @@ const formatCurrency = (amount: number): string => {
             <div class="flex flex-wrap items-center gap-2">
                 <a
                     :href="route('reports.collections.export')"
-                    class="h-10 px-3.5 rounded-xl border border-[#D6E0E7] bg-white hover:bg-slate-50 text-xs font-semibold text-[#0F2747] transition shadow-2xs flex items-center gap-1.5"
+                    class="h-10 px-3.5 rounded-xl border border-[#D6E0E7] bg-white hover:bg-slate-50 text-xs font-semibold text-[#163E3E] transition shadow-2xs flex items-center gap-1.5"
                     title="تحميل ملف إكسل لجدول التحصيل"
                 >
                     <FileSpreadsheet class="h-4 w-4 text-emerald-600" />
@@ -174,7 +176,7 @@ const formatCurrency = (amount: number): string => {
 
                 <a
                     :href="route('reports.payments.export')"
-                    class="h-10 px-3.5 rounded-xl border border-[#D6E0E7] bg-white hover:bg-slate-50 text-xs font-semibold text-[#0F2747] transition shadow-2xs flex items-center gap-1.5"
+                    class="h-10 px-3.5 rounded-xl border border-[#D6E0E7] bg-white hover:bg-slate-50 text-xs font-semibold text-[#163E3E] transition shadow-2xs flex items-center gap-1.5"
                     title="تحميل ملف إكسل لجميع سندات القبض"
                 >
                     <Download class="h-4 w-4 text-blue-600" />
@@ -183,7 +185,7 @@ const formatCurrency = (amount: number): string => {
 
                 <a
                     :href="route('reports.expenses.export')"
-                    class="h-10 px-3.5 rounded-xl border border-[#D6E0E7] bg-white hover:bg-slate-50 text-xs font-semibold text-[#0F2747] transition shadow-2xs flex items-center gap-1.5"
+                    class="h-10 px-3.5 rounded-xl border border-[#D6E0E7] bg-white hover:bg-slate-50 text-xs font-semibold text-[#163E3E] transition shadow-2xs flex items-center gap-1.5"
                     title="تحميل ملف إكسل لسجل المصروفات التشغيلية المعتمدة"
                 >
                     <Download class="h-4 w-4 text-rose-600" />
@@ -192,7 +194,7 @@ const formatCurrency = (amount: number): string => {
 
                 <a
                     :href="route('reports.leases.export')"
-                    class="h-10 px-3.5 rounded-xl border border-[#D6E0E7] bg-white hover:bg-slate-50 text-xs font-semibold text-[#0F2747] transition shadow-2xs flex items-center gap-1.5"
+                    class="h-10 px-3.5 rounded-xl border border-[#D6E0E7] bg-white hover:bg-slate-50 text-xs font-semibold text-[#163E3E] transition shadow-2xs flex items-center gap-1.5"
                     title="تحميل ملف إكسل لبيانات العقود التأجيرية"
                 >
                     <FileText class="h-4 w-4 text-purple-600" />
@@ -207,14 +209,14 @@ const formatCurrency = (amount: number): string => {
                 <form @submit.prevent="applyFilters" class="space-y-4">
                     <div class="flex items-center justify-between pb-3 border-b border-slate-100">
                         <div class="flex items-center gap-2">
-                            <Filter class="h-4 w-4 text-[#0E6E7E]" />
-                            <h3 class="text-xs font-bold text-[#0F2747]">تصفية التقارير والتدفقات المالية</h3>
+                            <Filter class="h-4 w-4 text-[#163E3E]" />
+                            <h3 class="text-xs font-bold text-[#163E3E]">تصفية التقارير والتدفقات المالية</h3>
                         </div>
                         <button
                             v-if="selectedProperty || selectedUnit || selectedCategory !== 'all' || selectedTransactionType !== 'all'"
                             @click="resetFilters"
                             type="button"
-                            class="text-xs text-[#0E6E7E] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                            class="text-xs text-[#163E3E] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
                         >
                             <RefreshCw class="w-3 h-3" />
                             <span>إعادة تعيين الفلاتر</span>
@@ -229,7 +231,7 @@ const formatCurrency = (amount: number): string => {
                                 <input
                                     v-model="startDate"
                                     type="date"
-                                    class="w-full h-10 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
+                                    class="w-full h-10 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                                 />
                             </div>
                         </div>
@@ -241,7 +243,7 @@ const formatCurrency = (amount: number): string => {
                                 <input
                                     v-model="endDate"
                                     type="date"
-                                    class="w-full h-10 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition text-right"
+                                    class="w-full h-10 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                                 />
                             </div>
                         </div>
@@ -252,7 +254,7 @@ const formatCurrency = (amount: number): string => {
                             <select
                                 v-model="selectedProperty"
                                 @change="selectedUnit = ''"
-                                class="w-full h-10 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition"
+                                class="w-full h-10 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                             >
                                 <option value="">كل العقارات والمباني</option>
                                 <option v-for="p in properties" :key="p.id" :value="p.id">{{ p.name }}</option>
@@ -264,7 +266,7 @@ const formatCurrency = (amount: number): string => {
                             <label class="block text-[11px] font-bold text-[#5B6770] mb-1">الوحدة</label>
                             <select
                                 v-model="selectedUnit"
-                                class="w-full h-10 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition"
+                                class="w-full h-10 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                             >
                                 <option value="">جميع الوحدات</option>
                                 <option v-for="u in availableUnits" :key="u.id" :value="u.id">{{ u.name }}</option>
@@ -276,7 +278,7 @@ const formatCurrency = (amount: number): string => {
                             <button
                                 type="submit"
                                 :disabled="isFiltering"
-                                class="w-full h-10 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
+                                class="w-full h-10 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
                             >
                                 <Filter class="w-3.5 h-3.5" />
                                 <span>{{ isFiltering ? 'تحديث البيانات...' : 'تطبيق الفلترة' }}</span>
@@ -297,13 +299,16 @@ const formatCurrency = (amount: number): string => {
                         </div>
                     </div>
                     <div>
-                        <div class="text-2xl font-bold text-[#0F2747] font-mono">
+                        <div class="text-2xl font-bold text-[#163E3E] font-mono">
                             {{ formatCurrency(stats.total_collected) }}
                             <span class="text-xs font-normal text-[#5B6770]">{{ currency_symbol }}</span>
                         </div>
                         <p class="mt-1 text-xs text-emerald-700 font-semibold flex items-center gap-1">
                             <CheckCircle2 class="w-3 h-3" />
                             <span>سندات قبض معتمدة نقدية وبنكية</span>
+                        </p>
+                        <p v-if="stats.total_advance && stats.total_advance > 0" class="mt-1 text-[11px] text-blue-700 font-semibold">
+                            (منها {{ formatCurrency(stats.total_advance) }} {{ currency_symbol }} دفعات مقدمة لفترات لاحقة)
                         </p>
                     </div>
                 </div>
@@ -337,7 +342,7 @@ const formatCurrency = (amount: number): string => {
                     ]"
                 >
                     <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold text-[#0F2747]">صافي التدفق النقدي (السيولة)</span>
+                        <span class="text-xs font-bold text-[#163E3E]">صافي التدفق النقدي (السيولة)</span>
                         <div
                             class="rounded-xl p-2"
                             :class="stats.net_cash_flow >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'"
@@ -388,27 +393,26 @@ const formatCurrency = (amount: number): string => {
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
                                 <Receipt class="h-5 w-5 text-indigo-700" />
-                                <span class="text-xs font-bold text-indigo-950">مصروفات صيانة معلقة (غير محتسبة مالياً)</span>
+                                <span class="text-xs font-bold text-indigo-950">تكاليف صيانة بانتظار الفاتورة (مستبعدة من الإجمالي)</span>
                             </div>
                             <span class="text-xs font-bold text-indigo-700 bg-indigo-100 px-2.5 py-0.5 rounded-full">
-                                {{ stats.pending_expenses_count }} بند معلق
+                                {{ stats.pending_cost_count }} طلب صيانة
                             </span>
                         </div>
                         <p class="text-xs text-[#5B6770] leading-relaxed">
-                            قيود صيانة لم تُعتمد بعد، وبالتالي تم استبعادها تماماً من إجمالي المصروفات وصافي السيولة للحفاظ على دقة القوائم المالية.
+                            طلبات صيانة لم تُسجل تكلفتها الفعلية بعد، وتظل معروضة تشغيلياً دون التأثير على إجمالي المصروفات أو صافي التدفق النقدي.
                         </p>
                     </div>
 
                     <div class="mt-4 pt-3 border-t border-indigo-200/60 flex items-center justify-between">
                         <div>
-                            <span class="text-[11px] text-[#5B6770] block">قيمة بنود محددة وجاهزة للتطبيق:</span>
+                            <span class="text-[11px] text-[#5B6770] block">مصروفات الصيانة الفعلية المحتسبة:</span>
                             <span class="text-lg font-bold text-indigo-700 font-mono">
-                                {{ formatCurrency(stats.pending_expenses_amount) }} {{ currency_symbol }}
+                                {{ formatCurrency(stats.actual_maintenance_expenses ?? 0) }} {{ currency_symbol }}
                             </span>
-                            <span class="text-[11px] text-[#5B6770] mr-1">({{ stats.ready_to_apply_count }} بند)</span>
                         </div>
                         <div class="text-left">
-                            <span class="text-[11px] text-amber-800 font-semibold block">بانتظار تحديد الفاتورة:</span>
+                            <span class="text-[11px] text-amber-800 font-semibold block">بانتظار تحديد التكلفة:</span>
                             <span class="text-sm font-bold text-amber-800 font-mono">{{ stats.pending_cost_count }} طلب</span>
                         </div>
                     </div>
@@ -454,10 +458,10 @@ const formatCurrency = (amount: number): string => {
                 <div class="rounded-3xl border border-[#D6E0E7] bg-white p-6 shadow-2xs lg:col-span-2">
                     <div class="flex items-center justify-between border-b border-[#D6E0E7] pb-4">
                         <div>
-                            <h2 class="text-base font-bold text-[#0F2747]">جدول حركة التدفق النقدي الشهري</h2>
+                            <h2 class="text-base font-bold text-[#163E3E]">جدول حركة التدفق النقدي الشهري</h2>
                             <p class="text-xs text-[#5B6770] mt-0.5">مقارنة شهرية دقيقة للإيرادات المحصلة بالمصروفات التشغيلية المعتمدة</p>
                         </div>
-                        <BarChart3 class="h-5 w-5 text-[#0E6E7E]" />
+                        <BarChart3 class="h-5 w-5 text-[#163E3E]" />
                     </div>
 
                     <div class="mt-4 overflow-x-auto">
@@ -474,9 +478,9 @@ const formatCurrency = (amount: number): string => {
                                 <tr
                                     v-for="item in monthly_breakdown"
                                     :key="item.month"
-                                    class="hover:bg-[#F3F7FA] transition"
+                                    class="hover:bg-[#F8F4EA] transition"
                                 >
-                                    <td class="py-3 px-4 font-bold text-[#0F2747]">
+                                    <td class="py-3 px-4 font-bold text-[#163E3E]">
                                         {{ item.month_name }}
                                     </td>
                                     <td class="py-3 px-4 text-emerald-700 font-bold font-mono">
@@ -498,7 +502,7 @@ const formatCurrency = (amount: number): string => {
                 <div class="rounded-3xl border border-[#D6E0E7] bg-white p-6 shadow-2xs">
                     <div class="flex items-center justify-between border-b border-[#D6E0E7] pb-4">
                         <div>
-                            <h2 class="text-base font-bold text-[#0F2747]">توزيع المصروفات المعتمدة</h2>
+                            <h2 class="text-base font-bold text-[#163E3E]">توزيع المصروفات المعتمدة</h2>
                             <p class="text-xs text-[#5B6770] mt-0.5">حسب التصنيف والنسبة المئوية للفترة</p>
                         </div>
                         <Coins class="h-5 w-5 text-amber-600" />
@@ -515,21 +519,21 @@ const formatCurrency = (amount: number): string => {
                             class="rounded-2xl border border-[#D6E0E7] bg-[#F8FAFC] p-3.5 space-y-2"
                         >
                             <div class="flex items-center justify-between">
-                                <span class="font-bold text-[#0F2747] text-xs">{{ cat.category }}</span>
+                                <span class="font-bold text-[#163E3E] text-xs">{{ cat.category }}</span>
                                 <span class="text-[11px] font-semibold text-[#5B6770]">{{ cat.count }} عمليات</span>
                             </div>
                             <div class="flex items-center justify-between">
                                 <span class="text-sm font-bold text-rose-700 font-mono">
                                     {{ formatCurrency(cat.total) }} {{ currency_symbol }}
                                 </span>
-                                <span class="text-xs font-bold text-[#0F2747] font-mono">
+                                <span class="text-xs font-bold text-[#163E3E] font-mono">
                                     {{ stats.total_expenses > 0 ? Math.round((cat.total / stats.total_expenses) * 100) : 0 }}%
                                 </span>
                             </div>
                             <!-- شريط النسبة المئوية -->
                             <div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
                                 <div
-                                    class="h-full bg-[#0E6E7E] rounded-full"
+                                    class="h-full bg-[#163E3E] rounded-full"
                                     :style="{ width: `${stats.total_expenses > 0 ? (cat.total / stats.total_expenses) * 100 : 0}%` }"
                                 ></div>
                             </div>

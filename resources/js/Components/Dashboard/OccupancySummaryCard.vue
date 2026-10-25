@@ -43,13 +43,13 @@ const maintenancePercent = computed(() => {
             <!-- الرأس -->
             <div class="flex items-center justify-between">
                 <div>
-                    <h3 class="text-base font-bold text-[#0F2747]">ملخص إشغال الوحدات</h3>
+                    <h3 class="text-base font-bold text-[#163E3E]">ملخص إشغال الوحدات</h3>
                     <p class="text-xs text-[#5B6770] font-medium mt-0.5">
                         توزيع الوحدات القابلة للتأجير في محفظتك
                     </p>
                 </div>
                 <div class="text-start sm:text-left">
-                    <span class="text-2xl font-black text-[#0F2747]">
+                    <span class="text-2xl font-black text-[#163E3E]">
                         {{ occupancyRate }}%
                     </span>
                     <span class="text-[11px] text-[#5B6770] block font-medium">معدل الإشغال</span>
@@ -129,7 +129,7 @@ const maintenancePercent = computed(() => {
         <div class="pt-4 mt-2">
             <Link
                 :href="route('properties.index')"
-                class="w-full py-2 px-3 rounded-xl border border-[#D6E0E7] hover:border-[#0E6E7E] hover:bg-[#E8F3F5]/30 text-xs font-bold text-[#0E6E7E] transition flex items-center justify-center gap-2"
+                class="w-full py-2 px-3 rounded-xl border border-[#D6E0E7] hover:border-[#163E3E] hover:bg-[#E8F0F0]/30 text-xs font-bold text-[#163E3E] transition flex items-center justify-center gap-2"
             >
                 <span>إدارة وتصفح الوحدات</span>
                 <ArrowLeft class="h-3.5 w-3.5" />

@@ -113,8 +113,8 @@ const growthPercentage = computed(() => {
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
                 <div class="flex items-center gap-2">
-                    <h3 class="text-base font-bold text-[#0F2747]">الإيرادات الإيجارية الشهرية</h3>
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-[#E8F3F5] text-[#0E6E7E]">
+                    <h3 class="text-base font-bold text-[#163E3E]">الإيرادات الإيجارية الشهرية</h3>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-[#E8F0F0] text-[#163E3E]">
                         آخر 6 أشهر
                     </span>
                 </div>
@@ -127,7 +127,7 @@ const growthPercentage = computed(() => {
             <div class="flex items-center gap-3 self-start sm:self-auto">
                 <div class="text-start sm:text-left">
                     <span class="text-xs text-[#5B6770] font-medium block">إجمالي المحصّل</span>
-                    <span class="text-xl font-black text-[#0F2747]">
+                    <span class="text-xl font-black text-[#163E3E]">
                         {{ Number(totalIncome).toLocaleString() }} {{ currencySymbol }}
                     </span>
                 </div>
@@ -148,11 +148,11 @@ const growthPercentage = computed(() => {
             v-if="!hasData"
             class="my-8 py-10 px-6 rounded-xl border border-dashed border-[#D6E0E7] bg-[#F8FAFC] flex flex-col items-center justify-center text-center space-y-3"
         >
-            <div class="w-12 h-12 rounded-2xl bg-[#E8F3F5] text-[#0E6E7E] flex items-center justify-center">
+            <div class="w-12 h-12 rounded-2xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center">
                 <TrendingUp class="h-6 w-6 stroke-[1.75]" />
             </div>
             <div class="max-w-md">
-                <h4 class="text-sm font-bold text-[#0F2747]">لا توجد سجلات مدفوعات سابقة حتى الآن</h4>
+                <h4 class="text-sm font-bold text-[#163E3E]">لا توجد سجلات مدفوعات سابقة حتى الآن</h4>
                 <p class="text-xs text-[#5B6770] font-medium mt-1 leading-relaxed">
                     ستظهر الإحصائيات ومنحنى التحصيل المالي تلقائياً بمجرد تسجيل أول دفعة إيجار في أحد عقاراتك.
                 </p>
@@ -168,9 +168,9 @@ const growthPercentage = computed(() => {
             >
                 <defs>
                     <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#0E6E7E" stop-opacity="0.25" />
-                        <stop offset="60%" stop-color="#0E6E7E" stop-opacity="0.06" />
-                        <stop offset="100%" stop-color="#0E6E7E" stop-opacity="0.0" />
+                        <stop offset="0%" stop-color="#163E3E" stop-opacity="0.25" />
+                        <stop offset="60%" stop-color="#163E3E" stop-opacity="0.06" />
+                        <stop offset="100%" stop-color="#163E3E" stop-opacity="0.0" />
                     </linearGradient>
                 </defs>
 
@@ -194,7 +194,7 @@ const growthPercentage = computed(() => {
                 <path
                     :d="smoothPathD"
                     fill="none"
-                    stroke="#0E6E7E"
+                    stroke="#163E3E"
                     stroke-width="3"
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -209,7 +209,7 @@ const growthPercentage = computed(() => {
                         :y1="paddingY"
                         :x2="point.x"
                         :y2="svgHeight - paddingY"
-                        stroke="#0E6E7E"
+                        stroke="#163E3E"
                         stroke-width="1"
                         stroke-dasharray="2 2"
                     />
@@ -220,7 +220,7 @@ const growthPercentage = computed(() => {
                         :cy="point.y"
                         :r="hoveredIndex === idx ? 7 : (idx === chartPoints.length - 1 ? 5.5 : 4)"
                         fill="#FFFFFF"
-                        stroke="#0E6E7E"
+                        stroke="#163E3E"
                         :stroke-width="hoveredIndex === idx ? 3.5 : 2.5"
                         class="transition-all duration-150 cursor-pointer"
                         @mouseenter="hoveredIndex = idx"
@@ -247,7 +247,7 @@ const growthPercentage = computed(() => {
                 class="absolute -top-3 pointer-events-none transform -translate-x-1/2 transition-all duration-150"
                 :style="{ left: `${(chartPoints[hoveredIndex].x / svgWidth) * 100}%` }"
             >
-                <div class="bg-[#0F2747] text-white text-xs py-1.5 px-3 rounded-xl shadow-lg whitespace-nowrap flex flex-col items-center">
+                <div class="bg-[#163E3E] text-white text-xs py-1.5 px-3 rounded-xl shadow-lg whitespace-nowrap flex flex-col items-center">
                     <span class="text-[10px] text-white/70">{{ chartPoints[hoveredIndex].month }}</span>
                     <span class="font-bold font-mono">{{ Number(chartPoints[hoveredIndex].amount).toLocaleString() }} {{ currencySymbol }}</span>
                 </div>
@@ -259,7 +259,7 @@ const growthPercentage = computed(() => {
                     v-for="(month, idx) in activeMonths"
                     :key="idx"
                     class="text-xs font-semibold text-[#5B6770] transition-colors"
-                    :class="{ 'text-[#0E6E7E] font-bold': hoveredIndex === idx || idx === activeMonths.length - 1 }"
+                    :class="{ 'text-[#163E3E] font-bold': hoveredIndex === idx || idx === activeMonths.length - 1 }"
                 >
                     {{ month }}
                 </span>

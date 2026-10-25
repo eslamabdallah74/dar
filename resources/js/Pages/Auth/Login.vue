@@ -30,7 +30,7 @@ const submit = () => {
 
 <template>
     <GuestLayout image-background>
-        <Head title="تسجيل الدخول — دار" />
+        <Head title="تسجيل الدخول — Nook Mate" />
 
         <div class="mb-3 text-center sm:mb-6">
             <h1 class="text-2xl font-bold text-white">أهلاً بيك من جديد 👋</h1>
@@ -44,19 +44,19 @@ const submit = () => {
         </div>
 
         <form @submit.prevent="submit" class="space-y-2 sm:space-y-4">
-            <!-- البريد الإلكتروني أو الاسم -->
+            <!-- البريد الإلكتروني -->
             <div>
-                <InputLabel for="email" value="البريد الإلكتروني أو الاسم" />
+                <InputLabel for="email" value="البريد الإلكتروني" />
                 <div class="relative mt-1">
                     <TextInput
                         id="email"
-                        type="text"
+                        type="email"
                         class="block w-full pr-10 text-right"
                         v-model="form.email"
                         required
                         autofocus
-                        autocomplete="username"
-                        placeholder="ahmed@example.com أو اسمك"
+                        autocomplete="email"
+                        placeholder="ahmed@example.com"
                     />
                     <Mail class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
                 </div>

@@ -86,12 +86,12 @@ const filteredItems = computed(() => {
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-[#E8EFF4]">
                 <div>
                     <div class="flex items-center gap-2">
-                        <h3 class="text-base font-bold text-[#0F2747]">
+                        <h3 class="text-base font-bold text-[#163E3E]">
                             {{ title || 'الاستحقاقات القادمة ومواعيد التحصيل' }}
                         </h3>
                         <span
                             v-if="safeItems.length > 0"
-                            class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#E8F3F5] text-[#0E6E7E]"
+                            class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#E8F0F0] text-[#163E3E]"
                         >
                             {{ safeItems.length }}
                         </span>
@@ -108,7 +108,7 @@ const filteredItems = computed(() => {
                         v-model="searchQuery"
                         type="text"
                         placeholder="ابحث عن مستأجر أو وحدة..."
-                        class="w-full h-9 pr-9 pl-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#0F2747] placeholder-[#8E9CA6] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition outline-hidden"
+                        class="w-full h-9 pr-9 pl-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] placeholder-[#8E9CA6] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition outline-hidden"
                     />
                 </div>
             </div>
@@ -136,7 +136,7 @@ const filteredItems = computed(() => {
                 <button
                     @click="searchQuery = ''"
                     type="button"
-                    class="text-xs text-[#0E6E7E] font-bold hover:underline"
+                    class="text-xs text-[#163E3E] font-bold hover:underline"
                 >
                     مسح البحث
                 </button>
@@ -147,16 +147,16 @@ const filteredItems = computed(() => {
                 <table class="w-full text-right text-sm">
                     <thead>
                         <tr class="border-b border-[#E8EFF4] text-[11px] font-bold text-[#5B6770]">
-                            <th class="pb-3 pr-2 cursor-pointer hover:text-[#0F2747] transition select-none" @click="toggleSort('tenant')">
+                            <th class="pb-3 pr-2 cursor-pointer hover:text-[#163E3E] transition select-none" @click="toggleSort('tenant')">
                                 <span class="inline-flex items-center gap-1">المستأجر ↕</span>
                             </th>
-                            <th class="pb-3 cursor-pointer hover:text-[#0F2747] transition select-none" @click="toggleSort('unit')">
+                            <th class="pb-3 cursor-pointer hover:text-[#163E3E] transition select-none" @click="toggleSort('unit')">
                                 <span class="inline-flex items-center gap-1">العقار والوحدة ↕</span>
                             </th>
-                            <th class="pb-3 cursor-pointer hover:text-[#0F2747] transition select-none" @click="toggleSort('due_date')">
+                            <th class="pb-3 cursor-pointer hover:text-[#163E3E] transition select-none" @click="toggleSort('due_date')">
                                 <span class="inline-flex items-center gap-1">تاريخ الاستحقاق ↕</span>
                             </th>
-                            <th class="pb-3 cursor-pointer hover:text-[#0F2747] transition select-none" @click="toggleSort('amount')">
+                            <th class="pb-3 cursor-pointer hover:text-[#163E3E] transition select-none" @click="toggleSort('amount')">
                                 <span class="inline-flex items-center gap-1">المبلغ المطلوب ↕</span>
                             </th>
                             <th class="pb-3 pl-2 text-start sm:text-left">إجراء فوري</th>
@@ -171,11 +171,11 @@ const filteredItems = computed(() => {
                             <!-- المستأجر -->
                             <td class="py-3.5 pr-2">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-lg bg-[#E8F3F5] text-[#0E6E7E] flex items-center justify-center font-bold text-xs shrink-0">
+                                    <div class="w-8 h-8 rounded-lg bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center font-bold text-xs shrink-0">
                                         {{ item.tenant.charAt(0) }}
                                     </div>
                                     <div class="min-w-0">
-                                        <div class="font-bold text-xs sm:text-sm text-[#0F2747] truncate">
+                                        <div class="font-bold text-xs sm:text-sm text-[#163E3E] truncate">
                                             {{ item.tenant }}
                                         </div>
                                         <span v-if="item.phone" class="text-[11px] text-[#8E9CA6] block font-medium" dir="ltr">
@@ -187,7 +187,7 @@ const filteredItems = computed(() => {
 
                             <!-- العقار والوحدة -->
                             <td class="py-3.5">
-                                <div class="text-xs font-semibold text-[#0F2747]">
+                                <div class="text-xs font-semibold text-[#163E3E]">
                                     {{ item.unit }}
                                 </div>
                             </td>
@@ -195,7 +195,7 @@ const filteredItems = computed(() => {
                             <!-- تاريخ الاستحقاق والشارة -->
                             <td class="py-3.5 whitespace-nowrap">
                                 <div class="flex items-center gap-2">
-                                    <span class="text-xs text-[#0F2747]">
+                                    <span class="text-xs text-[#163E3E]">
                                         {{ item.due_date }}
                                     </span>
                                     <span
@@ -214,7 +214,7 @@ const filteredItems = computed(() => {
 
                             <!-- المبلغ المطلوب -->
                             <td class="py-3.5 whitespace-nowrap">
-                                <span class="font-black text-sm text-[#0F2747]">
+                                <span class="font-black text-sm text-[#163E3E]">
                                     {{ item.amount }}
                                 </span>
                             </td>
@@ -238,7 +238,7 @@ const filteredItems = computed(() => {
                                     <button
                                         @click="emit('recordPayment', item)"
                                         type="button"
-                                        class="h-8 px-3 rounded-lg bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                                        class="h-8 px-3 rounded-lg bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
                                         title="تسجيل دفعة سداد لهذا المستحق"
                                     >
                                         <CreditCard class="h-3.5 w-3.5" />

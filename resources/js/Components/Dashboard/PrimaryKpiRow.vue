@@ -65,23 +65,23 @@ const occupancyNumber = computed(() => {
         <!-- كارت 1: إجمالي العقارات -->
         <Link
             :href="route('properties.index')"
-            class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs hover:border-[#0E6E7E]/50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between group cursor-pointer"
+            class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs hover:border-[#163E3E]/50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between group cursor-pointer"
         >
             <div class="flex items-center justify-between">
-                <span class="text-xs font-semibold text-[#5B6770] group-hover:text-[#0E6E7E] transition-colors">
+                <span class="text-xs font-semibold text-[#5B6770] group-hover:text-[#163E3E] transition-colors">
                     {{ propertiesKpi.label || propertiesKpi.title }}
                 </span>
-                <div class="w-10 h-10 rounded-xl bg-[#E8F3F5] text-[#0E6E7E] flex items-center justify-center group-hover:scale-105 group-hover:bg-[#0E6E7E] group-hover:text-white transition-all shadow-2xs">
+                <div class="w-10 h-10 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center group-hover:scale-105 group-hover:bg-[#163E3E] group-hover:text-white transition-all shadow-2xs">
                     <Building2 class="h-4 w-4 stroke-[2.2]" />
                 </div>
             </div>
 
             <div class="mt-4">
                 <div class="flex items-baseline justify-between">
-                    <div class="text-3xl font-black text-[#0F2747] leading-none">
+                    <div class="text-3xl font-black text-[#163E3E] leading-none">
                         {{ propertiesKpi.value }}
                     </div>
-                    <ArrowUpLeft class="w-4 h-4 text-[#8E9CA6] group-hover:text-[#0E6E7E] group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                    <ArrowUpLeft class="w-4 h-4 text-[#8E9CA6] group-hover:text-[#163E3E] group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
                 </div>
                 <p class="text-xs text-[#5B6770] font-medium mt-2 truncate">
                     {{ propertiesKpi.subtitle }}
@@ -105,7 +105,7 @@ const occupancyNumber = computed(() => {
 
             <div class="mt-4">
                 <div class="flex items-baseline justify-between">
-                    <div class="text-3xl font-black text-[#0F2747] leading-none">
+                    <div class="text-3xl font-black text-[#163E3E] leading-none">
                         {{ unitsKpi.value }}
                     </div>
                     <ArrowUpLeft class="w-4 h-4 text-[#8E9CA6] group-hover:text-sky-700 group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
@@ -132,7 +132,7 @@ const occupancyNumber = computed(() => {
 
             <div class="mt-4">
                 <div class="flex items-baseline justify-between">
-                    <div class="text-3xl font-black text-[#0F2747] leading-none">
+                    <div class="text-3xl font-black text-[#163E3E] leading-none">
                         {{ occupancyKpi.value }}
                     </div>
                     <ArrowUpLeft class="w-4 h-4 text-[#8E9CA6] group-hover:text-emerald-700 group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
@@ -165,7 +165,7 @@ const occupancyNumber = computed(() => {
 
             <div class="mt-4">
                 <div class="flex items-baseline justify-between">
-                    <div class="text-2xl sm:text-3xl font-black text-[#0F2747] leading-none">
+                    <div class="text-2xl sm:text-3xl font-black text-[#163E3E] leading-none">
                         {{ collectedKpi.value }}
                     </div>
                     <ArrowUpLeft class="w-4 h-4 text-[#8E9CA6] group-hover:text-teal-700 group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />

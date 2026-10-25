@@ -19,8 +19,8 @@ interface StatusConfig {
 }
 
 const statusMap: Record<string, StatusConfig> = {
-    // Green / Success tints (Always #0F2747 text per AA contrast rule)
-    occupied: { dotColor: 'bg-emerald-500', bgColor: 'bg-[#E3F1F4]', defaultLabel: 'مؤجرة' },
+    // Green / Success tints (Always #163E3E text per AA contrast rule)
+    occupied: { dotColor: 'bg-emerald-500', bgColor: 'bg-[#E8F0F0]', defaultLabel: 'مؤجرة' },
     active: { dotColor: 'bg-emerald-500', bgColor: 'bg-[#DEF7EC]', defaultLabel: 'سارٍ' },
     paid: { dotColor: 'bg-emerald-500', bgColor: 'bg-[#DEF7EC]', defaultLabel: 'مسدد بالكامل' },
     closed: { dotColor: 'bg-emerald-500', bgColor: 'bg-[#DEF7EC]', defaultLabel: 'مكتمل' },
@@ -61,7 +61,7 @@ const displayLabel = computed(() => props.label || config.value.defaultLabel);
 
 <template>
     <span
-        class="inline-flex items-center gap-1.5 rounded-full font-medium text-[#0F2747] select-none transition-colors border border-black/5"
+        class="inline-flex items-center gap-1.5 rounded-full font-medium text-[#163E3E] select-none transition-colors border border-black/5"
         :class="[
             config.bgColor,
             size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs'

@@ -48,6 +48,13 @@ const props = withDefaults(
             code?: string;
             property_type: string;
             property_type_label?: string;
+            apartment_gender?: {
+                status: 'male' | 'female' | 'mixed' | 'unspecified';
+                label: string;
+                short_label: string;
+                description: string;
+                badge_class: string;
+            } | null;
             address: string;
             city?: string;
             district?: string;
@@ -222,7 +229,7 @@ const filteredUnits = computed(() => {
 
 <template>
     <AppLayout
-        :title="`${property.name} — دار`"
+        :title="`${property.name} — Nook Mate`"
         active-tab="properties"
         :header-title="property.name"
         :header-subtitle="property.address || 'تفاصيل العقار وهيكل الوحدات السكنية والتجارية'"
@@ -232,7 +239,7 @@ const filteredUnits = computed(() => {
             <div class="flex items-center gap-2.5 flex-wrap">
                 <Link
                     :href="route('properties.index')"
-                    class="h-10 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F3F7FA] text-xs font-semibold text-[#5B6770] transition flex items-center gap-1.5"
+                    class="h-10 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F8F4EA] text-xs font-semibold text-[#5B6770] transition flex items-center gap-1.5"
                 >
                     <ArrowRight class="w-4 h-4" />
                     <span>العودة للعقارات</span>
@@ -240,7 +247,7 @@ const filteredUnits = computed(() => {
 
                 <Link
                     :href="route('leases.create')"
-                    class="h-10 px-4 rounded-xl border border-[#0E6E7E]/30 bg-[#E8F3F5] text-[#0E6E7E] hover:bg-[#0E6E7E] hover:text-white text-xs font-bold transition flex items-center gap-1.5"
+                    class="h-10 px-4 rounded-xl border border-[#163E3E]/30 bg-[#E8F0F0] text-[#163E3E] hover:bg-[#163E3E] hover:text-white text-xs font-bold transition flex items-center gap-1.5"
                 >
                     <FileText class="w-4 h-4" />
                     <span>تأجير وحدة</span>
@@ -249,7 +256,7 @@ const filteredUnits = computed(() => {
                 <button
                     @click="openGeneralAddModal"
                     type="button"
-                    class="h-10 px-5 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer"
+                    class="h-10 px-5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer"
                 >
                     <Plus class="w-4 h-4" />
                     <span>إضافة وحدة بالعقار</span>
@@ -257,82 +264,53 @@ const filteredUnits = computed(() => {
             </div>
         </template>
 
-        <!-- 1. مؤشرات الأداء العقاري والمالي (Top 4 KPIs) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <!-- كارت 1: إجمالي الوحدات -->
-            <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-semibold text-[#5B6770]">إجمالي الوحدات المسجلة</span>
-                    <div class="w-8 h-8 rounded-lg bg-[#E8F3F5] text-[#0E6E7E] flex items-center justify-center">
-                        <Building2 class="w-4 h-4 stroke-[2.2]" />
+        <!-- 1. شريط المؤشرات المدمج (Architectural Metrics Bar) -->
+        <div class="border border-[#E2DDD2] rounded-lg bg-[#FCFAF6] px-5 py-3.5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-6">
+                <!-- المؤشرات الرئيسية -->
+                <div class="flex items-center flex-wrap gap-x-0 gap-y-2 divide-x divide-x-reverse divide-[#E2DDD2]">
+                    <div class="flex items-center gap-2 pe-5">
+                        <span class="text-xs text-[#5B6770]">إجمالي الوحدات</span>
+                        <span class="font-mono font-bold text-[#163E3E] text-sm">{{ stats.total_units }}</span>
+                        <span class="text-[11px] text-[#5B6770]">({{ stats.billable_units }} قابلة للتأجير)</span>
+                    </div>
+                    <div class="flex items-center gap-2 px-5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                        <span class="text-xs text-[#5B6770]">مشغولة</span>
+                        <span class="font-mono font-bold text-emerald-800 text-sm">{{ stats.occupied }}</span>
+                    </div>
+                    <div class="flex items-center gap-2 px-5">
+                        <span class="w-2 h-2 rounded-full bg-[#C5BCAC] shrink-0"></span>
+                        <span class="text-xs text-[#5B6770]">شاغرة</span>
+                        <span class="font-mono font-bold text-[#163E3E] text-sm">{{ stats.vacant }}</span>
+                    </div>
+                    <div v-if="stats.maintenance > 0" class="flex items-center gap-2 px-5">
+                        <span class="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
+                        <span class="text-xs text-[#5B6770]">صيانة</span>
+                        <span class="font-mono font-bold text-amber-700 text-sm">{{ stats.maintenance }}</span>
+                    </div>
+                    <div class="flex items-center gap-2 ps-5">
+                        <span class="text-xs text-[#5B6770]">الإيراد الشهري</span>
+                        <span class="font-mono font-bold text-[#163E3E] text-sm">{{ stats.monthly_revenue.toLocaleString() }}</span>
+                        <span class="text-[11px] text-[#5B6770]">{{ currency_symbol }}</span>
                     </div>
                 </div>
-                <div class="flex items-baseline justify-between pt-1">
-                    <span class="text-2xl font-bold text-[#0F2747] leading-none">{{ stats.total_units }}</span>
-                    <span class="text-xs text-[#0E6E7E] font-medium bg-[#E8F3F5] px-2 py-0.5 rounded-md">
-                        {{ stats.billable_units }} وحدة مؤجرة/شاغرة
-                    </span>
-                </div>
-            </div>
-
-            <!-- كارت 2: معدل الإشغال -->
-            <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-semibold text-[#5B6770]">معدل الإشغال الإجمالي</span>
-                    <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
-                        <Check class="w-4 h-4 stroke-[2.5]" />
+                <!-- شريط الإشغال -->
+                <div class="flex items-center gap-3 shrink-0">
+                    <div class="w-24 bg-[#EFECE2] h-1.5 rounded-full overflow-hidden">
+                        <div
+                            class="bg-emerald-600 h-full rounded-full transition-all duration-500"
+                            :style="{ width: `${stats.occupancy_rate}%` }"
+                        ></div>
                     </div>
-                </div>
-                <div class="flex items-baseline justify-between pt-1">
-                    <span class="text-2xl font-bold text-[#0F2747] leading-none">{{ stats.occupancy_rate }}%</span>
-                    <span class="text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                        {{ stats.occupied }} من {{ stats.total_units }} مشغولة
-                    </span>
-                </div>
-                <div class="w-full bg-[#E8EFF4] h-1.5 rounded-full overflow-hidden mt-2">
-                    <div
-                        class="bg-emerald-600 h-full rounded-full transition-all duration-500"
-                        :style="{ width: `${stats.occupancy_rate}%` }"
-                    ></div>
-                </div>
-            </div>
-
-            <!-- كارت 3: الوحدات الشاغرة -->
-            <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-semibold text-[#5B6770]">الوحدات الشاغرة</span>
-                    <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">
-                        <Tag class="w-4 h-4 stroke-[2.2]" />
-                    </div>
-                </div>
-                <div class="flex items-baseline justify-between pt-1">
-                    <span class="text-2xl font-bold text-[#0F2747] leading-none">{{ stats.vacant }}</span>
-                    <span class="text-xs text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-md font-bold border border-amber-200">
-                        متاحة للتأجير الفوري
-                    </span>
-                </div>
-            </div>
-
-            <!-- كارت 4: الإيراد الشهري المحقق -->
-            <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-semibold text-[#5B6770]">الإيراد الشهري المحقق</span>
-                    <div class="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center">
-                        <DollarSign class="w-4 h-4 stroke-[2.2]" />
-                    </div>
-                </div>
-                <div class="flex items-baseline justify-between pt-1">
-                    <span class="text-2xl font-bold text-[#0F2747] leading-none">
-                        {{ stats.monthly_revenue.toLocaleString() }}
-                        <span class="text-xs font-normal text-[#5B6770]">{{ currency_symbol }}</span>
-                    </span>
-                    <span class="text-xs text-[#5B6770] font-medium">شهرياً</span>
+                    <span class="text-xs font-bold text-[#163E3E] font-mono">{{ stats.occupancy_rate }}%</span>
+                    <span class="text-[11px] text-[#5B6770]">إشغال</span>
                 </div>
             </div>
         </div>
 
         <!-- 1.5. تفاصيل ومواصفات العقار والمرافق (Property Detailed Specifications Card) -->
-        <div class="overflow-hidden rounded-3xl border border-[#D6E0E7] bg-white shadow-2xs">
+        <div class="overflow-hidden rounded-lg border border-[#E2DDD2] bg-[#FCFAF6]">
             <div v-if="property.cover_image_url" class="relative h-48 w-full bg-[#10251D] sm:h-56">
                 <img :src="property.cover_image_url" :alt="property.name" class="h-full w-full object-cover" />
                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"></div>
@@ -340,6 +318,18 @@ const filteredUnits = computed(() => {
                     <div class="flex items-center gap-2">
                         <span class="rounded-lg bg-[#18705A] px-2.5 py-0.5 text-xs font-bold text-white">
                             {{ property.property_type_label || 'عقار' }}
+                        </span>
+                        <span
+                            v-if="property.apartment_gender && property.apartment_gender.status !== 'unspecified'"
+                            class="rounded-lg px-2.5 py-0.5 text-xs font-bold border flex items-center gap-1 backdrop-blur-xs"
+                            :class="[
+                                property.apartment_gender.status === 'male' ? 'bg-sky-500/80 text-white border-sky-400' :
+                                property.apartment_gender.status === 'female' ? 'bg-rose-500/80 text-white border-rose-400' :
+                                'bg-amber-500/80 text-white border-amber-400'
+                            ]"
+                        >
+                            <User class="w-3 h-3" />
+                            <span>{{ property.apartment_gender.label }}</span>
                         </span>
                         <span v-if="property.code" class="rounded-lg bg-white/20 px-2 py-0.5 text-xs font-mono font-bold backdrop-blur-xs">
                             {{ property.code }}
@@ -351,14 +341,40 @@ const filteredUnits = computed(() => {
             </div>
 
             <div class="p-5 sm:p-6 space-y-5">
+                <div v-if="!property.cover_image_url" class="flex items-center justify-between gap-3 flex-wrap border-b border-[#E8EFF4] pb-4">
+                    <div>
+                        <h2 class="text-xl font-black text-[#163E3E]">{{ property.name }}</h2>
+                        <p class="text-xs text-[#5B6770] mt-0.5">{{ property.address }}</p>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="rounded-lg bg-[#18705A] px-2.5 py-1 text-xs font-bold text-white">
+                            {{ property.property_type_label || 'عقار' }}
+                        </span>
+                        <span
+                            v-if="property.apartment_gender && property.apartment_gender.status !== 'unspecified'"
+                            class="rounded-lg px-2.5 py-1 text-xs font-bold border flex items-center gap-1"
+                            :class="[
+                                property.apartment_gender.status === 'male' ? 'bg-sky-50 text-sky-800 border-sky-200' :
+                                property.apartment_gender.status === 'female' ? 'bg-rose-50 text-rose-800 border-rose-200' :
+                                'bg-amber-50 text-amber-800 border-amber-200'
+                            ]"
+                        >
+                            <User class="w-3 h-3" />
+                            <span>{{ property.apartment_gender.label }}</span>
+                        </span>
+                        <span v-if="property.code" class="rounded-lg bg-slate-100 px-2 py-1 text-xs font-mono font-bold text-[#5B6770] border border-slate-200">
+                            {{ property.code }}
+                        </span>
+                    </div>
+                </div>
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
                     <!-- الموقع -->
-                    <div class="rounded-2xl border border-[#E8EFF4] bg-[#F8FBF9] p-4">
+                    <div class="rounded-md border border-[#E2DDD2] bg-[#EFECE2]/40 p-4">
                         <span class="flex items-center gap-1.5 text-xs font-extrabold text-[#18705A]">
                             <MapPin class="size-4" />
                             <span>الموقع والعنوان</span>
                         </span>
-                        <p class="mt-2 text-xs font-bold text-[#0F2747]">
+                        <p class="mt-2 text-xs font-bold text-[#163E3E]">
                             {{ property.city || 'المدينة غير محددة' }} {{ property.district ? ` - ${property.district}` : '' }}
                         </p>
                         <p class="mt-1 text-[11px] text-[#5B6770]">
@@ -375,7 +391,7 @@ const filteredUnits = computed(() => {
                     </div>
 
                     <!-- المواصفات -->
-                    <div class="rounded-2xl border border-[#E8EFF4] bg-[#F8FBF9] p-4">
+                    <div class="rounded-md border border-[#E2DDD2] bg-[#EFECE2]/40 p-4">
                         <span class="flex items-center gap-1.5 text-xs font-extrabold text-[#18705A]">
                             <Building2 class="size-4" />
                             <span>المواصفات الإنشائية</span>
@@ -383,25 +399,25 @@ const filteredUnits = computed(() => {
                         <div class="mt-2 grid grid-cols-2 gap-2 text-[11px]">
                             <div>
                                 <span class="text-[#5B6770]">الأدوار:</span>
-                                <span class="mr-1 font-bold text-[#0F2747]">{{ property.floors_count || 1 }}</span>
+                                <span class="mr-1 font-bold text-[#163E3E]">{{ property.floors_count || 1 }}</span>
                             </div>
                             <div v-if="property.total_area">
                                 <span class="text-[#5B6770]">المساحة:</span>
-                                <span class="mr-1 font-bold text-[#0F2747]">{{ property.total_area }} م²</span>
+                                <span class="mr-1 font-bold text-[#163E3E]">{{ property.total_area }} م²</span>
                             </div>
                             <div v-if="property.year_built">
                                 <span class="text-[#5B6770]">البناء:</span>
-                                <span class="mr-1 font-bold text-[#0F2747]">{{ property.year_built }}</span>
+                                <span class="mr-1 font-bold text-[#163E3E]">{{ property.year_built }}</span>
                             </div>
                             <div v-if="property.finishing_type">
                                 <span class="text-[#5B6770]">التشطيب:</span>
-                                <span class="mr-1 font-bold text-[#0F2747]">{{ property.finishing_type }}</span>
+                                <span class="mr-1 font-bold text-[#163E3E]">{{ property.finishing_type }}</span>
                             </div>
                         </div>
                     </div>
 
                     <!-- العدادات -->
-                    <div class="rounded-2xl border border-[#E8EFF4] bg-[#F8FBF9] p-4">
+                    <div class="rounded-md border border-[#E2DDD2] bg-[#EFECE2]/40 p-4">
                         <span class="flex items-center gap-1.5 text-xs font-extrabold text-[#18705A]">
                             <Receipt class="size-4" />
                             <span>عدادات المرافق</span>
@@ -409,15 +425,15 @@ const filteredUnits = computed(() => {
                         <div class="mt-2 space-y-1 text-[11px]">
                             <div v-if="property.electricity_meter_number">
                                 <span class="text-[#5B6770]">كهرباء:</span>
-                                <span class="mr-1 font-mono font-bold text-[#0F2747]">{{ property.electricity_meter_number }}</span>
+                                <span class="mr-1 font-mono font-bold text-[#163E3E]">{{ property.electricity_meter_number }}</span>
                             </div>
                             <div v-if="property.water_meter_number">
                                 <span class="text-[#5B6770]">مياه:</span>
-                                <span class="mr-1 font-mono font-bold text-[#0F2747]">{{ property.water_meter_number }}</span>
+                                <span class="mr-1 font-mono font-bold text-[#163E3E]">{{ property.water_meter_number }}</span>
                             </div>
                             <div v-if="property.gas_meter_number">
                                 <span class="text-[#5B6770]">غاز:</span>
-                                <span class="mr-1 font-mono font-bold text-[#0F2747]">{{ property.gas_meter_number }}</span>
+                                <span class="mr-1 font-mono font-bold text-[#163E3E]">{{ property.gas_meter_number }}</span>
                             </div>
                             <div v-if="!property.electricity_meter_number && !property.water_meter_number && !property.gas_meter_number" class="text-[#7A8C83]">
                                 لا توجد عدادات مسجلة
@@ -426,7 +442,7 @@ const filteredUnits = computed(() => {
                     </div>
 
                     <!-- الحارس والصك -->
-                    <div class="rounded-2xl border border-[#E8EFF4] bg-[#F8FBF9] p-4">
+                    <div class="rounded-md border border-[#E2DDD2] bg-[#EFECE2]/40 p-4">
                         <span class="flex items-center gap-1.5 text-xs font-extrabold text-[#18705A]">
                             <ShieldCheck class="size-4" />
                             <span>الإدارة وسند الملكية</span>
@@ -434,7 +450,7 @@ const filteredUnits = computed(() => {
                         <div class="mt-2 space-y-1 text-[11px]">
                             <div v-if="property.guard_name">
                                 <span class="text-[#5B6770]">الحارس:</span>
-                                <span class="mr-1 font-bold text-[#0F2747]">{{ property.guard_name }}</span>
+                                <span class="mr-1 font-bold text-[#163E3E]">{{ property.guard_name }}</span>
                             </div>
                             <div v-if="property.guard_phone">
                                 <span class="text-[#5B6770]">الهاتف:</span>
@@ -442,7 +458,7 @@ const filteredUnits = computed(() => {
                             </div>
                             <div v-if="property.deed_number">
                                 <span class="text-[#5B6770]">الصك/العقد:</span>
-                                <span class="mr-1 font-mono font-bold text-[#0F2747]">{{ property.deed_number }}</span>
+                                <span class="mr-1 font-mono font-bold text-[#163E3E]">{{ property.deed_number }}</span>
                             </div>
                             <div v-if="!property.guard_name && !property.deed_number" class="text-[#7A8C83]">
                                 غير مسجل
@@ -452,12 +468,12 @@ const filteredUnits = computed(() => {
                 </div>
 
                 <!-- شارات المرافق المتاحة -->
-                <div v-if="property.amenities && property.amenities.length > 0" class="flex flex-wrap items-center gap-2 border-t border-[#E8EFF4] pt-3">
+                <div v-if="property.amenities && property.amenities.length > 0" class="flex flex-wrap items-center gap-2 border-t border-[#E2DDD2] pt-3">
                     <span class="text-xs font-bold text-[#5B6770]">المرافق والخدمات:</span>
                     <span
                         v-for="amenity in property.amenities"
                         :key="amenity"
-                        class="rounded-xl bg-[#EFF7F2] px-2.5 py-1 text-[11px] font-bold text-[#18705A] border border-[#DCEDE3]"
+                        class="rounded-md bg-[#EFECE2] px-2.5 py-1 text-[11px] font-bold text-[#18705A] border border-[#E2DDD2]"
                     >
                         {{ amenity }}
                     </span>
@@ -465,101 +481,38 @@ const filteredUnits = computed(() => {
             </div>
         </div>
 
-        <!-- 2. ملخص مستويات هيكل الوحدات (Hierarchy Overview Summary Section) -->
-        <div class="rounded-3xl border border-[#D6E0E7] bg-white p-5 sm:p-6 shadow-2xs space-y-4">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E8EFF4]">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-9 h-9 rounded-xl bg-[#E8F3F5] text-[#0E6E7E] flex items-center justify-center">
-                        <Layers class="w-5 h-5 stroke-[2]" />
+        <!-- 2. شريط ملخص هيكل الوحدات (Compact Hierarchy Ledger) -->
+        <div class="border border-[#E2DDD2] rounded-lg bg-[#FCFAF6] px-5 py-3.5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex items-center flex-wrap gap-x-0 gap-y-2 divide-x divide-x-reverse divide-[#E2DDD2] text-xs">
+                    <div class="flex items-center gap-2 pe-5">
+                        <Home class="w-3.5 h-3.5 text-[#5B6770]" />
+                        <span class="text-[#5B6770]">شقق</span>
+                        <span class="font-mono font-bold text-[#163E3E]">{{ stats.hierarchy_summary?.apartments ?? 0 }}</span>
+                        <span class="text-[11px] text-[#8E9CA6]">مستوى 1</span>
                     </div>
-                    <div>
-                        <h3 class="text-base font-bold text-[#0F2747]">
-                            هيكل الوحدات والتقسيم الهرمي
-                        </h3>
-                        <p class="text-xs text-[#5B6770]">
-                            توزيع الوحدات حسب مستويات الهرمية المعتمدة: شقة ← أوضة ← سرير، ومحلات تجارية مستقلة
-                        </p>
+                    <div class="flex items-center gap-2 px-5">
+                        <DoorClosed class="w-3.5 h-3.5 text-[#5B6770]" />
+                        <span class="text-[#5B6770]">أوض</span>
+                        <span class="font-mono font-bold text-[#163E3E]">{{ stats.hierarchy_summary?.rooms ?? 0 }}</span>
+                        <span class="text-[11px] text-[#8E9CA6]">مستوى 2</span>
+                    </div>
+                    <div class="flex items-center gap-2 px-5">
+                        <Bed class="w-3.5 h-3.5 text-[#5B6770]" />
+                        <span class="text-[#5B6770]">سراير</span>
+                        <span class="font-mono font-bold text-[#163E3E]">{{ stats.hierarchy_summary?.beds ?? 0 }}</span>
+                        <span class="text-[11px] text-[#8E9CA6]">مستوى 3</span>
+                    </div>
+                    <div class="flex items-center gap-2 ps-5">
+                        <Store class="w-3.5 h-3.5 text-[#5B6770]" />
+                        <span class="text-[#5B6770]">محلات</span>
+                        <span class="font-mono font-bold text-[#163E3E]">{{ stats.hierarchy_summary?.shops ?? 0 }}</span>
+                        <span class="text-[11px] text-[#8E9CA6]">مستقل</span>
                     </div>
                 </div>
-
-                <div class="text-xs text-[#5B6770] font-medium self-end sm:self-auto">
-                    القاعدة: الشقق قابلة للتأجير كلياً أو تقسيمها لغرف، والمحلات مستقلة تماماً
-                </div>
-            </div>
-
-            <!-- 4 أشرطة إحصاء حسب النوع -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <!-- الشقق -->
-                <div class="p-3.5 sm:p-4 rounded-2xl border border-blue-200/70 bg-gradient-to-b from-blue-50/50 to-white flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-                            <Home class="w-5 h-5 stroke-[2]" />
-                        </div>
-                        <div>
-                            <span class="text-xs text-[#5B6770] font-semibold block">إجمالي الشقق</span>
-                            <span class="text-xl font-black text-[#0F2747] font-mono">
-                                {{ stats.hierarchy_summary?.apartments ?? 0 }}
-                            </span>
-                        </div>
-                    </div>
-                    <span class="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
-                        مستوى 1
-                    </span>
-                </div>
-
-                <!-- الغرف -->
-                <div class="p-3.5 sm:p-4 rounded-2xl border border-teal-200/70 bg-gradient-to-b from-teal-50/50 to-white flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center shrink-0">
-                            <DoorClosed class="w-5 h-5 stroke-[2]" />
-                        </div>
-                        <div>
-                            <span class="text-xs text-[#5B6770] font-semibold block">إجمالي الأوض</span>
-                            <span class="text-xl font-black text-[#0F2747] font-mono">
-                                {{ stats.hierarchy_summary?.rooms ?? 0 }}
-                            </span>
-                        </div>
-                    </div>
-                    <span class="text-[11px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
-                        مستوى 2
-                    </span>
-                </div>
-
-                <!-- الأسرة -->
-                <div class="p-3.5 sm:p-4 rounded-2xl border border-amber-200/70 bg-gradient-to-b from-amber-50/50 to-white flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-                            <Bed class="w-5 h-5 stroke-[2]" />
-                        </div>
-                        <div>
-                            <span class="text-xs text-[#5B6770] font-semibold block">إجمالي السراير</span>
-                            <span class="text-xl font-black text-[#0F2747] font-mono">
-                                {{ stats.hierarchy_summary?.beds ?? 0 }}
-                            </span>
-                        </div>
-                    </div>
-                    <span class="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                        مستوى 3
-                    </span>
-                </div>
-
-                <!-- المحلات -->
-                <div class="p-3.5 sm:p-4 rounded-2xl border border-purple-200/70 bg-gradient-to-b from-purple-50/50 to-white flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
-                            <Store class="w-5 h-5 stroke-[2]" />
-                        </div>
-                        <div>
-                            <span class="text-xs text-[#5B6770] font-semibold block">المحلات التجارية</span>
-                            <span class="text-xl font-black text-[#0F2747] font-mono">
-                                {{ stats.hierarchy_summary?.shops ?? 0 }}
-                            </span>
-                        </div>
-                    </div>
-                    <span class="text-[11px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
-                        مستقل
-                    </span>
-                </div>
+                <p class="text-[11px] text-[#8E9CA6] shrink-0">
+                    الشقق قابلة للتأجير كلياً أو تقسيمها لغرف، والمحلات مستقلة تماماً
+                </p>
             </div>
         </div>
 
@@ -572,7 +525,7 @@ const filteredUnits = computed(() => {
                         v-model="searchQuery"
                         type="text"
                         placeholder="ابحث برقم الشقة، اسم الأوضة، السرير، أو المستأجر..."
-                        class="w-full h-10 pr-9 pl-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#0F2747] focus:border-[#0E6E7E] focus:bg-white focus:ring-1 focus:ring-[#0E6E7E] transition placeholder-[#8E9CA6]"
+                        class="w-full h-10 pr-9 pl-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition placeholder-[#8E9CA6]"
                     />
                     <Search class="w-4 h-4 text-[#8E9CA6] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <button
@@ -592,7 +545,7 @@ const filteredUnits = computed(() => {
                         <button
                             @click="handleExpandAll"
                             type="button"
-                            class="h-8 px-2.5 rounded-lg text-xs font-semibold text-[#5B6770] hover:text-[#0E6E7E] hover:bg-white transition flex items-center gap-1 cursor-pointer"
+                            class="h-8 px-2.5 rounded-lg text-xs font-semibold text-[#5B6770] hover:text-[#163E3E] hover:bg-white transition flex items-center gap-1 cursor-pointer"
                             title="فتح كل المستويات الهرمية"
                         >
                             <Maximize2 class="w-3.5 h-3.5" />
@@ -601,7 +554,7 @@ const filteredUnits = computed(() => {
                         <button
                             @click="handleCollapseAll"
                             type="button"
-                            class="h-8 px-2.5 rounded-lg text-xs font-semibold text-[#5B6770] hover:text-[#0E6E7E] hover:bg-white transition flex items-center gap-1 cursor-pointer"
+                            class="h-8 px-2.5 rounded-lg text-xs font-semibold text-[#5B6770] hover:text-[#163E3E] hover:bg-white transition flex items-center gap-1 cursor-pointer"
                             title="طي كل الفروع وإبقاء الشقق الرئيسية فقط"
                         >
                             <Minimize2 class="w-3.5 h-3.5" />
@@ -610,12 +563,12 @@ const filteredUnits = computed(() => {
                     </div>
 
                     <!-- View Switcher (Tree vs Table) -->
-                    <div class="flex items-center gap-1 p-1 rounded-xl bg-[#F3F7FA] border border-[#E8EFF4]">
+                    <div class="flex items-center gap-1 p-1 rounded-xl bg-[#F8F4EA] border border-[#E8EFF4]">
                         <button
                             @click="activeTab = 'tree'"
                             type="button"
                             class="h-8 px-3 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-                            :class="activeTab === 'tree' ? 'bg-white text-[#0E6E7E] shadow-2xs' : 'text-[#5B6770] hover:text-[#0F2747]'"
+                            :class="activeTab === 'tree' ? 'bg-white text-[#163E3E] shadow-2xs' : 'text-[#5B6770] hover:text-[#163E3E]'"
                         >
                             <Layers class="w-3.5 h-3.5" />
                             <span>شجرة الوحدات</span>
@@ -625,7 +578,7 @@ const filteredUnits = computed(() => {
                             @click="activeTab = 'table'"
                             type="button"
                             class="h-8 px-3 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-                            :class="activeTab === 'table' ? 'bg-white text-[#0E6E7E] shadow-2xs' : 'text-[#5B6770] hover:text-[#0F2747]'"
+                            :class="activeTab === 'table' ? 'bg-white text-[#163E3E] shadow-2xs' : 'text-[#5B6770] hover:text-[#163E3E]'"
                         >
                             <List class="w-3.5 h-3.5" />
                             <span>جدول تفصيلي</span>
@@ -644,7 +597,7 @@ const filteredUnits = computed(() => {
                         @click="typeFilter = 'all'"
                         type="button"
                         class="px-2.5 py-1 rounded-lg font-bold transition shrink-0 cursor-pointer"
-                        :class="typeFilter === 'all' ? 'bg-[#0E6E7E] text-white' : 'bg-[#F3F7FA] text-[#5B6770] hover:bg-slate-200'"
+                        :class="typeFilter === 'all' ? 'bg-[#163E3E] text-white' : 'bg-[#F8F4EA] text-[#5B6770] hover:bg-slate-200'"
                     >
                         الكل
                     </button>
@@ -698,7 +651,7 @@ const filteredUnits = computed(() => {
                         @click="statusFilter = 'all'"
                         type="button"
                         class="px-2.5 py-1 rounded-lg font-bold transition shrink-0 cursor-pointer"
-                        :class="statusFilter === 'all' ? 'bg-[#0F2747] text-white' : 'bg-[#F3F7FA] text-[#5B6770] hover:bg-slate-200'"
+                        :class="statusFilter === 'all' ? 'bg-[#163E3E] text-white' : 'bg-[#F8F4EA] text-[#5B6770] hover:bg-slate-200'"
                     >
                         الكل
                     </button>
@@ -774,27 +727,27 @@ const filteredUnits = computed(() => {
                             :key="unit.id"
                             class="hover:bg-[#F8FAFC] transition group"
                         >
-                            <td class="py-4 px-6 font-mono font-bold text-[#0E6E7E]">
+                            <td class="py-4 px-6 font-mono font-bold text-[#163E3E]">
                                 {{ unit.code || '—' }}
                             </td>
 
                             <td class="py-4 px-6">
                                 <span
                                     @click="openUnitDetails(unit)"
-                                    class="font-bold text-[#0F2747] hover:text-[#0E6E7E] transition cursor-pointer block"
+                                    class="font-bold text-[#163E3E] hover:text-[#163E3E] transition cursor-pointer block"
                                 >
                                     {{ unit.name }}
                                 </span>
                             </td>
 
-                            <td class="py-4 px-6 text-xs text-[#0F2747]">
-                                <span class="bg-[#F3F7FA] px-2 py-0.5 rounded-md border border-[#D6E0E7] font-bold">
+                            <td class="py-4 px-6 text-xs text-[#163E3E]">
+                                <span class="bg-[#F8F4EA] px-2 py-0.5 rounded-md border border-[#D6E0E7] font-bold">
                                     {{ unit.type_label }}
                                 </span>
                             </td>
 
                             <td class="py-4 px-6 text-xs text-[#5B6770]">
-                                <span v-if="unit.parent_unit_name" class="font-medium text-[#0E6E7E]">
+                                <span v-if="unit.parent_unit_name" class="font-medium text-[#163E3E]">
                                     تابع لـ: {{ unit.parent_unit_name }}
                                 </span>
                                 <span v-else class="text-slate-400">
@@ -804,13 +757,13 @@ const filteredUnits = computed(() => {
 
                             <td class="py-4 px-6">
                                 <div v-if="unit.active_lease" class="min-w-0">
-                                    <span class="font-bold text-[#0F2747] text-xs block truncate">{{ unit.active_lease.renter_name }}</span>
+                                    <span class="font-bold text-[#163E3E] text-xs block truncate">{{ unit.active_lease.renter_name }}</span>
                                     <span class="text-[11px] text-[#5B6770] font-mono block" dir="ltr">{{ unit.active_lease.renter_phone }}</span>
                                 </div>
                                 <span v-else class="text-xs text-[#8E9CA6] italic">شاغرة</span>
                             </td>
 
-                            <td class="py-4 px-6 font-mono text-xs font-bold text-[#0F2747]">
+                            <td class="py-4 px-6 font-mono text-xs font-bold text-[#163E3E]">
                                 <span v-if="unit.active_lease">
                                     {{ unit.active_lease.rent_amount.toLocaleString() }} {{ currency_symbol }}
                                 </span>
@@ -826,7 +779,7 @@ const filteredUnits = computed(() => {
                                     <button
                                         @click="openUnitDetails(unit)"
                                         type="button"
-                                        class="h-8 px-3 rounded-lg border border-[#D6E0E7] hover:bg-[#F3F7FA] text-[#0F2747] text-xs font-semibold transition cursor-pointer"
+                                        class="h-8 px-3 rounded-lg border border-[#D6E0E7] hover:bg-[#F8F4EA] text-[#163E3E] text-xs font-semibold transition cursor-pointer"
                                     >
                                         التفاصيل
                                     </button>
@@ -834,7 +787,7 @@ const filteredUnits = computed(() => {
                                     <button
                                         @click="handleEditUnit(unit)"
                                         type="button"
-                                        class="h-8 px-2.5 rounded-lg border border-[#D6E0E7] hover:bg-[#F3F7FA] text-[#5B6770] hover:text-[#0F2747] text-xs transition cursor-pointer"
+                                        class="h-8 px-2.5 rounded-lg border border-[#D6E0E7] hover:bg-[#F8F4EA] text-[#5B6770] hover:text-[#163E3E] text-xs transition cursor-pointer"
                                         title="تعديل"
                                     >
                                         تعديل
@@ -851,10 +804,10 @@ const filteredUnits = computed(() => {
         <div v-if="recent_maintenance && recent_maintenance.length > 0" class="rounded-3xl border border-[#D6E0E7] bg-white p-6 shadow-2xs space-y-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                    <Wrench class="w-5 h-5 text-[#0E6E7E]" />
-                    <h3 class="text-base font-bold text-[#0F2747]">بلاغات الصيانة المسجلة لهذا العقار</h3>
+                    <Wrench class="w-5 h-5 text-[#163E3E]" />
+                    <h3 class="text-base font-bold text-[#163E3E]">بلاغات الصيانة المسجلة لهذا العقار</h3>
                 </div>
-                <Link :href="route('maintenance.index')" class="text-xs font-bold text-[#0E6E7E] hover:underline">
+                <Link :href="route('maintenance.index')" class="text-xs font-bold text-[#163E3E] hover:underline">
                     كل طلبات الصيانة ↗
                 </Link>
             </div>
@@ -862,7 +815,7 @@ const filteredUnits = computed(() => {
             <div class="divide-y divide-[#E8EFF4]">
                 <div v-for="m in recent_maintenance" :key="m.id" class="py-3 flex items-center justify-between text-xs">
                     <div>
-                        <span class="font-bold text-[#0F2747]">{{ m.title }}</span>
+                        <span class="font-bold text-[#163E3E]">{{ m.title }}</span>
                         <span class="text-[#5B6770] mr-2">بواسطة {{ m.renter_name }}</span>
                     </div>
                     <div class="flex items-center gap-3">
@@ -903,14 +856,14 @@ const filteredUnits = computed(() => {
 
         <!-- 8. نافذة تأكيد حذف الوحدة -->
         <div v-if="showDeleteModal && unitToDelete" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4" dir="rtl">
-            <div @click="showDeleteModal = false" class="fixed inset-0 bg-[#0F2747]/60 backdrop-blur-xs"></div>
+            <div @click="showDeleteModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
             <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-6 z-10 space-y-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
                         <AlertTriangle class="w-5 h-5 stroke-[2]" />
                     </div>
                     <div>
-                        <h3 class="text-base font-bold text-[#0F2747]">تأكيد حذف الوحدة</h3>
+                        <h3 class="text-base font-bold text-[#163E3E]">تأكيد حذف الوحدة</h3>
                         <p class="text-xs text-[#5B6770]">{{ unitToDelete.name }} ({{ unitToDelete.type_label }})</p>
                     </div>
                 </div>

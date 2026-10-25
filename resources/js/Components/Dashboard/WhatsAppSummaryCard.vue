@@ -25,14 +25,14 @@ defineProps<{
                         <MessageSquare class="h-4 w-4" />
                     </div>
                     <div>
-                        <h3 class="text-base font-bold text-[#0F2747]">تذكيرات واتساب التلقائية</h3>
+                        <h3 class="text-base font-bold text-[#163E3E]">تذكيرات واتساب التلقائية</h3>
                         <p class="text-xs text-[#5B6770] font-medium mt-0.5">
                             سجل رسائل المطالبات والتنبيهات الدورية
                         </p>
                     </div>
                 </div>
 
-                <span class="text-xs font-bold font-mono text-[#0F2747] bg-[#F8FAFC] px-2.5 py-1 rounded-lg border border-[#E8EFF4]">
+                <span class="text-xs font-bold font-mono text-[#163E3E] bg-[#F8FAFC] px-2.5 py-1 rounded-lg border border-[#E8EFF4]">
                     إجمالي {{ summary?.total ?? 0 }} رسالة
                 </span>
             </div>
@@ -45,7 +45,7 @@ defineProps<{
                         <CheckCheck class="h-3.5 w-3.5 text-sky-600" />
                         <span>تم الإرسال</span>
                     </div>
-                    <div class="text-xl font-bold font-mono text-[#0F2747] mt-1">
+                    <div class="text-xl font-bold font-mono text-[#163E3E] mt-1">
                         {{ summary?.sent ?? 0 }}
                     </div>
                     <span class="text-[10px] text-[#8E9CA6]">مقبولة لدى مزود الخدمة</span>
@@ -98,7 +98,7 @@ defineProps<{
         <div class="pt-4 border-t border-[#E8EFF4] mt-3">
             <Link
                 :href="route('whatsapp.index')"
-                class="w-full py-2 px-3 rounded-xl border border-[#D6E0E7] hover:border-[#0E6E7E] hover:bg-[#E8F3F5]/30 text-xs font-bold text-[#0E6E7E] transition flex items-center justify-center gap-2"
+                class="w-full py-2 px-3 rounded-xl border border-[#D6E0E7] hover:border-[#163E3E] hover:bg-[#E8F0F0]/30 text-xs font-bold text-[#163E3E] transition flex items-center justify-center gap-2"
             >
                 <span>سجل الرسائل وإعدادات القوالب</span>
                 <ArrowLeft class="h-3.5 w-3.5" />

@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Spatie\Activitylog\Models\Activity;
 
 class Payment extends Model
 {
@@ -21,6 +23,8 @@ class Payment extends Model
         'payment_method',
         'reference',
         'notes',
+        'receipt_path',
+        'created_at',
     ];
 
     protected function casts(): array
@@ -28,7 +32,18 @@ class Payment extends Model
         return [
             'amount' => 'decimal:2',
             'paid_at' => 'datetime',
+            'created_at' => 'datetime',
         ];
+    }
+
+    public static function boot(): void
+    {
+        parent::boot();
+
+        // Enforce Section 6: Deleting financial transactions permanently is not an acceptable correction strategy.
+        static::deleting(function (Payment $payment) {
+            throw new \RuntimeException('الحذف الدائم لسندات القبض والمعاملات المالية غير مسموح به نظامياً. يرجى استخدام آلية التصحيح المالي والرقابي.');
+        });
     }
 
     public function renter(): BelongsTo
@@ -46,8 +61,24 @@ class Payment extends Model
         return $this->hasMany(PaymentAllocation::class);
     }
 
+    public function auditLogs(): MorphMany
+    {
+        return $this->morphMany(Activity::class, 'subject')->latest();
+    }
+
+    public function getLeaseAttribute(): ?Lease
+    {
+        return $this->allocations->first()?->rentCharge?->lease
+            ?? $this->renter?->leases()->where('status', 'active')->first()
+            ?? $this->renter?->leases()->latest()->first();
+    }
+
     public function getAllocatedAmountAttribute(): float
     {
+        if ($this->relationLoaded('allocations')) {
+            return (float) $this->allocations->sum('amount');
+        }
+
         return (float) $this->allocations()->sum('amount');
     }
 

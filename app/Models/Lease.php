@@ -27,8 +27,18 @@ class Lease extends Model
         'billing_anchor_day',
         'first_due_date',
         'status',
+        'contract_image',
         'notes',
     ];
+
+    protected $appends = [
+        'contract_image_url',
+    ];
+
+    public function getContractImageUrlAttribute(): ?string
+    {
+        return $this->contract_image ? route('leases.contract-image', $this) : null;
+    }
 
     protected function casts(): array
     {

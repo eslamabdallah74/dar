@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\PropertyType;
 use App\Models\Concerns\BelongsToWorkspace;
+use App\Services\UnitHierarchyService;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -49,6 +51,7 @@ class Property extends Model
      * @var array<string, string>
      */
     protected $casts = [
+        'property_type' => PropertyType::class,
         'amenities' => 'array',
         'images' => 'array',
         'floors_count' => 'integer',
@@ -68,40 +71,36 @@ class Property extends Model
 
     public function isBuilding(): bool
     {
-        return $this->property_type === 'building';
+        return $this->property_type === PropertyType::Building || $this->property_type === 'building';
     }
 
     public function isApartment(): bool
     {
-        return $this->property_type === 'apartment';
+        return $this->property_type === PropertyType::Apartment || $this->property_type === 'apartment';
     }
 
     public function isShop(): bool
     {
-        return $this->property_type === 'shop';
+        return $this->property_type === PropertyType::Shop || $this->property_type === 'shop';
     }
 
     public function isCommercial(): bool
     {
-        return $this->property_type === 'commercial';
+        return $this->property_type === PropertyType::Commercial || $this->property_type === 'commercial';
     }
 
     public function isVilla(): bool
     {
-        return $this->property_type === 'villa';
+        return $this->property_type === PropertyType::Villa || $this->property_type === 'villa';
     }
 
     public function getTypeLabelAttribute(): string
     {
-        return match ($this->property_type) {
-            'building' => 'عمارة سكنية',
-            'apartment' => 'شقة',
-            'shop' => 'محل تجاري',
-            'commercial' => 'عقار تجاري / إداري',
-            'villa' => 'فيلا',
-            'standalone' => 'وحدة مستقلة',
-            default => 'عقار',
-        };
+        if ($this->property_type instanceof PropertyType) {
+            return $this->property_type->label();
+        }
+
+        return PropertyType::tryFrom((string) $this->property_type)?->label() ?? 'عقار';
     }
 
     public function units(): HasMany
@@ -117,5 +116,35 @@ class Property extends Model
     public function maintenanceRequests(): HasMany
     {
         return $this->hasMany(MaintenanceRequest::class);
+    }
+
+    /**
+     * Get the gender classification info if this property is an apartment or has apartment units.
+     *
+     * @return array{
+     *     status: 'male'|'female'|'mixed'|'unspecified',
+     *     label: string,
+     *     short_label: string,
+     *     description: string,
+     *     badge_class: string,
+     *     male_count: int,
+     *     female_count: int,
+     *     unspecified_count: int,
+     *     total_active_renters: int
+     * }
+     */
+    public function getApartmentGenderInfo(): array
+    {
+        $activeRenters = Lease::query()
+            ->whereHas('unit', fn ($q) => $q->where('property_id', $this->id))
+            ->where('status', 'active')
+            ->where('starts_on', '<=', today())
+            ->where('ends_on', '>=', today())
+            ->with('renter')
+            ->get()
+            ->pluck('renter')
+            ->filter();
+
+        return app(UnitHierarchyService::class)->computeApartmentGender($activeRenters);
     }
 }

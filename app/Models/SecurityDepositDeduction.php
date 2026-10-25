@@ -54,6 +54,7 @@ class SecurityDepositDeduction extends Model
             'furniture_damage' => 'تلف أثاث أو أجهزة',
             'fixture_damage' => 'تلف مرافق وتركيبات',
             'unpaid_dues' => 'مستحقات غير مدفوعة',
+            'unpaid_rent' => 'متأخرات إيجارية مستحقة',
             'missing_items' => 'مفقودات ومحتويات ناقصة',
             'other_damage' => 'أضرار أو مطالبات أخرى',
             default => $this->category,

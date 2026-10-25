@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
+use App\Enums\Gender;
 use App\Models\Concerns\BelongsToWorkspace;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
 
 class Renter extends Model
 {
@@ -19,6 +19,7 @@ class Renter extends Model
         'phone',
         'email',
         'national_id',
+        'gender',
         'id_card_front',
         'id_card_back',
         'whatsapp_opt_in_at',
@@ -36,19 +37,35 @@ class Renter extends Model
     protected function casts(): array
     {
         return [
+            'gender' => Gender::class,
             'whatsapp_opt_in_at' => 'datetime',
             'whatsapp_opted_out_at' => 'datetime',
         ];
     }
 
+    public function getGenderLabelAttribute(): ?string
+    {
+        return $this->gender?->label();
+    }
+
+    public function isMale(): bool
+    {
+        return $this->gender === Gender::Male;
+    }
+
+    public function isFemale(): bool
+    {
+        return $this->gender === Gender::Female;
+    }
+
     public function getIdCardFrontUrlAttribute(): ?string
     {
-        return $this->id_card_front ? Storage::disk('public')->url($this->id_card_front) : null;
+        return $this->id_card_front ? route('renters.id-card', [$this->id, 'front']) : null;
     }
 
     public function getIdCardBackUrlAttribute(): ?string
     {
-        return $this->id_card_back ? Storage::disk('public')->url($this->id_card_back) : null;
+        return $this->id_card_back ? route('renters.id-card', [$this->id, 'back']) : null;
     }
 
     public function whatsappOptInRecordedBy(): BelongsTo

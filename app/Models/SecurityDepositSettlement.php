@@ -57,6 +57,11 @@ class SecurityDepositSettlement extends Model
         return $this->belongsTo(User::class, 'settled_by');
     }
 
+    public function settledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'settled_by');
+    }
+
     public function deductions(): HasMany
     {
         return $this->hasMany(SecurityDepositDeduction::class, 'settlement_id');

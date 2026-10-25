@@ -77,7 +77,7 @@ class RentCharge extends Model
 
     public function getIsOverdueAttribute(): bool
     {
-        return ! $this->is_fully_paid && $this->due_date->isPast();
+        return ! $this->is_fully_paid && $this->due_date->isPast() && ! $this->due_date->isToday();
     }
 
     public function getStatusAttribute(): string
@@ -86,15 +86,26 @@ class RentCharge extends Model
             return 'paid';
         }
 
-        if ($this->is_overdue) {
-            return 'overdue';
-        }
-
         if ($this->paid_amount > 0) {
             return 'partially_paid';
         }
 
+        if ($this->is_overdue) {
+            return 'overdue';
+        }
+
         return 'pending';
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return match ($this->status) {
+            'paid' => 'مسدد بالكامل',
+            'partially_paid' => 'مدفوع جزئياً',
+            'overdue' => 'متأخر',
+            'unpaid', 'pending' => 'غير مسدد',
+            default => 'غير مسدد',
+        };
     }
 
     public function scopeUnpaid(Builder $query): Builder

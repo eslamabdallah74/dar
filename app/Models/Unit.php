@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToWorkspace;
+use App\Services\UnitHierarchyService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -222,5 +223,71 @@ class Unit extends Model
             ->where('workspace_id', $workspaceId)
             ->billableLeaves()
             ->count();
+    }
+
+    /**
+     * Find the root apartment unit in the hierarchy for this unit.
+     */
+    public function findApartmentUnit(): ?Unit
+    {
+        if ($this->unit_type === 'apartment') {
+            return $this;
+        }
+
+        $current = $this;
+        while ($current->parent_unit_id !== null) {
+            $parent = $current->relationLoaded('parentUnit')
+                ? $current->parentUnit
+                : $current->parentUnit()->first();
+
+            if (! $parent) {
+                break;
+            }
+
+            if ($parent->unit_type === 'apartment') {
+                return $parent;
+            }
+
+            $current = $parent;
+        }
+
+        return null;
+    }
+
+    /**
+     * Get the gender classification info for the apartment this unit belongs to.
+     *
+     * @return array{
+     *     status: 'male'|'female'|'mixed'|'unspecified',
+     *     label: string,
+     *     short_label: string,
+     *     description: string,
+     *     badge_class: string,
+     *     male_count: int,
+     *     female_count: int,
+     *     unspecified_count: int,
+     *     total_active_renters: int
+     * }
+     */
+    public function getApartmentGenderInfo(): array
+    {
+        $apartment = $this->findApartmentUnit();
+        if (! $apartment) {
+            return app(UnitHierarchyService::class)->computeApartmentGender([]);
+        }
+
+        $subtreeUnitIds = array_merge([$apartment->id], $apartment->getDescendantIds());
+
+        $activeRenters = Lease::query()
+            ->whereIn('unit_id', $subtreeUnitIds)
+            ->where('status', 'active')
+            ->where('starts_on', '<=', today())
+            ->where('ends_on', '>=', today())
+            ->with('renter')
+            ->get()
+            ->pluck('renter')
+            ->filter();
+
+        return app(UnitHierarchyService::class)->computeApartmentGender($activeRenters);
     }
 }

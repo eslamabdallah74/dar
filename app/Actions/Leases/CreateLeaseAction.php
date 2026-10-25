@@ -74,6 +74,7 @@ class CreateLeaseAction
                 'billing_anchor_day' => min(28, (int) $startsCarbon->format('j')),
                 'first_due_date' => $data['starts_on'],
                 'status' => 'active',
+                'contract_image' => $data['contract_image'] ?? null,
                 'notes' => $data['notes'] ?? null,
             ]);
 

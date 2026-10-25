@@ -60,6 +60,11 @@ class Unit extends Model
             ->latestOfMany();
     }
 
+    public function getIsOccupiedAttribute(): bool
+    {
+        return $this->currentLease !== null;
+    }
+
     public function maintenanceRequests(): HasMany
     {
         return $this->hasMany(MaintenanceRequest::class);

@@ -3,18 +3,30 @@
 @tailwind utilities;
 
 @layer base {
+    html,
+    body,
+    #app {
+        min-height: 100%;
+    }
+
     html {
         direction: rtl;
         text-align: right;
     }
 
     body {
+        min-height: 100vh;
+        background-color: #F3F7FA;
         direction: rtl;
         text-align: right;
         text-rendering: optimizeLegibility;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    }
+
+    #app {
+        min-height: 100vh;
     }
 
     [dir="rtl"] select {

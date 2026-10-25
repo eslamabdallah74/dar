@@ -91,7 +91,7 @@ function handleNewAction() {
         ></div>
 
         <!-- 2. منطقة العمل الرئيسية (Main Workspace Content) -->
-        <div class="flex-1 flex flex-col min-w-0 bg-[#F3F7FA]">
+        <div class="flex-1 flex flex-col min-w-0 min-h-screen bg-[#F3F7FA]">
             <!-- شريط الأدوات العلوي الموحد (Global Navbar) -->
             <AppNavbar
                 :admin-mode="adminMode"

@@ -184,6 +184,7 @@ class Lease extends Model
         if ($requiredAmount <= 0) {
             $newStatus = 'not_required';
         } else {
+            $this->unsetRelation('securityDepositSettlement');
             $settlement = $this->securityDepositSettlement;
             if ($settlement && $settlement->status === 'settled') {
                 $newStatus = 'settled';

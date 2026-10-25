@@ -20,10 +20,10 @@ test('users can authenticate using the login screen', function () {
     $response->assertRedirect(route('dashboard', absolute: false));
 });
 
-test('users without email can authenticate using their name', function () {
+test('users can authenticate using their name', function () {
     $user = User::factory()->create([
         'name' => 'Sayed Radwan',
-        'email' => null,
+        'email' => 'sayed@example.com',
     ]);
 
     $response = $this->post('/login', [

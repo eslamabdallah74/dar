@@ -5,10 +5,11 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, CheckCircle2, Lock, User } from 'lucide-vue-next';
+import { ArrowLeft, CheckCircle2, Lock, Mail, User } from 'lucide-vue-next';
 
 const form = useForm({
     name: '',
+    email: '',
     password: '',
     password_confirmation: '',
 });
@@ -57,6 +58,25 @@ const submit = () => {
                     <User class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
                 </div>
                 <InputError class="mt-1.5" :message="form.errors.name" />
+            </div>
+
+            <!-- البريد الإلكتروني -->
+            <div>
+                <InputLabel for="email" value="البريد الإلكتروني" />
+                <div class="relative mt-1">
+                    <TextInput
+                        id="email"
+                        type="email"
+                        class="block w-full pr-10 text-left"
+                        v-model="form.email"
+                        required
+                        autocomplete="email"
+                        dir="ltr"
+                        placeholder="ahmed@example.com"
+                    />
+                    <Mail class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                </div>
+                <InputError class="mt-1.5" :message="form.errors.email" />
             </div>
 
             <!-- كلمة المرور -->

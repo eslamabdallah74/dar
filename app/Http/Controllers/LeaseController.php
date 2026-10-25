@@ -3,12 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Leases\CreateLeaseAction;
+use App\Http\Requests\Leases\ExtendLeaseRequest;
 use App\Http\Requests\Leases\StoreLeaseRequest;
+use App\Http\Requests\Leases\TerminateLeaseRequest;
+use App\Jobs\FinalizeSettlementJob;
+use App\Jobs\ProcessDepositDeductionJob;
+use App\Jobs\ProcessDepositRefundJob;
 use App\Models\Lease;
+use App\Models\SecurityDepositDeduction;
+use App\Models\SecurityDepositRefund;
+use App\Models\SecurityDepositSettlement;
 use App\Models\Unit;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -496,7 +505,7 @@ class LeaseController extends Controller
             $lockedLease->update($updates);
         });
 
-        return back()->with('success', 'تم تمديد فترة عقد الإيجار بنجاح وتحديث تاريخ الانتهاء.');
+        return redirect()->route('leases.show', $lease->id)->with('success', 'تم تمديد فترة عقد الإيجار بنجاح وتحديث تاريخ الانتهاء.');
     }
 
     public function terminate(TerminateLeaseRequest $request, Lease $lease): RedirectResponse
@@ -633,6 +642,6 @@ class LeaseController extends Controller
             $lockedLease->syncSecurityDepositStatus();
         });
 
-        return back()->with('success', 'تم إنهاء عقد الإيجار واعتماد تسوية التأمين بنجاح.');
+        return redirect()->route('leases.show', $lease->id)->with('success', 'تم إنهاء عقد الإيجار واعتماد تسوية التأمين بنجاح.');
     }
 }

@@ -59,6 +59,8 @@ interface DepositDeduction {
     category: string;
     category_label: string;
     description: string;
+    notes?: string | null;
+    attachment_url?: string | null;
     status: string;
     deducted_at: string;
     recorded_by: string;
@@ -99,6 +101,8 @@ const props = defineProps<{
         billing_interval: string;
         status: string;
         status_label: string;
+        is_past_end_date?: boolean;
+        is_expiring_soon?: boolean;
         notes: string | null;
         created_at: string;
     };
@@ -134,9 +138,22 @@ const props = defineProps<{
         settlement: {
             id: number;
             status: string;
+            settlement_type?: 'full_refund' | 'partial_refund' | 'no_refund' | null;
+            settlement_type_label?: string | null;
+            retention_reason?: string | null;
+            original_deposit?: number | null;
             inspection_category: string;
             inspection_category_label: string;
             inspection_notes: string | null;
+            total_received?: number;
+            total_deductions?: number;
+            total_refunded?: number;
+            refundable_balance?: number;
+            refund_status?: 'pending' | 'refunded' | 'not_applicable';
+            refund_status_label?: string;
+            refund_method?: string | null;
+            refund_payment_date?: string | null;
+            refund_reference?: string | null;
             settled_at: string | null;
             settled_by: string | null;
             notes: string | null;
@@ -147,6 +164,9 @@ const props = defineProps<{
             can_record_deduction: boolean;
             can_record_refund: boolean;
             can_settle: boolean;
+            can_record_pending_refund?: boolean;
+            can_extend?: boolean;
+            can_terminate?: boolean;
         };
     };
     rent_charges: RentChargeItem[];
@@ -161,10 +181,59 @@ const showRecordDeductionModal = ref(false);
 const showRecordRefundModal = ref(false);
 const showFinalizeSettlementModal = ref(false);
 const showReversePaymentModal = ref(false);
+const showExtendModal = ref(false);
+const showTerminateWithSettlementModal = ref(false);
+const showPendingRefundModal = ref(false);
 const activePaymentForReversal = ref<DepositPayment | null>(null);
 
 // Forms
 const todayDate = new Date().toISOString().split('T')[0];
+
+const extendForm = useForm({
+    ends_on: '',
+    rent_amount: props.lease.rent_amount,
+    notes: '',
+});
+
+interface DeductionDraft {
+    category: string;
+    amount: number;
+    description: string;
+    notes: string;
+    attachment: File | null;
+}
+
+const terminateForm = useForm<{
+    settlement_type: 'full_refund' | 'partial_refund' | 'no_refund';
+    inspection_category: string;
+    inspection_notes: string;
+    retention_reason: string;
+    deductions: DeductionDraft[];
+    refund_status: 'pending' | 'refunded' | 'not_applicable';
+    refund_method: string;
+    refund_payment_date: string;
+    refund_reference: string;
+    notes: string;
+}>({
+    settlement_type: 'full_refund',
+    inspection_category: 'no_issues',
+    inspection_notes: '',
+    retention_reason: '',
+    deductions: [],
+    refund_status: 'pending',
+    refund_method: 'bank_transfer',
+    refund_payment_date: todayDate,
+    refund_reference: '',
+    notes: '',
+});
+
+const pendingRefundForm = useForm({
+    amount: props.security_deposit.refundable_balance,
+    payment_method: 'bank_transfer',
+    refunded_at: todayDate,
+    reference: '',
+    notes: '',
+});
 
 const paymentForm = useForm({
     amount: props.security_deposit.outstanding_amount > 0 ? props.security_deposit.outstanding_amount : props.security_deposit.agreed_amount,
@@ -204,7 +273,94 @@ const reversePaymentForm = useForm({
     reversal_reason: '',
 });
 
+// Settlement calculations
+const addDeductionRow = () => {
+    terminateForm.deductions.push({
+        category: 'furniture_damage',
+        amount: 0,
+        description: '',
+        notes: '',
+        attachment: null,
+    });
+};
+
+const removeDeductionRow = (index: number) => {
+    terminateForm.deductions.splice(index, 1);
+};
+
+const handleAttachmentChange = (index: number, event: Event) => {
+    const target = event.target as HTMLInputElement;
+    if (target.files && target.files.length > 0) {
+        terminateForm.deductions[index].attachment = target.files[0];
+    } else {
+        terminateForm.deductions[index].attachment = null;
+    }
+};
+
+const totalNewDeductions = computed(() => {
+    if (terminateForm.settlement_type !== 'partial_refund') return 0;
+    return terminateForm.deductions.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
+});
+
+const availableDepositForSettlement = computed(() => {
+    const received = Number(props.security_deposit.total_received) || 0;
+    const previouslyRefunded = Number(props.security_deposit.total_refunded) || 0;
+    const previouslyDeducted = Number(props.security_deposit.total_deductions) || 0;
+    return Math.max(0, received - previouslyRefunded - previouslyDeducted);
+});
+
+const calculatedRefundDue = computed(() => {
+    if (terminateForm.settlement_type === 'no_refund') {
+        return 0;
+    }
+    if (terminateForm.settlement_type === 'full_refund') {
+        return availableDepositForSettlement.value;
+    }
+    return Math.max(0, availableDepositForSettlement.value - totalNewDeductions.value);
+});
+
 // Handlers
+const openTerminateWorkflow = () => {
+    const hasDeposit = (props.security_deposit.agreed_amount > 0 || props.security_deposit.total_received > 0);
+    if (hasDeposit) {
+        terminateForm.reset();
+        terminateForm.settlement_type = 'full_refund';
+        terminateForm.refund_status = 'pending';
+        terminateForm.deductions = [];
+        showTerminateWithSettlementModal.value = true;
+    } else {
+        if (confirm('هل أنت متأكد من إنهاء عقد الإيجار رسمياً وتحديث حالة الوحدة لتصبح شاغرة؟')) {
+            router.post(route('leases.terminate', props.lease.id));
+        }
+    }
+};
+
+const submitTerminateWithSettlement = () => {
+    terminateForm.post(route('leases.terminate', props.lease.id), {
+        onSuccess: () => {
+            showTerminateWithSettlementModal.value = false;
+        },
+    });
+};
+
+const submitExtend = () => {
+    extendForm.post(route('leases.extend', props.lease.id), {
+        onSuccess: () => {
+            showExtendModal.value = false;
+            extendForm.reset();
+        },
+    });
+};
+
+const submitPendingRefund = () => {
+    pendingRefundForm.post(route('leases.security-deposit.pending-refund', props.lease.id), {
+        onSuccess: () => {
+            showPendingRefundModal.value = false;
+            pendingRefundForm.reset();
+        },
+    });
+};
+
 const submitPayment = () => {
     paymentForm.post(route('leases.security-deposit.payment', props.lease.id), {
         onSuccess: () => {
@@ -319,7 +475,17 @@ const depositBadgeClass = computed(() => {
 
                 <button
                     v-if="lease.status === 'active'"
-                    @click="terminateLease"
+                    @click="showExtendModal = true"
+                    type="button"
+                    class="h-10 px-4 rounded-xl border border-[#0E6E7E] bg-[#E3F1F4] hover:bg-[#0E6E7E] hover:text-white text-[#0E6E7E] text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs flex-1 sm:flex-initial"
+                >
+                    <RotateCcw class="w-4 h-4" />
+                    <span>تجديد / تمديد العقد</span>
+                </button>
+
+                <button
+                    v-if="lease.status === 'active'"
+                    @click="openTerminateWorkflow"
                     type="button"
                     class="h-10 px-4 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs flex-1 sm:flex-initial"
                 >
@@ -328,6 +494,50 @@ const depositBadgeClass = computed(() => {
                 </button>
             </div>
         </template>
+
+        <!-- شريط تنبيه تجاوز موعد انتهاء العقد -->
+        <div
+            v-if="lease.status === 'active' && lease.is_past_end_date"
+            class="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-amber-50 border-2 border-amber-300 text-amber-950 shadow-2xs space-y-3"
+        >
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex items-start sm:items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-amber-200 text-amber-900 flex items-center justify-center shrink-0">
+                        <Clock class="w-5 h-5 stroke-[2.3]" />
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-black text-sm sm:text-base text-amber-950">انتهى موعد هذا العقد تاريخياً في {{ lease.ends_on }}</span>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300">
+                                يتطلب اتخاذ قرار
+                            </span>
+                        </div>
+                        <p class="text-xs text-amber-900/80 mt-1 leading-relaxed">
+                            العقد لا يزال نشطاً في النظام والوحدة تظل مشغولة لحفظ حقوق المالك والمستأجر في إجراءات الفحص والتأمين. اختر التجديد أو البدء في التسوية والإنهاء.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                    <button
+                        type="button"
+                        @click="showExtendModal = true"
+                        class="h-10 px-4 rounded-xl bg-white hover:bg-amber-100 text-amber-950 border border-amber-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                    >
+                        <RotateCcw class="w-4 h-4" />
+                        <span>تجديد / تمديد العقد</span>
+                    </button>
+                    <button
+                        type="button"
+                        @click="openTerminateWorkflow"
+                        class="h-10 px-4 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                    >
+                        <Ban class="w-4 h-4" />
+                        <span>تسوية التأمين والإنهاء</span>
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <!-- 1. كروت الملخص المالي السريع للعقد والتأمين (4 KPIs) - متجاوبة تماماً للموبايل -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -664,21 +874,116 @@ const depositBadgeClass = computed(() => {
                         </div>
                     </div>
 
-                    <!-- تفاصيل محضر فحص الوحدة والتسوية الحالية إن وُجدت -->
-                    <div v-if="security_deposit.settlement" class="p-4 sm:p-5 rounded-2xl border border-blue-200 bg-blue-50/50 space-y-2.5 text-xs">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <span class="font-bold text-blue-900 flex items-center gap-1.5 text-sm">
-                                <FileCheck class="w-4 h-4 text-blue-700" />
-                                <span>محضر فحص حالة الوحدة والتسوية المعتمد</span>
-                            </span>
-                            <span class="font-bold text-blue-800 bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-200">
-                                تصنيف الفحص: {{ security_deposit.settlement.inspection_category_label }}
+                    <!-- ملخص تسوية المبلغ التأميني المعتمد وسجل التدقيق الشامل -->
+                    <div v-if="security_deposit.settlement" class="p-4 sm:p-6 rounded-3xl border-2 border-blue-200 bg-gradient-to-br from-blue-50/70 to-white space-y-4 text-xs shadow-2xs">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-blue-200/80">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                                    <FileCheck class="w-4 h-4 stroke-[2.2]" />
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-sm text-blue-950">ملخص تسوية المبلغ التأميني المعتمد</h4>
+                                    <span class="text-[11px] text-blue-800">
+                                        القرار: {{ security_deposit.settlement.settlement_type_label || 'تسوية معتمدة' }}
+                                    </span>
+                                </div>
+                            </div>
+                            <span class="font-bold text-blue-900 bg-blue-100/80 px-3 py-1 rounded-xl border border-blue-200 self-start sm:self-auto">
+                                فحص الوحدة: {{ security_deposit.settlement.inspection_category_label }}
                             </span>
                         </div>
+
+                        <!-- جدول ملخص التسوية المالي المعتمد -->
+                        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-center">
+                            <div class="p-2.5 rounded-xl bg-white border border-blue-200/80 space-y-1">
+                                <span class="text-[10px] text-[#5B6770] block font-semibold">التأمين الأصلي</span>
+                                <span class="font-mono font-bold text-xs text-[#0F2747] block">
+                                    {{ (security_deposit.settlement.original_deposit || security_deposit.agreed_amount).toLocaleString() }}
+                                    <span class="text-[9px] font-sans text-[#5B6770]">{{ currency_symbol }}</span>
+                                </span>
+                            </div>
+                            <div class="p-2.5 rounded-xl bg-white border border-rose-200/80 space-y-1">
+                                <span class="text-[10px] text-rose-800 block font-semibold">إجمالي الخصومات</span>
+                                <span class="font-mono font-bold text-xs text-rose-700 block">
+                                    -{{ (security_deposit.settlement.total_deductions || 0).toLocaleString() }}
+                                    <span class="text-[9px] font-sans text-rose-600">{{ currency_symbol }}</span>
+                                </span>
+                            </div>
+                            <div class="p-2.5 rounded-xl bg-white border border-[#0E6E7E]/40 space-y-1">
+                                <span class="text-[10px] text-[#0E6E7E] block font-semibold">المستحق رده</span>
+                                <span class="font-mono font-bold text-xs text-[#0E6E7E] block">
+                                    {{ ((security_deposit.settlement.refundable_balance || 0) + (security_deposit.settlement.total_refunded || 0)).toLocaleString() }}
+                                    <span class="text-[9px] font-sans text-[#0E6E7E]">{{ currency_symbol }}</span>
+                                </span>
+                            </div>
+                            <div class="p-2.5 rounded-xl bg-white border border-emerald-200/80 space-y-1">
+                                <span class="text-[10px] text-emerald-800 block font-semibold">المسدد فعلياً</span>
+                                <span class="font-mono font-bold text-xs text-emerald-700 block">
+                                    {{ (security_deposit.settlement.total_refunded || 0).toLocaleString() }}
+                                    <span class="text-[9px] font-sans text-emerald-600">{{ currency_symbol }}</span>
+                                </span>
+                            </div>
+                            <div class="p-2.5 rounded-xl bg-white border border-blue-200/80 space-y-1 col-span-2 sm:col-span-1">
+                                <span class="text-[10px] text-[#0F2747] block font-semibold">المتبقي للصرف</span>
+                                <span class="font-mono font-bold text-xs text-[#0F2747] block">
+                                    {{ (security_deposit.settlement.refundable_balance || 0).toLocaleString() }}
+                                    <span class="text-[9px] font-sans text-[#5B6770]">{{ currency_symbol }}</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- كارت حالة الرد والصرف الفعلي المنفصل تماماً عن الحساب -->
+                        <div class="p-3.5 rounded-2xl border" :class="security_deposit.settlement.refund_status === 'refunded' ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950' : (security_deposit.settlement.refund_status === 'pending' ? 'bg-amber-50/90 border-amber-300 text-amber-950' : 'bg-slate-50 border-slate-200 text-slate-800')">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" :class="security_deposit.settlement.refund_status === 'refunded' ? 'bg-emerald-200 text-emerald-800' : (security_deposit.settlement.refund_status === 'pending' ? 'bg-amber-200 text-amber-800' : 'bg-slate-200 text-slate-700')">
+                                        <CheckCircle2 v-if="security_deposit.settlement.refund_status === 'refunded'" class="w-4 h-4 stroke-[2.3]" />
+                                        <Clock v-else-if="security_deposit.settlement.refund_status === 'pending'" class="w-4 h-4 stroke-[2.3]" />
+                                        <Ban v-else class="w-4 h-4 stroke-[2.3]" />
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-bold text-xs sm:text-sm">
+                                                حالة الرد الفعلي: {{ security_deposit.settlement.refund_status_label || 'معلق' }}
+                                            </span>
+                                        </div>
+                                        <span v-if="security_deposit.settlement.refund_status === 'pending'" class="text-[11px] text-amber-900/80 block mt-0.5">
+                                            تم اعتماد استحقاق الرد للمستأجر، ولكن المبلغ لم يتم صرفه أو تحويله بعد.
+                                        </span>
+                                        <span v-else-if="security_deposit.settlement.refund_status === 'refunded'" class="text-[11px] text-emerald-900/80 block mt-0.5">
+                                            تم توثيق صرف المبلغ للمستأجر بتاريخ {{ security_deposit.settlement.refund_payment_date || 'اليوم' }} عبر ({{ security_deposit.settlement.refund_method || 'تحويل' }}).
+                                        </span>
+                                        <span v-else class="text-[11px] text-slate-600 block mt-0.5">
+                                            تم الاحتفاظ بالمبلغ التأميني بالكامل وفق أسباب التسوية المعتمدة.
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- زر تسجيل صرف الرد المعلق لاحقاً -->
+                                <button
+                                    v-if="security_deposit.settlement.refund_status === 'pending' && (security_deposit.settlement.refundable_balance || 0) > 0"
+                                    type="button"
+                                    @click="showPendingRefundModal = true"
+                                    class="px-4 py-2 rounded-xl bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shrink-0 shadow-2xs cursor-pointer self-start sm:self-auto"
+                                >
+                                    <RotateCcw class="w-3.5 h-3.5" />
+                                    <span>تسجيل صرف التأمين للمستأجر</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- سبب الاحتفاظ بالتأمين في حالة عدم الرد -->
+                        <div v-if="security_deposit.settlement.retention_reason" class="p-3 bg-white/80 rounded-xl border border-blue-200 text-xs space-y-1">
+                            <span class="font-bold text-blue-950 block">أسباب الاحتفاظ بالمبلغ التأميني:</span>
+                            <p class="text-blue-900 leading-relaxed">{{ security_deposit.settlement.retention_reason }}</p>
+                        </div>
+
+                        <!-- ملاحظات فحص الوحدة والتسوية -->
                         <p v-if="security_deposit.settlement.inspection_notes" class="text-blue-950 leading-relaxed bg-white/70 p-3 rounded-xl border border-blue-200">
                             {{ security_deposit.settlement.inspection_notes }}
                         </p>
-                        <div v-if="security_deposit.settlement.settled_at" class="text-[11px] text-blue-700 pt-1.5 border-t border-blue-200 flex items-center gap-1">
+
+                        <div v-if="security_deposit.settlement.settled_at" class="text-[11px] text-blue-700 pt-2 border-t border-blue-200/80 flex items-center gap-1">
                             <CheckCircle2 class="w-3.5 h-3.5 text-blue-600" />
                             <span>تم اعتماد التسوية بواسطة {{ security_deposit.settlement.settled_by }} في {{ security_deposit.settlement.settled_at }}</span>
                         </div>
@@ -803,6 +1108,13 @@ const depositBadgeClass = computed(() => {
                                             </span>
                                         </div>
                                         <p class="text-xs text-[#0F2747] leading-relaxed">{{ d.description }}</p>
+                                        <p v-if="d.notes" class="text-[11px] text-[#5B6770] bg-white/70 p-2 rounded-lg border border-rose-200/60">{{ d.notes }}</p>
+                                        <div v-if="d.attachment_url" class="pt-0.5">
+                                            <a :href="d.attachment_url" target="_blank" class="inline-flex items-center gap-1 text-[11px] text-[#0E6E7E] hover:underline font-bold">
+                                                <FileText class="w-3 h-3" />
+                                                <span>عرض المرفق / الفاتورة</span>
+                                            </a>
+                                        </div>
                                         <div class="flex items-center justify-between text-[11px] text-[#5B6770] pt-1.5 border-t border-rose-200/60">
                                             <span class="font-mono">{{ d.deducted_at }}</span>
                                             <button
@@ -835,7 +1147,16 @@ const depositBadgeClass = computed(() => {
                                             <tr v-for="d in security_deposit.deductions" :key="d.id" class="hover:bg-[#F8FAFC] transition">
                                                 <td class="py-3 px-4 font-bold text-[#0F2747]">{{ d.category_label }}</td>
                                                 <td class="py-3 px-4 font-mono font-bold text-rose-700">{{ d.amount.toLocaleString() }} {{ currency_symbol }}</td>
-                                                <td class="py-3 px-4 text-[#5B6770]">{{ d.description }}</td>
+                                                <td class="py-3 px-4 text-[#5B6770]">
+                                                    <div>{{ d.description }}</div>
+                                                    <div v-if="d.notes" class="text-[11px] text-[#5B6770]/80 mt-0.5">{{ d.notes }}</div>
+                                                    <div v-if="d.attachment_url" class="mt-1">
+                                                        <a :href="d.attachment_url" target="_blank" class="inline-flex items-center gap-1 text-[#0E6E7E] hover:underline font-bold text-[11px]">
+                                                            <FileText class="w-3 h-3" />
+                                                            <span>عرض المرفق</span>
+                                                        </a>
+                                                    </div>
+                                                </td>
                                                 <td class="py-3 px-4 font-mono text-[#5B6770]">{{ d.deducted_at }}</td>
                                                 <td class="py-3 px-4 text-[#5B6770]">{{ d.recorded_by }}</td>
                                                 <td class="py-3 px-4 text-left" v-if="security_deposit.status !== 'settled'">
@@ -1321,6 +1642,524 @@ const depositBadgeClass = computed(() => {
                     <div class="pt-3 border-t border-[#D6E0E7] flex justify-end gap-2">
                         <button @click="showReversePaymentModal = false" type="button" class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold">إلغاء</button>
                         <button type="submit" class="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold">تأكيد عكس الدفعة</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- مودال تمديد / تجديد العقد -->
+        <div v-if="showExtendModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+            <div @click="showExtendModal = false" class="fixed inset-0 bg-[#0F2747]/60 backdrop-blur-xs"></div>
+            <div class="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right animate-in fade-in zoom-in-95" dir="rtl">
+                <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7] mb-4">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-xl bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center">
+                            <Clock class="w-4 h-4" />
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-[#0F2747]">تجديد وتمديد عقد الإيجار</h3>
+                            <p class="text-[11px] text-[#5B6770]">تمديد فترة العقد وتحديث القيمة الإيجارية الشهرية إن لزم الأمر</p>
+                        </div>
+                    </div>
+                    <button @click="showExtendModal = false" type="button" class="p-1 text-slate-400 hover:text-slate-600">
+                        <X class="w-5 h-5" />
+                    </button>
+                </div>
+
+                <div v-if="Object.keys(extendForm.errors).length > 0" class="p-3 mb-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs space-y-1">
+                    <div v-for="(err, k) in extendForm.errors" :key="k">{{ err }}</div>
+                </div>
+
+                <form @submit.prevent="submitExtend" class="space-y-4">
+                    <div class="p-3 bg-slate-50 rounded-2xl border border-[#D6E0E7] grid grid-cols-2 gap-3 text-xs">
+                        <div>
+                            <span class="text-[#5B6770] block text-[11px]">نهاية العقد الحالية:</span>
+                            <span class="font-bold text-[#0F2747] font-mono">{{ lease.ends_on }}</span>
+                        </div>
+                        <div>
+                            <span class="text-[#5B6770] block text-[11px]">الإيجار الشهري الحالي:</span>
+                            <span class="font-bold text-[#0F2747] font-mono">{{ lease.rent_amount.toLocaleString() }} {{ currency_symbol }}</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-[#0F2747] mb-1">تاريخ نهاية العقد الجديد *</label>
+                        <input
+                            v-model="extendForm.ends_on"
+                            type="date"
+                            :min="lease.ends_on"
+                            required
+                            class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right font-mono"
+                        />
+                        <p class="text-[11px] text-[#5B6770] mt-1">يجب أن يكون التاريخ بعد تاريخ النهاية الحالي للعقد.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-[#0F2747] mb-1">القيمة الإيجارية الشهرية الجديدة</label>
+                        <div class="relative">
+                            <input
+                                v-model="extendForm.rent_amount"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                class="w-full h-11 pl-12 pr-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-mono font-bold"
+                            />
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#5B6770] font-semibold">
+                                {{ currency_symbol }}
+                            </span>
+                        </div>
+                        <p class="text-[11px] text-[#5B6770] mt-1">اتركها كما هي إذا لم يتغير الإيجار الشهري.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-[#0F2747] mb-1">ملاحظات التجديد</label>
+                        <textarea
+                            v-model="extendForm.notes"
+                            rows="2"
+                            placeholder="ملاحظات توثيقية حول تجديد العقد والاتفاق مع المستأجر..."
+                            class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right"
+                        ></textarea>
+                    </div>
+
+                    <div class="pt-3 border-t border-[#D6E0E7] flex justify-end gap-2">
+                        <button @click="showExtendModal = false" type="button" class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold hover:bg-slate-50">إلغاء</button>
+                        <button
+                            type="submit"
+                            :disabled="extendForm.processing"
+                            class="h-10 px-5 rounded-xl bg-[#0E6E7E] hover:bg-[#0B5A68] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+                        >
+                            <Clock class="w-3.5 h-3.5" />
+                            <span>تأكيد التجديد والتمديد</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- مودال إنهاء العقد مع تسوية التأمين الشاملة -->
+        <div v-if="showTerminateWithSettlementModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+            <div @click="showTerminateWithSettlementModal = false" class="fixed inset-0 bg-[#0F2747]/60 backdrop-blur-xs"></div>
+            <div class="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95" dir="rtl">
+                <!-- Header -->
+                <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7] mb-4">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-2xl bg-rose-50 text-rose-700 flex items-center justify-center">
+                            <ShieldAlert class="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-[#0F2747]">تسوية مبلغ التأمين وإنهاء العقد</h3>
+                            <p class="text-xs text-[#5B6770]">تحديد مصير مبلغ التأمين واعتماد الإخلاء وتغيير حالة العقد لمنتهٍ</p>
+                        </div>
+                    </div>
+                    <button @click="showTerminateWithSettlementModal = false" type="button" class="p-1 text-slate-400 hover:text-slate-600">
+                        <X class="w-5 h-5" />
+                    </button>
+                </div>
+
+                <!-- Errors -->
+                <div v-if="Object.keys(terminateForm.errors).length > 0" class="p-3 mb-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs space-y-1">
+                    <div v-for="(err, k) in terminateForm.errors" :key="k">{{ err }}</div>
+                </div>
+
+                <form @submit.prevent="submitTerminateWithSettlement" class="space-y-5">
+                    <!-- 1. ملخص التأمين المالي -->
+                    <div class="p-4 bg-slate-50 rounded-2xl border border-[#D6E0E7] space-y-3">
+                        <span class="text-xs font-bold text-[#0F2747] block">ملخص حساب التأمين:</span>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                            <div class="p-2.5 bg-white rounded-xl border border-[#D6E0E7]">
+                                <span class="text-[#5B6770] block text-[11px]">التأمين المستلم:</span>
+                                <span class="font-bold text-[#0F2747] font-mono text-sm block">
+                                    {{ security_deposit.total_received.toLocaleString() }} {{ currency_symbol }}
+                                </span>
+                            </div>
+                            <div class="p-2.5 bg-white rounded-xl border border-[#D6E0E7]">
+                                <span class="text-rose-700 block text-[11px] font-semibold">إجمالي الخصومات:</span>
+                                <span class="font-bold text-rose-700 font-mono text-sm block">
+                                    {{ totalNewDeductions.toLocaleString() }} {{ currency_symbol }}
+                                </span>
+                            </div>
+                            <div class="p-2.5 bg-white rounded-xl border border-[#D6E0E7]">
+                                <span class="text-[#5B6770] block text-[11px]">مردود سابقاً:</span>
+                                <span class="font-bold text-[#5B6770] font-mono text-sm block">
+                                    {{ security_deposit.total_refunded.toLocaleString() }} {{ currency_symbol }}
+                                </span>
+                            </div>
+                            <div class="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200">
+                                <span class="text-emerald-800 block text-[11px] font-bold">المستحق رده:</span>
+                                <span class="font-bold text-emerald-700 font-mono text-sm block">
+                                    {{ calculatedRefundDue.toLocaleString() }} {{ currency_symbol }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. خيارات مصير التأمين الثلاثة -->
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold text-[#0F2747]">حدد نوع التسوية ومصير التأمين *</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <label
+                                :class="[
+                                    'p-3.5 rounded-2xl border cursor-pointer transition text-right flex flex-col justify-between space-y-2',
+                                    terminateForm.settlement_type === 'full_refund'
+                                        ? 'border-[#0E6E7E] bg-[#E3F1F4]/40 ring-2 ring-[#0E6E7E]/20'
+                                        : 'border-[#D6E0E7] bg-white hover:bg-slate-50'
+                                ]"
+                            >
+                                <div class="flex items-start justify-between">
+                                    <input
+                                        type="radio"
+                                        value="full_refund"
+                                        v-model="terminateForm.settlement_type"
+                                        class="text-[#0E6E7E] focus:ring-[#0E6E7E] mt-1"
+                                    />
+                                    <span class="text-xs font-bold text-[#0F2747]">رد المبلغ بالكامل</span>
+                                </div>
+                                <p class="text-[11px] text-[#5B6770]">
+                                    لا توجد أي أضرار؛ رد كامل الرصيد المتاح ({{ availableDepositForSettlement.toLocaleString() }} {{ currency_symbol }}) للمستأجر.
+                                </p>
+                            </label>
+
+                            <label
+                                :class="[
+                                    'p-3.5 rounded-2xl border cursor-pointer transition text-right flex flex-col justify-between space-y-2',
+                                    terminateForm.settlement_type === 'partial_refund'
+                                        ? 'border-amber-500 bg-amber-50/40 ring-2 ring-amber-500/20'
+                                        : 'border-[#D6E0E7] bg-white hover:bg-slate-50'
+                                ]"
+                            >
+                                <div class="flex items-start justify-between">
+                                    <input
+                                        type="radio"
+                                        value="partial_refund"
+                                        v-model="terminateForm.settlement_type"
+                                        class="text-amber-600 focus:ring-amber-500 mt-1"
+                                    />
+                                    <span class="text-xs font-bold text-[#0F2747]">رد جزء مع خصومات</span>
+                                </div>
+                                <p class="text-[11px] text-[#5B6770]">
+                                    تحديد خصومات معتمدة (تلفيات أو مستحقات غير مدفوعة) ورد المبلغ المتبقي للمستأجر.
+                                </p>
+                            </label>
+
+                            <label
+                                :class="[
+                                    'p-3.5 rounded-2xl border cursor-pointer transition text-right flex flex-col justify-between space-y-2',
+                                    terminateForm.settlement_type === 'no_refund'
+                                        ? 'border-rose-500 bg-rose-50/40 ring-2 ring-rose-500/20'
+                                        : 'border-[#D6E0E7] bg-white hover:bg-slate-50'
+                                ]"
+                            >
+                                <div class="flex items-start justify-between">
+                                    <input
+                                        type="radio"
+                                        value="no_refund"
+                                        v-model="terminateForm.settlement_type"
+                                        class="text-rose-600 focus:ring-rose-500 mt-1"
+                                    />
+                                    <span class="text-xs font-bold text-rose-700">عدم رد المبلغ بالكامل</span>
+                                </div>
+                                <p class="text-[11px] text-[#5B6770]">
+                                    احتجاز كامل التأمين للمالك مع تسجيل وتوثيق الأسباب الإجبارية.
+                                </p>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 3. بنود الخصومات في حالة رد جزء من المبلغ -->
+                    <div v-if="terminateForm.settlement_type === 'partial_refund'" class="space-y-3 p-4 bg-slate-50 rounded-2xl border border-amber-200">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-[#0F2747]">بنود الخصومات المعتمدة من التأمين:</span>
+                            <button
+                                type="button"
+                                @click="addDeductionRow"
+                                class="h-8 px-3 rounded-lg bg-white border border-[#D6E0E7] text-xs font-bold text-[#0E6E7E] hover:bg-slate-50 transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                            >
+                                <Plus class="w-3.5 h-3.5" />
+                                <span>إضافة بند خصم</span>
+                            </button>
+                        </div>
+
+                        <div v-if="terminateForm.deductions.length === 0" class="p-3 bg-white rounded-xl border border-dashed border-[#D6E0E7] text-center text-xs text-[#5B6770]">
+                            لم يتم إضافة أي بنود خصم بعد. اضغط على "إضافة بند خصم" لتسجيل تلفيات أو مستحقات.
+                        </div>
+
+                        <div v-for="(item, idx) in terminateForm.deductions" :key="idx" class="p-3 bg-white rounded-xl border border-[#D6E0E7] space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-[#0F2747]">خصم رقم {{ idx + 1 }}</span>
+                                <button
+                                    type="button"
+                                    @click="removeDeductionRow(idx)"
+                                    class="text-rose-600 hover:text-rose-800 p-1 text-xs flex items-center gap-1 cursor-pointer"
+                                >
+                                    <Trash2 class="w-3.5 h-3.5" />
+                                    <span>حذف البند</span>
+                                </button>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-[#0F2747] mb-1">نوع وتصنيف الخصم *</label>
+                                    <select v-model="item.category" class="w-full h-10 px-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs">
+                                        <option value="furniture_damage">تلف أثاث أو أجهزة</option>
+                                        <option value="fixture_damage">تلف تركيبات وتشطيبات ومرافق</option>
+                                        <option value="unpaid_dues">مستحقات وفواتير غير مدفوعة</option>
+                                        <option value="missing_items">مفقودات ومحتويات ناقصة</option>
+                                        <option value="other_damage">أضرار أو خصومات أخرى</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-[#0F2747] mb-1">مبلغ الخصم *</label>
+                                    <div class="relative">
+                                        <input
+                                            v-model="item.amount"
+                                            type="number"
+                                            step="0.01"
+                                            min="0.01"
+                                            required
+                                            placeholder="0.00"
+                                            class="w-full h-10 pl-12 pr-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs font-mono font-bold"
+                                        />
+                                        <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-[#5B6770] font-semibold">{{ currency_symbol }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-[#0F2747] mb-1">وصف ومبرر الخصم *</label>
+                                <input
+                                    v-model="item.description"
+                                    type="text"
+                                    placeholder="مثال: إصلاح باب مكسور، فاتورة كهرباء متأخرة..."
+                                    required
+                                    class="w-full h-10 px-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs"
+                                />
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-[#5B6770] mb-1">ملاحظات توضيحية (اختياري)</label>
+                                    <input
+                                        v-model="item.notes"
+                                        type="text"
+                                        placeholder="تفاصيل إضافية..."
+                                        class="w-full h-10 px-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-[#5B6770] mb-1">مرفق إثبات (صورة/فاتورة - اختياري)</label>
+                                    <input
+                                        type="file"
+                                        accept="image/*,.pdf"
+                                        @change="handleAttachmentChange(idx, $event)"
+                                        class="w-full text-xs text-slate-500 file:ml-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#E3F1F4] file:text-[#0E6E7E] hover:file:bg-[#D0EBF0]"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="totalNewDeductions > availableDepositForSettlement" class="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-1.5">
+                            <AlertTriangle class="w-4 h-4 shrink-0" />
+                            <span>تنبيه: إجمالي الخصومات ({{ totalNewDeductions.toLocaleString() }}) يتجاوز رصيد التأمين المتاح ({{ availableDepositForSettlement.toLocaleString() }})!</span>
+                        </div>
+                    </div>
+
+                    <!-- 4. سبب احتجاز المبلغ بالكامل في حالة عدم الرد -->
+                    <div v-if="terminateForm.settlement_type === 'no_refund'" class="space-y-1.5 p-4 bg-rose-50/50 rounded-2xl border border-rose-200">
+                        <label class="block text-xs font-bold text-rose-900 mb-1">سبب احتجاز كامل مبلغ التأمين وعدم رده للمستأجر *</label>
+                        <textarea
+                            v-model="terminateForm.retention_reason"
+                            rows="3"
+                            required
+                            placeholder="وضح بالتفصيل سبب الاحتفاظ بكامل التأمين (مثل: وجود تلفيات جسيمة تفوق قيمة التأمين، عدم سداد إيجار متأخر)..."
+                            class="w-full p-2.5 rounded-xl border border-rose-200 bg-white text-xs text-right"
+                        ></textarea>
+                    </div>
+
+                    <!-- 5. حالة وتوثيق الرد الفعلي إذا كان هناك مبلغ مستحق رده -->
+                    <div v-if="calculatedRefundDue > 0" class="space-y-3 p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-emerald-950">
+                                توثيق الرد الفعلي للمبلغ المستحق ({{ calculatedRefundDue.toLocaleString() }} {{ currency_symbol }})
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <label
+                                :class="[
+                                    'p-3 rounded-xl border cursor-pointer text-right flex items-center justify-between',
+                                    terminateForm.refund_status === 'pending'
+                                        ? 'border-amber-500 bg-white ring-2 ring-amber-500/20'
+                                        : 'border-emerald-200 bg-white/70 hover:bg-white'
+                                ]"
+                            >
+                                <div class="space-y-0.5">
+                                    <span class="text-xs font-bold text-[#0F2747] block">لم يُرد بعد (معلق)</span>
+                                    <span class="text-[10px] text-[#5B6770] block">سيتم التحويل الفعلي لاحقاً للمستأجر</span>
+                                </div>
+                                <input
+                                    type="radio"
+                                    value="pending"
+                                    v-model="terminateForm.refund_status"
+                                    class="text-amber-600 focus:ring-amber-500"
+                                />
+                            </label>
+
+                            <label
+                                :class="[
+                                    'p-3 rounded-xl border cursor-pointer text-right flex items-center justify-between',
+                                    terminateForm.refund_status === 'refunded'
+                                        ? 'border-emerald-600 bg-white ring-2 ring-emerald-600/20'
+                                        : 'border-emerald-200 bg-white/70 hover:bg-white'
+                                ]"
+                            >
+                                <div class="space-y-0.5">
+                                    <span class="text-xs font-bold text-emerald-900 block">تم الرد الفعلي الآن</span>
+                                    <span class="text-[10px] text-[#5B6770] block">تم تحويل أو تسليم المبلغ بالفعل</span>
+                                </div>
+                                <input
+                                    type="radio"
+                                    value="refunded"
+                                    v-model="terminateForm.refund_status"
+                                    class="text-emerald-600 focus:ring-emerald-500"
+                                />
+                            </label>
+                        </div>
+
+                        <!-- تفاصيل الدفع إذا تم اختيار تم الرد الفعلي -->
+                        <div v-if="terminateForm.refund_status === 'refunded'" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-emerald-200/60">
+                            <div>
+                                <label class="block text-[11px] font-bold text-emerald-950 mb-1">طريقة الرد *</label>
+                                <select v-model="terminateForm.refund_method" class="w-full h-10 px-2.5 rounded-xl border border-emerald-200 bg-white text-xs">
+                                    <option value="bank_transfer">تحويل بنكي</option>
+                                    <option value="cash">نقدي (كاش)</option>
+                                    <option value="cheque">شيك</option>
+                                    <option value="other">إنستاباي / أخرى</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-emerald-950 mb-1">تاريخ الرد الفعلي *</label>
+                                <input v-model="terminateForm.refund_payment_date" type="date" required class="w-full h-10 px-2.5 rounded-xl border border-emerald-200 bg-white text-xs text-right font-mono" />
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-emerald-950 mb-1">رقم المرجع / الإيصال</label>
+                                <input v-model="terminateForm.refund_reference" type="text" placeholder="TXN-..." class="w-full h-10 px-2.5 rounded-xl border border-emerald-200 bg-white text-xs text-right font-mono" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 6. حالة فحص الوحدة وملاحظات الإنهاء -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#D6E0E7]">
+                        <div>
+                            <label class="block text-xs font-bold text-[#0F2747] mb-1">حالة فحص واستلام الوحدة *</label>
+                            <select v-model="terminateForm.inspection_category" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs">
+                                <option value="no_issues">سليمة بدون أضرار (حالة ممتازة)</option>
+                                <option value="furniture_damage">تلف أثاث أو أجهزة</option>
+                                <option value="fixture_damage">تلف تركيبات ومرافق</option>
+                                <option value="missing_items">مفقودات ومحتويات ناقصة</option>
+                                <option value="other_damage">أضرار موثقة أخرى</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-[#0F2747] mb-1">ملاحظات ختامية على إنهاء العقد</label>
+                            <input v-model="terminateForm.notes" type="text" placeholder="أي ملاحظات نهائية..." class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right" />
+                        </div>
+                    </div>
+
+                    <!-- Action buttons -->
+                    <div class="pt-4 border-t border-[#D6E0E7] flex justify-end gap-2.5">
+                        <button @click="showTerminateWithSettlementModal = false" type="button" class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold hover:bg-slate-50 cursor-pointer">
+                            إلغاء
+                        </button>
+                        <button
+                            type="submit"
+                            :disabled="terminateForm.processing || (terminateForm.settlement_type === 'partial_refund' && totalNewDeductions > availableDepositForSettlement)"
+                            class="h-10 px-5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs disabled:opacity-50 cursor-pointer"
+                        >
+                            <ShieldAlert class="w-4 h-4" />
+                            <span>تأكيد التسوية وإنهاء العقد رسميًا</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- مودال تسجيل صرف المبلغ المتبقي المعلق -->
+        <div v-if="showPendingRefundModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+            <div @click="showPendingRefundModal = false" class="fixed inset-0 bg-[#0F2747]/60 backdrop-blur-xs"></div>
+            <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right animate-in fade-in zoom-in-95" dir="rtl">
+                <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7] mb-4">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                            <RotateCcw class="w-4 h-4" />
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-[#0F2747]">صرف التأمين المعلق للمستأجر</h3>
+                            <p class="text-[11px] text-[#5B6770]">توثيق تسليم أو تحويل المبلغ المتبقي المستحق للمستأجر</p>
+                        </div>
+                    </div>
+                    <button @click="showPendingRefundModal = false" type="button" class="p-1 text-slate-400 hover:text-slate-600">
+                        <X class="w-5 h-5" />
+                    </button>
+                </div>
+
+                <div v-if="Object.keys(pendingRefundForm.errors).length > 0" class="p-3 mb-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
+                    <div v-for="(err, k) in pendingRefundForm.errors" :key="k">{{ err }}</div>
+                </div>
+
+                <form @submit.prevent="submitPendingRefund" class="space-y-4">
+                    <div class="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs text-emerald-950 space-y-1">
+                        <div class="flex justify-between">
+                            <span>الرصيد المعلق القابل للصرف:</span>
+                            <span class="font-bold font-mono">{{ security_deposit.refundable_balance.toLocaleString() }} {{ currency_symbol }}</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-[#0F2747] mb-1">المبلغ المصروف *</label>
+                        <div class="relative">
+                            <input
+                                v-model="pendingRefundForm.amount"
+                                type="number"
+                                step="0.01"
+                                min="0.01"
+                                :max="security_deposit.refundable_balance"
+                                required
+                                class="w-full h-11 pl-12 pr-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-mono font-bold"
+                            />
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#5B6770] font-semibold">
+                                {{ currency_symbol }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-[#0F2747] mb-1">طريقة الصرف *</label>
+                        <select v-model="pendingRefundForm.payment_method" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs">
+                            <option value="bank_transfer">تحويل بنكي</option>
+                            <option value="cash">نقدي (كاش)</option>
+                            <option value="cheque">شيك</option>
+                            <option value="other">إنستاباي / محفظة إلكترونية</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-[#0F2747] mb-1">تاريخ الصرف والتحويل الفعلي *</label>
+                        <input v-model="pendingRefundForm.refunded_at" type="date" required class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right font-mono" />
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-[#0F2747] mb-1">رقم مرجع الحوالة / الإيصال</label>
+                        <input v-model="pendingRefundForm.reference" type="text" placeholder="TXN-123456" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right font-mono" />
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-[#0F2747] mb-1">ملاحظات الصرف</label>
+                        <textarea v-model="pendingRefundForm.notes" rows="2" class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right"></textarea>
+                    </div>
+
+                    <div class="pt-3 border-t border-[#D6E0E7] flex justify-end gap-2">
+                        <button @click="showPendingRefundModal = false" type="button" class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold hover:bg-slate-50 cursor-pointer">إلغاء</button>
+                        <button type="submit" :disabled="pendingRefundForm.processing" class="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs disabled:opacity-50 cursor-pointer">توثيق الصرف الفعلي</button>
                     </div>
                 </form>
             </div>

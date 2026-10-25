@@ -376,7 +376,7 @@ const depositStatusClass = (status?: string) => {
                                 {{ (lease.security_deposit_amount ?? 0).toLocaleString() }}
                                 <span class="text-[10px] font-sans font-normal text-emerald-600">{{ currencySymbol }}</span>
                             </div>
-                            <span class="inline-block mt-1 text-[10px] px-1.5 py-0.2 rounded font-bold border" :class="depositStatusClass(lease.security_deposit_status)">
+                            <span class="inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded font-bold border" :class="depositStatusClass(lease.security_deposit_status)">
                                 {{ lease.security_deposit_status_label }}
                             </span>
                         </div>
@@ -467,7 +467,7 @@ const depositStatusClass = (status?: string) => {
                                     <div>
                                         <div class="flex items-center gap-1.5">
                                             <span class="font-bold">{{ lease.unit_name }}</span>
-                                            <span class="text-[10px] bg-slate-100 text-[#5B6770] px-1.5 py-0.2 rounded font-bold">
+                                            <span class="text-[10px] bg-slate-100 text-[#5B6770] px-1.5 py-0.5 rounded font-bold">
                                                 {{ lease.unit_type_label }}
                                             </span>
                                         </div>

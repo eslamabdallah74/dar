@@ -780,34 +780,37 @@ const submitNewRenter = async () => {
         </form>
 
         <!-- نافذة إضافة مستأجر جديد (Modal) -->
-        <div
-            v-if="showRenterModal"
-            class="fixed inset-0 z-50 bg-[#0F2747]/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
-            @click.self="closeRenterModal"
-        >
-            <div class="bg-white rounded-3xl border border-[#D6E0E7] shadow-xl w-full max-w-xl overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
-                <!-- الرأس -->
-                <div class="px-6 py-4.5 border-b border-[#D6E0E7] flex items-center justify-between bg-[#F8FAFC]">
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-9 h-9 rounded-xl bg-[#E3F1F4] text-[#0E6E7E] flex items-center justify-center">
-                            <UserPlus class="w-5 h-5 stroke-[2.2]" />
+        <Teleport to="body">
+            <div
+                v-if="showRenterModal"
+                dir="rtl"
+                class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#0F2747]/50 p-4 backdrop-blur-xs"
+                @click.self="closeRenterModal"
+            >
+                <div class="my-8 w-full max-w-xl overflow-hidden rounded-3xl border border-[#D6E0E7] bg-white shadow-xl animate-in fade-in zoom-in-95 duration-200">
+                    <!-- الرأس -->
+                    <div class="flex items-center justify-between gap-4 border-b border-[#D6E0E7] bg-[#F8FAFC] px-5 py-5 sm:px-6">
+                        <div class="flex min-w-0 items-center gap-3">
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#E3F1F4] text-[#0E6E7E]">
+                                <UserPlus class="w-5 h-5 stroke-[2.2]" />
+                            </div>
+                            <div class="min-w-0">
+                                <h3 class="text-base font-bold text-[#0F2747]">إضافة مستأجر جديد للعقد</h3>
+                                <p class="mt-0.5 text-xs leading-relaxed text-[#5B6770]">تسجيل بيانات المستأجر واختياره مباشرة لهذا العقد</p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 class="text-sm font-bold text-[#0F2747]">إضافة مستأجر جديد للعقد</h3>
-                            <p class="text-[11px] text-[#5B6770]">تسجيل بيانات المستأجر واختياره مباشرة لهذا العقد</p>
-                        </div>
+                        <button
+                            type="button"
+                            @click="closeRenterModal"
+                            aria-label="إغلاق"
+                            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#D6E0E7] bg-white text-[#5B6770] transition hover:bg-slate-100 cursor-pointer"
+                        >
+                            <X class="w-4 h-4" />
+                        </button>
                     </div>
-                    <button
-                        type="button"
-                        @click="closeRenterModal"
-                        class="w-8 h-8 rounded-lg border border-[#D6E0E7] hover:bg-slate-100 flex items-center justify-center text-[#5B6770] transition cursor-pointer"
-                    >
-                        <X class="w-4 h-4" />
-                    </button>
-                </div>
 
                 <!-- النموذج -->
-                <form @submit.prevent="submitNewRenter" class="p-6 space-y-4 max-h-[calc(85vh-130px)] overflow-y-auto">
+                <form @submit.prevent="submitNewRenter" class="max-h-[calc(85vh-150px)] space-y-5 overflow-y-auto p-5 sm:p-6">
                     <!-- رسالة خطأ عامة إن وجدت -->
                     <div v-if="renterModalError" class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700">
                         {{ renterModalError }}
@@ -1058,7 +1061,8 @@ const submitNewRenter = async () => {
                         </button>
                     </div>
                 </form>
+                </div>
             </div>
-        </div>
+        </Teleport>
     </AppLayout>
 </template>

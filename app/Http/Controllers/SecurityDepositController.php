@@ -421,6 +421,6 @@ class SecurityDepositController extends Controller
             dispatch(new ProcessDepositRefundJob($refund->id));
         });
 
-        return back()->with('success', 'تم توثيق صرف مبلغ التأمين للمستأجر بنجاح وتحديث حالة الصرف.');
+        return redirect()->route('leases.show', $lease->id)->with('success', 'تم توثيق صرف مبلغ التأمين للمستأجر بنجاح وتحديث حالة الصرف.');
     }
 }

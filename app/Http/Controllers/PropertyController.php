@@ -2,14 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\PropertyType;
 use App\Http\Requests\Properties\StorePropertyRequest;
 use App\Http\Requests\Properties\StoreUnitRequest;
 use App\Http\Requests\Properties\UpdatePropertyRequest;
 use App\Http\Requests\Properties\UpdateUnitRequest;
+use App\Http\Resources\PropertyResource;
 use App\Models\Plan;
 use App\Models\Property;
 use App\Models\Unit;
 use App\Services\PropertyUnitGeneratorService;
+use App\Services\Storage\DocumentStorageService;
 use App\Services\UnitHierarchyService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,7 +23,7 @@ use Inertia\Response;
 
 class PropertyController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, UnitHierarchyService $hierarchyService): Response
     {
         $workspace = $this->resolveWorkspace($request);
 
@@ -31,42 +34,12 @@ class PropertyController extends Controller
             ->groupBy('property_id')
             ->pluck('count', 'property_id');
 
+        $billableCountsArray = $billableCounts->all();
         $properties = $workspace->properties()
             ->withCount('units')
-            ->with(['units.leases' => fn ($q) => $q->where('status', 'active')])
+            ->with(['units.leases' => fn ($q) => $q->where('status', 'active')->with('renter')])
             ->get()
-            ->map(function (Property $property) use ($billableCounts) {
-                $units = $property->units;
-                $totalUnits = $units->count();
-                $occupiedCount = $units->filter(fn ($u) => $u->leases->isNotEmpty())->count();
-                $vacantCount = max(0, $totalUnits - $occupiedCount);
-                $occupancyRate = $totalUnits > 0 ? (int) round(($occupiedCount / $totalUnits) * 100) : 0;
-                $billableUnitsCount = (int) ($billableCounts[$property->id] ?? 0);
-
-                $monthlyRevenue = (float) $units->flatMap->leases->sum('rent_amount');
-
-                return [
-                    'id' => $property->id,
-                    'name' => $property->name,
-                    'property_type' => $property->property_type,
-                    'type_label' => match ($property->property_type) {
-                        'building' => 'عمارة سكنية',
-                        'apartment' => 'شقة',
-                        'shop' => 'محل تجاري',
-                        'commercial' => 'عقار تجاري / إداري',
-                        'villa' => 'فيلا',
-                        'standalone' => 'وحدة مستقلة',
-                        default => 'عقار',
-                    },
-                    'address' => $property->address ?? 'القاهرة، جمهورية مصر العربية',
-                    'total_units' => $totalUnits,
-                    'billable_units' => $billableUnitsCount,
-                    'occupied_units' => $occupiedCount,
-                    'vacant_units' => $vacantCount,
-                    'occupancy_rate' => $occupancyRate,
-                    'monthly_revenue' => $monthlyRevenue,
-                ];
-            });
+            ->map(fn (Property $property) => (new PropertyResource($property, $billableCountsArray, $hierarchyService))->resolve());
 
         $totalUnitsCount = $properties->sum('total_units');
         $totalOccupied = $properties->sum('occupied_units');
@@ -162,35 +135,51 @@ class PropertyController extends Controller
             return $descendants;
         };
 
-        $units = $allPropertyUnits->map(function (Unit $unit) use ($hierarchyService, $property, $activeLeasesByUnitId, $getAncestorsInMemory, $getDescendantsInMemory) {
+        $unitsById = $allPropertyUnits->keyBy('id');
+
+        $findApartmentId = function (int $unitId) use ($parentMap, $unitsById): ?int {
+            $unit = $unitsById->get($unitId);
+            if (! $unit) {
+                return null;
+            }
+            if ($unit->unit_type === 'apartment') {
+                return $unit->id;
+            }
+            $curr = $parentMap[$unitId] ?? null;
+            while ($curr !== null) {
+                $p = $unitsById->get($curr);
+                if ($p && $p->unit_type === 'apartment') {
+                    return $p->id;
+                }
+                $curr = $parentMap[$curr] ?? null;
+            }
+
+            return null;
+        };
+
+        $apartmentGenderCache = [];
+        $getApartmentGender = function (?int $apartmentId) use (&$apartmentGenderCache, $getDescendantsInMemory, $activeLeasesByUnitId, $hierarchyService): ?array {
+            if ($apartmentId === null) {
+                return null;
+            }
+            if (isset($apartmentGenderCache[$apartmentId])) {
+                return $apartmentGenderCache[$apartmentId];
+            }
+            $subtreeIds = array_merge([$apartmentId], $getDescendantsInMemory($apartmentId));
+            $occupants = [];
+            foreach ($subtreeIds as $sId) {
+                if (isset($activeLeasesByUnitId[$sId]) && $activeLeasesByUnitId[$sId]->renter) {
+                    $occupants[] = $activeLeasesByUnitId[$sId]->renter;
+                }
+            }
+            $info = $hierarchyService->computeApartmentGender($occupants);
+            $apartmentGenderCache[$apartmentId] = $info;
+
+            return $info;
+        };
+
+        $units = $allPropertyUnits->map(function (Unit $unit) use ($hierarchyService, $property, $activeLeasesByUnitId, $getAncestorsInMemory, $getDescendantsInMemory, $findApartmentId, $getApartmentGender) {
             $activeLease = $unit->leases->first();
-            $hasOpenMaintenance = $unit->maintenanceRequests->isNotEmpty();
-
-            $status = 'vacant';
-            $statusLabel = 'شاغرة';
-            if ($activeLease) {
-                $status = 'occupied';
-                $statusLabel = 'مؤجرة';
-            } elseif ($hasOpenMaintenance) {
-                $status = 'maintenance';
-                $statusLabel = 'تحت الصيانة';
-            } elseif (! $unit->is_rentable) {
-                $status = 'unavailable';
-                $statusLabel = 'غير متاحة';
-            }
-
-            // Detect floor / grouping
-            $floorName = 'الوحدات الرئيسية';
-            if ($unit->parentUnit) {
-                $floorName = $unit->parentUnit->name;
-            } elseif (preg_match('/(الدور\s+[^\)\-]+|الطابق\s+[^\)\-]+)/u', $unit->name, $matches)) {
-                $floorName = trim($matches[0]);
-            } elseif (preg_match('/(?:APT|شقة|وحدة)[\s\-]*([1-9])\d{2}/ui', ($unit->code ?? '').' '.$unit->name, $numMatches)) {
-                $floorNum = (int) $numMatches[1];
-                $floorNames = [1 => 'الدور الأول', 2 => 'الدور الثاني', 3 => 'الدور الثالث', 4 => 'الدور الرابع', 5 => 'الدور الخامس'];
-                $floorName = $floorNames[$floorNum] ?? ('الدور '.$floorNum);
-            }
-
             // Ancestor / descendant active lease checks in memory
             $ancestorIds = $getAncestorsInMemory($unit->id);
             $descendantIds = $getDescendantsInMemory($unit->id);
@@ -209,6 +198,47 @@ class PropertyController extends Controller
                     $descendantHasActiveLease = true;
                     break;
                 }
+            }
+
+            $hasOpenMaintenance = $unit->maintenanceRequests->isNotEmpty();
+
+            $status = 'vacant';
+            $statusLabel = 'شاغرة';
+            if ($activeLease) {
+                $status = 'occupied';
+                $statusLabel = 'مؤجرة';
+            } elseif ($hasOpenMaintenance) {
+                $status = 'maintenance';
+                $statusLabel = 'تحت الصيانة';
+            } elseif ($ancestorHasActiveLease) {
+                $status = 'occupied';
+                $statusLabel = match ($unit->unit_type) {
+                    'bed' => 'محجوز (ضمن عقد الغرفة)',
+                    'room' => 'محجوزة (ضمن عقد الشقة)',
+                    default => 'محجوزة (ضمن عقد الوحدة الرئيسية)',
+                };
+            } elseif ($descendantHasActiveLease) {
+                $status = 'occupied';
+                $statusLabel = match ($unit->unit_type) {
+                    'room' => 'مؤجرة (بالأسِرّة)',
+                    'apartment' => 'مشغولة (غرف/أسرّة)',
+                    default => 'مشغولة بوحدات فرعية',
+                };
+            } elseif (! $unit->is_rentable) {
+                $status = 'unavailable';
+                $statusLabel = 'غير متاحة';
+            }
+
+            // Detect floor / grouping
+            $floorName = 'الوحدات الرئيسية';
+            if ($unit->parentUnit) {
+                $floorName = $unit->parentUnit->name;
+            } elseif (preg_match('/(الدور\s+[^\)\-]+|الطابق\s+[^\)\-]+)/u', $unit->name, $matches)) {
+                $floorName = trim($matches[0]);
+            } elseif (preg_match('/(?:APT|شقة|وحدة)[\s\-]*([1-9])\d{2}/ui', ($unit->code ?? '').' '.$unit->name, $numMatches)) {
+                $floorNum = (int) $numMatches[1];
+                $floorNames = [1 => 'الدور الأول', 2 => 'الدور الثاني', 3 => 'الدور الثالث', 4 => 'الدور الرابع', 5 => 'الدور الخامس'];
+                $floorName = $floorNames[$floorNum] ?? ('الدور '.$floorNum);
             }
 
             // Can subdivide check:
@@ -259,6 +289,7 @@ class PropertyController extends Controller
                 'status_label' => $statusLabel,
                 'ancestor_has_active_lease' => $ancestorHasActiveLease,
                 'descendant_has_active_lease' => $descendantHasActiveLease,
+                'apartment_gender' => $getApartmentGender($findApartmentId($unit->id)),
                 'active_lease' => $activeLease ? [
                     'id' => $activeLease->id,
                     'contract_number' => 'CNT-'.str_pad((string) $activeLease->id, 5, '0', STR_PAD_LEFT),
@@ -266,6 +297,8 @@ class PropertyController extends Controller
                     'renter_name' => $activeLease->renter?->name ?? 'مستأجر',
                     'renter_phone' => $activeLease->renter?->phone ?? '',
                     'renter_national_id' => $activeLease->renter?->national_id ?? '',
+                    'renter_gender' => $activeLease->renter?->gender?->value,
+                    'renter_gender_label' => $activeLease->renter?->gender?->label(),
                     'rent_amount' => (float) $activeLease->rent_amount,
                     'security_deposit_amount' => $activeLease->security_deposit_amount ? (float) $activeLease->security_deposit_amount : null,
                     'security_deposit_status' => $activeLease->security_deposit_status,
@@ -320,14 +353,9 @@ class PropertyController extends Controller
                 'id' => $property->id,
                 'name' => $property->name,
                 'code' => $property->code,
-                'property_type' => $property->property_type,
-                'property_type_label' => match ($property->property_type) {
-                    'building' => 'عمارة سكنية',
-                    'commercial' => 'عقار تجاري',
-                    'villa' => 'فيلا مستقلة',
-                    'standalone' => 'وحدة أو محل مستقل',
-                    default => 'عقار',
-                },
+                'property_type' => $property->property_type instanceof PropertyType ? $property->property_type->value : (string) $property->property_type,
+                'property_type_label' => $property->type_label,
+                'apartment_gender' => $property->isApartment() ? ($getApartmentGender($allPropertyUnits->firstWhere('unit_type', 'apartment')?->id) ?? $property->getApartmentGenderInfo()) : null,
                 'address' => $property->address,
                 'city' => $property->city,
                 'district' => $property->district,
@@ -378,56 +406,7 @@ class PropertyController extends Controller
         $workspace = $this->resolveWorkspace($request);
 
         return Inertia::render('Properties/Create', [
-            'property_types' => [
-                [
-                    'value' => 'building',
-                    'label' => 'عمارة سكنية',
-                    'badge' => 'متعددة الوحدات',
-                    'description' => 'عمارة متعددة الأدوار تحتوي على شقق سكنية أو غرف، مع إمكانية إضافة محلات أرضية.',
-                    'icon' => 'building',
-                    'suggested_units' => 'building_floors_apartments',
-                ],
-                [
-                    'value' => 'apartment',
-                    'label' => 'شقة',
-                    'badge' => 'كاملة أو غرف وأسرّة',
-                    'description' => 'شقة منفصلة للتأجير بالكامل، أو مقسمة إلى غرف مستقلة، أو بنظام الأسرّة الفردية.',
-                    'icon' => 'home',
-                    'suggested_units' => 'apartment_rental_modes',
-                ],
-                [
-                    'value' => 'shop',
-                    'label' => 'محل تجاري',
-                    'badge' => 'تجاري مستقل',
-                    'description' => 'محل أو معرض تجاري مستقل بذاته بنشاط ومساحة تجارية دون أدوار أو شقق سكنية.',
-                    'icon' => 'store',
-                    'suggested_units' => 'single_shop',
-                ],
-                [
-                    'value' => 'commercial',
-                    'label' => 'مركز / مبنى تجاري',
-                    'badge' => 'محلات ومكاتب',
-                    'description' => 'مركز أو مجمع يضم محلات تجارية ومكاتب إدارية متعددة.',
-                    'icon' => 'store',
-                    'suggested_units' => 'shops_and_offices',
-                ],
-                [
-                    'value' => 'villa',
-                    'label' => 'فيلا / تاون هاوس',
-                    'badge' => 'عقار عائلي',
-                    'description' => 'فيلا مستقلة قابلة للتأجير بالكامل أو مقسمة إلى أجنحة وغرف.',
-                    'icon' => 'home',
-                    'suggested_units' => 'whole_or_rooms',
-                ],
-                [
-                    'value' => 'other',
-                    'label' => 'عقار آخر / أرض أو مخزن',
-                    'badge' => 'متعدد الاستخدام',
-                    'description' => 'مستودع، أرض فضاء، استراحة، أو أي نوع عقار مخصص آخر.',
-                    'icon' => 'box',
-                    'suggested_units' => 'custom',
-                ],
-            ],
+            'property_types' => PropertyType::options(),
             'amenities_list' => [
                 ['id' => 'elevator', 'label' => 'مصعد كهربائي', 'icon' => 'ArrowUpDown'],
                 ['id' => 'parking', 'label' => 'موقف سيارات / جراج', 'icon' => 'Car'],
@@ -455,14 +434,15 @@ class PropertyController extends Controller
 
     public function store(
         StorePropertyRequest $request,
-        PropertyUnitGeneratorService $generatorService
+        PropertyUnitGeneratorService $generatorService,
+        DocumentStorageService $storage
     ): RedirectResponse {
         $workspace = $this->resolveWorkspace($request);
         $validated = $request->validated();
 
         $coverImagePath = null;
         if ($request->hasFile('cover_image_file')) {
-            $coverImagePath = $request->file('cover_image_file')->store('properties', 'public');
+            $coverImagePath = $storage->storePublic($request->file('cover_image_file'), 'properties');
         }
 
         // Build combined address if address is empty but detailed fields are filled
@@ -525,7 +505,8 @@ class PropertyController extends Controller
 
     public function update(
         UpdatePropertyRequest $request,
-        Property $property
+        Property $property,
+        DocumentStorageService $storage
     ): RedirectResponse {
         $workspace = $this->resolveWorkspace($request);
         abort_if($property->workspace_id !== $workspace->id, 403, 'غير مصرح لك بتعديل هذا العقار.');
@@ -533,7 +514,10 @@ class PropertyController extends Controller
         $validated = $request->validated();
 
         if ($request->hasFile('cover_image_file')) {
-            $validated['cover_image'] = $request->file('cover_image_file')->store('properties', 'public');
+            if ($property->cover_image) {
+                $storage->delete($property->cover_image, $storage->getPublicDisk());
+            }
+            $validated['cover_image'] = $storage->storePublic($request->file('cover_image_file'), 'properties');
         }
 
         if (empty($validated['address'])) {

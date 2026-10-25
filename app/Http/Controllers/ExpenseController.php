@@ -4,10 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Expenses\StoreExpenseRequest;
 use App\Http\Requests\Expenses\UpdateExpenseRequest;
+use App\Http\Resources\ExpenseResource;
 use App\Models\Expense;
 use App\Services\MaintenanceExpenseService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -21,56 +24,36 @@ class ExpenseController extends Controller
             ->with(['property', 'unit', 'recorder', 'maintenanceRequest'])
             ->latest('expense_date')
             ->latest('id')
-            ->get()
-            ->map(function (Expense $expense) {
-                return [
-                    'id' => $expense->id,
-                    'title' => $expense->title ?: ($expense->maintenanceRequest?->title ?? ''),
-                    'category' => $expense->category,
-                    'amount' => $expense->amount !== null ? (float) $expense->amount : null,
-                    'expense_date' => $expense->expense_date?->format('d/m/Y'),
-                    'raw_date' => $expense->expense_date?->toDateString(),
-                    'property_id' => $expense->property_id,
-                    'property_name' => $expense->property?->name ?? 'مصروف عام للمنشأة',
-                    'unit_id' => $expense->unit_id,
-                    'unit_name' => $expense->unit?->name ?? '—',
-                    'notes' => $expense->notes ?? '',
-                    'recorder_name' => $expense->recorder?->name ?? 'المسؤول',
-                    'origin' => $expense->origin,
-                    'origin_label' => $expense->origin === 'maintenance' ? 'طلب صيانة' : 'يدوي مباشر',
-                    'status' => $expense->status,
-                    'status_label' => match ($expense->status) {
-                        'pending_amount' => 'بانتظار تحديد التكلفة',
-                        'ready_to_apply' => 'جاهز للتطبيق',
-                        'applied' => 'معتمد ومطبق',
-                        default => $expense->status,
-                    },
-                    'maintenance_request_id' => $expense->maintenance_request_id,
-                    'applied_at' => $expense->applied_at?->format('d/m/Y H:i'),
-                ];
-            });
+            ->get();
 
-        // Financial totals MUST only count applied expenses
-        $appliedExpenses = $expenses->where('status', 'applied');
-        $pendingExpenses = $expenses->whereIn('status', ['pending_amount', 'ready_to_apply']);
+        $expensesData = collect(ExpenseResource::collection($expenses)->resolve());
 
-        $totalAppliedAmount = (float) $appliedExpenses->whereNotNull('amount')->sum('amount');
-        $totalPendingAmount = (float) $pendingExpenses->whereNotNull('amount')->sum('amount');
+        // Financial totals MUST only count expenses that have valid amounts
+        $recordedExpenses = $expensesData->filter(fn (array $e): bool => ! $e['is_pending_amount']);
+        $pendingExpenses = $expensesData->filter(fn (array $e): bool => $e['is_pending_amount']);
 
-        $byCategory = $appliedExpenses->groupBy('category')->map(fn ($grp) => (float) $grp->sum('amount'));
+        $totalRecordedAmount = (float) $recordedExpenses->sum('amount');
+        $maintenanceExpenses = $recordedExpenses->where('origin', 'maintenance');
+        $totalMaintenanceAmount = (float) $maintenanceExpenses->sum('amount');
+
+        $byCategory = $recordedExpenses->groupBy('category')->map(fn ($grp): float => (float) $grp->sum('amount'));
         $properties = $workspace->properties()->get(['id', 'name']);
 
         return Inertia::render('Expenses/Index', [
-            'expenses' => $expenses->values()->all(),
+            'expenses' => $expensesData->values()->all(),
             'properties' => $properties,
             'stats' => [
-                'total_amount' => $totalAppliedAmount,
+                'total_amount' => $totalRecordedAmount,
                 'count' => $expenses->count(),
-                'applied_count' => $appliedExpenses->count(),
+                'recorded_count' => $recordedExpenses->count(),
+                'pending_cost_count' => $pendingExpenses->count(),
+                'maintenance_count' => $expenses->where('origin', 'maintenance')->count(),
+                'maintenance_expenses_total' => $totalMaintenanceAmount,
+                // Backward compatibility keys for existing views
+                'applied_count' => $recordedExpenses->count(),
                 'pending_count' => $pendingExpenses->count(),
-                'pending_amount' => $totalPendingAmount,
-                'ready_to_apply_count' => $expenses->where('status', 'ready_to_apply')->count(),
-                'pending_cost_count' => $expenses->where('status', 'pending_amount')->count(),
+                'pending_amount' => 0.0,
+                'ready_to_apply_count' => $recordedExpenses->where('origin', 'maintenance')->count(),
                 'categories' => $byCategory,
             ],
             'currency' => $workspace->currency ?? 'EGP',
@@ -85,12 +68,10 @@ class ExpenseController extends Controller
             ...$request->validated(),
             'recorded_by' => $request->user()->id,
             'origin' => 'manual',
-            'status' => 'applied',
-            'applied_at' => now(),
-            'applied_by' => $request->user()->id,
+            'status' => 'recorded',
         ]);
 
-        return back()->with('success', 'تم تسجيل المصروف واعتماده بنجاح');
+        return back()->with('success', 'تم تسجيل المصروف بنجاح');
     }
 
     public function update(
@@ -105,5 +86,107 @@ class ExpenseController extends Controller
         $expenseService->updateExpense($expense, $request->validated());
 
         return back()->with('success', 'تم تحديث بيانات المصروف بنجاح');
+    }
+
+    public function recordPayment(Request $request, Expense $expense): RedirectResponse|JsonResponse
+    {
+        $workspace = $this->resolveWorkspace($request);
+        abort_if($expense->workspace_id !== $workspace->id, 403, 'غير مصرح لك بسداد هذا المصروف.');
+
+        if ($expense->amount === null || (float) $expense->amount <= 0) {
+            return back()->withErrors(['amount' => 'لا يمكن تسجيل سداد مصروف لم تُسجل قيمته بعد.'])->with('error', 'لا يمكن تسجيل سداد مصروف لم تُسجل قيمته بعد.');
+        }
+
+        DB::transaction(function () use ($expense, $request, $workspace) {
+            $expense = Expense::where('id', $expense->id)->lockForUpdate()->firstOrFail();
+
+            $expense->update([
+                'payment_status' => 'paid',
+                'paid_at' => now(),
+            ]);
+
+            if (function_exists('activity')) {
+                $maintenance = $expense->maintenanceRequest()->first();
+                if ($maintenance) {
+                    activity('maintenance')
+                        ->performedOn($maintenance)
+                        ->causedBy($request->user())
+                        ->withProperties([
+                            'workspace_id' => $workspace->id,
+                            'expense_id' => $expense->id,
+                            'amount' => $expense->amount,
+                            'paid_at' => $expense->paid_at?->toIso8601String(),
+                        ])
+                        ->log('تم تسجيل سداد تكلفة الصيانة بمبلغ: '.number_format((float) $expense->amount, 2));
+                }
+            }
+        });
+
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'تم تسجيل سداد المصروف بنجاح']);
+        }
+
+        return back()->with('success', 'تم تسجيل سداد المصروف بنجاح');
+    }
+
+    public function reversePayment(Request $request, Expense $expense): RedirectResponse|JsonResponse
+    {
+        $workspace = $this->resolveWorkspace($request);
+        abort_if($expense->workspace_id !== $workspace->id, 403, 'غير مصرح لك بتعديل سداد هذا المصروف.');
+
+        DB::transaction(function () use ($expense, $request, $workspace) {
+            $expense = Expense::where('id', $expense->id)->lockForUpdate()->firstOrFail();
+
+            $expense->update([
+                'payment_status' => 'unpaid',
+                'paid_at' => null,
+            ]);
+
+            if (function_exists('activity')) {
+                $maintenance = $expense->maintenanceRequest()->first();
+                if ($maintenance) {
+                    activity('maintenance')
+                        ->performedOn($maintenance)
+                        ->causedBy($request->user())
+                        ->withProperties([
+                            'workspace_id' => $workspace->id,
+                            'expense_id' => $expense->id,
+                        ])
+                        ->log('تم إلغاء تسجيل سداد المصروف وإعادته كغير مدفوع');
+                }
+            }
+        });
+
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'تم إلغاء سداد المصروف بنجاح']);
+        }
+
+        return back()->with('success', 'تم إلغاء سداد المصروف بنجاح');
+    }
+
+    public function destroy(Request $request, Expense $expense): RedirectResponse|JsonResponse
+    {
+        $workspace = $this->resolveWorkspace($request);
+        abort_if($expense->workspace_id !== $workspace->id, 403, 'غير مصرح لك بحذف هذا المصروف.');
+
+        if ($expense->maintenance_request_id !== null) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'message' => 'لا يمكن حذف مصروف مرتبط بطلب صيانة نشط لمنع كسر العلاقة المالية للطلب.',
+                ], 422);
+            }
+
+            return back()->withErrors([
+                'expense' => 'لا يمكن حذف مصروف مرتبط بطلب صيانة نشط لمنع كسر العلاقة المالية للطلب.',
+            ])->with('error', 'لا يمكن حذف مصروف مرتبط بطلب صيانة نشط لمنع كسر العلاقة المالية للطلب.');
+        }
+
+        $expense->delete();
+
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'تم حذف المصروف بنجاح']);
+        }
+
+        return back()->with('success', 'تم حذف المصروف بنجاح');
     }
 }

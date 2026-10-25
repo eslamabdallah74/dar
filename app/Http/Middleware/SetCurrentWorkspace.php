@@ -20,12 +20,16 @@ class SetCurrentWorkspace
             $workspaceId = $request->session()->get('active_workspace_id');
 
             if ($workspaceId) {
-                $workspace = Workspace::where('id', $workspaceId)
-                    ->where(function ($query) use ($user) {
-                        $query->where('owner_user_id', $user->id)
-                            ->orWhereHas('members', fn ($q) => $q->where('user_id', $user->id));
-                    })
-                    ->first();
+                if ($user->isAdmin()) {
+                    $workspace = Workspace::find($workspaceId);
+                } else {
+                    $workspace = Workspace::where('id', $workspaceId)
+                        ->where(function ($query) use ($user) {
+                            $query->where('owner_user_id', $user->id)
+                                ->orWhereHas('members', fn ($q) => $q->where('user_id', $user->id));
+                        })
+                        ->first();
+                }
             }
 
             if (! $workspace) {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Rules\EgyptianPhoneNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -38,17 +39,19 @@ class SettingsController extends Controller
         $workspace = $this->resolveWorkspace($request);
 
         $validated = $request->validate([
-            'name' => 'nullable|string|max:255',
+            'name' => 'nullable|string|min:3|max:255',
             'currency' => 'nullable|string|max:10',
             'cr_number' => 'nullable|string|max:50',
             'tax_number' => 'nullable|string|max:50',
-            'phone' => 'nullable|string|max:30',
+            'phone' => ['nullable', 'string', new EgyptianPhoneNumber],
             'address' => 'nullable|string|max:500',
             'auto_whatsapp_reminders' => 'nullable|boolean',
             'auto_instant_receipts' => 'nullable|boolean',
             'due_reminder_days_before' => 'nullable|integer|min:0|max:30',
             'overdue_warning_days_after' => 'nullable|integer|min:0|max:60',
             'weekly_summary_report' => 'nullable|boolean',
+        ], [
+            'name.min' => 'يجب ألا يقل اسم المنشأة عن 3 أحرف.',
         ]);
 
         $updates = array_filter($validated, fn ($val) => $val !== null);

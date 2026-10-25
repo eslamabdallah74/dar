@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Leases;
 
 use App\Models\Lease;
+use App\Support\CurrentWorkspace;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -12,6 +13,14 @@ class ExtendLeaseRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        $lease = $this->route('lease');
+        if ($lease instanceof Lease) {
+            $workspace = app(CurrentWorkspace::class)->get();
+            if ($workspace && (int) $lease->workspace_id !== (int) $workspace->id) {
+                return false;
+            }
+        }
+
         return true;
     }
 

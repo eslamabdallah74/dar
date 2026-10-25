@@ -46,7 +46,8 @@ class HandleInertiaRequests extends Middleware
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
-                    'role' => 'مالك الحساب',
+                    'is_admin' => $user->isAdmin(),
+                    'role' => $user->isAdmin() ? 'مدير النظام (كامل الصلاحيات)' : 'مالك الحساب',
                 ] : null,
                 'workspace' => $workspace ? [
                     'id' => $workspace->id,
@@ -89,6 +90,8 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
+                'warning' => fn () => $request->session()->get('warning'),
+                'info' => fn () => $request->session()->get('info'),
             ],
         ];
     }

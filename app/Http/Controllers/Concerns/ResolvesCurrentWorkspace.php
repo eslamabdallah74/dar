@@ -26,7 +26,8 @@ trait ResolvesCurrentWorkspace
             abort(401);
         }
 
-        $isAuthorized = $workspace->owner_user_id === $user->id
+        $isAuthorized = $user->isAdmin()
+            || $workspace->owner_user_id === $user->id
             || $workspace->members()->where('user_id', $user->id)->exists();
 
         abort_if(! $isAuthorized, 403, 'غير مصرح لك بالوصول لمساحة العمل هذه.');

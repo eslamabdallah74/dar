@@ -68,10 +68,28 @@ class SubscriptionController extends Controller
                 ],
                 'is_current' => $currentPlan?->slug === 'pro',
             ],
+            [
+                'id' => 'enterprise',
+                'name' => 'باقة الشركات اللامحدودة (Enterprise)',
+                'badge' => 'شاملة كل شيء',
+                'price' => 999,
+                'period' => 'شهرياً',
+                'units_limit' => null,
+                'features' => [
+                    'وحدات تأجيرية غير محدودة (سعة كاملة)',
+                    'عقارات وملاك ومستأجرون غير محدودين',
+                    'تذكيرات WhatsApp ورسائل تلقائية غير محدودة',
+                    'كافة التقارير المالية والتحليلات والضرائب',
+                    'سندات قبض وعقود إلكترونية غير محدودة',
+                    'إدارة الصيانة والمصروفات بالكامل',
+                    'مدير حساب مخصص ودعم فني على مدار الساعة VIP',
+                ],
+                'is_current' => $currentPlan?->slug === 'enterprise',
+            ],
         ];
 
         $planName = $currentPlan?->name ?? 'باقة الانطلاق (Starter)';
-        $unitLimit = $currentPlan?->unit_limit ?? 5;
+        $unitLimit = $activeSubscription ? $currentPlan?->unit_limit : 5;
 
         return Inertia::render('Subscription/Index', [
             'current_plan' => [

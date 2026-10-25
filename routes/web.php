@@ -46,7 +46,7 @@ Route::get('/sitemap.xml', function () {
     $xml .= '<priority>1.0</priority>';
     $xml .= '<image:image>';
     $xml .= '<image:loc>'.$baseUrl.'/images/logo.png</image:loc>';
-    $xml .= '<image:title>دار — منصة إدارة وتأجير العقارات</image:title>';
+    $xml .= '<image:title>Nook Mate — Find Your Spot. Rent the Space You Need.</image:title>';
     $xml .= '</image:image>';
     $xml .= '</url>';
     $xml .= '<url>';
@@ -107,6 +107,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/renters/{renter}', [RenterController::class, 'update'])->name('renters.update');
     Route::post('/renters/{renter}/documents', [RenterController::class, 'storeDocument'])->name('renters.documents.store');
     Route::get('/renters/{renter}/documents/{document}/download', [RenterController::class, 'downloadDocument'])->name('renters.documents.download');
+    Route::get('/renters/{renter}/id-card/{side}', [RenterController::class, 'viewIdCard'])->where('side', 'front|back')->name('renters.id-card');
     Route::delete('/renters/{renter}/documents/{document}', [RenterController::class, 'destroyDocument'])->name('renters.documents.destroy');
 
     // 06 / العقود
@@ -115,6 +116,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/leases/check-conflict', [LeaseController::class, 'checkConflict'])->name('leases.check-conflict');
     Route::post('/leases', [LeaseController::class, 'store'])->name('leases.store');
     Route::get('/leases/{lease}', [LeaseController::class, 'show'])->name('leases.show');
+    Route::get('/leases/{lease}/contract-image', [LeaseController::class, 'viewContractImage'])->name('leases.contract-image');
+    Route::post('/leases/{lease}/contract-image', [LeaseController::class, 'uploadContractImage'])->name('leases.contract-image.store');
+    Route::delete('/leases/{lease}/contract-image', [LeaseController::class, 'deleteContractImage'])->name('leases.contract-image.destroy');
     Route::post('/leases/{lease}/extend', [LeaseController::class, 'extend'])->name('leases.extend');
     Route::post('/leases/{lease}/terminate', [LeaseController::class, 'terminate'])->name('leases.terminate');
 
@@ -123,7 +127,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/leases/{lease}/security-deposit/payments/{payment}/reverse', [SecurityDepositController::class, 'reversePayment'])->name('leases.security-deposit.payment.reverse');
     Route::post('/leases/{lease}/security-deposit/start-settlement', [SecurityDepositController::class, 'startSettlement'])->name('leases.security-deposit.start-settlement');
     Route::post('/leases/{lease}/security-deposit/deductions', [SecurityDepositController::class, 'recordDeduction'])->name('leases.security-deposit.deduction');
+    Route::match(['put', 'patch', 'post'], '/leases/{lease}/security-deposit/deductions/{deduction}', [SecurityDepositController::class, 'updateDeduction'])->name('leases.security-deposit.deductions.update');
     Route::delete('/leases/{lease}/security-deposit/deductions/{deduction}', [SecurityDepositController::class, 'deleteDeduction'])->name('leases.security-deposit.deduction.delete');
+    Route::get('/leases/{lease}/security-deposit/statement', [SecurityDepositController::class, 'showStatement'])->name('leases.security-deposit.statement');
+    Route::get('/leases/{lease}/security-deposit/export', [SecurityDepositController::class, 'export'])->name('leases.security-deposit.export');
     Route::post('/leases/{lease}/security-deposit/refunds', [SecurityDepositController::class, 'recordRefund'])->name('leases.security-deposit.refund');
     Route::post('/leases/{lease}/security-deposit/pending-refund', [SecurityDepositController::class, 'recordPendingRefund'])->name('leases.security-deposit.pending-refund');
     Route::post('/leases/{lease}/security-deposit/settle', [SecurityDepositController::class, 'settle'])->name('leases.security-deposit.settle');
@@ -131,24 +138,36 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // 07 / الاستحقاقات والدفعات
     Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
     Route::post('/payments', [PaymentController::class, 'store'])->name('payments.store');
+    Route::put('/payments/{payment}', [PaymentController::class, 'update'])->name('payments.update');
     Route::get('/payments/{payment}/receipt', [PaymentController::class, 'showReceipt'])->name('payments.receipt');
+    Route::get('/payments/{payment}/attachment', [PaymentController::class, 'downloadAttachment'])->name('payments.attachment');
     Route::post('/online-payments/checkout', [OnlinePaymentController::class, 'checkout'])->name('online-payments.checkout');
     Route::get('/online-payments/callback', [OnlinePaymentController::class, 'callback'])->name('online-payments.callback');
 
     // 08 / الصيانة والمصروفات
     Route::get('/maintenance', [MaintenanceController::class, 'index'])->name('maintenance.index');
     Route::post('/maintenance', [MaintenanceController::class, 'store'])->name('maintenance.store');
+    Route::get('/maintenance/{maintenance}', [MaintenanceController::class, 'show'])->name('maintenance.show');
     Route::put('/maintenance/{maintenance}', [MaintenanceController::class, 'update'])->name('maintenance.update');
     Route::patch('/maintenance/{maintenance}/status', [MaintenanceController::class, 'updateStatus'])->name('maintenance.update-status');
-    Route::post('/maintenance/apply-expenses', [MaintenanceController::class, 'applyExpenses'])->name('maintenance.apply-expenses');
+    Route::post('/maintenance/{maintenance}/attachments', [MaintenanceController::class, 'storeAttachments'])->name('maintenance.attachments.store');
+    Route::get('/maintenance/{maintenance}/attachments/{attachment}/preview', [MaintenanceController::class, 'previewAttachment'])->name('maintenance.attachments.preview');
+    Route::get('/maintenance/{maintenance}/attachments/{attachment}/download', [MaintenanceController::class, 'downloadAttachment'])->name('maintenance.attachments.download');
+    Route::delete('/maintenance/{maintenance}/attachments/{attachment}', [MaintenanceController::class, 'destroyAttachment'])->name('maintenance.attachments.destroy');
+    Route::post('/maintenance/{maintenance}/notes', [MaintenanceController::class, 'storeNote'])->name('maintenance.notes.store');
 
     Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
     Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
     Route::put('/expenses/{expense}', [ExpenseController::class, 'update'])->name('expenses.update');
+    Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
+    Route::post('/expenses/{expense}/payment', [ExpenseController::class, 'recordPayment'])->name('expenses.payment.record');
+    Route::post('/expenses/{expense}/payment/reverse', [ExpenseController::class, 'reversePayment'])->name('expenses.payment.reverse');
 
     // 09 / تذكيرات WhatsApp
     Route::get('/whatsapp', [WhatsAppController::class, 'index'])->name('whatsapp.index');
-    Route::post('/whatsapp/test-send', [WhatsAppController::class, 'testSend'])->name('whatsapp.test-send');
+    Route::post('/whatsapp/test-send', [WhatsAppController::class, 'testSend'])
+        ->middleware('throttle:5,1')
+        ->name('whatsapp.test-send');
 
     // 10 / التقارير والتصدير المالي
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
@@ -174,7 +193,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::prefix('admin')->name('admin.')->group(function () {
     // Admin Guest Auth Routes
     Route::get('/login', [AdminAuthController::class, 'create'])->name('login');
-    Route::post('/login', [AdminAuthController::class, 'store'])->name('login.store');
+    Route::post('/login', [AdminAuthController::class, 'store'])->middleware('throttle:admin-login')->name('login.store');
 
     // Admin Protected Routes
     Route::middleware(['admin'])->group(function () {

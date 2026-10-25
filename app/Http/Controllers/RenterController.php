@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Renters\StoreRenterDocumentRequest;
 use App\Http\Requests\Renters\StoreRenterRequest;
 use App\Http\Requests\Renters\UpdateRenterRequest;
+use App\Http\Resources\RenterResource;
 use App\Models\Renter;
 use App\Models\RenterDocument;
+use App\Rules\EgyptianPhoneNumber;
+use App\Services\EncryptedFileService;
+use App\Services\Storage\DocumentStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -27,46 +30,17 @@ class RenterController extends Controller
                 'leases' => fn ($q) => $q->with(['unit.property', 'rentCharges.allocations'])->latest(),
                 'payments',
             ])
-            ->get()
-            ->map(function (Renter $renter) {
-                $activeLease = $renter->leases->firstWhere('status', 'active');
-                $totalPaid = (float) $renter->payments->sum('amount');
+            ->get();
 
-                // Determine payment status
-                $hasOverdue = false;
-                if ($activeLease) {
-                    $hasOverdue = $activeLease->rentCharges
-                        ->where('due_date', '<', today())
-                        ->contains(fn ($c) => $c->outstanding_balance > 0);
-                }
+        $rentersData = collect(RenterResource::collection($renters)->resolve());
 
-                return [
-                    'id' => $renter->id,
-                    'name' => $renter->name,
-                    'phone' => $renter->phone,
-                    'email' => $renter->email,
-                    'national_id' => $renter->national_id ?? '—',
-                    'active_unit' => $activeLease ? [
-                        'unit_name' => $activeLease->unit?->name,
-                        'property_name' => $activeLease->unit?->property?->name,
-                        'rent_amount' => (float) $activeLease->rent_amount,
-                        'ends_on' => $activeLease->ends_on?->format('d/m/Y'),
-                    ] : null,
-                    'status' => $hasOverdue ? 'overdue' : ($activeLease ? 'regular' : 'inactive'),
-                    'status_label' => $hasOverdue ? 'متأخر في السداد' : ($activeLease ? 'منتظم' : 'بدون عقد نشط'),
-                    'total_paid' => $totalPaid,
-                    'whatsapp_opted_in' => (bool) $renter->whatsapp_opt_in_at,
-                    'created_at' => $renter->created_at?->format('d/m/Y'),
-                ];
-            });
-
-        $totalRenters = $renters->count();
-        $activeCount = $renters->whereNotNull('active_unit')->count();
-        $overdueCount = $renters->where('status', 'overdue')->count();
-        $whatsappCount = $renters->where('whatsapp_opted_in', true)->count();
+        $totalRenters = $rentersData->count();
+        $activeCount = $rentersData->whereNotNull('active_unit')->count();
+        $overdueCount = $rentersData->where('status', 'overdue')->count();
+        $whatsappCount = $rentersData->where('whatsapp_opted_in', true)->count();
 
         return Inertia::render('Renters/Index', [
-            'renters' => $renters,
+            'renters' => $rentersData->values()->all(),
             'stats' => [
                 'total_renters' => $totalRenters,
                 'active_contracts' => $activeCount,
@@ -126,6 +100,8 @@ class RenterController extends Controller
                 default => 'إنستاباي / فيزا / إلكتروني',
             },
             'notes' => $p->notes,
+            'has_receipt' => ! empty($p->receipt_path),
+            'receipt_url' => ! empty($p->receipt_path) ? route('payments.attachment', $p) : null,
         ]);
 
         $messageLogsList = $renter->messageLogs->map(fn ($m) => [
@@ -154,6 +130,8 @@ class RenterController extends Controller
                 'phone' => $renter->phone,
                 'email' => $renter->email,
                 'national_id' => $renter->national_id ?? '—',
+                'gender' => $renter->gender?->value,
+                'gender_label' => $renter->gender?->label(),
                 'id_card_front_url' => $renter->id_card_front_url,
                 'id_card_back_url' => $renter->id_card_back_url,
                 'whatsapp_opted_in' => (bool) $renter->whatsapp_opt_in_at,
@@ -175,6 +153,7 @@ class RenterController extends Controller
                     default => 'وحدة',
                 },
                 'property_name' => $activeLease->unit?->property?->name,
+                'apartment_gender' => $activeLease->unit?->getApartmentGenderInfo(),
                 'starts_on' => $activeLease->starts_on?->format('d/m/Y'),
                 'ends_on' => $activeLease->ends_on?->format('d/m/Y'),
                 'rent_amount' => (float) $activeLease->rent_amount,
@@ -253,8 +232,10 @@ class RenterController extends Controller
         $workspace = $this->resolveWorkspace($request);
 
         $request->validate([
-            'phone' => 'required|string',
+            'phone' => ['required', 'string', new EgyptianPhoneNumber],
             'exclude_id' => 'nullable|integer',
+        ], [
+            'phone.required' => 'يرجى إدخال رقم الهاتف.',
         ]);
 
         $phone = trim($request->input('phone'));
@@ -288,6 +269,8 @@ class RenterController extends Controller
                     'name' => $existing->name,
                     'phone' => $existing->phone,
                     'national_id' => $existing->national_id,
+                    'gender' => $existing->gender?->value,
+                    'gender_label' => $existing->gender?->label(),
                     'email' => $existing->email,
                 ],
                 'message' => 'هذا الرقم مسجل بالفعل للمستأجر: '.$existing->name,
@@ -311,6 +294,7 @@ class RenterController extends Controller
             'phone' => $validated['phone'],
             'email' => $validated['email'] ?? null,
             'national_id' => $validated['national_id'] ?? null,
+            'gender' => $validated['gender'] ?? null,
             'notes' => $validated['notes'] ?? null,
             'whatsapp_opt_in_at' => ($validated['whatsapp_consent'] ?? true) ? now() : null,
             'whatsapp_opt_in_source' => 'manual_entry',
@@ -322,14 +306,18 @@ class RenterController extends Controller
             $file = $request->file('id_card_front');
             $extension = $file->getClientOriginalExtension() ?: 'jpg';
             $filename = Str::random(40).'.'.strtolower($extension);
-            $updates['id_card_front'] = $file->storeAs("ids/{$renter->id}", $filename, 'public');
+            $path = "ids/{$renter->id}/{$filename}";
+            EncryptedFileService::put($file, $path, 'local');
+            $updates['id_card_front'] = $path;
         }
 
         if ($request->hasFile('id_card_back')) {
             $file = $request->file('id_card_back');
             $extension = $file->getClientOriginalExtension() ?: 'jpg';
             $filename = Str::random(40).'.'.strtolower($extension);
-            $updates['id_card_back'] = $file->storeAs("ids/{$renter->id}", $filename, 'public');
+            $path = "ids/{$renter->id}/{$filename}";
+            EncryptedFileService::put($file, $path, 'local');
+            $updates['id_card_back'] = $path;
         }
 
         if (! empty($updates)) {
@@ -345,6 +333,8 @@ class RenterController extends Controller
                     'name' => $renter->name,
                     'phone' => $renter->phone,
                     'national_id' => $renter->national_id,
+                    'gender' => $renter->gender?->value,
+                    'gender_label' => $renter->gender?->label(),
                 ],
             ], 201);
         }
@@ -352,8 +342,11 @@ class RenterController extends Controller
         return back()->with('success', 'تمت إضافة المستأجر بنجاح');
     }
 
-    public function update(UpdateRenterRequest $request, Renter $renter): RedirectResponse
-    {
+    public function update(
+        UpdateRenterRequest $request,
+        Renter $renter,
+        DocumentStorageService $storage
+    ): RedirectResponse {
         $workspace = $this->resolveWorkspace($request);
 
         abort_if($renter->workspace_id !== $workspace->id, 403);
@@ -361,25 +354,31 @@ class RenterController extends Controller
         $validated = $request->validated();
 
         if ($request->hasFile('id_card_front')) {
-            if ($renter->id_card_front && Storage::disk('public')->exists($renter->id_card_front)) {
-                Storage::disk('public')->delete($renter->id_card_front);
+            if ($renter->id_card_front) {
+                EncryptedFileService::delete($renter->id_card_front, 'local');
+                $storage->delete($renter->id_card_front, 'public');
             }
             $file = $request->file('id_card_front');
             $extension = $file->getClientOriginalExtension() ?: 'jpg';
             $filename = Str::random(40).'.'.strtolower($extension);
-            $validated['id_card_front'] = $file->storeAs("ids/{$renter->id}", $filename, 'public');
+            $path = "ids/{$renter->id}/{$filename}";
+            EncryptedFileService::put($file, $path, 'local');
+            $validated['id_card_front'] = $path;
         } else {
             unset($validated['id_card_front']);
         }
 
         if ($request->hasFile('id_card_back')) {
-            if ($renter->id_card_back && Storage::disk('public')->exists($renter->id_card_back)) {
-                Storage::disk('public')->delete($renter->id_card_back);
+            if ($renter->id_card_back) {
+                EncryptedFileService::delete($renter->id_card_back, 'local');
+                $storage->delete($renter->id_card_back, 'public');
             }
             $file = $request->file('id_card_back');
             $extension = $file->getClientOriginalExtension() ?: 'jpg';
             $filename = Str::random(40).'.'.strtolower($extension);
-            $validated['id_card_back'] = $file->storeAs("ids/{$renter->id}", $filename, 'public');
+            $path = "ids/{$renter->id}/{$filename}";
+            EncryptedFileService::put($file, $path, 'local');
+            $validated['id_card_back'] = $path;
         } else {
             unset($validated['id_card_back']);
         }
@@ -389,8 +388,11 @@ class RenterController extends Controller
         return back()->with('success', 'تم تحديث بيانات المستأجر بنجاح');
     }
 
-    public function storeDocument(StoreRenterDocumentRequest $request, Renter $renter): RedirectResponse
-    {
+    public function storeDocument(
+        StoreRenterDocumentRequest $request,
+        Renter $renter,
+        DocumentStorageService $storage
+    ): RedirectResponse {
         $workspace = $this->resolveWorkspace($request);
         abort_if($renter->workspace_id !== $workspace->id, 403, 'غير مصرح لك بإدارة مستندات هذا المستأجر.');
 
@@ -399,10 +401,8 @@ class RenterController extends Controller
         $file = $request->file('file');
         $originalName = $file->getClientOriginalName();
         $fileSize = $file->getSize();
-        $extension = $file->getClientOriginalExtension() ?: 'bin';
-        $safeName = Str::random(40).'.'.strtolower($extension);
 
-        $path = $file->storeAs("documents/{$workspace->id}/{$renter->id}", $safeName, 'local');
+        $path = $storage->storePrivate($file, "documents/{$workspace->id}/{$renter->id}");
 
         $renter->documents()->create([
             'workspace_id' => $workspace->id,
@@ -417,28 +417,58 @@ class RenterController extends Controller
         return back()->with('success', 'تم رفع المستند بنجاح وحفظه في التخزين الآمن');
     }
 
-    public function downloadDocument(Request $request, Renter $renter, RenterDocument $document): StreamedResponse
-    {
+    public function downloadDocument(
+        Request $request,
+        Renter $renter,
+        RenterDocument $document,
+        DocumentStorageService $storage
+    ): StreamedResponse {
         $workspace = $this->resolveWorkspace($request);
         abort_if($renter->workspace_id !== $workspace->id, 403, 'غير مصرح لك بالوصول لهذا المستأجر.');
         abort_if($document->workspace_id !== $workspace->id || $document->renter_id !== $renter->id, 403, 'غير مصرح لك بتحميل هذا المستند.');
 
-        if (! Storage::disk('local')->exists($document->storage_path)) {
-            abort(404, 'الملف غير موجود في وحدة التخزين الآمن.');
-        }
+        abort_if(! $storage->exists($document->storage_path), 404, 'الملف غير موجود في وحدة التخزين الآمن.');
 
-        return Storage::disk('local')->download($document->storage_path, $document->original_filename ?: 'document');
+        return $storage->downloadResponse($document->storage_path, $document->original_filename ?: 'document');
     }
 
-    public function destroyDocument(Request $request, Renter $renter, RenterDocument $document): RedirectResponse
-    {
+    public function viewIdCard(
+        Request $request,
+        Renter $renter,
+        string $side,
+        DocumentStorageService $storage
+    ): \Symfony\Component\HttpFoundation\Response {
+        $workspace = $this->resolveWorkspace($request);
+        abort_if($renter->workspace_id !== $workspace->id, 403, 'غير مصرح لك بعرض هذا المستند.');
+
+        $path = $side === 'front' ? $renter->id_card_front : $renter->id_card_back;
+
+        if (! $path) {
+            abort(404, 'لم يتم إرفاق صورة بطاقة الهوية.');
+        }
+
+        if ($storage->exists($path, 'local')) {
+            return EncryptedFileService::response($path, 'local', "renter-{$renter->id}-id-{$side}");
+        }
+
+        if ($storage->exists($path, 'public')) {
+            return EncryptedFileService::response($path, 'public', "renter-{$renter->id}-id-{$side}");
+        }
+
+        abort(404, 'ملف بطاقة الهوية غير موجود.');
+    }
+
+    public function destroyDocument(
+        Request $request,
+        Renter $renter,
+        RenterDocument $document,
+        DocumentStorageService $storage
+    ): RedirectResponse {
         $workspace = $this->resolveWorkspace($request);
         abort_if($renter->workspace_id !== $workspace->id, 403, 'غير مصرح لك بالوصول لهذا المستأجر.');
         abort_if($document->workspace_id !== $workspace->id || $document->renter_id !== $renter->id, 403, 'غير مصرح لك بحذف هذا المستند.');
 
-        if (Storage::disk('local')->exists($document->storage_path)) {
-            Storage::disk('local')->delete($document->storage_path);
-        }
+        $storage->delete($document->storage_path);
 
         $document->delete();
 

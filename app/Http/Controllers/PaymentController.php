@@ -2,78 +2,46 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Payments\CorrectPaymentAction;
 use App\Actions\Payments\RecordPaymentAction;
 use App\Http\Requests\Payments\StorePaymentRequest;
+use App\Http\Requests\Payments\UpdatePaymentRequest;
+use App\Http\Resources\PaymentResource;
+use App\Http\Resources\RentChargeResource;
 use App\Models\Payment;
-use App\Models\RentCharge;
+use App\Models\PaymentAllocation;
 use App\Models\Renter;
+use App\Services\Storage\DocumentStorageService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class PaymentController extends Controller
 {
     public function index(Request $request): Response
     {
         $workspace = $this->resolveWorkspace($request);
+        $activeTab = $request->query('tab', 'dues');
 
         // 1. Rent charges (Dues)
         $charges = $workspace->rentCharges()
             ->with(['lease.renter', 'lease.unit.property', 'paymentAllocations.payment'])
             ->orderBy('due_date', 'desc')
-            ->get()
-            ->map(function (RentCharge $charge) {
-                $allocated = (float) $charge->paymentAllocations->sum('amount');
-                $outstanding = max(0, (float) $charge->amount - $allocated);
-                $isPaid = $outstanding <= 0;
-                $isOverdue = ! $isPaid && $charge->due_date < today();
+            ->get();
 
-                return [
-                    'id' => $charge->id,
-                    'lease_id' => $charge->lease_id,
-                    'renter_id' => $charge->lease?->renter_id,
-                    'renter_name' => $charge->lease?->renter?->name ?? 'مستأجر',
-                    'renter_phone' => $charge->lease?->renter?->phone ?? '',
-                    'unit_name' => $charge->lease?->unit?->name ?? '',
-                    'property_name' => $charge->lease?->unit?->property?->name ?? '',
-                    'period' => $charge->period_start?->format('m/Y'),
-                    'due_date' => $charge->due_date?->format('d/m/Y'),
-                    'raw_due_date' => $charge->due_date?->toDateString(),
-                    'amount' => (float) $charge->amount,
-                    'paid_amount' => $allocated,
-                    'outstanding_balance' => $outstanding,
-                    'status' => $isPaid ? 'paid' : ($isOverdue ? 'overdue' : 'pending'),
-                    'status_label' => $isPaid ? 'مسدد بالكامل' : ($isOverdue ? 'متأخر' : 'مستحق قريباً'),
-                ];
-            });
+        $chargesData = RentChargeResource::collection($charges)->resolve();
 
-        // 2. Receipts (Recorded Payments)
+        // 2. Receipts (Recorded Payments) - ordered by actual paid_at date
         $payments = $workspace->payments()
-            ->with(['renter', 'allocations.rentCharge.lease.unit'])
-            ->latest()
-            ->get()
-            ->map(function (Payment $payment) {
-                $unitName = $payment->allocations->first()?->rentCharge?->lease?->unit?->name;
+            ->with(['renter', 'allocations.rentCharge.lease.unit.property', 'recordedBy', 'auditLogs'])
+            ->orderBy('paid_at', 'desc')
+            ->orderBy('id', 'desc')
+            ->get();
 
-                return [
-                    'id' => $payment->id,
-                    'reference' => $payment->reference ?? 'REC-2026-0'.str_pad((string) $payment->id, 2, '0', STR_PAD_LEFT),
-                    'renter_id' => $payment->renter_id,
-                    'renter_name' => $payment->renter?->name ?? 'مستأجر',
-                    'unit_name' => $unitName ?? '—',
-                    'amount' => (float) $payment->amount,
-                    'paid_at' => $payment->paid_at?->format('d/m/Y H:i') ?? $payment->created_at?->format('d/m/Y'),
-                    'method' => match ($payment->payment_method) {
-                        'bank_transfer' => 'تحويل بنكي',
-                        'cash' => 'نقدي',
-                        'cheque' => 'شيك',
-                        default => 'إنستاباي / فيزا / إلكتروني',
-                    },
-                    'notes' => $payment->notes,
-                ];
-            });
+        $paymentsData = PaymentResource::collection($payments)->resolve();
 
         // 3. Renters list for modal dropdown
         $renters = $workspace->renters()
@@ -90,27 +58,37 @@ class PaymentController extends Controller
                 ] : null,
             ]);
 
-        $startOfMonth = now()->startOfMonth()->toDateString();
-        $endOfMonth = now()->endOfMonth()->toDateString();
+        $startOfMonth = now()->startOfMonth();
+        $endOfMonth = now()->endOfMonth();
 
-        $monthTarget = (float) $charges->whereBetween('raw_due_date', [$startOfMonth, $endOfMonth])->sum('amount');
-        $monthCollected = (float) $payments->whereBetween('paid_at', [now()->startOfMonth()->format('d/m/Y'), now()->endOfMonth()->format('d/m/Y')])->sum('amount');
-        if ($monthCollected === 0.0) {
-            $monthCollected = (float) $workspace->payments()
-                ->whereBetween('paid_at', [now()->startOfMonth(), now()->endOfMonth()])
-                ->sum('amount');
-        }
+        // Target: rent obligations due in current month (earned revenue)
+        $monthTarget = (float) $workspace->rentCharges()
+            ->whereBetween('due_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()])
+            ->sum('amount');
 
-        $totalOverdue = (float) $charges->where('status', 'overdue')->sum('outstanding_balance');
+        // Collected: actual cash collected in current month
+        $monthCollected = (float) $workspace->payments()
+            ->whereBetween('paid_at', [$startOfMonth, $endOfMonth])
+            ->sum('amount');
+
+        // Advance payments: collections in current month allocated to future obligations
+        $monthAdvance = (float) PaymentAllocation::where('workspace_id', $workspace->id)
+            ->whereHas('payment', fn ($q) => $q->whereBetween('paid_at', [$startOfMonth, $endOfMonth]))
+            ->whereHas('rentCharge', fn ($q) => $q->where('due_date', '>', $endOfMonth->toDateString()))
+            ->sum('amount');
+
+        $totalOverdue = (float) collect($chargesData)->where('status', 'overdue')->sum('outstanding_balance');
         $collectionRate = $monthTarget > 0 ? (int) round(($monthCollected / $monthTarget) * 100) : 0;
 
         return Inertia::render('Payments/Index', [
-            'charges' => $charges,
-            'payments' => $payments,
+            'charges' => $chargesData,
+            'payments' => $paymentsData,
             'renters' => $renters,
+            'active_tab' => $activeTab,
             'stats' => [
                 'target' => $monthTarget,
                 'collected' => $monthCollected,
+                'advance' => $monthAdvance,
                 'overdue' => $totalOverdue,
                 'rate' => $collectionRate,
             ],
@@ -118,17 +96,46 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function store(StorePaymentRequest $request, RecordPaymentAction $recordPaymentAction): RedirectResponse
-    {
+    public function store(
+        StorePaymentRequest $request,
+        RecordPaymentAction $recordPaymentAction,
+        DocumentStorageService $storage
+    ): RedirectResponse {
         $workspace = $this->resolveWorkspace($request);
+        $data = $request->validated();
+
+        if ($request->hasFile('receipt_image')) {
+            $file = $request->file('receipt_image');
+            $data['receipt_path'] = $storage->storePrivate($file, "payments/{$workspace->id}");
+        }
 
         $recordPaymentAction->execute(
             workspace: $workspace,
+            data: $data,
+            userId: $request->user()->id,
+        );
+
+        // Redirect to receipts tab so the newly recorded transaction is immediately visible to the user
+        return redirect()->route('payments.index', ['tab' => 'receipts'])
+            ->with('success', 'تم تسجيل الدفعة وإصدار سند القبض بنجاح وترحيلها إلى سجل المقبوضات.');
+    }
+
+    public function update(
+        UpdatePaymentRequest $request,
+        Payment $payment,
+        CorrectPaymentAction $correctPaymentAction
+    ): RedirectResponse {
+        $workspace = $this->resolveWorkspace($request);
+        abort_if($payment->workspace_id !== $workspace->id, 403, 'غير مصرح لك بتعديل هذا السند.');
+
+        $correctPaymentAction->execute(
+            payment: $payment,
             data: $request->validated(),
             userId: $request->user()->id,
         );
 
-        return back()->with('success', 'تم تسجيل الدفعة وإصدار سند القبض بنجاح');
+        return redirect()->route('payments.index', ['tab' => 'receipts'])
+            ->with('success', 'تم تصحيح الدفعة وإعادة تسوية وتوزيع الالتزامات الإيجارية بنجاح مع توثيق السجل الرقابي.');
     }
 
     public function showReceipt(Request $request, Payment $payment): View
@@ -140,11 +147,24 @@ class PaymentController extends Controller
             'renter',
             'recordedBy',
             'allocations.rentCharge.lease.unit.property',
+            'auditLogs.causer',
         ]);
 
         return view('receipts.show', [
             'payment' => $payment,
             'workspace' => $workspace,
         ]);
+    }
+
+    public function downloadAttachment(
+        Request $request,
+        Payment $payment,
+        DocumentStorageService $storage
+    ): SymfonyResponse {
+        $workspace = $this->resolveWorkspace($request);
+        abort_if($payment->workspace_id !== $workspace->id, 403, 'غير مصرح لك بعرض هذا المرفق.');
+        abort_if(! $payment->receipt_path || ! $storage->exists($payment->receipt_path), 404, 'ملف الإيصال غير موجود.');
+
+        return $storage->previewResponse($payment->receipt_path);
     }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Renters;
 
+use App\Enums\Gender;
+use App\Rules\EgyptianPhoneNumber;
 use App\Support\CurrentWorkspace;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -29,15 +31,16 @@ class StoreRenterRequest extends FormRequest
         $workspaceId = app(CurrentWorkspace::class)->id();
 
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'min:3', 'max:255'],
             'phone' => [
                 'required',
                 'string',
-                'max:20',
+                new EgyptianPhoneNumber,
                 Rule::unique('renters', 'phone')->where(fn ($query) => $workspaceId ? $query->where('workspace_id', $workspaceId) : $query),
             ],
-            'email' => ['nullable', 'email', 'max:255'],
-            'national_id' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'string', 'lowercase', 'email:rfc', 'max:255'],
+            'national_id' => ['nullable', 'string', 'min:6', 'max:50', 'regex:/^[A-Za-z0-9\s\-]+$/'],
+            'gender' => ['nullable', 'string', Rule::enum(Gender::class)],
             'whatsapp_consent' => ['nullable', 'boolean'],
             'notes' => ['nullable', 'string'],
             'id_card_front' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:5120'],
@@ -53,7 +56,13 @@ class StoreRenterRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'name.required' => 'يرجى إدخال اسم المستأجر.',
+            'name.min' => 'يجب ألا يقل اسم المستأجر عن 3 أحرف.',
+            'phone.required' => 'يرجى إدخال رقم الهاتف.',
             'phone.unique' => 'رقم الهاتف مسجل بالفعل لمستأجر آخر في هذه المنشأة.',
+            'email.email' => 'يرجى إدخال بريد إلكتروني صحيح.',
+            'national_id.min' => 'يجب ألا يقل الرقم القومي / الهوية عن 6 خانات.',
+            'national_id.regex' => 'الرقم القومي / الهوية يحتوي على رموز غير صالحة.',
         ];
     }
 }

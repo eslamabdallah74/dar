@@ -34,6 +34,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('billing_anchor_day');
             $table->date('first_due_date');
             $table->enum('status', ['draft', 'active', 'expired', 'terminated', 'cancelled'])->default('draft')->index();
+            $table->string('contract_image', 500)->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
 

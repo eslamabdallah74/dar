@@ -30,6 +30,17 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Stick to existing directory structure; don't create new base folders without approval.
 - Do not change the application's dependencies without approval.
 
+## Database & Migrations in Development
+
+- Active Development Mode (CRITICAL): The application is in active development. Do NOT create patchwork migrations or run raw SQL ALTER statements (such as `DB::statement("ALTER TABLE ... MODIFY COLUMN ...")`) to alter existing tables or ENUM columns. Consolidate changes into the base migration files.
+- Text Columns over Database ENUMs: Avoid rigid MySQL `ENUM` column types. Always use standard text/string columns (`$table->string('...', 50)`), and define PHP backed enums (`app/Enums/...`) in application code. This allows adding, removing, or modifying properties and categories in the future without database alterations.
+
+## Architecture & Storage Patterns
+
+- Provider-Agnostic Storage: Avoid calling `Storage::path()` on files stored on non-local disks (S3, public, etc.). Route all file uploads, downloads, streaming, and deletions through `App\Services\Storage\DocumentStorageService`.
+- Domain Service Layer: Keep controllers thin. Extract complex multi-step workflows, business calculations, and financial settlements into cohesive domain services (such as `SecurityDepositService`, `WorkspaceDashboardService`, `ReportService`).
+- Consistent API & Inertia Serialization: Use dedicated JsonResources in `app/Http/Resources/` to transform models into frontend contracts, ensuring clean separation of concerns and eliminating duplicated array mappings.
+
 ## Frontend Bundling
 
 - If a frontend change doesn't show in the UI or you get a "Unable to locate file in Vite manifest" error, run `npm run build` or ask the user to run `npm run dev` or `composer run dev`.

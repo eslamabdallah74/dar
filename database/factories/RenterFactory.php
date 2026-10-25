@@ -18,9 +18,10 @@ class RenterFactory extends Factory
         return [
             'workspace_id' => Workspace::factory(),
             'name' => fake()->name(),
-            'phone' => '05'.fake()->numerify('########'),
+            'phone' => fake()->randomElement(['010', '011', '012', '015']).fake()->numerify('########'),
             'email' => fake()->safeEmail(),
             'national_id' => fake()->numerify('1#########'),
+            'gender' => fake()->randomElement(['male', 'female']),
             'whatsapp_opt_in_at' => now()->subMonths(2),
             'whatsapp_opt_in_source' => 'contract_signature',
             'whatsapp_opt_in_recorded_by' => null,
@@ -43,5 +44,15 @@ class RenterFactory extends Factory
             'whatsapp_opt_in_at' => now()->subMonths(3),
             'whatsapp_opted_out_at' => now()->subDay(),
         ]);
+    }
+
+    public function male(): static
+    {
+        return $this->state(fn () => ['gender' => 'male']);
+    }
+
+    public function female(): static
+    {
+        return $this->state(fn () => ['gender' => 'female']);
     }
 }

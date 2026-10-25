@@ -12,9 +12,12 @@ return new class extends Migration
             $table->id();
             $table->foreignId('workspace_id')->constrained()->restrictOnDelete();
             $table->foreignId('renter_id')->constrained()->restrictOnDelete();
-            $table->enum('document_type', ['national_id', 'passport', 'employment_letter', 'other']);
+            $table->string('document_type', 50);
+            $table->string('title', 255)->nullable();
+            $table->string('original_filename', 255)->nullable();
             // PRIVATE storage path — never exposed as a public URL
             $table->string('storage_path', 500);
+            $table->unsignedInteger('file_size')->nullable();
             $table->foreignId('uploaded_by')->constrained('users')->restrictOnDelete();
             $table->timestamps();
 

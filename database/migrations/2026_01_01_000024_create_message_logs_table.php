@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('template_name', 100);
             $table->timestamp('scheduled_at')->index();
             $table->timestamp('sent_at')->nullable();
-            $table->enum('status', ['pending', 'sent', 'delivered', 'failed', 'cancelled'])->default('pending')->index();
+            $table->string('status', 50)->default('pending')->index();
             $table->string('provider_message_id')->nullable();
             $table->string('error_code', 100)->nullable();
             $table->text('error_message')->nullable();

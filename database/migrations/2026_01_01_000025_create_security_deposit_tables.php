@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('recorded_by')->constrained('users')->restrictOnDelete();
             $table->decimal('amount', 12, 2);
             $table->timestamp('paid_at');
-            $table->enum('payment_method', ['cash', 'bank_transfer', 'cheque', 'other'])->default('cash');
+            $table->string('payment_method', 50)->default('cash');
             $table->string('reference', 100)->nullable();
             $table->text('notes')->nullable();
             $table->boolean('is_reversed')->default(false);
@@ -29,31 +29,32 @@ return new class extends Migration
             $table->index(['workspace_id', 'lease_id']);
         });
 
-        // 2. Security Deposit Settlements (Audit and inspection review)
+        // 2. Security Deposit Settlements (Audit, deductions reconciliation and refund status)
         Schema::create('security_deposit_settlements', function (Blueprint $table) {
             $table->id();
             $table->foreignId('workspace_id')->constrained()->restrictOnDelete();
             $table->foreignId('lease_id')->unique()->constrained()->restrictOnDelete();
             $table->foreignId('settled_by')->constrained('users')->restrictOnDelete();
-            $table->enum('status', ['under_review', 'settled'])->default('under_review')->index();
-            $table->enum('inspection_category', [
-                'no_issues',
-                'furniture_damage',
-                'fixture_damage',
-                'missing_items',
-                'other_damage',
-            ])->default('no_issues');
+            $table->string('status', 50)->default('under_review')->index();
+            $table->string('settlement_type', 50)->nullable();
+            $table->text('retention_reason')->nullable();
+            $table->decimal('original_deposit', 12, 2)->nullable();
+            $table->string('inspection_category', 50)->default('no_issues');
             $table->text('inspection_notes')->nullable();
             $table->decimal('total_received', 12, 2)->default(0.00);
             $table->decimal('total_deductions', 12, 2)->default(0.00);
             $table->decimal('total_refunded', 12, 2)->default(0.00);
             $table->decimal('refundable_balance', 12, 2)->default(0.00);
+            $table->string('refund_status', 50)->default('not_applicable');
+            $table->string('refund_method', 50)->nullable();
+            $table->date('refund_payment_date')->nullable();
+            $table->string('refund_reference', 100)->nullable();
             $table->timestamp('settled_at')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
         });
 
-        // 3. Security Deposit Deductions (Damage and repair justifications)
+        // 3. Security Deposit Deductions (Damage, cleaning, maintenance, and unpaid dues justifications)
         Schema::create('security_deposit_deductions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('workspace_id')->constrained()->restrictOnDelete();
@@ -61,18 +62,16 @@ return new class extends Migration
             $table->foreignId('settlement_id')->nullable()->constrained('security_deposit_settlements')->nullOnDelete();
             $table->foreignId('recorded_by')->constrained('users')->restrictOnDelete();
             $table->decimal('amount', 12, 2);
-            $table->enum('category', [
-                'furniture_damage',
-                'fixture_damage',
-                'missing_items',
-                'other_damage',
-            ])->default('other_damage');
+            $table->string('category', 50)->default('other');
             $table->text('description');
-            $table->enum('status', ['proposed', 'confirmed'])->default('confirmed');
+            $table->string('attachment_path', 500)->nullable();
+            $table->text('notes')->nullable();
+            $table->string('status', 50)->default('confirmed');
             $table->timestamp('deducted_at');
             $table->timestamps();
 
             $table->index('deducted_at');
+            $table->index(['workspace_id', 'lease_id']);
         });
 
         // 4. Security Deposit Refunds (Returned amounts to renters)
@@ -84,7 +83,7 @@ return new class extends Migration
             $table->foreignId('recorded_by')->constrained('users')->restrictOnDelete();
             $table->decimal('amount', 12, 2);
             $table->timestamp('refunded_at');
-            $table->enum('payment_method', ['cash', 'bank_transfer', 'cheque', 'other'])->default('cash');
+            $table->string('payment_method', 50)->default('cash');
             $table->string('reference', 100)->nullable();
             $table->text('notes')->nullable();
             $table->boolean('is_reversed')->default(false);
@@ -94,6 +93,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index('refunded_at');
+            $table->index(['workspace_id', 'lease_id']);
         });
     }
 

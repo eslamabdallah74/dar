@@ -21,7 +21,7 @@ class MessageLogFactory extends Factory
             'renter_id' => Renter::factory(),
             'lease_id' => null,
             'rent_charge_id' => null,
-            'recipient_phone' => '05'.fake()->numerify('########'),
+            'recipient_phone' => fake()->randomElement(['010', '011', '012', '015']).fake()->numerify('########'),
             'template_name' => 'rent_due_reminder_ar',
             'scheduled_at' => now(),
             'sent_at' => now(),

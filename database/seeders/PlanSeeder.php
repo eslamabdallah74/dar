@@ -32,7 +32,7 @@ class PlanSeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'name' => 'باقة الشركات (Enterprise)',
+                'name' => 'باقة الشركات اللامحدودة (Enterprise)',
                 'slug' => 'enterprise',
                 'monthly_price' => 999.00,
                 'unit_limit' => null,

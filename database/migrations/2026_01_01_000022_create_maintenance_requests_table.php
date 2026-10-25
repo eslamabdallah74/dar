@@ -16,12 +16,14 @@ return new class extends Migration
             $table->foreignId('reported_by_renter_id')->nullable()->constrained('renters')->nullOnDelete();
             $table->string('title');
             $table->text('description');
-            $table->enum('status', ['open', 'in_progress', 'closed'])->default('open');
+            $table->string('status', 50)->default('pending');
             $table->timestamp('reported_at');
+            $table->timestamp('started_at')->nullable();
             $table->timestamp('resolved_at')->nullable();
             $table->timestamps();
 
             $table->index(['workspace_id', 'status']);
+            $table->index(['workspace_id', 'reported_at']);
         });
     }
 

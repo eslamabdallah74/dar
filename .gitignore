@@ -3,6 +3,7 @@
 .env
 .env.backup
 .env.production
+.env.testing
 .phpactor.json
 .phpunit.result.cache
 /.agents
@@ -21,6 +22,7 @@
 /.windsurf
 /.zed
 /skills
+/reports
 .mcp.json
 mcp_config.json
 claude.json

@@ -19,6 +19,7 @@ return new class extends Migration
             $table->enum('payment_method', ['cash', 'bank_transfer', 'cheque', 'other']);
             $table->string('reference')->nullable();
             $table->text('notes')->nullable();
+            $table->string('receipt_path', 500)->nullable();
             $table->timestamps();
         });
         // No hard deletes on payments — enforce at application layer and via policies

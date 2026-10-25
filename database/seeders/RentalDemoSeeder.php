@@ -34,6 +34,7 @@ class RentalDemoSeeder extends Seeder
 
         $growthPlan = Plan::where('slug', 'growth')->first();
         $proPlan = Plan::where('slug', 'pro')->first();
+        $enterprisePlan = Plan::where('slug', 'enterprise')->first();
 
         // -------------------------------------------------------------
         // 1. Users
@@ -46,6 +47,7 @@ class RentalDemoSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
+        $primaryUser->forceFill(['is_admin' => true])->save();
 
         $accountantUser = User::updateOrCreate(
             ['email' => 'abdullah.kh@al-nour.com.eg'],
@@ -107,15 +109,20 @@ class RentalDemoSeeder extends Seeder
         // -------------------------------------------------------------
         // 3. Workspace Subscriptions
         // -------------------------------------------------------------
-        if ($growthPlan) {
+        if ($enterprisePlan) {
+            // First test example (Al-Nour Real Estate) gets the Unlimited Enterprise plan with unrestricted units
+            WorkspaceSubscription::where('workspace_id', $workspace->id)
+                ->where('plan_id', '!=', $enterprisePlan->id)
+                ->delete();
+
             WorkspaceSubscription::updateOrCreate(
-                ['workspace_id' => $workspace->id, 'plan_id' => $growthPlan->id],
+                ['workspace_id' => $workspace->id, 'plan_id' => $enterprisePlan->id],
                 [
                     'activated_by' => $primaryUser->id,
                     'status' => 'active',
                     'starts_at' => now()->subMonths(6),
-                    'ends_at' => now()->addMonths(6),
-                    'provider_reference' => 'SUB-DAR-GROWTH-2026',
+                    'ends_at' => now()->addYears(2),
+                    'provider_reference' => 'SUB-DAR-ENTERPRISE-UNLIMITED-2026',
                 ]
             );
         }
@@ -330,6 +337,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'محمد علي إبراهيم',
                 'phone' => '01012345678',
                 'email' => 'mohammed.ali@example.com',
+                'gender' => 'male',
                 'notes' => 'مستأجر شقة 101، منتظم جداً في السداد، يعمل مهندس استشاري',
                 'source' => 'contract_signature',
             ],
@@ -338,6 +346,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'سارة إبراهيم الشناوي',
                 'phone' => '01234567890',
                 'email' => 'sarah.elshinawy@example.com',
+                'gender' => 'female',
                 'notes' => 'مستأجرة شقة 102، سداد دوري عبر إنستاباي InstaPay',
                 'source' => 'app',
             ],
@@ -346,6 +355,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'عمر خالد عبد الرحمن',
                 'phone' => '01512345678',
                 'email' => 'omar.khaled@example.com',
+                'gender' => 'male',
                 'notes' => 'مستأجر شقة 103، لديه دفعة مستحقة ومتأخرة عن هذا الشهر',
                 'source' => 'contract_signature',
             ],
@@ -354,6 +364,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'د. طارق محمود عبد الله',
                 'phone' => '01098765432',
                 'email' => 'tarek.mahmoud@example.com',
+                'gender' => 'male',
                 'notes' => 'طبيب استشاري جراحة بمستشفى السلام الدولي، مستأجر شقة 201',
                 'source' => 'contract_signature',
             ],
@@ -362,6 +373,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'د. منى فاروق حسنين',
                 'phone' => '01155443322',
                 'email' => 'mona.farouk@example.com',
+                'gender' => 'female',
                 'notes' => 'أستاذة جامعية بكلية الهندسة جامعة القاهرة، مستأجرة شقة 202',
                 'source' => 'contract_signature',
             ],
@@ -370,6 +382,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'أحمد ممدوح العطار',
                 'phone' => '01066778899',
                 'email' => 'a.attar@example.com',
+                'gender' => 'male',
                 'notes' => 'مدير مالي بشركة استيراد وتصدير، مستأجر شقة 203',
                 'source' => 'app',
             ],
@@ -378,6 +391,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'نورهان سامي الشرقاوي',
                 'phone' => '01555667788',
                 'email' => 'nourhan.s@example.com',
+                'gender' => 'female',
                 'notes' => 'مستأجرة شقة 204، عقدها ينتهي خلال 12 يوماً ومطلوب التجديد',
                 'source' => 'contract_signature',
             ],
@@ -386,6 +400,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'كريم يوسف النجار',
                 'phone' => '01277889900',
                 'email' => 'karim.najjar@example.com',
+                'gender' => 'male',
                 'notes' => 'محامي بالاستئناف العالي ومجلس الدولة، مستأجر شقة 104',
                 'source' => 'contract_signature',
             ],
@@ -394,6 +409,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'زياد أيمن بدر',
                 'phone' => '01011223344',
                 'email' => 'zeyad.badr@example.com',
+                'gender' => 'male',
                 'notes' => 'مستأجر شقة 301 الروف، مهتم بنظافة التراس',
                 'source' => 'contract_signature',
             ],
@@ -402,6 +418,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'م. شريف هشام الديب',
                 'phone' => '01022334455',
                 'email' => 'sherif.eldeeb@example.com',
+                'gender' => 'male',
                 'notes' => 'رئيس مجلس إدارة شركة مقاولات، مستأجر فيلا 01 بفلل الياسمين',
                 'source' => 'contract_signature',
             ],
@@ -410,6 +427,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'رانيا عادل زكي',
                 'phone' => '01122334466',
                 'email' => 'rania.adel@example.com',
+                'gender' => 'female',
                 'notes' => 'مستأجرة فيلا 02 بفلل الياسمين، تم سداد وديعة التأمين كاملة',
                 'source' => 'contract_signature',
             ],
@@ -418,6 +436,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'حسام الدين مصطفى',
                 'phone' => '01222334477',
                 'email' => 'hossam.m@example.com',
+                'gender' => 'male',
                 'notes' => 'خبير تقني بشركة اتصالات، مستأجر دوبلكس 01',
                 'source' => 'contract_signature',
             ],
@@ -426,6 +445,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'ياسمين أشرف خليل',
                 'phone' => '01566778899',
                 'email' => 'yasmine.khalil@example.com',
+                'gender' => 'female',
                 'notes' => 'مستأجرة دوبلكس 02، عقد ينتهي خلال 20 يوماً',
                 'source' => 'contract_signature',
             ],
@@ -434,6 +454,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'محمد جمال الدين (شركة تكنولوجيا)',
                 'phone' => '01044556677',
                 'email' => 'm.gamal@tech-solutions.eg',
+                'gender' => 'male',
                 'notes' => 'عقد تجاري معرض ومقر تقني - محل تجاري 1 برج الأندلس',
                 'source' => 'contract_signature',
             ],
@@ -442,6 +463,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'د. وائل رضوان (صيدلية الشفاء)',
                 'phone' => '01133445566',
                 'email' => 'dr.wael@shifa-pharmacy.eg',
+                'gender' => 'male',
                 'notes' => 'عقد تجاري لصيدلية مجهزة - محل تجاري 2 برج الأندلس',
                 'source' => 'contract_signature',
             ],
@@ -450,6 +472,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'عمرو نبيل سليمان',
                 'phone' => '01288990011',
                 'email' => 'amr.nabil@example.com',
+                'gender' => 'male',
                 'notes' => 'مستأجر جناح المعمورة الغربي المستقل',
                 'source' => 'contract_signature',
             ],
@@ -458,6 +481,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'هبة الله عصام سالم',
                 'phone' => '01077889911',
                 'email' => 'heba.essam@example.com',
+                'gender' => 'female',
                 'notes' => 'مستأجرة جناح المعمورة الشرقي، عقد ينتهي خلال 28 يوماً',
                 'source' => 'contract_signature',
             ],
@@ -466,6 +490,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'مصطفى كمال الدين',
                 'phone' => '01544332211',
                 'email' => 'm.kamal@example.com',
+                'gender' => 'male',
                 'notes' => 'مستأجر سابق انتهى عقده وسلّم الوحدة بحالة ممتازة',
                 'source' => 'contract_signature',
             ],
@@ -479,6 +504,7 @@ class RentalDemoSeeder extends Seeder
                     'name' => $r['name'],
                     'phone' => $r['phone'],
                     'email' => $r['email'],
+                    'gender' => $r['gender'] ?? null,
                     'whatsapp_opt_in_at' => now()->subMonths(4),
                     'whatsapp_opt_in_source' => $r['source'],
                     'whatsapp_opt_in_recorded_by' => $primaryUser->id,
@@ -519,6 +545,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'خالد بن فهد العتيبي',
                 'phone' => '0558765432',
                 'email' => 'khaled.otb@example.com',
+                'gender' => 'male',
                 'whatsapp_opt_in_at' => now()->subMonths(3),
                 'whatsapp_opt_in_source' => 'contract_signature',
                 'notes' => 'مستأجر جناح تنفيذي 101 برج العليا بالرياض',
@@ -531,6 +558,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'سلطان بن عبدالعزيز الدوسري',
                 'phone' => '0531987465',
                 'email' => 'sultan.d@example.com',
+                'gender' => 'male',
                 'whatsapp_opt_in_at' => now()->subMonths(2),
                 'whatsapp_opt_in_source' => 'contract_signature',
                 'notes' => 'مستأجر جناح تنفيذي 102 برج العليا',
@@ -543,6 +571,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'فيصل بن محمد القحطاني',
                 'phone' => '0504123890',
                 'email' => 'faisal.q@example.com',
+                'gender' => 'male',
                 'whatsapp_opt_in_at' => now()->subMonths(4),
                 'whatsapp_opt_in_source' => 'contract_signature',
                 'notes' => 'مستأجر فيلا تاون هاوس 1 بوحدات النخيل',
@@ -555,6 +584,7 @@ class RentalDemoSeeder extends Seeder
                 'name' => 'نورة بنت عبدالله السبيعي',
                 'phone' => '0546781234',
                 'email' => 'noura.s@example.com',
+                'gender' => 'female',
                 'whatsapp_opt_in_at' => now()->subMonths(1),
                 'whatsapp_opt_in_source' => 'contract_signature',
                 'notes' => 'مستأجرة شقة دوبلكس 01 بوحدات النخيل',
@@ -1041,6 +1071,8 @@ class RentalDemoSeeder extends Seeder
                 'category' => 'maintenance',
                 'amount' => 1800.00,
                 'expense_date' => now()->subDays(5)->toDateString(),
+                'payment_status' => 'paid',
+                'paid_at' => now()->subDays(5),
             ]
         );
 
@@ -1052,6 +1084,8 @@ class RentalDemoSeeder extends Seeder
                 'category' => 'كهرباء ومياه',
                 'amount' => 3200.00,
                 'expense_date' => now()->subDays(7)->toDateString(),
+                'payment_status' => 'paid',
+                'paid_at' => now()->subDays(7),
             ]
         );
 
@@ -1336,6 +1370,8 @@ class RentalDemoSeeder extends Seeder
                     'category' => $exp['category'],
                     'amount' => $exp['amount'],
                     'expense_date' => $exp['expense_date'],
+                    'payment_status' => 'paid',
+                    'paid_at' => $exp['expense_date'],
                 ]
             );
         }

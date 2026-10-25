@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class MaintenanceRequest extends Model
 {
@@ -45,6 +46,11 @@ class MaintenanceRequest extends Model
     public function reportedByRenter(): BelongsTo
     {
         return $this->belongsTo(Renter::class, 'reported_by_renter_id');
+    }
+
+    public function expense(): HasOne
+    {
+        return $this->hasOne(Expense::class);
     }
 
     public function expenses(): HasMany

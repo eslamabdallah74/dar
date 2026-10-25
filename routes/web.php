@@ -137,10 +137,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // 08 / الصيانة والمصروفات
     Route::get('/maintenance', [MaintenanceController::class, 'index'])->name('maintenance.index');
     Route::post('/maintenance', [MaintenanceController::class, 'store'])->name('maintenance.store');
+    Route::put('/maintenance/{maintenance}', [MaintenanceController::class, 'update'])->name('maintenance.update');
     Route::patch('/maintenance/{maintenance}/status', [MaintenanceController::class, 'updateStatus'])->name('maintenance.update-status');
+    Route::post('/maintenance/apply-expenses', [MaintenanceController::class, 'applyExpenses'])->name('maintenance.apply-expenses');
 
     Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
     Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+    Route::put('/expenses/{expense}', [ExpenseController::class, 'update'])->name('expenses.update');
 
     // 09 / تذكيرات WhatsApp
     Route::get('/whatsapp', [WhatsAppController::class, 'index'])->name('whatsapp.index');

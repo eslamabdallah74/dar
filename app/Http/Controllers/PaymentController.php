@@ -93,6 +93,7 @@ class PaymentController extends Controller
                 'rate' => $collectionRate,
             ],
             'currency' => $workspace->currency ?? 'EGP',
+            'currency_symbol' => $workspace->currencySymbol(),
         ]);
     }
 

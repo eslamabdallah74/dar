@@ -6,21 +6,7 @@ import StatusBadge from '@/Components/Common/StatusBadge.vue';
 import EmptyState from '@/Components/Common/EmptyState.vue';
 import ModalRecordPayment from '@/Components/Common/ModalRecordPayment.vue';
 import ModalCorrectPayment from '@/Components/Common/ModalCorrectPayment.vue';
-import {
-    Calendar,
-    CheckCircle2,
-    Clock,
-    CreditCard,
-    Download,
-    History,
-    MessageCircle,
-    Paperclip,
-    Pencil,
-    Plus,
-    Printer,
-    Receipt,
-    Search,
-} from 'lucide-vue-next';
+import { Download, MessageCircle, Paperclip, Pencil, Plus, Printer, Search, X } from 'lucide-vue-next';
 
 interface ChargeItem {
     id: number;
@@ -99,431 +85,459 @@ const props = defineProps<{
         rate: number;
     };
     active_tab?: 'dues' | 'receipts';
+    currency_symbol: string;
 }>();
 
-const currentTab = ref<'dues' | 'receipts'>((props.active_tab as 'dues' | 'receipts') || 'dues');
+type ChargeStatusFilter = 'all' | 'overdue' | 'unpaid' | 'paid';
+
+const currentTab = ref<'dues' | 'receipts'>(props.active_tab === 'receipts' ? 'receipts' : 'dues');
 const searchQuery = ref('');
+const statusFilter = ref<ChargeStatusFilter>('all');
 const receiptSearchQuery = ref('');
-const statusFilter = ref('all');
+const receiptChargeFilter = ref<ChargeItem | null>(null);
 const recordPaymentOpen = ref(false);
 const correctPaymentOpen = ref(false);
 const activeChargeForPayment = ref<ChargeItem | null>(null);
 const activePaymentForCorrection = ref<PaymentReceiptItem | null>(null);
 
+const formatMoney = (amount: number): string => Number(amount).toLocaleString();
+
+const chargeMatchesStatus = (charge: ChargeItem, filter: ChargeStatusFilter): boolean => {
+    if (filter === 'all') {
+        return true;
+    }
+    if (filter === 'unpaid') {
+        return charge.status === 'unpaid' || charge.status === 'partially_paid';
+    }
+
+    return charge.status === filter;
+};
+
+const chargeStatusFilters = computed(() =>
+    (
+        [
+            { id: 'all', label: 'الكل' },
+            { id: 'overdue', label: 'متأخرة' },
+            { id: 'unpaid', label: 'لم يحن موعدها' },
+            { id: 'paid', label: 'مسددة' },
+        ] as const
+    ).map((filter) => ({
+        ...filter,
+        count: props.charges.filter((charge) => chargeMatchesStatus(charge, filter.id)).length,
+    }))
+);
+
 const filteredCharges = computed(() => {
-    return props.charges.filter(c => {
-        const matchesSearch = c.renter_name.includes(searchQuery.value)
-            || c.unit_name.includes(searchQuery.value)
-            || c.period.includes(searchQuery.value);
+    const query = searchQuery.value.trim();
 
-        const matchesStatus = statusFilter.value === 'all'
-            || c.status === statusFilter.value;
-
-        return matchesSearch && matchesStatus;
-    });
-});
-
-const filteredPayments = computed(() => {
-    if (!receiptSearchQuery.value) return props.payments;
-    const q = receiptSearchQuery.value.toLowerCase();
-    return props.payments.filter(p =>
-        (p.reference && p.reference.toLowerCase().includes(q)) ||
-        (p.renter_name && p.renter_name.toLowerCase().includes(q)) ||
-        (p.unit_name && p.unit_name.toLowerCase().includes(q)) ||
-        (p.method && p.method.toLowerCase().includes(q))
+    return props.charges.filter(
+        (charge) =>
+            chargeMatchesStatus(charge, statusFilter.value) &&
+            (!query ||
+                [charge.renter_name, charge.unit_name, charge.property_name, charge.period, charge.period_name ?? ''].some((value) =>
+                    value.includes(query)
+                ))
     );
 });
+
+const overdueChargesCount = computed(() => props.charges.filter((charge) => charge.status === 'overdue').length);
+
+const chargeBadgeStatuses: Record<string, string> = {
+    paid: 'paid',
+    overdue: 'overdue',
+    partially_paid: 'partial',
+    unpaid: 'pending',
+};
+
+/**
+ * How many receipts paid each charge, including advance payments on charges whose due date has not come yet.
+ */
+const receiptCountByCharge = computed(() => {
+    const counts = new Map<number, number>();
+    for (const payment of props.payments) {
+        for (const allocation of payment.allocations ?? []) {
+            counts.set(allocation.charge_id, (counts.get(allocation.charge_id) ?? 0) + 1);
+        }
+    }
+
+    return counts;
+});
+
+const receiptCountLabel = (count: number): string => {
+    if (count === 1) {
+        return 'سند واحد';
+    }
+    if (count === 2) {
+        return 'سندان';
+    }
+
+    return count <= 10 ? `${count} سندات` : `${count} سنداً`;
+};
+
+const overdueDaysLabel = (days: number): string => {
+    if (days === 1) {
+        return 'يوم واحد';
+    }
+    if (days === 2) {
+        return 'يومين';
+    }
+
+    return days <= 10 ? `${days} أيام` : `${days} يوماً`;
+};
+
+const filteredPayments = computed(() => {
+    const query = receiptSearchQuery.value.trim().toLowerCase();
+    const chargeId = receiptChargeFilter.value?.id;
+
+    return props.payments.filter(
+        (payment) =>
+            (chargeId === undefined || (payment.allocations ?? []).some((allocation) => allocation.charge_id === chargeId)) &&
+            (!query ||
+                [payment.reference, payment.renter_name, payment.unit_name, payment.method].some((value) =>
+                    value?.toLowerCase().includes(query)
+                ))
+    );
+});
+
+const collectionPercent = computed(() => Math.min(100, Math.max(0, props.stats.rate)));
+
+const showReceiptsForCharge = (charge: ChargeItem) => {
+    receiptChargeFilter.value = charge;
+    receiptSearchQuery.value = '';
+    currentTab.value = 'receipts';
+};
+
+const showAllReceipts = () => {
+    receiptChargeFilter.value = null;
+    receiptSearchQuery.value = '';
+    currentTab.value = 'receipts';
+};
 
 const openPaymentForCharge = (charge: ChargeItem) => {
     activeChargeForPayment.value = charge;
     recordPaymentOpen.value = true;
 };
 
+const openGeneralPayment = () => {
+    activeChargeForPayment.value = null;
+    recordPaymentOpen.value = true;
+};
+
+const closeRecordPayment = () => {
+    recordPaymentOpen.value = false;
+    activeChargeForPayment.value = null;
+};
+
 const openCorrectionForPayment = (payment: PaymentReceiptItem) => {
     activePaymentForCorrection.value = payment;
     correctPaymentOpen.value = true;
 };
+
+const whatsappReminderUrl = (charge: ChargeItem): string => {
+    const message = `السلام عليكم ${charge.renter_name}، نود تذكيركم بسداد قسط إيجار ${charge.unit_name} المستحق بقيمة ${charge.outstanding_balance} ${props.currency_symbol}. شكراً لتعاونكم.`;
+
+    return `https://wa.me/20${charge.renter_phone.replace(/^0+/, '')}?text=${encodeURIComponent(message)}`;
+};
+
+const tabClass = (tab: 'dues' | 'receipts'): string =>
+    currentTab.value === tab ? 'bg-white text-[#163E3E] shadow-sm' : 'text-[#5B6770] hover:text-[#163E3E]';
+
+const linkButton = 'cursor-pointer text-xs font-semibold text-[#163E3E] underline-offset-4 hover:underline focus-visible:underline focus-visible:outline-none';
+const rowAction =
+    'inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-[#D6E0E7] bg-white px-2.5 text-xs font-semibold text-[#163E3E] transition hover:bg-[#F8F4EA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#163E3E]/30';
 </script>
 
 <template>
     <AppLayout
-        title="الاستحقاقات والدفعات — Nook Mate"
+        title="المدفوعات — Nook Mate"
         active-tab="payments"
-        header-title="الاستحقاقات والدفعات"
-        header-subtitle="متابعة تحصيل الإيجارات، الفواتير المستحقة وإصدار سندات القبض الإلكترونية"
+        header-title="المدفوعات"
+        header-subtitle="فواتير الإيجار الشهرية وسندات القبض المسجلة"
         breadcrumb="الدفعات"
     >
         <template #actions>
             <a
                 :href="currentTab === 'dues' ? route('reports.collections.export') : route('reports.payments.export')"
-                class="h-11 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F8F4EA] text-sm font-semibold text-[#163E3E] transition flex items-center gap-2 shadow-2xs"
-                title="تصدير السجلات إلى ملف Excel متوافق مع اللغة العربية"
+                class="inline-flex h-10 items-center gap-2 rounded-xl border border-[#D6E0E7] bg-white px-4 text-sm font-semibold text-[#163E3E] transition hover:bg-[#F8F4EA]"
+                title="تصدير القائمة الحالية إلى Excel"
             >
-                <Download class="h-4 w-4 text-[#163E3E]" />
+                <Download class="h-4 w-4" />
                 <span>تصدير Excel</span>
             </a>
-
             <button
-                @click="recordPaymentOpen = true"
                 type="button"
-                class="h-11 px-5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-sm font-semibold transition shadow-xs flex items-center gap-2 cursor-pointer"
+                class="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-[#163E3E] px-4 text-sm font-semibold text-white transition hover:bg-[#102F2F] active:translate-y-px"
+                @click="openGeneralPayment"
             >
-                <Plus class="h-4 w-4 stroke-[2.5]" />
-                <span>تسجيل دفعة يدوية</span>
+                <Plus class="h-4 w-4" />
+                <span>تسجيل دفعة</span>
             </button>
         </template>
 
-        <!-- كروت مؤشرات التحصيل (4 KPIs) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
-                <span class="text-xs font-semibold text-[#5B6770]">المستهدف الإيجاري للشهر</span>
-                <div class="flex items-baseline justify-between">
-                    <span class="text-2xl font-bold text-[#163E3E] font-mono">{{ stats.target.toLocaleString() }} <span class="text-xs font-sans font-normal text-[#5B6770]">ج.م</span></span>
-                    <span class="text-xs text-[#5B6770]">إجمالي المطالبات</span>
-                </div>
+        <section aria-label="ملخص التحصيل" class="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-[#D6E0E7] bg-[#E6ECF0] lg:grid-cols-4">
+            <div class="bg-white p-5">
+                <span class="text-xs font-medium text-[#5B6770]">مستحق هذا الشهر</span>
+                <p class="mt-2 font-mono text-2xl font-semibold tabular-nums text-[#163E3E]">
+                    {{ formatMoney(stats.target) }}
+                    <span class="font-sans text-xs font-medium text-[#5B6770]">{{ currency_symbol }}</span>
+                </p>
+                <p class="mt-1 text-xs text-[#5B6770]">فواتير يحل موعدها هذا الشهر</p>
             </div>
 
-            <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
-                <span class="text-xs font-semibold text-[#5B6770]">المحصل الفعلي</span>
-                <div class="flex items-baseline justify-between">
-                    <span class="text-2xl font-bold text-emerald-700 font-mono">{{ stats.collected.toLocaleString() }} <span class="text-xs font-sans font-normal text-emerald-600">ج.م</span></span>
-                    <span class="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md font-semibold">
-                        {{ stats.rate }}% نسبة التحصيل
-                    </span>
-                </div>
-            </div>
-
-            <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
-                <span class="text-xs font-semibold text-[#5B6770]">المتأخرات المعلقة</span>
-                <div class="flex items-baseline justify-between">
-                    <span class="text-2xl font-bold text-rose-600 font-mono">{{ stats.overdue.toLocaleString() }} <span class="text-xs font-sans font-normal text-rose-500">ج.م</span></span>
-                    <span class="text-xs text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md font-semibold">
-                        تتطلب متابعة
-                    </span>
-                </div>
-            </div>
-
-            <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
-                <span class="text-xs font-semibold text-[#5B6770]">سندات القبض المسجلة</span>
-                <div class="flex items-baseline justify-between">
-                    <span class="text-2xl font-bold text-[#163E3E] font-mono">{{ payments.length }}</span>
-                    <span class="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md font-semibold">
-                        مرحّلة مالياً
-                    </span>
-                </div>
-            </div>
-        </div>
-
-        <!-- شريط التبويبات الرئيسي (الاستحقاقات vs سندات القبض) -->
-        <div class="flex items-center justify-between gap-4 border-b border-[#D6E0E7] pb-3">
-            <div class="flex items-center gap-2">
-                <button
-                    @click="currentTab = 'dues'"
-                    type="button"
-                    class="px-5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2"
-                    :class="currentTab === 'dues'
-                        ? 'bg-[#163E3E] text-white shadow-xs'
-                        : 'bg-white text-[#5B6770] hover:text-[#163E3E] border border-[#D6E0E7]'"
+            <div class="bg-white p-5">
+                <span class="text-xs font-medium text-[#5B6770]">المحصّل هذا الشهر</span>
+                <p class="mt-2 font-mono text-2xl font-semibold tabular-nums text-emerald-700">
+                    {{ formatMoney(stats.collected) }}
+                    <span class="font-sans text-xs font-medium text-[#5B6770]">{{ currency_symbol }}</span>
+                </p>
+                <div
+                    class="mt-2 h-1.5 overflow-hidden rounded-full bg-[#EEF2F4]"
+                    role="progressbar"
+                    aria-label="نسبة التحصيل"
+                    :aria-valuenow="collectionPercent"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
                 >
-                    <Clock class="w-4 h-4" />
-                    <span>الاستحقاقات والفواتير الشهرية ({{ charges.length }})</span>
-                </button>
-
-                <button
-                    @click="currentTab = 'receipts'"
-                    type="button"
-                    class="px-5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2"
-                    :class="currentTab === 'receipts'
-                        ? 'bg-[#163E3E] text-white shadow-xs'
-                        : 'bg-white text-[#5B6770] hover:text-[#163E3E] border border-[#D6E0E7]'"
-                >
-                    <Receipt class="w-4 h-4" />
-                    <span>سندات القبض والدفعات المسددة ({{ payments.length }})</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- 1. جدول الاستحقاقات -->
-        <div v-if="currentTab === 'dues'" class="space-y-4">
-            <!-- شريط البحث والتصفية -->
-            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-[#D6E0E7] shadow-2xs">
-                <div class="relative flex-1 max-w-md">
-                    <input
-                        v-model="searchQuery"
-                        type="text"
-                        placeholder="ابحث باسم المستأجر أو الوحدة أو الفترة..."
-                        class="w-full h-10 pr-10 pl-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] placeholder:text-[#5B6770] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
-                    />
-                    <Search class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#5B6770]" />
+                    <div class="h-full rounded-full bg-emerald-600" :style="{ width: `${collectionPercent}%` }"></div>
                 </div>
+                <p class="mt-1.5 text-xs text-[#5B6770]">{{ stats.rate }}% من المستحق</p>
+            </div>
 
-                <div class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+            <div class="bg-white p-5">
+                <span class="text-xs font-medium text-[#5B6770]">المتأخرات</span>
+                <p class="mt-2 font-mono text-2xl font-semibold tabular-nums" :class="stats.overdue > 0 ? 'text-rose-700' : 'text-[#163E3E]'">
+                    {{ formatMoney(stats.overdue) }}
+                    <span class="font-sans text-xs font-medium text-[#5B6770]">{{ currency_symbol }}</span>
+                </p>
+                <button
+                    v-if="overdueChargesCount > 0"
+                    type="button"
+                    class="mt-1 cursor-pointer text-xs font-semibold text-rose-700 underline-offset-4 hover:underline"
+                    @click="
+                        currentTab = 'dues';
+                        statusFilter = 'overdue';
+                    "
+                >
+                    عرض {{ overdueChargesCount }} {{ overdueChargesCount === 1 ? 'فاتورة متأخرة' : 'فواتير متأخرة' }}
+                </button>
+                <p v-else class="mt-1 text-xs text-[#5B6770]">لا توجد فواتير متأخرة</p>
+            </div>
+
+            <button
+                type="button"
+                class="flex cursor-pointer flex-col items-start bg-white p-5 text-right transition hover:bg-[#FBFAF6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#163E3E]/30"
+                @click="showAllReceipts"
+            >
+                <span class="block text-xs font-medium text-[#5B6770]">سندات القبض</span>
+                <span class="mt-2 block font-mono text-2xl font-semibold tabular-nums text-[#163E3E]">{{ payments.length }}</span>
+                <span class="mt-1 block text-xs font-semibold text-[#163E3E]">عرض كل السندات ←</span>
+            </button>
+        </section>
+
+        <div class="space-y-4">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div role="tablist" aria-label="عرض المدفوعات" class="inline-flex rounded-xl bg-[#EFECE2] p-1">
                     <button
-                        v-for="f in [
-                            { id: 'all', label: 'الكل' },
-                            { id: 'overdue', label: 'المتأخرات' },
-                            { id: 'pending', label: 'مستحق قريباً' },
-                            { id: 'paid', label: 'مسدد بالكامل' }
-                        ]"
-                        :key="f.id"
-                        @click="statusFilter = f.id"
                         type="button"
-                        class="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer shrink-0"
-                        :class="statusFilter === f.id
-                            ? 'bg-[#163E3E] text-white shadow-2xs'
-                            : 'bg-[#F8FAFC] text-[#5B6770] hover:text-[#163E3E] border border-[#D6E0E7]'"
+                        role="tab"
+                        :aria-selected="currentTab === 'dues'"
+                        class="cursor-pointer rounded-lg px-4 py-2 text-sm font-semibold transition"
+                        :class="tabClass('dues')"
+                        @click="currentTab = 'dues'"
                     >
-                        {{ f.label }}
+                        فواتير الإيجار
+                        <span class="mr-1 font-mono text-xs tabular-nums opacity-70">{{ charges.length }}</span>
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        :aria-selected="currentTab === 'receipts'"
+                        class="cursor-pointer rounded-lg px-4 py-2 text-sm font-semibold transition"
+                        :class="tabClass('receipts')"
+                        @click="showAllReceipts"
+                    >
+                        سندات القبض
+                        <span class="mr-1 font-mono text-xs tabular-nums opacity-70">{{ payments.length }}</span>
                     </button>
                 </div>
+
+                <div class="relative w-full sm:max-w-xs">
+                    <input
+                        v-if="currentTab === 'dues'"
+                        v-model="searchQuery"
+                        type="search"
+                        aria-label="بحث في فواتير الإيجار"
+                        placeholder="ابحث بالمستأجر أو الوحدة أو الشهر"
+                        class="h-10 w-full rounded-xl border border-[#D6E0E7] bg-white pl-3 pr-10 text-sm text-[#163E3E] placeholder:text-[#8A9AA7] focus:border-[#163E3E] focus:ring-1 focus:ring-[#163E3E]"
+                    />
+                    <input
+                        v-else
+                        v-model="receiptSearchQuery"
+                        type="search"
+                        aria-label="بحث في سندات القبض"
+                        placeholder="ابحث برقم السند أو المستأجر"
+                        class="h-10 w-full rounded-xl border border-[#D6E0E7] bg-white pl-3 pr-10 text-sm text-[#163E3E] placeholder:text-[#8A9AA7] focus:border-[#163E3E] focus:ring-1 focus:ring-[#163E3E]"
+                    />
+                    <Search class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A9AA7]" />
+                </div>
             </div>
 
-            <!-- جدول الفواتير والاستحقاقات -->
-            <div v-if="filteredCharges.length > 0" class="rounded-3xl border border-[#D6E0E7] bg-white overflow-hidden shadow-2xs">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-right text-sm">
-                        <thead>
-                            <tr class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] text-xs font-bold">
-                                <th class="py-3.5 px-6">المستأجر</th>
-                                <th class="py-3.5 px-6">الوحدة والعقار</th>
-                                <th class="py-3.5 px-6">الفترة وتاريخ الاستحقاق</th>
-                                <th class="py-3.5 px-6">المبلغ المطلوب</th>
-                                <th class="py-3.5 px-6">المسدد وتاريخ السداد</th>
-                                <th class="py-3.5 px-6">المتبقي المعلق</th>
-                                <th class="py-3.5 px-6">الحالة</th>
-                                <th class="py-3.5 px-6 text-start sm:text-left">إجراء</th>
+            <template v-if="currentTab === 'dues'">
+                <div class="flex flex-wrap gap-2">
+                    <button
+                        v-for="filter in chargeStatusFilters"
+                        :key="filter.id"
+                        type="button"
+                        class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition"
+                        :class="
+                            statusFilter === filter.id
+                                ? 'border-[#163E3E] bg-[#163E3E] text-white'
+                                : 'border-[#D6E0E7] bg-white text-[#5B6770] hover:text-[#163E3E]'
+                        "
+                        @click="statusFilter = filter.id"
+                    >
+                        {{ filter.label }}
+                        <span class="font-mono tabular-nums opacity-70">{{ filter.count }}</span>
+                    </button>
+                </div>
+
+                <div v-if="filteredCharges.length > 0" class="overflow-hidden rounded-2xl border border-[#D6E0E7] bg-white">
+                    <ul class="divide-y divide-[#E6ECF0] md:hidden">
+                        <li v-for="charge in filteredCharges" :key="charge.id" class="space-y-3 px-4 py-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <Link :href="route('renters.show', charge.renter_id)" class="block truncate font-semibold text-[#163E3E]">
+                                        {{ charge.renter_name }}
+                                    </Link>
+                                    <p class="truncate text-xs text-[#5B6770]">{{ charge.unit_name }} · {{ charge.property_name }}</p>
+                                </div>
+                                <StatusBadge :status="chargeBadgeStatuses[charge.status] ?? 'pending'" :label="charge.status_label" size="sm" />
+                            </div>
+                            <div class="flex items-end justify-between gap-3">
+                                <div class="text-xs text-[#5B6770]">
+                                    <p class="font-semibold text-[#163E3E]">{{ charge.period_name || charge.period }}</p>
+                                    <p>
+                                        يستحق <span class="font-mono tabular-nums">{{ charge.due_date }}</span>
+                                        <span v-if="charge.status === 'overdue' && charge.days_overdue" class="font-semibold text-rose-700">
+                                            · متأخر {{ overdueDaysLabel(charge.days_overdue) }}
+                                        </span>
+                                    </p>
+                                </div>
+                                <div class="text-left">
+                                    <p class="font-mono text-base font-semibold tabular-nums text-[#163E3E]">
+                                        {{ formatMoney(charge.outstanding_balance > 0 ? charge.outstanding_balance : charge.amount) }}
+                                        <span class="font-sans text-xs font-medium text-[#5B6770]">{{ currency_symbol }}</span>
+                                    </p>
+                                    <p class="text-xs text-[#5B6770]">{{ charge.outstanding_balance > 0 ? 'متبقٍ' : 'مسدد' }}</p>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <button
+                                    v-if="receiptCountByCharge.get(charge.id)"
+                                    type="button"
+                                    :class="linkButton"
+                                    @click="showReceiptsForCharge(charge)"
+                                >
+                                    سُدد {{ formatMoney(charge.paid_amount) }} عبر {{ receiptCountLabel(receiptCountByCharge.get(charge.id) ?? 0) }}
+                                </button>
+                                <span v-else class="text-xs text-[#8A9AA7]">لم يُسدد شيء بعد</span>
+                                <div class="flex items-center gap-2">
+                                    <a
+                                        v-if="charge.status === 'overdue' && charge.renter_phone"
+                                        :href="whatsappReminderUrl(charge)"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        :class="rowAction"
+                                        aria-label="تذكير عبر واتساب"
+                                    >
+                                        <MessageCircle class="h-3.5 w-3.5 text-emerald-600" />
+                                        <span>تذكير</span>
+                                    </a>
+                                    <button
+                                        v-if="charge.outstanding_balance > 0"
+                                        type="button"
+                                        class="inline-flex h-8 cursor-pointer items-center rounded-lg bg-[#163E3E] px-3 text-xs font-semibold text-white transition hover:bg-[#102F2F]"
+                                        @click="openPaymentForCharge(charge)"
+                                    >
+                                        تسجيل سداد
+                                    </button>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <table class="hidden w-full text-right text-sm md:table">
+                        <thead class="bg-[#FBFAF6] text-xs text-[#5B6770]">
+                            <tr>
+                                <th scope="col" class="px-5 py-3 font-medium">المستأجر</th>
+                                <th scope="col" class="px-3 py-3 font-medium">الفترة</th>
+                                <th scope="col" class="px-3 py-3 font-medium">القيمة</th>
+                                <th scope="col" class="px-3 py-3 font-medium">المتبقي</th>
+                                <th scope="col" class="px-3 py-3 font-medium">الحالة</th>
+                                <th scope="col" class="px-5 py-3"><span class="sr-only">إجراءات</span></th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-[#D6E0E7]">
-                            <tr
-                                v-for="c in filteredCharges"
-                                :key="c.id"
-                                class="hover:bg-[#F8F4EA] transition"
-                            >
-                                <td class="py-4 px-6">
+                        <tbody class="divide-y divide-[#E6ECF0]">
+                            <tr v-for="charge in filteredCharges" :key="charge.id" class="align-top transition-colors hover:bg-[#FBFAF6]">
+                                <td class="px-5 py-4">
                                     <Link
-                                        :href="route('renters.show', c.renter_id)"
-                                        class="font-bold text-[#163E3E] hover:text-[#163E3E] transition block"
+                                        :href="route('renters.show', charge.renter_id)"
+                                        class="font-semibold text-[#163E3E] underline-offset-4 hover:underline"
                                     >
-                                        {{ c.renter_name }}
+                                        {{ charge.renter_name }}
                                     </Link>
-                                    <span class="text-xs text-[#5B6770] font-mono" dir="ltr">{{ c.renter_phone }}</span>
+                                    <p class="mt-0.5 text-xs text-[#5B6770]">{{ charge.unit_name }} · {{ charge.property_name }}</p>
                                 </td>
-
-                                <td class="py-4 px-6 text-xs text-[#163E3E]">
-                                    <span class="font-bold block">{{ c.unit_name }}</span>
-                                    <span class="text-[#5B6770] block">{{ c.property_name }}</span>
+                                <td class="px-3 py-4">
+                                    <p class="font-semibold text-[#163E3E]">{{ charge.period_name || charge.period }}</p>
+                                    <p class="mt-0.5 text-xs text-[#5B6770]">
+                                        يستحق <span class="font-mono tabular-nums">{{ charge.due_date }}</span>
+                                    </p>
+                                    <p v-if="charge.status === 'overdue' && charge.days_overdue" class="mt-0.5 text-xs font-semibold text-rose-700">
+                                        متأخر {{ overdueDaysLabel(charge.days_overdue) }}
+                                    </p>
                                 </td>
-
-                                <td class="py-4 px-6 text-xs text-[#163E3E]">
-                                    <div class="flex items-center gap-1.5 font-bold text-[#163E3E]">
-                                        <Calendar class="w-3.5 h-3.5 text-[#163E3E] shrink-0" />
-                                        <span>{{ c.period_name || `شهر ${c.period}` }}</span>
-                                        <span class="text-[11px] font-mono font-normal text-[#5B6770]">({{ c.period }})</span>
-                                    </div>
-                                    <div class="text-[11px] text-[#5B6770] mt-1 space-y-0.5">
-                                        <div class="font-mono">
-                                            <span>الاستحقاق: </span>
-                                            <span class="font-bold text-[#163E3E]">{{ c.due_date }}</span>
-                                            <span v-if="c.status === 'overdue' && c.days_overdue" class="text-rose-600 font-semibold mr-1">
-                                                (متأخر {{ c.days_overdue }} يوم)
-                                            </span>
-                                        </div>
-                                        <div v-if="c.period_start && c.period_end" class="font-mono text-[10px] text-[#8A9AA7]">
-                                            الفترة: {{ c.period_start }} — {{ c.period_end }}
-                                        </div>
-                                    </div>
+                                <td class="px-3 py-4">
+                                    <p class="font-mono tabular-nums text-[#163E3E]">{{ formatMoney(charge.amount) }}</p>
+                                    <button
+                                        v-if="receiptCountByCharge.get(charge.id)"
+                                        type="button"
+                                        class="mt-0.5 whitespace-nowrap"
+                                        :class="linkButton"
+                                        @click="showReceiptsForCharge(charge)"
+                                    >
+                                        سُدد {{ formatMoney(charge.paid_amount) }} · {{ receiptCountLabel(receiptCountByCharge.get(charge.id) ?? 0) }}
+                                    </button>
                                 </td>
-
-                                <td class="py-4 px-6 font-mono text-xs font-bold text-[#163E3E]">
-                                    {{ c.amount.toLocaleString() }} ج.م
+                                <td
+                                    class="px-3 py-4 font-mono font-semibold tabular-nums"
+                                    :class="charge.outstanding_balance <= 0 ? 'text-[#8A9AA7]' : charge.status === 'overdue' ? 'text-rose-700' : 'text-[#163E3E]'"
+                                >
+                                    {{ formatMoney(charge.outstanding_balance) }}
                                 </td>
-
-                                <td class="py-4 px-6 text-xs">
-                                    <div class="font-mono font-bold text-emerald-700 text-sm">
-                                        {{ c.paid_amount.toLocaleString() }} ج.م
-                                    </div>
-                                    <div v-if="c.paid_at" class="text-[11px] text-emerald-800 font-medium flex items-center gap-1 mt-0.5">
-                                        <CheckCircle2 class="w-3 h-3 text-emerald-600 shrink-0" />
-                                        <span class="font-mono">سُدد: {{ c.paid_at }}</span>
-                                    </div>
-                                    <div v-else-if="c.outstanding_balance > 0" class="text-[11px] text-[#8A9AA7] mt-0.5 font-mono">
-                                        بانتظار السداد
-                                    </div>
+                                <td class="px-3 py-4">
+                                    <StatusBadge :status="chargeBadgeStatuses[charge.status] ?? 'pending'" :label="charge.status_label" size="sm" />
                                 </td>
-
-                                <td class="py-4 px-6 font-mono text-xs" :class="c.outstanding_balance > 0 ? 'text-rose-600 font-bold' : 'text-[#5B6770]'">
-                                    {{ c.outstanding_balance.toLocaleString() }} ج.م
-                                </td>
-
-                                <td class="py-4 px-6">
-                                    <StatusBadge :status="c.status" :label="c.status_label" size="sm" />
-                                </td>
-
-                                <td class="py-4 px-6 text-start sm:text-left">
+                                <td class="px-5 py-4">
                                     <div class="flex items-center justify-end gap-2">
-                                        <button
-                                            v-if="c.outstanding_balance > 0"
-                                            @click="openPaymentForCharge(c)"
-                                            type="button"
-                                            class="h-8 px-3 rounded-lg bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center gap-1 shadow-xs cursor-pointer"
-                                        >
-                                            <CreditCard class="w-3.5 h-3.5" />
-                                            <span>تسجيل سداد</span>
-                                        </button>
-
                                         <a
-                                            v-if="c.status === 'overdue'"
-                                            :href="`https://wa.me/20${c.renter_phone.replace(/^0+/, '')}?text=${encodeURIComponent(`السلام عليكم ${c.renter_name}، نود تذكيركم بسداد قسط إيجار ${c.unit_name} المستحق بقيمة ${c.outstanding_balance} ج.م. شكراً لتعاونكم.`)}`"
+                                            v-if="charge.status === 'overdue' && charge.renter_phone"
+                                            :href="whatsappReminderUrl(charge)"
                                             target="_blank"
-                                            class="h-8 px-2.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition flex items-center gap-1 border border-emerald-200"
-                                            title="إرسال تذكير WhatsApp فوري"
+                                            rel="noopener noreferrer"
+                                            :class="rowAction"
+                                            title="إرسال تذكير عبر واتساب"
                                         >
-                                            <MessageCircle class="w-3.5 h-3.5 text-emerald-600" />
+                                            <MessageCircle class="h-3.5 w-3.5 text-emerald-600" />
                                             <span>تذكير</span>
                                         </a>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <EmptyState
-                v-else
-                type="document"
-                title="لا توجد استحقاقات تطابق البحث"
-                description="لم يتم العثور على أي فواتير أو استحقاقات تطابق معايير التصفية الحالية."
-            />
-        </div>
-
-        <!-- 2. جدول سندات القبض المسددة -->
-        <div v-else class="space-y-4">
-            <!-- شريط البحث لسندات القبض -->
-            <div class="flex items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-[#D6E0E7] shadow-2xs">
-                <div class="relative flex-1 max-w-md">
-                    <input
-                        v-model="receiptSearchQuery"
-                        type="text"
-                        placeholder="ابحث برقم السند أو اسم المستأجر أو الوحدة أو طريقة الدفع..."
-                        class="w-full h-10 pr-10 pl-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] placeholder:text-[#5B6770] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
-                    />
-                    <Search class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#5B6770]" />
-                </div>
-                <span class="text-xs text-[#5B6770] font-semibold">
-                    عرض {{ filteredPayments.length }} من أصل {{ payments.length }} سند
-                </span>
-            </div>
-
-            <div v-if="filteredPayments.length > 0" class="rounded-3xl border border-[#D6E0E7] bg-white overflow-hidden shadow-2xs">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-right text-sm">
-                        <thead>
-                            <tr class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] text-xs font-bold">
-                                <th class="py-3.5 px-6">رقم السند</th>
-                                <th class="py-3.5 px-6">المستأجر</th>
-                                <th class="py-3.5 px-6">الوحدة</th>
-                                <th class="py-3.5 px-6">المبلغ المقبوض</th>
-                                <th class="py-3.5 px-6">الفترة المغطاة بالسند</th>
-                                <th class="py-3.5 px-6">تاريخ التحصيل والقيد</th>
-                                <th class="py-3.5 px-6">طريقة السداد</th>
-                                <th class="py-3.5 px-6">حالة الرقابة</th>
-                                <th class="py-3.5 px-6 text-center">الإجراءات</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-[#D6E0E7]">
-                            <tr v-for="pay in filteredPayments" :key="pay.id" class="hover:bg-[#F8F4EA] transition">
-                                <td class="py-4 px-6 font-mono font-bold text-[#163E3E]">
-                                    <div>{{ pay.reference }}</div>
-                                    <span v-if="pay.notes" class="text-[11px] text-[#5B6770] font-sans block max-w-xs truncate">{{ pay.notes }}</span>
-                                </td>
-                                <td class="py-4 px-6 font-bold text-[#163E3E]">
-                                    <Link :href="route('renters.show', pay.renter_id)" class="hover:text-[#163E3E] transition">
-                                        {{ pay.renter_name }}
-                                    </Link>
-                                    <span v-if="pay.renter_phone" class="text-[11px] text-[#5B6770] font-mono block" dir="ltr">{{ pay.renter_phone }}</span>
-                                </td>
-                                <td class="py-4 px-6 text-xs text-[#5B6770]">
-                                    <span class="font-bold text-[#163E3E] block">{{ pay.unit_name }}</span>
-                                    <span v-if="pay.property_name" class="block">{{ pay.property_name }}</span>
-                                </td>
-                                <td class="py-4 px-6 font-mono text-sm font-bold text-[#163E3E]">
-                                    <div>{{ pay.amount.toLocaleString() }} ج.م</div>
-                                    <span v-if="pay.allocations && pay.allocations.length > 1" class="text-[10px] font-sans font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 inline-block mt-0.5">
-                                        موزع على {{ pay.allocations.length }} فترات
-                                    </span>
-                                </td>
-                                <td class="py-4 px-6 text-xs text-[#163E3E]">
-                                    <div v-if="pay.allocations && pay.allocations.length > 0" class="space-y-1">
-                                        <div v-for="alloc in pay.allocations" :key="alloc.charge_id" class="flex items-center gap-1.5 flex-wrap">
-                                            <span class="px-2 py-0.5 rounded-lg bg-[#E8F0F0] text-[#163E3E] font-bold text-[11px] border border-[#163E3E]/10 flex items-center gap-1">
-                                                <Calendar class="w-3 h-3 text-[#163E3E]" />
-                                                <span>{{ alloc.period_name || `إيجار ${alloc.period}` }}</span>
-                                            </span>
-                                            <span v-if="pay.allocations.length > 1" class="font-mono text-[10px] text-[#5B6770]">
-                                                ({{ alloc.amount.toLocaleString() }} ج.م)
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <span v-else class="text-[#8A9AA7] text-[11px] font-mono">—</span>
-                                </td>
-                                <td class="py-4 px-6 text-xs text-[#163E3E]">
-                                    <div class="flex items-center gap-1.5 font-bold text-[#163E3E]">
-                                        <Calendar class="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                        <span class="font-mono">{{ pay.paid_date || pay.paid_at }}</span>
-                                        <span v-if="pay.paid_time" class="text-[11px] font-mono font-normal text-[#5B6770]" dir="ltr">
-                                            {{ pay.paid_time }}
-                                        </span>
-                                    </div>
-                                    <div class="text-[11px] text-[#5B6770] font-mono mt-1 flex items-center gap-1">
-                                        <Clock class="w-3 h-3 text-[#8A9AA7] shrink-0" />
-                                        <span>تاريخ القيد: {{ pay.created_date || pay.created_at }}</span>
-                                    </div>
-                                </td>
-                                <td class="py-4 px-6 text-xs text-[#163E3E]">
-                                    {{ pay.method }}
-                                </td>
-                                <td class="py-4 px-6">
-                                    <span v-if="pay.is_corrected" class="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200">
-                                        <History class="w-3 h-3 text-amber-600" />
-                                        <span>مُعدل رقابياً ({{ pay.corrections_count }})</span>
-                                    </span>
-                                    <span v-else class="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100">
-                                        أصلي معتمد
-                                    </span>
-                                </td>
-                                <td class="py-4 px-6 text-center">
-                                    <div class="flex items-center justify-center gap-1.5">
-                                        <a
-                                            v-if="pay.has_receipt && pay.receipt_url"
-                                            :href="pay.receipt_url"
-                                            target="_blank"
-                                            class="h-8 px-2 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition inline-flex items-center gap-1 shadow-2xs"
-                                            title="عرض إشعار أو صورة التحويل المرفقة"
-                                        >
-                                            <Paperclip class="w-3.5 h-3.5 text-emerald-700" />
-                                            <span>إشعار</span>
-                                        </a>
-
-                                        <a
-                                            :href="route('payments.receipt', pay.id)"
-                                            target="_blank"
-                                            class="h-8 px-2.5 rounded-lg border border-[#D6E0E7] bg-white hover:bg-slate-50 text-[#163E3E] text-xs font-bold transition inline-flex items-center gap-1 shadow-2xs"
-                                            title="عرض وطباعة سند القبض الإلكتروني المعتمد"
-                                        >
-                                            <Printer class="w-3.5 h-3.5" />
-                                            <span>عرض</span>
-                                        </a>
-
                                         <button
-                                            @click="openCorrectionForPayment(pay)"
+                                            v-if="charge.outstanding_balance > 0"
                                             type="button"
-                                            class="h-8 px-2.5 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold transition inline-flex items-center gap-1 shadow-2xs cursor-pointer"
-                                            title="تصحيح وتعديل السند وإعادة تسوية الالتزامات"
+                                            class="inline-flex h-8 cursor-pointer items-center whitespace-nowrap rounded-lg bg-[#163E3E] px-3 text-xs font-semibold text-white transition hover:bg-[#102F2F] active:translate-y-px"
+                                            @click="openPaymentForCharge(charge)"
                                         >
-                                            <Pencil class="w-3.5 h-3.5 text-amber-600" />
-                                            <span>تعديل</span>
+                                            تسجيل سداد
                                         </button>
                                     </div>
                                 </td>
@@ -531,33 +545,186 @@ const openCorrectionForPayment = (payment: PaymentReceiptItem) => {
                         </tbody>
                     </table>
                 </div>
-            </div>
 
-            <EmptyState
-                v-else
-                type="document"
-                title="لا توجد سندات قبض مسجلة حتى الآن"
-                description="ابدأ بتسجيل أول دفعة نقدية أو بنكية للمستأجرين لإصدار سند قبض إلكتروني فوري."
-                action-label="تسجيل أول دفعة الآن"
-                @action="recordPaymentOpen = true"
-            />
+                <EmptyState
+                    v-else
+                    :type="charges.length ? 'search' : 'document'"
+                    :title="charges.length ? 'لا توجد فواتير تطابق البحث' : 'لا توجد فواتير إيجار بعد'"
+                    :description="charges.length ? 'جرّب كلمة بحث أخرى أو اختر «الكل».' : 'تُنشأ فاتورة لكل شهر تلقائياً بعد إضافة عقد إيجار.'"
+                />
+            </template>
+
+            <template v-else>
+                <div v-if="receiptChargeFilter" class="flex flex-wrap items-center gap-2 text-xs text-[#5B6770]">
+                    <span>سندات فاتورة</span>
+                    <span class="inline-flex items-center gap-1.5 rounded-full bg-[#E8F0F0] py-1 pl-1.5 pr-3 font-semibold text-[#163E3E]">
+                        {{ receiptChargeFilter.renter_name }} · {{ receiptChargeFilter.period_name || receiptChargeFilter.period }}
+                        <button
+                            type="button"
+                            class="inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-full hover:bg-white"
+                            aria-label="إظهار كل السندات"
+                            @click="receiptChargeFilter = null"
+                        >
+                            <X class="h-3 w-3" />
+                        </button>
+                    </span>
+                </div>
+
+                <div v-if="filteredPayments.length > 0" class="overflow-hidden rounded-2xl border border-[#D6E0E7] bg-white">
+                    <ul class="divide-y divide-[#E6ECF0] md:hidden">
+                        <li v-for="payment in filteredPayments" :key="payment.id" class="space-y-3 px-4 py-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="font-mono text-sm font-semibold text-[#163E3E]">{{ payment.reference }}</p>
+                                    <p class="truncate text-xs text-[#5B6770]">{{ payment.renter_name }} · {{ payment.unit_name }}</p>
+                                </div>
+                                <p class="shrink-0 font-mono text-base font-semibold tabular-nums text-emerald-700">
+                                    {{ formatMoney(payment.amount) }}
+                                    <span class="font-sans text-xs font-medium text-[#5B6770]">{{ currency_symbol }}</span>
+                                </p>
+                            </div>
+                            <p class="text-xs text-[#5B6770]">
+                                <span class="font-mono tabular-nums">{{ payment.paid_date || payment.paid_at }}</span> · {{ payment.method }}
+                                <span v-if="payment.allocations?.length">
+                                    · {{ payment.allocations.map((allocation) => allocation.period_name || allocation.period).join('، ') }}
+                                </span>
+                                <span v-if="payment.is_corrected" class="font-semibold text-amber-700"> · مُعدّل</span>
+                            </p>
+                            <div class="flex flex-wrap gap-2">
+                                <a :href="route('payments.receipt', payment.id)" target="_blank" rel="noopener noreferrer" :class="rowAction">
+                                    <Printer class="h-3.5 w-3.5" />
+                                    <span>السند</span>
+                                </a>
+                                <a
+                                    v-if="payment.has_receipt && payment.receipt_url"
+                                    :href="payment.receipt_url"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    :class="rowAction"
+                                >
+                                    <Paperclip class="h-3.5 w-3.5" />
+                                    <span>الإشعار</span>
+                                </a>
+                                <button type="button" :class="rowAction" @click="openCorrectionForPayment(payment)">
+                                    <Pencil class="h-3.5 w-3.5" />
+                                    <span>تصحيح</span>
+                                </button>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <table class="hidden w-full text-right text-sm md:table">
+                        <thead class="bg-[#FBFAF6] text-xs text-[#5B6770]">
+                            <tr>
+                                <th scope="col" class="px-5 py-3 font-medium">السند</th>
+                                <th scope="col" class="px-3 py-3 font-medium">المستأجر</th>
+                                <th scope="col" class="px-3 py-3 font-medium">المبلغ</th>
+                                <th scope="col" class="px-3 py-3 font-medium">يغطي</th>
+                                <th scope="col" class="px-5 py-3"><span class="sr-only">إجراءات</span></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-[#E6ECF0]">
+                            <tr v-for="payment in filteredPayments" :key="payment.id" class="align-top transition-colors hover:bg-[#FBFAF6]">
+                                <td class="px-5 py-4">
+                                    <p class="font-mono font-semibold text-[#163E3E]">{{ payment.reference }}</p>
+                                    <p class="mt-0.5 text-xs text-[#5B6770]">
+                                        <span class="font-mono tabular-nums">{{ payment.paid_date || payment.paid_at }}</span>
+                                        <span v-if="payment.is_corrected" class="font-semibold text-amber-700">
+                                            · مُعدّل {{ payment.corrections_count ?? '' }}
+                                        </span>
+                                    </p>
+                                    <p v-if="payment.notes" class="mt-0.5 max-w-[16rem] truncate text-xs text-[#8A9AA7]">{{ payment.notes }}</p>
+                                </td>
+                                <td class="px-3 py-4">
+                                    <Link
+                                        :href="route('renters.show', payment.renter_id)"
+                                        class="font-semibold text-[#163E3E] underline-offset-4 hover:underline"
+                                    >
+                                        {{ payment.renter_name }}
+                                    </Link>
+                                    <p class="mt-0.5 text-xs text-[#5B6770]">
+                                        {{ payment.unit_name }}<span v-if="payment.property_name"> · {{ payment.property_name }}</span>
+                                    </p>
+                                </td>
+                                <td class="px-3 py-4">
+                                    <p class="font-mono font-semibold tabular-nums text-emerald-700">
+                                        {{ formatMoney(payment.amount) }}
+                                        <span class="font-sans text-xs font-medium text-[#5B6770]">{{ currency_symbol }}</span>
+                                    </p>
+                                    <p class="mt-0.5 text-xs text-[#5B6770]">{{ payment.method }}</p>
+                                </td>
+                                <td class="px-3 py-4">
+                                    <ul v-if="payment.allocations?.length" class="space-y-1">
+                                        <li v-for="allocation in payment.allocations" :key="allocation.charge_id" class="whitespace-nowrap text-xs text-[#163E3E]">
+                                            {{ allocation.period_name || allocation.period }}
+                                            <span v-if="payment.allocations.length > 1" class="font-mono tabular-nums text-[#5B6770]">
+                                                · {{ formatMoney(allocation.amount) }}
+                                            </span>
+                                        </li>
+                                    </ul>
+                                    <span v-else class="text-xs text-[#8A9AA7]">غير موزع على فواتير</span>
+                                </td>
+                                <td class="px-5 py-4">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <a
+                                            v-if="payment.has_receipt && payment.receipt_url"
+                                            :href="payment.receipt_url"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            :class="rowAction"
+                                            title="إشعار التحويل المرفق"
+                                        >
+                                            <Paperclip class="h-3.5 w-3.5" />
+                                            <span>الإشعار</span>
+                                        </a>
+                                        <a
+                                            :href="route('payments.receipt', payment.id)"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            :class="rowAction"
+                                            title="عرض وطباعة سند القبض"
+                                        >
+                                            <Printer class="h-3.5 w-3.5" />
+                                            <span>السند</span>
+                                        </a>
+                                        <button type="button" :class="rowAction" title="تصحيح السند" @click="openCorrectionForPayment(payment)">
+                                            <Pencil class="h-3.5 w-3.5" />
+                                            <span>تصحيح</span>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <EmptyState
+                    v-else-if="payments.length"
+                    type="search"
+                    title="لا توجد سندات تطابق البحث"
+                    description="جرّب رقم سند أو اسم مستأجر آخر."
+                />
+                <EmptyState
+                    v-else
+                    type="document"
+                    title="لا توجد سندات قبض بعد"
+                    description="سجّل أول دفعة لمستأجر ليصدر سند القبض تلقائياً."
+                    action-label="تسجيل دفعة"
+                    @action="openGeneralPayment"
+                />
+            </template>
         </div>
 
-        <!-- نافذة تسجيل الدفعة السريعة -->
         <ModalRecordPayment
-            :show="recordPaymentOpen"
+            v-if="recordPaymentOpen"
+            :show="true"
             :renters="renters"
             :initial-renter-id="activeChargeForPayment?.renter_id"
             :initial-amount="activeChargeForPayment?.outstanding_balance"
             :initial-rent-charge-id="activeChargeForPayment?.id"
-            @close="recordPaymentOpen = false"
+            @close="closeRecordPayment"
         />
 
-        <!-- نافذة تصحيح وتعديل سند القبض والرقابة المالية -->
-        <ModalCorrectPayment
-            :show="correctPaymentOpen"
-            :payment="activePaymentForCorrection"
-            @close="correctPaymentOpen = false"
-        />
+        <ModalCorrectPayment :show="correctPaymentOpen" :payment="activePaymentForCorrection" @close="correctPaymentOpen = false" />
     </AppLayout>
 </template>

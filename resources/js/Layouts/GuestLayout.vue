@@ -2,6 +2,7 @@
 import { Link } from '@inertiajs/vue3';
 import { ArrowRight } from 'lucide-vue-next';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import ConfirmDialog from '@/Components/Common/ConfirmDialog.vue';
 import GlobalToast from '@/Components/Common/GlobalToast.vue';
 
 withDefaults(defineProps<{
@@ -77,5 +78,6 @@ withDefaults(defineProps<{
 
         <!-- Global Toast Center -->
         <GlobalToast />
+        <ConfirmDialog />
     </div>
 </template>

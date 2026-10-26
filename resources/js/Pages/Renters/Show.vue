@@ -4,6 +4,7 @@ import { Link, useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
 import ModalRecordPayment from '@/Components/Common/ModalRecordPayment.vue';
+import { useConfirmDialog } from '@/composables/useConfirmDialog';
 import {
     AlertCircle,
     ArrowRight,
@@ -201,9 +202,23 @@ const submitEdit = () => {
     });
 };
 
-const deleteDocument = (docId: number) => {
-    if (confirm('هل أنت متأكد من رغبتك بحذف هذا المستند نهائياً؟')) {
-        router.delete(route('renters.documents.destroy', [props.renter.id, docId]));
+const confirmDialog = useConfirmDialog();
+
+const deleteDocument = async (renterDocument: DocumentItem) => {
+    const confirmed = await confirmDialog.confirm({
+        tone: 'danger',
+        icon: Trash2,
+        title: 'حذف هذا المستند؟',
+        message: 'يُحذف الملف من ملف المستأجر نهائياً ولا يمكن استرجاعه.',
+        details: [
+            { label: 'المستند', value: renterDocument.title },
+            { label: 'النوع', value: renterDocument.document_type_label },
+        ],
+        confirmLabel: 'حذف المستند',
+    });
+
+    if (confirmed) {
+        router.delete(route('renters.documents.destroy', [props.renter.id, renterDocument.id]));
     }
 };
 </script>
@@ -821,7 +836,7 @@ const deleteDocument = (docId: number) => {
                                                 <span>تحميل</span>
                                             </a>
                                             <button
-                                                @click="deleteDocument(doc.id)"
+                                                @click="deleteDocument(doc)"
                                                 type="button"
                                                 class="h-7 px-2 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 text-rose-600 transition flex items-center shadow-2xs cursor-pointer"
                                                 title="حذف المستند"

@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import EmptyState from '@/Components/Common/EmptyState.vue';
+import { useConfirmDialog } from '@/composables/useConfirmDialog';
 import {
     AlertCircle,
     Check,
@@ -60,8 +61,10 @@ const props = withDefaults(defineProps<{
         ready_to_apply_count?: number;
     };
     currency?: string;
+    currency_symbol?: string;
 }>(), {
-    currency: 'ج.م',
+    currency: 'EGP',
+    currency_symbol: 'ج.م',
 });
 
 const selectedCategory = ref('all');
@@ -136,11 +139,24 @@ const submitEdit = () => {
 };
 
 const isRecordingPayment = ref<number | null>(null);
+const confirmDialog = useConfirmDialog();
 
-const handleRecordPayment = (expense: ExpenseItem) => {
+const expenseDetails = (expense: ExpenseItem) => [
+    { label: 'المصروف', value: expense.title },
+    { label: 'المبلغ', value: `${(expense.amount ?? 0).toLocaleString('en-US')} ${props.currency_symbol}` },
+];
+
+const handleRecordPayment = async (expense: ExpenseItem) => {
     if (!expense.id || expense.is_pending_amount || isRecordingPayment.value !== null) return;
 
-    if (!confirm('هل أنت متأكد من تسجيل سداد هذا المصروف؟')) return;
+    const confirmed = await confirmDialog.confirm({
+        icon: CreditCard,
+        title: 'تسجيل سداد هذا المصروف؟',
+        message: 'يُسجل المصروف كمدفوع بتاريخ اليوم.',
+        details: expenseDetails(expense),
+        confirmLabel: 'تسجيل السداد',
+    });
+    if (!confirmed) return;
 
     isRecordingPayment.value = expense.id;
     router.post(route('expenses.payment.record', expense.id), {}, {
@@ -151,10 +167,18 @@ const handleRecordPayment = (expense: ExpenseItem) => {
     });
 };
 
-const handleReversePayment = (expense: ExpenseItem) => {
+const handleReversePayment = async (expense: ExpenseItem) => {
     if (!expense.id || isRecordingPayment.value !== null) return;
 
-    if (!confirm('هل تريد إلغاء تسجيل سداد هذا المصروف وإعادته كغير مدفوع؟')) return;
+    const confirmed = await confirmDialog.confirm({
+        tone: 'danger',
+        title: 'إلغاء سداد هذا المصروف؟',
+        message: 'يعود المصروف إلى حالة غير مدفوع، ويمكنك تسجيل سداده مرة أخرى لاحقاً.',
+        details: expenseDetails(expense),
+        confirmLabel: 'إلغاء السداد',
+        cancelLabel: 'إبقاؤه مدفوعاً',
+    });
+    if (!confirmed) return;
 
     isRecordingPayment.value = expense.id;
     router.post(route('expenses.payment.reverse', expense.id), {}, {
@@ -202,7 +226,7 @@ const handleReversePayment = (expense: ExpenseItem) => {
                 <div class="flex items-baseline justify-between">
                     <span class="text-2xl font-bold text-rose-700 font-mono">
                         {{ stats.total_amount.toLocaleString() }}
-                        <span class="text-xs font-sans font-normal text-[#5B6770]">{{ currency }}</span>
+                        <span class="text-xs font-sans font-normal text-[#5B6770]">{{ currency_symbol }}</span>
                     </span>
                     <span class="text-xs text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1">
                         <CheckCircle2 class="w-3.5 h-3.5" />
@@ -229,7 +253,7 @@ const handleReversePayment = (expense: ExpenseItem) => {
                 <div class="flex items-baseline justify-between">
                     <span class="text-2xl font-bold text-indigo-700 font-mono">
                         {{ (stats.maintenance_expenses_total ?? 0).toLocaleString() }}
-                        <span class="text-xs font-sans font-normal text-[#5B6770]">{{ currency }}</span>
+                        <span class="text-xs font-sans font-normal text-[#5B6770]">{{ currency_symbol }}</span>
                     </span>
                     <span class="text-xs text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md font-semibold">
                         {{ stats.maintenance_count ?? 0 }} بند صيانة
@@ -377,7 +401,7 @@ const handleReversePayment = (expense: ExpenseItem) => {
 
                             <td class="py-4 px-6 font-mono text-sm">
                                 <span v-if="exp.amount !== null && exp.amount > 0" class="font-bold text-rose-700">
-                                    {{ exp.amount.toLocaleString('en-US') }} {{ currency }}
+                                    {{ exp.amount.toLocaleString('en-US') }} {{ currency_symbol }}
                                 </span>
                                 <div v-else class="flex items-center gap-2">
                                     <span class="text-xs italic text-amber-700 font-bold bg-amber-100 px-2 py-0.5 rounded-md">
@@ -537,7 +561,7 @@ const handleReversePayment = (expense: ExpenseItem) => {
                                     required
                                     class="w-full h-11 pl-10 pr-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                                 />
-                                <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-[#5B6770]">{{ currency }}</span>
+                                <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-[#5B6770]">{{ currency_symbol }}</span>
                             </div>
                         </div>
                     </div>
@@ -614,7 +638,7 @@ const handleReversePayment = (expense: ExpenseItem) => {
                                 required
                                 class="w-full h-11 pl-10 pr-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                             />
-                            <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-[#5B6770]">{{ currency }}</span>
+                            <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-[#5B6770]">{{ currency_symbol }}</span>
                         </div>
                         <p v-if="editingExpense.origin === 'maintenance'" class="text-[11px] text-[#5B6770] mt-1">
                             عند إدخال المبلغ سيدخل المصروف مباشرة في الحسابات المالية، ويصبح بالإمكان إنهاء طلب الصيانة من صفحة الصيانة.

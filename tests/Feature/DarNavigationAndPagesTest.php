@@ -291,3 +291,12 @@ test('landing page loads successfully with seo tags and logo image', function ()
     $appName = config('app.name');
     $response->assertSee("{$appName} — Find Your Spot. Rent the Space You Need.");
 });
+
+test('payments and expenses pages show amounts in the workspace currency symbol', function (string $pageUrl) {
+    $this->workspace->update(['currency' => 'SAR']);
+
+    $this->actingAs($this->user)
+        ->get($pageUrl)
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('currency_symbol', 'ر.س'));
+})->with(['payments' => '/payments', 'expenses' => '/expenses']);

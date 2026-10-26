@@ -57,6 +57,7 @@ class ExpenseController extends Controller
                 'categories' => $byCategory,
             ],
             'currency' => $workspace->currency ?? 'EGP',
+            'currency_symbol' => $workspace->currencySymbol(),
         ]);
     }
 

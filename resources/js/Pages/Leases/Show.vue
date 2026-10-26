@@ -6,30 +6,26 @@ import StatusBadge from '@/Components/Common/StatusBadge.vue';
 import DeductionForm from '@/Components/Leases/SecurityDeposit/DeductionForm.vue';
 import DeductionSection from '@/Components/Leases/SecurityDeposit/DeductionSection.vue';
 import SettlementSummary from '@/Components/Leases/SecurityDeposit/SettlementSummary.vue';
+import ModalRecordPayment from '@/Components/Common/ModalRecordPayment.vue';
+import { useConfirmDialog } from '@/composables/useConfirmDialog';
 import {
+    ArrowLeft,
     ArrowRight,
     Ban,
-    Building2,
-    CheckCircle2,
     Clock,
     Coins,
     CreditCard,
-    ExternalLink,
     FileCheck,
     FileText,
-    History,
-    Home,
     MessageCircle,
-    MinusCircle,
+    Paperclip,
     Phone,
     RotateCcw,
     Shield,
     ShieldAlert,
     ShieldCheck,
-    Store,
     Trash2,
     Upload,
-    Wrench,
     X,
 } from 'lucide-vue-next';
 
@@ -183,6 +179,8 @@ const props = defineProps<{
     currency: string;
     currency_symbol: string;
 }>();
+
+const confirmDialog = useConfirmDialog();
 
 // Modals State
 const showRecordPaymentModal = ref(false);
@@ -404,9 +402,26 @@ const openTerminateWorkflow = () => {
         terminateForm.deductions = [];
         showTerminateWithSettlementModal.value = true;
     } else {
-        if (confirm('هل أنت متأكد من إنهاء عقد الإيجار رسمياً وتحديث حالة الوحدة لتصبح شاغرة؟')) {
-            router.post(route('leases.terminate', props.lease.id));
-        }
+        terminateLeaseWithoutDeposit();
+    }
+};
+
+const terminateLeaseWithoutDeposit = async () => {
+    const confirmed = await confirmDialog.confirm({
+        tone: 'danger',
+        icon: Ban,
+        title: 'إنهاء هذا العقد؟',
+        message: 'سيُغلق العقد رسمياً وتصبح الوحدة شاغرة ومتاحة للتأجير من جديد.',
+        details: [
+            { label: 'العقد', value: props.lease.contract_number },
+            { label: 'المستأجر', value: props.renter.name },
+            { label: 'الوحدة', value: props.unit.name },
+        ],
+        confirmLabel: 'إنهاء العقد',
+    });
+
+    if (confirmed) {
+        router.post(route('leases.terminate', props.lease.id));
     }
 };
 
@@ -455,9 +470,21 @@ const submitStartSettlement = () => {
     });
 };
 
-const deleteDeduction = (deductionId: number) => {
-    if (confirm('هل أنت متأكد من إلغاء بند الخصم هذا من سجل التأمين؟')) {
-        router.delete(route('leases.security-deposit.deduction.delete', [props.lease.id, deductionId]));
+const deleteDeduction = async (deduction: DepositDeduction) => {
+    const confirmed = await confirmDialog.confirm({
+        tone: 'danger',
+        icon: Trash2,
+        title: 'حذف هذا الخصم؟',
+        message: 'يُحذف الخصم من سجل التأمين ويعود مبلغه إلى الرصيد القابل للرد للمستأجر.',
+        details: [
+            { label: 'البند', value: deduction.category_label },
+            { label: 'المبلغ', value: `${deduction.amount.toLocaleString()} ${props.currency_symbol}` },
+        ],
+        confirmLabel: 'حذف الخصم',
+    });
+
+    if (confirmed) {
+        router.delete(route('leases.security-deposit.deduction.delete', [props.lease.id, deduction.id]));
     }
 };
 
@@ -548,8 +575,16 @@ const submitContractUpload = () => {
     });
 };
 
-const deleteContractImage = () => {
-    if (confirm('هل أنت متأكد من رغبتك بحذف وثيقة العقد المرفقة نهائياً؟')) {
+const deleteContractImage = async () => {
+    const confirmed = await confirmDialog.confirm({
+        tone: 'danger',
+        icon: Trash2,
+        title: 'حذف نسخة العقد الموقّعة؟',
+        message: 'يُحذف الملف المرفوع نهائياً، ويمكنك رفع نسخة جديدة في أي وقت.',
+        confirmLabel: 'حذف النسخة',
+    });
+
+    if (confirmed) {
         router.delete(route('leases.contract-image.destroy', props.lease.id));
     }
 };
@@ -559,1023 +594,945 @@ const depositPercentReceived = computed(() => {
     return Math.min(100, Math.round((props.security_deposit.total_received / props.security_deposit.agreed_amount) * 100));
 });
 
-const depositBadgeClass = computed(() => {
-    switch (props.security_deposit.status) {
-        case 'held':
-            return 'bg-emerald-50 text-emerald-800 border-emerald-200';
-        case 'partially_received':
-            return 'bg-amber-50 text-amber-800 border-amber-200';
-        case 'due':
-            return 'bg-blue-50 text-blue-800 border-blue-200';
-        case 'under_review':
-            return 'bg-purple-50 text-purple-800 border-purple-200';
-        case 'settled':
-            return 'bg-slate-100 text-slate-700 border-slate-200';
-        default:
-            return 'bg-slate-100 text-slate-600 border-slate-200';
+const buttonBase =
+    'inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl px-4 text-sm font-semibold transition active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#163E3E]/30 focus-visible:ring-offset-2';
+const buttonPrimary = `${buttonBase} bg-[#163E3E] text-white hover:bg-[#102F2F]`;
+const buttonSecondary = `${buttonBase} border border-[#D6E0E7] bg-white text-[#163E3E] hover:bg-[#F8F4EA]`;
+const buttonGhost = `${buttonBase} text-[#5B6770] hover:bg-[#163E3E]/5 hover:text-[#163E3E]`;
+const buttonDanger = `${buttonBase} border border-rose-200 bg-white text-rose-700 hover:bg-rose-50`;
+const iconButton =
+    'inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[#D6E0E7] text-[#163E3E] transition hover:bg-[#F8F4EA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#163E3E]/30';
+const iconButtonDanger =
+    'inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-rose-200 text-rose-700 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300';
+const linkButton = 'cursor-pointer text-xs font-semibold text-[#163E3E] underline-offset-4 hover:underline focus-visible:underline focus-visible:outline-none';
+const linkButtonDanger = 'cursor-pointer text-xs font-semibold text-rose-700 underline-offset-4 hover:underline focus-visible:underline focus-visible:outline-none';
+
+const formatMoney = (amount: number): string => Number(amount).toLocaleString();
+
+const isLeaseActive = computed(() => props.lease.status === 'active');
+
+const leaseBadgeStatus = computed(() => {
+    if (!isLeaseActive.value) {
+        return props.lease.status;
     }
+    if (props.lease.is_past_end_date) {
+        return 'past_due';
+    }
+
+    return props.lease.is_expiring_soon ? 'expiring' : 'active';
 });
+
+/**
+ * Arabic counted noun: "يوم" (1), "يومان" (2), "5 أيام" (3-10), "15 يوماً" (11+).
+ */
+const arabicCount = (count: number, forms: { one: string; two: string; few: string; many: string }): string => {
+    if (count === 1) {
+        return forms.one;
+    }
+    if (count === 2) {
+        return forms.two;
+    }
+
+    return `${count} ${count <= 10 ? forms.few : forms.many}`;
+};
+
+const formatDuration = (days: number): string => {
+    if (days < 60) {
+        return arabicCount(days, { one: 'يوم', two: 'يومان', few: 'أيام', many: 'يوماً' });
+    }
+    const months = Math.round(days / 30.44);
+    if (months < 24) {
+        return arabicCount(months, { one: 'شهر', two: 'شهران', few: 'أشهر', many: 'شهراً' });
+    }
+
+    return arabicCount(Math.round(days / 365.25), { one: 'سنة', two: 'سنتان', few: 'سنوات', many: 'سنة' });
+};
+
+const parseIsoDate = (isoDate: string): Date => {
+    const [year, month, day] = isoDate.split('-').map(Number);
+
+    return new Date(year, month - 1, day);
+};
+
+const millisecondsPerDay = 86_400_000;
+
+const contractTimeline = computed(() => {
+    const startsOn = parseIsoDate(props.lease.raw_starts_on).getTime();
+    const endsOn = parseIsoDate(props.lease.raw_ends_on).getTime();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTime = today.getTime();
+
+    const totalDays = Math.max(1, Math.round((endsOn - startsOn) / millisecondsPerDay));
+    const elapsedDays = Math.round((todayTime - startsOn) / millisecondsPerDay);
+    const remainingDays = Math.round((endsOn - todayTime) / millisecondsPerDay);
+    const elapsedPercent = Math.min(100, Math.max(0, Math.round((elapsedDays / totalDays) * 100)));
+
+    let caption = `المدة ${formatDuration(totalDays)}`;
+    if (isLeaseActive.value) {
+        if (elapsedDays < 0) {
+            caption = `يبدأ بعد ${formatDuration(-elapsedDays)}`;
+        } else if (remainingDays < 0) {
+            caption = `انتهت مدته منذ ${formatDuration(-remainingDays)}`;
+        } else if (remainingDays === 0) {
+            caption = 'ينتهي اليوم';
+        } else {
+            caption = `متبقٍ ${formatDuration(remainingDays)}`;
+        }
+    }
+
+    return { elapsedPercent, caption };
+});
+
+const roundMoney = (amount: number): number => Math.round(amount * 100) / 100;
+
+const rentTotals = computed(() => {
+    const totals = props.rent_charges.reduce(
+        (sums, charge) => {
+            sums.billed += charge.amount;
+            sums.paid += charge.paid_amount;
+            sums.outstanding += charge.outstanding_balance;
+            if (charge.status === 'overdue') {
+                sums.overdue += charge.outstanding_balance;
+                sums.overdueCount += 1;
+            }
+
+            return sums;
+        },
+        { billed: 0, paid: 0, outstanding: 0, overdue: 0, overdueCount: 0 }
+    );
+
+    return {
+        ...totals,
+        billed: roundMoney(totals.billed),
+        paid: roundMoney(totals.paid),
+        outstanding: roundMoney(totals.outstanding),
+        overdue: roundMoney(totals.overdue),
+    };
+});
+
+const formatPeriodCount = (count: number): string => arabicCount(count, { one: 'فترة واحدة', two: 'فترتان', few: 'فترات', many: 'فترة' });
+
+const rentChargesCaption = computed(() => {
+    const { billed, paid } = rentTotals.value;
+    const periods = formatPeriodCount(props.rent_charges.length);
+
+    return paid > 0
+        ? `سُدد ${formatMoney(paid)} من ${formatMoney(billed)} ${props.currency_symbol} · ${periods}`
+        : `لم يُسدد شيء بعد من ${formatMoney(billed)} ${props.currency_symbol} · ${periods}`;
+});
+
+const rentOutstandingCaption = computed(() => {
+    const { outstanding, overdue, overdueCount } = rentTotals.value;
+    const periods = formatPeriodCount(overdueCount);
+
+    if (overdue > 0) {
+        return overdue === outstanding
+            ? `كلها متأخرة عن موعدها (${periods})`
+            : `منها ${formatMoney(overdue)} ${props.currency_symbol} متأخرة (${periods})`;
+    }
+    if (outstanding > 0) {
+        return 'لم يحن موعد سدادها بعد';
+    }
+
+    return props.rent_charges.length > 0 ? 'كل الفواتير الصادرة مسددة' : 'لم تصدر فواتير بعد';
+});
+
+const rentChargeBadge = (charge: RentChargeItem): { status: string; label: string } => {
+    if (charge.status === 'paid') {
+        return { status: 'paid', label: 'مسدد' };
+    }
+    if (charge.status === 'overdue') {
+        return { status: 'overdue', label: 'متأخر' };
+    }
+
+    return charge.paid_amount > 0 ? { status: 'partial', label: 'مسدد جزئياً' } : { status: 'pending', label: 'مستحق' };
+};
+
+const showRentPaymentModal = ref(false);
+const rentPaymentCharge = ref<RentChargeItem | null>(null);
+
+const rentPaymentRenters = computed(() => [
+    {
+        id: props.renter.id,
+        name: props.renter.name,
+        phone: props.renter.phone,
+        active_lease: { id: props.lease.id, unit_name: props.unit.name, rent_amount: props.lease.rent_amount },
+    },
+]);
+
+const rentPaymentInitialAmount = computed(() => {
+    if (rentPaymentCharge.value) {
+        return rentPaymentCharge.value.outstanding_balance;
+    }
+
+    return rentTotals.value.overdue > 0 ? rentTotals.value.overdue : props.lease.rent_amount;
+});
+
+const openRentPayment = (charge: RentChargeItem | null = null) => {
+    rentPaymentCharge.value = charge;
+    showRentPaymentModal.value = true;
+};
+
+const closeRentPayment = () => {
+    showRentPaymentModal.value = false;
+    rentPaymentCharge.value = null;
+};
+
+const hasDeposit = computed(() => {
+    const deposit = props.security_deposit;
+
+    return deposit.agreed_amount > 0 || deposit.total_received > 0 || deposit.payments.length > 0 || deposit.settlement !== null;
+});
+
+const depositBadgeStatuses: Record<string, string> = {
+    held: 'paid',
+    partially_received: 'partial',
+    due: 'pending',
+    under_review: 'in_progress',
+    settled: 'closed',
+};
+
+const depositBadgeStatus = computed(() => depositBadgeStatuses[props.security_deposit.status] ?? 'inactive');
+
+interface DepositAction {
+    key: string;
+    label: string;
+    run: () => void;
+}
+
+interface DepositStep {
+    message: string;
+    needsAttention: boolean;
+    action: DepositAction | null;
+}
+
+const recordDepositPaymentAction: DepositAction = {
+    key: 'record-payment',
+    label: 'تسجيل استلام دفعة',
+    run: () => {
+        showRecordPaymentModal.value = true;
+    },
+};
+
+const finalizeSettlementAction: DepositAction = {
+    key: 'finalize-settlement',
+    label: 'اعتماد التسوية النهائية',
+    run: openFinalizeSettlementModal,
+};
+
+const depositNextStep = computed<DepositStep | null>(() => {
+    const deposit = props.security_deposit;
+
+    if (deposit.actions.can_record_pending_refund) {
+        return {
+            needsAttention: true,
+            message: `اعتُمد رد ${formatMoney(deposit.refundable_balance)} ${props.currency_symbol} للمستأجر ولم يُصرف بعد.`,
+            action: {
+                key: 'pending-refund',
+                label: 'تسجيل صرف المبلغ',
+                run: () => {
+                    showPendingRefundModal.value = true;
+                },
+            },
+        };
+    }
+    if (deposit.status === 'under_review' && deposit.actions.can_settle) {
+        return {
+            needsAttention: true,
+            message: 'الوحدة قيد الفحص. راجع الخصومات ثم اعتمد التسوية لإغلاق التأمين.',
+            action: finalizeSettlementAction,
+        };
+    }
+    if (deposit.actions.can_record_payment) {
+        return {
+            needsAttention: true,
+            message: `لم يُستلم ${formatMoney(deposit.outstanding_amount)} ${props.currency_symbol} من التأمين بعد.`,
+            action: recordDepositPaymentAction,
+        };
+    }
+    if (deposit.status === 'settled') {
+        return { needsAttention: false, message: 'تمت تسوية التأمين وإغلاقه.', action: null };
+    }
+    if (deposit.status === 'held') {
+        return { needsAttention: false, message: 'التأمين مستلم بالكامل ومحفوظ حتى نهاية العقد.', action: null };
+    }
+
+    return null;
+});
+
+const depositOtherActions = computed<DepositAction[]>(() => {
+    const deposit = props.security_deposit;
+    const actions: DepositAction[] = [];
+
+    if (deposit.actions.can_record_payment) {
+        actions.push(recordDepositPaymentAction);
+    }
+    if (deposit.actions.can_start_settlement) {
+        actions.push({
+            key: 'start-settlement',
+            label: deposit.status === 'under_review' ? 'تحديث نتيجة الفحص' : 'بدء فحص الوحدة',
+            run: () => {
+                showStartSettlementModal.value = true;
+            },
+        });
+    }
+    if (deposit.actions.can_record_deduction) {
+        actions.push({
+            key: 'record-deduction',
+            label: 'إضافة خصم',
+            run: () => {
+                showRecordDeductionModal.value = true;
+            },
+        });
+    }
+    if (deposit.actions.can_record_refund) {
+        actions.push({
+            key: 'record-refund',
+            label: 'تسجيل رد للمستأجر',
+            run: () => {
+                showRecordRefundModal.value = true;
+            },
+        });
+    }
+    if (deposit.actions.can_settle) {
+        actions.push(finalizeSettlementAction);
+    }
+
+    const primaryActionKey = depositNextStep.value?.action?.key;
+
+    return actions.filter((action) => action.key !== primaryActionKey);
+});
+
+const canChangeDepositRecords = computed(() => props.security_deposit.status !== 'settled');
+
+type DepositLedgerKind = 'payment' | 'deduction' | 'refund';
+
+interface DepositLedgerEntry {
+    key: string;
+    kind: DepositLedgerKind;
+    title: string;
+    occurredAt: string;
+    amount: number;
+    method: string | null;
+    reference: string | null;
+    recordedBy: string;
+    description: string | null;
+    notes: string | null;
+    attachmentUrl: string | null;
+    isReversed: boolean;
+    reversalReason: string | null;
+    payment: DepositPayment | null;
+    deduction: DepositDeduction | null;
+}
+
+/**
+ * Turns "d/m/Y" or "d/m/Y H:i" into "Y-m-d H:i" so entries sort chronologically.
+ */
+const toSortableDate = (displayDate: string): string => {
+    const [datePart = '', timePart = '00:00'] = displayDate.split(' ');
+    const [day = '', month = '', year = ''] = datePart.split('/');
+
+    return `${year}-${month}-${day} ${timePart}`;
+};
+
+const depositLedgerKindOrder: Record<DepositLedgerKind, number> = { payment: 0, deduction: 1, refund: 2 };
+
+const depositLedger = computed<DepositLedgerEntry[]>(() => {
+    const deposit = props.security_deposit;
+    const entries: DepositLedgerEntry[] = [
+        ...deposit.payments.map((payment) => ({
+            key: `payment-${payment.id}`,
+            kind: 'payment' as const,
+            title: 'استلام دفعة تأمين',
+            occurredAt: payment.paid_at,
+            amount: payment.amount,
+            method: payment.payment_method_label,
+            reference: payment.reference,
+            recordedBy: payment.recorded_by,
+            description: null,
+            notes: payment.notes,
+            attachmentUrl: null,
+            isReversed: payment.is_reversed,
+            reversalReason: payment.reversal_reason,
+            payment,
+            deduction: null,
+        })),
+        ...deposit.deductions
+            .filter((deduction) => deduction.status === 'confirmed')
+            .map((deduction) => ({
+            key: `deduction-${deduction.id}`,
+            kind: 'deduction' as const,
+            title: `خصم: ${deduction.category_label}`,
+            occurredAt: deduction.deducted_at,
+            amount: deduction.amount,
+            method: null,
+            reference: null,
+            recordedBy: deduction.recorded_by,
+            description: deduction.description,
+            notes: deduction.notes ?? null,
+            attachmentUrl: deduction.attachment_url ?? null,
+            isReversed: false,
+            reversalReason: null,
+            payment: null,
+            deduction,
+        })),
+        ...deposit.refunds.map((refund) => ({
+            key: `refund-${refund.id}`,
+            kind: 'refund' as const,
+            title: 'رد للمستأجر',
+            occurredAt: refund.refunded_at,
+            amount: refund.amount,
+            method: refund.payment_method_label,
+            reference: refund.reference,
+            recordedBy: refund.recorded_by,
+            description: null,
+            notes: refund.notes,
+            attachmentUrl: null,
+            isReversed: refund.is_reversed,
+            reversalReason: refund.reversal_reason,
+            payment: null,
+            deduction: null,
+        })),
+    ];
+
+    return entries.sort(
+        (first, second) =>
+            toSortableDate(first.occurredAt).localeCompare(toSortableDate(second.occurredAt)) ||
+            depositLedgerKindOrder[first.kind] - depositLedgerKindOrder[second.kind]
+    );
+});
+
+const depositLedgerStyles: Record<DepositLedgerKind, { dot: string; amount: string; sign: string }> = {
+    payment: { dot: 'bg-emerald-500', amount: 'text-emerald-700', sign: '+' },
+    deduction: { dot: 'bg-rose-500', amount: 'text-rose-700', sign: '−' },
+    refund: { dot: 'bg-[#163E3E]', amount: 'text-[#163E3E]', sign: '−' },
+};
 </script>
 
 <template>
     <AppLayout
         :title="`عقد ${lease.contract_number} — ${unit.name} — Nook Mate`"
         active-tab="leases"
-        :header-title="`عقد إيجار ${lease.contract_number}`"
-        :header-subtitle="`${unit.name} • ${unit.property_name} • المستأجر: ${renter.name}`"
+        :header-title="`عقد ${lease.contract_number}`"
+        :header-subtitle="`${renter.name} · ${unit.name} · ${unit.property_name}`"
         :breadcrumb="`العقود / ${lease.contract_number}`"
     >
         <template #actions>
-            <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                <Link
-                    :href="route('leases.index')"
-                    class="h-10 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F8F4EA] text-xs font-bold text-[#5B6770] hover:text-[#163E3E] transition flex items-center justify-center gap-1.5 shadow-2xs flex-1 sm:flex-initial"
-                >
-                    <ArrowRight class="w-4 h-4" />
-                    <span>العودة لقائمة العقود</span>
+            <div class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+                <Link :href="route('leases.index')" :class="buttonGhost">
+                    <ArrowRight class="h-4 w-4" />
+                    <span>كل العقود</span>
                 </Link>
-
-                <button
-                    v-if="lease.status === 'active'"
-                    @click="showExtendModal = true"
-                    type="button"
-                    class="h-10 px-4 rounded-xl border border-[#163E3E] bg-[#E8F0F0] hover:bg-[#163E3E] hover:text-white text-[#163E3E] text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs flex-1 sm:flex-initial"
-                >
-                    <RotateCcw class="w-4 h-4" />
-                    <span>تجديد / تمديد العقد</span>
-                </button>
-
-                <button
-                    v-if="lease.status === 'active'"
-                    @click="openTerminateWorkflow"
-                    type="button"
-                    class="h-10 px-4 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs flex-1 sm:flex-initial"
-                >
-                    <Ban class="w-4 h-4" />
-                    <span>إنهاء العقد وتسوية التأمين</span>
-                </button>
+                <template v-if="isLeaseActive">
+                    <button type="button" :class="buttonSecondary" @click="showExtendModal = true">
+                        <RotateCcw class="h-4 w-4" />
+                        <span>تجديد العقد</span>
+                    </button>
+                    <button type="button" :class="buttonDanger" @click="openTerminateWorkflow">
+                        <Ban class="h-4 w-4" />
+                        <span>إنهاء العقد</span>
+                    </button>
+                    <button type="button" :class="buttonPrimary" @click="openRentPayment()">
+                        <CreditCard class="h-4 w-4" />
+                        <span>تسجيل دفعة إيجار</span>
+                    </button>
+                </template>
             </div>
         </template>
 
-        <!-- شريط تنبيه تجاوز موعد انتهاء العقد -->
         <div
-            v-if="lease.status === 'active' && lease.is_past_end_date"
-            class="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-amber-50 border-2 border-amber-300 text-amber-950 shadow-2xs space-y-3"
+            v-if="isLeaseActive && lease.is_past_end_date"
+            role="status"
+            class="flex flex-col gap-4 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
         >
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div class="flex items-start sm:items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl bg-amber-200 text-amber-900 flex items-center justify-center shrink-0">
-                        <Clock class="w-5 h-5 stroke-[2.3]" />
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <span class="font-black text-sm sm:text-base text-amber-950">انتهى موعد هذا العقد تاريخياً في {{ lease.ends_on }}</span>
-                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300">
-                                يتطلب اتخاذ قرار
-                            </span>
-                        </div>
-                        <p class="text-xs text-amber-900/80 mt-1 leading-relaxed">
-                            العقد لا يزال نشطاً في النظام والوحدة تظل مشغولة لحفظ حقوق المالك والمستأجر في إجراءات الفحص والتأمين. اختر التجديد أو البدء في التسوية والإنهاء.
-                        </p>
-                    </div>
+            <div class="flex items-start gap-3">
+                <Clock class="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+                <div>
+                    <p class="text-sm font-bold text-amber-950">انتهت مدة العقد في {{ lease.ends_on }} ولم يُغلق بعد</p>
+                    <p class="mt-1 text-xs leading-5 text-amber-900/80">تبقى الوحدة مشغولة حتى تجدد العقد أو تنهيه وتسوي التأمين.</p>
                 </div>
-
-                <div class="flex items-center gap-2 shrink-0 self-start sm:self-auto">
-                    <button
-                        type="button"
-                        @click="showExtendModal = true"
-                        class="h-10 px-4 rounded-xl bg-white hover:bg-amber-100 text-amber-950 border border-amber-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                    >
-                        <RotateCcw class="w-4 h-4" />
-                        <span>تجديد / تمديد العقد</span>
-                    </button>
-                    <button
-                        type="button"
-                        @click="openTerminateWorkflow"
-                        class="h-10 px-4 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                    >
-                        <Ban class="w-4 h-4" />
-                        <span>تسوية التأمين والإنهاء</span>
-                    </button>
-                </div>
+            </div>
+            <div class="flex shrink-0 flex-wrap gap-2">
+                <button type="button" :class="buttonSecondary" @click="showExtendModal = true">تجديد العقد</button>
+                <button type="button" :class="buttonDanger" @click="openTerminateWorkflow">إنهاء العقد</button>
             </div>
         </div>
 
-        <!-- 1. كروت الملخص المالي السريع للعقد والتأمين (4 KPIs) - متجاوبة تماماً للموبايل -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            <!-- كارت الإيجار الشهري -->
-            <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-3.5 sm:p-5 shadow-2xs space-y-2 hover:border-[#163E3E]/40 transition">
-                <div class="flex items-center justify-between">
-                    <span class="text-[11px] sm:text-xs font-semibold text-[#5B6770]">الإيجار الشهري</span>
-                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center">
-                        <Coins class="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2]" />
-                    </div>
+        <section aria-label="ملخص العقد" class="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-[#D6E0E7] bg-[#E6ECF0] lg:grid-cols-4">
+            <div class="col-span-2 bg-white p-5 lg:col-span-1">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-medium text-[#5B6770]">مدة العقد</span>
+                    <StatusBadge :status="leaseBadgeStatus" :label="lease.status_label" size="sm" />
                 </div>
-                <div class="flex items-baseline justify-between gap-1 flex-wrap">
-                    <span class="text-xl sm:text-2xl font-black text-[#163E3E] font-mono">
-                        {{ lease.rent_amount.toLocaleString() }}
-                        <span class="text-[10px] sm:text-xs font-sans font-normal text-[#5B6770]">{{ currency_symbol }}</span>
-                    </span>
-                    <StatusBadge :status="lease.status" :label="lease.status_label" size="sm" />
+                <div class="mt-3 flex items-center justify-between gap-2 font-mono text-sm tabular-nums text-[#163E3E]">
+                    <span>{{ lease.starts_on }}</span>
+                    <span class="h-px flex-1 bg-[#D6E0E7]" aria-hidden="true"></span>
+                    <span>{{ lease.ends_on }}</span>
                 </div>
+                <div
+                    class="mt-3 h-1.5 overflow-hidden rounded-full bg-[#EEF2F4]"
+                    role="progressbar"
+                    aria-label="المنقضي من مدة العقد"
+                    :aria-valuenow="contractTimeline.elapsedPercent"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                >
+                    <div class="h-full rounded-full bg-[#163E3E]" :style="{ width: `${contractTimeline.elapsedPercent}%` }"></div>
+                </div>
+                <p class="mt-2 text-xs text-[#5B6770]">{{ contractTimeline.caption }}</p>
             </div>
 
-            <!-- كارت التأمين المتفق عليه -->
-            <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-3.5 sm:p-5 shadow-2xs space-y-2 hover:border-[#163E3E]/40 transition">
-                <div class="flex items-center justify-between">
-                    <span class="text-[11px] sm:text-xs font-semibold text-[#5B6770]">تأمين الوحدة المتفق عليه</span>
-                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center">
-                        <Shield class="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2]" />
-                    </div>
-                </div>
-                <div class="flex items-baseline justify-between gap-1 flex-wrap">
-                    <span class="text-xl sm:text-2xl font-black text-[#163E3E] font-mono">
-                        {{ security_deposit.agreed_amount.toLocaleString() }}
-                        <span class="text-[10px] sm:text-xs font-sans font-normal text-[#5B6770]">{{ currency_symbol }}</span>
-                    </span>
-                    <span class="text-[10px] sm:text-xs text-[#5B6770]">تأمين مسترد</span>
-                </div>
+            <div class="bg-white p-5">
+                <span class="text-xs font-medium text-[#5B6770]">الإيجار</span>
+                <p class="mt-2 font-mono text-2xl font-semibold tabular-nums text-[#163E3E]">
+                    {{ formatMoney(lease.rent_amount) }}
+                    <span class="font-sans text-xs font-medium text-[#5B6770]">{{ currency_symbol }}</span>
+                </p>
+                <p class="mt-1 text-xs text-[#5B6770]">دورية الدفع: {{ lease.billing_interval }}</p>
             </div>
 
-            <!-- كارت المحصل الفعلي قيد الحجز -->
-            <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-3.5 sm:p-5 shadow-2xs space-y-2 hover:border-emerald-300 transition">
-                <div class="flex items-center justify-between">
-                    <span class="text-[11px] sm:text-xs font-semibold text-[#5B6770]">المحصل قيد الحجز</span>
-                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
-                        <ShieldCheck class="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2]" />
-                    </div>
-                </div>
-                <div class="flex items-baseline justify-between gap-1 flex-wrap">
-                    <span class="text-xl sm:text-2xl font-black text-emerald-700 font-mono">
-                        {{ security_deposit.total_received.toLocaleString() }}
-                        <span class="text-[10px] sm:text-xs font-sans font-normal text-emerald-600">{{ currency_symbol }}</span>
-                    </span>
-                    <span
-                        v-if="security_deposit.outstanding_amount > 0"
-                        class="text-[10px] sm:text-xs text-amber-800 bg-amber-50 border border-amber-200 px-1.5 sm:px-2 py-0.5 rounded-md font-bold"
-                    >
-                        متبقي {{ security_deposit.outstanding_amount.toLocaleString() }}
-                    </span>
-                    <span v-else class="text-[10px] sm:text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 sm:px-2 py-0.5 rounded-md font-bold">
-                        مكتمل السداد
-                    </span>
-                </div>
+            <div class="bg-white p-5">
+                <span class="text-xs font-medium text-[#5B6770]">إيجار غير مسدد</span>
+                <p
+                    class="mt-2 font-mono text-2xl font-semibold tabular-nums"
+                    :class="rentTotals.overdue > 0 ? 'text-rose-700' : 'text-[#163E3E]'"
+                >
+                    {{ formatMoney(rentTotals.outstanding) }}
+                    <span class="font-sans text-xs font-medium text-[#5B6770]">{{ currency_symbol }}</span>
+                </p>
+                <p class="mt-1 text-xs" :class="rentTotals.overdue > 0 ? 'font-semibold text-rose-700' : 'text-[#5B6770]'">
+                    {{ rentOutstandingCaption }}
+                </p>
             </div>
 
-            <!-- كارت الرصيد القابل للرد حالياً -->
-            <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-3.5 sm:p-5 shadow-2xs space-y-2 hover:border-[#163E3E]/40 transition">
-                <div class="flex items-center justify-between">
-                    <span class="text-[11px] sm:text-xs font-semibold text-[#5B6770]">الرصيد القابل للرد</span>
-                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center">
-                        <RotateCcw class="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.2]" />
-                    </div>
-                </div>
-                <div class="flex items-baseline justify-between gap-1 flex-wrap">
-                    <span class="text-xl sm:text-2xl font-black text-[#163E3E] font-mono">
-                        {{ security_deposit.refundable_balance.toLocaleString() }}
-                        <span class="text-[10px] sm:text-xs font-sans font-normal text-[#5B6770]">{{ currency_symbol }}</span>
-                    </span>
-                    <span class="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-md border" :class="depositBadgeClass">
+            <div class="col-span-2 bg-white p-5 lg:col-span-1">
+                <span class="text-xs font-medium text-[#5B6770]">التأمين المحفوظ لديك</span>
+                <template v-if="hasDeposit">
+                    <p class="mt-2 font-mono text-2xl font-semibold tabular-nums text-[#163E3E]">
+                        {{ formatMoney(security_deposit.refundable_balance) }}
+                        <span class="font-sans text-xs font-medium text-[#5B6770]">{{ currency_symbol }}</span>
+                    </p>
+                    <p class="mt-1 text-xs text-[#5B6770]">
                         {{ security_deposit.status_label }}
-                    </span>
-                </div>
-            </div>
-        </div>
-
-        <!-- 2. صفحة العقد الرئيسية: عمودان متجاوبان -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6">
-            <!-- العمود الأيمن (4 أعمدة على الديسكتوب): بيانات الوحدة والمستأجر -->
-            <div class="lg:col-span-4 space-y-5 sm:space-y-6">
-                <!-- بطاقة الوحدة المؤجرة -->
-                <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-4 sm:p-6 shadow-2xs space-y-4">
-                    <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
-                        <div class="flex items-center gap-2.5">
-                            <div class="w-10 h-10 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center shrink-0">
-                                <Store v-if="unit.unit_type === 'shop'" class="w-5 h-5 stroke-[2.2]" />
-                                <Home v-else class="w-5 h-5 stroke-[2.2]" />
-                            </div>
-                            <div>
-                                <h3 class="text-sm font-bold text-[#163E3E]">{{ unit.name }}</h3>
-                                <span class="text-xs text-[#5B6770] font-mono">{{ unit.code }}</span>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <span
-                                v-if="unit.apartment_gender"
-                                class="text-[11px] font-bold px-2 py-0.5 rounded-lg border"
-                                :class="unit.apartment_gender.badge_class"
-                            >
-                                {{ unit.apartment_gender.short_label }}
-                            </span>
-                            <span class="text-xs font-bold bg-[#F8FAFC] text-[#163E3E] px-2.5 py-1 rounded-lg border border-[#D6E0E7]">
-                                {{ unit.unit_type_label }}
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="space-y-2.5 text-xs">
-                        <div class="flex items-center justify-between py-1">
-                            <span class="text-[#5B6770]">العقار / المبنى:</span>
-                            <span class="font-bold text-[#163E3E] flex items-center gap-1">
-                                <Building2 class="w-3.5 h-3.5 text-[#5B6770]" />
-                                <span>{{ unit.property_name }}</span>
-                            </span>
-                        </div>
-                        <div class="flex items-center justify-between py-1" v-if="unit.property_address">
-                            <span class="text-[#5B6770]">العنوان:</span>
-                            <span class="text-[#163E3E] truncate max-w-[200px]">{{ unit.property_address }}</span>
-                        </div>
-                        <div class="flex items-center justify-between py-1 border-t border-[#D6E0E7]/60">
-                            <span class="text-[#5B6770]">تاريخ البداية:</span>
-                            <span class="font-mono font-bold text-[#163E3E]">{{ lease.starts_on }}</span>
-                        </div>
-                        <div class="flex items-center justify-between py-1">
-                            <span class="text-[#5B6770]">تاريخ النهاية:</span>
-                            <span class="font-mono font-bold text-[#163E3E]">{{ lease.ends_on }}</span>
-                        </div>
-                        <div class="flex items-center justify-between py-1 border-t border-[#D6E0E7]/60">
-                            <span class="text-[#5B6770]">دورية الاستحقاق:</span>
-                            <span class="font-bold text-[#163E3E] bg-[#E8F0F0] px-2 py-0.5 rounded-md">
-                                {{ lease.billing_interval === 'monthly' ? 'شهري' : lease.billing_interval }}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- بطاقة بيانات المستأجر -->
-                <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-4 sm:p-6 shadow-2xs space-y-4">
-                    <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
-                        <div class="flex items-center gap-2.5">
-                            <div class="w-10 h-10 rounded-xl bg-[#163E3E] text-white flex items-center justify-center font-black text-sm shrink-0">
-                                {{ renter.name.charAt(0) }}
-                            </div>
-                            <div>
-                                <Link
-                                    :href="route('renters.show', renter.id)"
-                                    class="text-sm font-bold text-[#163E3E] hover:text-[#163E3E] transition block"
-                                >
-                                    {{ renter.name }}
-                                </Link>
-                                <span class="text-xs text-[#5B6770] font-mono block mt-0.5" dir="ltr">{{ renter.phone }}</span>
-                            </div>
-                        </div>
-
-                        <!-- اختصارات الاتصال والواتساب السريعة -->
-                        <div class="flex items-center gap-1.5">
-                            <a
-                                v-if="renter.phone"
-                                :href="`https://wa.me/20${renter.phone.replace(/^0+/, '')}`"
-                                target="_blank"
-                                class="p-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition shadow-2xs"
-                                title="محادثة WhatsApp"
-                            >
-                                <MessageCircle class="w-4 h-4" />
-                            </a>
-                            <a
-                                v-if="renter.phone"
-                                :href="`tel:${renter.phone}`"
-                                class="p-2 rounded-xl bg-slate-100 text-[#163E3E] hover:bg-slate-200 transition shadow-2xs"
-                                title="اتصال هاتفي"
-                            >
-                                <Phone class="w-4 h-4" />
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="space-y-2.5 text-xs">
-                        <div class="flex items-center justify-between py-1">
-                            <span class="text-[#5B6770]">الجنس:</span>
-                            <span
-                                v-if="renter.gender"
-                                class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold border"
-                                :class="renter.gender === 'male' ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-rose-50 text-rose-700 border-rose-200'"
-                            >
-                                {{ renter.gender_label || (renter.gender === 'male' ? 'ذكر' : 'أنثى') }}
-                            </span>
-                            <span v-else class="text-[#8A9AA7] text-[11px]">غير محدد</span>
-                        </div>
-                        <div class="flex items-center justify-between py-1">
-                            <span class="text-[#5B6770]">رقم الهوية / الإقامة:</span>
-                            <span class="font-mono font-bold text-[#163E3E] bg-[#F8FAFC] px-2 py-0.5 rounded-md border border-[#D6E0E7]">
-                                {{ renter.national_id || 'غير مسجل' }}
-                            </span>
-                        </div>
-                        <div v-if="renter.email" class="flex items-center justify-between py-1">
-                            <span class="text-[#5B6770]">البريد الإلكتروني:</span>
-                            <span class="font-mono text-[#163E3E] truncate max-w-[180px]">{{ renter.email }}</span>
-                        </div>
-                        <div class="pt-2 border-t border-[#D6E0E7]/60">
-                            <Link
-                                :href="route('renters.show', renter.id)"
-                                class="w-full h-9 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] hover:bg-white text-xs font-bold text-[#163E3E] flex items-center justify-center gap-1 transition"
-                            >
-                                <span>عرض السجل الكامل للمستأجر</span>
-                                <ExternalLink class="w-3.5 h-3.5" />
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- بطاقة وثيقة العقد المعتمد (مشفرة ومحمية) -->
-                <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-4 sm:p-6 shadow-2xs space-y-4">
-                    <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
-                        <div class="flex items-center gap-2">
-                            <div class="w-8 h-8 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center font-bold">
-                                <FileCheck class="w-4 h-4 stroke-[2.2]" />
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-sm text-[#163E3E]">وثيقة العقد المعتمد</h3>
-                                <p class="text-[11px] text-[#5B6770]">صورة العقد الموقّع والمسح الضوئي</p>
-                            </div>
-                        </div>
-
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                            <ShieldCheck class="w-3 h-3 text-emerald-600" />
+                        <span v-if="security_deposit.outstanding_amount > 0" class="font-semibold text-amber-800">
+                            · متبقٍ تحصيل {{ formatMoney(security_deposit.outstanding_amount) }}
                         </span>
-                    </div>
-
-                    <!-- حالة وجود مرفق عقد محفوظ -->
-                    <div v-if="lease.has_contract_image && lease.contract_image_url" class="space-y-3">
-                        <div class="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200 flex items-center justify-between gap-3">
-                            <div class="flex items-center gap-2.5 min-w-0">
-                                <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
-                                    <FileText class="w-5 h-5" />
-                                </div>
-                                <div class="min-w-0">
-                                    <p class="text-xs font-bold text-[#163E3E] truncate">نسخة العقد المعتمدة</p>
-                                    <p class="text-[11px] text-emerald-800 font-medium">مشفر ومحمي في خوادم النظام</p>
-                                </div>
-                            </div>
-
-                            <a
-                                :href="lease.contract_image_url"
-                                target="_blank"
-                                class="h-9 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition inline-flex items-center gap-1.5 shadow-2xs shrink-0"
-                            >
-                                <ExternalLink class="w-3.5 h-3.5" />
-                                <span>عرض / تحميل</span>
-                            </a>
-                        </div>
-
-                        <div class="flex items-center gap-2">
-                            <button
-                                @click="showContractUploadModal = true"
-                                type="button"
-                                class="flex-1 h-9 rounded-xl border border-[#D6E0E7] bg-white hover:bg-slate-50 text-[#163E3E] text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
-                            >
-                                <Upload class="w-3.5 h-3.5 text-[#163E3E]" />
-                                <span>استبدال المرفق</span>
-                            </button>
-                            <button
-                                @click="deleteContractImage"
-                                type="button"
-                                class="h-9 px-3 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
-                                title="حذف المرفق"
-                            >
-                                <Trash2 class="w-3.5 h-3.5" />
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- حالة عدم وجود مرفق حتى الآن -->
-                    <div v-else class="space-y-3">
-                        <div class="p-3.5 rounded-2xl bg-[#F8FAFC] border border-dashed border-[#D6E0E7] text-center space-y-1.5">
-                            <p class="text-xs font-bold text-[#5B6770]">لم يتم إرفاق نسخة العقد الورقي بعد</p>
-                            <p class="text-[11px] text-[#8A9AA7]">يمكنك إرفاق صورة العقد أو ملف PDF لحفظه مشفراً بخصوصية تامة.</p>
-                        </div>
-
-                        <button
-                            @click="showContractUploadModal = true"
-                            type="button"
-                            class="w-full h-10 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
-                        >
-                            <Upload class="w-4 h-4" />
-                            <span>إرفاق وثيقة العقد الآن</span>
-                        </button>
-                    </div>
-                </div>
+                    </p>
+                </template>
+                <template v-else>
+                    <p class="mt-2 text-lg font-semibold text-[#8A9AA7]">بدون تأمين</p>
+                    <p class="mt-1 text-xs text-[#5B6770]">لم يُشترط تأمين في هذا العقد</p>
+                </template>
             </div>
+        </section>
 
-            <!-- العمود الأيسر (8 أعمدة على الديسكتوب): قسم تأمين الوحدة الشامل + فواتير الإيجار -->
-            <div class="lg:col-span-8 space-y-5 sm:space-y-6">
-                <!-- الصندوق الرئيسي لتأمين الوحدة المسترد (Security Deposit Hero Box) -->
-                <div class="rounded-2xl sm:rounded-3xl border-2 border-[#163E3E]/30 bg-white p-4 sm:p-7 shadow-xs space-y-6">
-                    <!-- عنوان القسم وحالة دورة الحياة -->
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#D6E0E7]">
-                        <div class="flex items-start sm:items-center gap-3">
-                            <div class="w-11 h-11 rounded-2xl bg-[#163E3E] text-white flex items-center justify-center shadow-xs shrink-0">
-                                <ShieldCheck class="w-6 h-6 stroke-[2]" />
-                            </div>
-                            <div>
-                                <h3 class="text-base sm:text-lg font-bold text-[#163E3E] flex items-center gap-2">
-                                    <span>تأمين الوحدة المسترد</span>
-                                </h3>
-                                <p class="text-xs text-[#5B6770] mt-0.5">
-                                    مبلغ مالي لحماية الوحدة أثناء العقد، محفوظ بشكل مستقل ولا يختلط بإيراد الإيجار
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- شارة حالة دورة حياة التأمين -->
+        <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+            <div class="space-y-6 lg:col-span-2">
+                <section aria-labelledby="rent-heading" class="overflow-hidden rounded-2xl border border-[#D6E0E7] bg-white">
+                    <header class="flex flex-wrap items-center justify-between gap-3 border-b border-[#E6ECF0] px-5 py-4">
                         <div>
-                            <span class="text-xs font-bold px-3 py-1.5 rounded-xl border inline-block" :class="depositBadgeClass">
-                                الحالة: {{ security_deposit.status_label }}
-                            </span>
+                            <h2 id="rent-heading" class="text-base font-bold text-[#163E3E]">فواتير الإيجار</h2>
+                            <p v-if="rent_charges.length" class="mt-0.5 text-xs text-[#5B6770]">{{ rentChargesCaption }}</p>
                         </div>
+                    </header>
+
+                    <div v-if="rent_charges.length === 0" class="px-5 py-10 text-center">
+                        <p class="text-sm font-semibold text-[#163E3E]">لم تصدر فواتير إيجار بعد</p>
+                        <p class="mt-1 text-xs text-[#5B6770]">تُنشأ فاتورة لكل فترة تلقائياً حسب دورية الدفع.</p>
                     </div>
 
-                    <!-- شريط الإجراءات السياقية المتوافقة مع الحالة الحالية -->
-                    <div class="flex flex-wrap items-center gap-x-2 gap-y-3 sm:gap-x-2.5">
-                        <!-- زر تسجيل استلام دفعة تأمين -->
-                        <button
-                            v-if="security_deposit.actions.can_record_payment"
-                            @click="showRecordPaymentModal = true"
-                            type="button"
-                            class="h-10 px-4 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
-                        >
-                            <CreditCard class="w-3.5 h-3.5" />
-                            <span>تسجيل استلام دفعة تأمين</span>
-                        </button>
-
-                        <!-- زر بدء فحص الوحدة والتسوية -->
-                        <button
-                            v-if="security_deposit.actions.can_start_settlement"
-                            @click="showStartSettlementModal = true"
-                            type="button"
-                            class="h-10 px-4 rounded-xl border border-[#163E3E] text-[#163E3E] hover:bg-[#E8F0F0] text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                        >
-                            <Wrench class="w-3.5 h-3.5" />
-                            <span>بدء فحص الوحدة والتسوية</span>
-                        </button>
-
-                        <!-- زر إضافة خصم تعويض أضرار -->
-                        <button
-                            v-if="security_deposit.actions.can_record_deduction"
-                            @click="showRecordDeductionModal = true"
-                            type="button"
-                            class="h-10 px-4 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                        >
-                            <MinusCircle class="w-3.5 h-3.5" />
-                            <span>إضافة خصم أضرار مبرر</span>
-                        </button>
-
-                        <!-- زر تسجيل رد التأمين -->
-                        <button
-                            v-if="security_deposit.actions.can_record_refund"
-                            @click="showRecordRefundModal = true"
-                            type="button"
-                            class="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
-                        >
-                            <RotateCcw class="w-3.5 h-3.5" />
-                            <span>تسجيل رد التأمين للمستأجر</span>
-                        </button>
-
-                        <!-- زر اعتماد التسوية النهائية -->
-                        <button
-                            v-if="security_deposit.actions.can_settle"
-                            @click="openFinalizeSettlementModal"
-                            type="button"
-                            class="h-10 px-4 rounded-xl bg-[#163E3E] hover:bg-[#1E3A5F] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
-                        >
-                            <FileCheck class="w-3.5 h-3.5" />
-                            <span>اعتماد التسوية النهائية</span>
-                        </button>
-                    </div>
-
-                    <!-- المصفوفة المالية للتأمين + شريط نسبة التحصيل -->
-                    <div class="space-y-3">
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 text-xs">
-                            <div class="p-3 sm:p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] space-y-1">
-                                <span class="text-[#5B6770] block text-[11px]">التأمين المتفق عليه</span>
-                                <span class="font-black text-[#163E3E] font-mono text-base block">
-                                    {{ security_deposit.agreed_amount.toLocaleString() }}
-                                    <span class="text-[10px] font-sans font-normal text-[#5B6770]">{{ currency_symbol }}</span>
-                                </span>
-                            </div>
-
-                            <div class="p-3 sm:p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-1">
-                                <span class="text-emerald-800 block text-[11px] font-semibold">المستلم الفعلي</span>
-                                <span class="font-black text-emerald-700 font-mono text-base block">
-                                    {{ security_deposit.total_received.toLocaleString() }}
-                                    <span class="text-[10px] font-sans font-normal text-emerald-600">{{ currency_symbol }}</span>
-                                </span>
-                            </div>
-
-                            <div class="p-3 sm:p-3.5 rounded-2xl bg-rose-50/70 border border-rose-200 space-y-1">
-                                <span class="text-rose-800 block text-[11px] font-semibold">الخصومات المعتمدة</span>
-                                <span class="font-black text-rose-700 font-mono text-base block">
-                                    {{ security_deposit.total_deductions.toLocaleString() }}
-                                    <span class="text-[10px] font-sans font-normal text-rose-600">{{ currency_symbol }}</span>
-                                </span>
-                            </div>
-
-                            <div class="p-3 sm:p-3.5 rounded-2xl bg-[#E8F0F0] border border-[#163E3E]/30 space-y-1">
-                                <span class="text-[#163E3E] block text-[11px] font-bold">الرصيد المتاح للرد</span>
-                                <span class="font-black text-[#163E3E] font-mono text-base block">
-                                    {{ security_deposit.refundable_balance.toLocaleString() }}
-                                    <span class="text-[10px] font-sans font-normal text-[#163E3E]">{{ currency_symbol }}</span>
-                                </span>
-                            </div>
-                        </div>
-
-                        <!-- شريط تقدم التحصيل -->
-                        <div v-if="security_deposit.agreed_amount > 0" class="p-3 rounded-xl bg-[#F8FAFC] border border-[#D6E0E7] space-y-1.5">
-                            <div class="flex items-center justify-between text-[11px] text-[#5B6770] font-semibold">
-                                <span>نسبة استيفاء مبلغ التأمين من المستأجر:</span>
-                                <span class="font-mono font-bold text-[#163E3E]">{{ depositPercentReceived }}%</span>
-                            </div>
-                            <div class="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                                <div
-                                    class="h-full rounded-full transition-all duration-500"
-                                    :class="depositPercentReceived >= 100 ? 'bg-emerald-600' : 'bg-[#163E3E]'"
-                                    :style="{ width: `${depositPercentReceived}%` }"
-                                ></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <SettlementSummary
-                        v-if="security_deposit.settlement"
-                        :settlement="security_deposit.settlement"
-                        :deductions="security_deposit.deductions"
-                        :currency-symbol="currency_symbol"
-                        :export-url="route('leases.security-deposit.export', lease.id)"
-                        :statement-url="route('leases.security-deposit.statement', lease.id)"
-                    />
-
-                    <details class="rounded-2xl border border-[#D6E0E7] bg-white">
-                        <summary class="flex cursor-pointer flex-wrap items-center justify-between gap-2 px-4 py-3 text-xs font-bold text-[#163E3E]">
-                            <span>سجل الحركات التفصيلي</span>
-                            <span class="font-normal text-[#5B6770]">
-                                {{ security_deposit.payments.length }} دفعات · {{ security_deposit.deductions.length }} خصومات · {{ security_deposit.refunds.length }} عمليات رد
-                            </span>
-                        </summary>
-                        <div class="space-y-4 border-t border-[#D6E0E7] p-3 sm:p-4">
-
-                    <!-- ملخص تسوية المبلغ التأميني المعتمد وسجل التدقيق الشامل -->
-                    <div v-if="security_deposit.settlement" class="p-4 sm:p-6 rounded-3xl border-2 border-blue-200 bg-gradient-to-br from-blue-50/70 to-white space-y-4 text-xs shadow-2xs">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-blue-200/80">
-                            <div class="flex items-center gap-2">
-                                <div class="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                                    <FileCheck class="w-4 h-4 stroke-[2.2]" />
+                    <template v-else>
+                        <ul class="divide-y divide-[#E6ECF0] sm:hidden">
+                            <li v-for="charge in rent_charges" :key="charge.id" class="space-y-2.5 px-5 py-4">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="font-mono text-sm font-semibold tabular-nums text-[#163E3E]">{{ charge.period }}</span>
+                                    <StatusBadge :status="rentChargeBadge(charge).status" :label="rentChargeBadge(charge).label" size="sm" />
                                 </div>
-                                <div>
-                                    <h4 class="font-bold text-sm text-blue-950">ملخص تسوية المبلغ التأميني المعتمد</h4>
-                                    <span class="text-[11px] text-blue-800">
-                                        القرار: {{ security_deposit.settlement.settlement_type_label || 'تسوية معتمدة' }}
-                                    </span>
-                                </div>
-                            </div>
-                            <span class="font-bold text-blue-900 bg-blue-100/80 px-3 py-1 rounded-xl border border-blue-200 self-start sm:self-auto">
-                                فحص الوحدة: {{ security_deposit.settlement.inspection_category_label }}
-                            </span>
-                        </div>
-
-                        <!-- جدول ملخص التسوية المالي المعتمد -->
-                        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-center">
-                            <div class="p-2.5 rounded-xl bg-white border border-blue-200/80 space-y-1">
-                                <span class="text-[10px] text-[#5B6770] block font-semibold">التأمين الأصلي</span>
-                                <span class="font-mono font-bold text-xs text-[#163E3E] block">
-                                    {{ (security_deposit.settlement.original_deposit || security_deposit.agreed_amount).toLocaleString() }}
-                                    <span class="text-[9px] font-sans text-[#5B6770]">{{ currency_symbol }}</span>
-                                </span>
-                            </div>
-                            <div class="p-2.5 rounded-xl bg-white border border-rose-200/80 space-y-1">
-                                <span class="text-[10px] text-rose-800 block font-semibold">إجمالي الخصومات</span>
-                                <span class="font-mono font-bold text-xs text-rose-700 block">
-                                    -{{ (security_deposit.settlement.total_deductions || 0).toLocaleString() }}
-                                    <span class="text-[9px] font-sans text-rose-600">{{ currency_symbol }}</span>
-                                </span>
-                            </div>
-                            <div class="p-2.5 rounded-xl bg-white border border-[#163E3E]/40 space-y-1">
-                                <span class="text-[10px] text-[#163E3E] block font-semibold">المستحق رده</span>
-                                <span class="font-mono font-bold text-xs text-[#163E3E] block">
-                                    {{ ((security_deposit.settlement.refundable_balance || 0) + (security_deposit.settlement.total_refunded || 0)).toLocaleString() }}
-                                    <span class="text-[9px] font-sans text-[#163E3E]">{{ currency_symbol }}</span>
-                                </span>
-                            </div>
-                            <div class="p-2.5 rounded-xl bg-white border border-emerald-200/80 space-y-1">
-                                <span class="text-[10px] text-emerald-800 block font-semibold">المسدد فعلياً</span>
-                                <span class="font-mono font-bold text-xs text-emerald-700 block">
-                                    {{ (security_deposit.settlement.total_refunded || 0).toLocaleString() }}
-                                    <span class="text-[9px] font-sans text-emerald-600">{{ currency_symbol }}</span>
-                                </span>
-                            </div>
-                            <div class="p-2.5 rounded-xl bg-white border border-blue-200/80 space-y-1 col-span-2 sm:col-span-1">
-                                <span class="text-[10px] text-[#163E3E] block font-semibold">المتبقي للصرف</span>
-                                <span class="font-mono font-bold text-xs text-[#163E3E] block">
-                                    {{ (security_deposit.settlement.refundable_balance || 0).toLocaleString() }}
-                                    <span class="text-[9px] font-sans text-[#5B6770]">{{ currency_symbol }}</span>
-                                </span>
-                            </div>
-                        </div>
-
-                        <!-- كارت حالة الرد والصرف الفعلي المنفصل تماماً عن الحساب -->
-                        <div class="p-3.5 rounded-2xl border" :class="security_deposit.settlement.refund_status === 'refunded' ? 'bg-emerald-50/80 border-emerald-300 text-emerald-950' : (security_deposit.settlement.refund_status === 'pending' ? 'bg-amber-50/90 border-amber-300 text-amber-950' : 'bg-slate-50 border-slate-200 text-slate-800')">
-                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <div class="flex items-center gap-2.5">
-                                    <div class="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" :class="security_deposit.settlement.refund_status === 'refunded' ? 'bg-emerald-200 text-emerald-800' : (security_deposit.settlement.refund_status === 'pending' ? 'bg-amber-200 text-amber-800' : 'bg-slate-200 text-slate-700')">
-                                        <CheckCircle2 v-if="security_deposit.settlement.refund_status === 'refunded'" class="w-4 h-4 stroke-[2.3]" />
-                                        <Clock v-else-if="security_deposit.settlement.refund_status === 'pending'" class="w-4 h-4 stroke-[2.3]" />
-                                        <Ban v-else class="w-4 h-4 stroke-[2.3]" />
+                                <dl class="grid grid-cols-3 gap-2 text-xs">
+                                    <div>
+                                        <dt class="text-[#5B6770]">القيمة</dt>
+                                        <dd class="mt-0.5 font-mono font-semibold tabular-nums text-[#163E3E]">{{ formatMoney(charge.amount) }}</dd>
                                     </div>
                                     <div>
-                                        <div class="flex items-center gap-2">
-                                            <span class="font-bold text-xs sm:text-sm">
-                                                حالة الرد الفعلي: {{ security_deposit.settlement.refund_status_label || 'معلق' }}
-                                            </span>
-                                        </div>
-                                        <span v-if="security_deposit.settlement.refund_status === 'pending'" class="text-[11px] text-amber-900/80 block mt-0.5">
-                                            تم اعتماد استحقاق الرد للمستأجر، ولكن المبلغ لم يتم صرفه أو تحويله بعد.
-                                        </span>
-                                        <span v-else-if="security_deposit.settlement.refund_status === 'refunded'" class="text-[11px] text-emerald-900/80 block mt-0.5">
-                                            تم توثيق صرف المبلغ للمستأجر بتاريخ {{ security_deposit.settlement.refund_payment_date || 'اليوم' }} عبر ({{ security_deposit.settlement.refund_method || 'تحويل' }}).
-                                        </span>
-                                        <span v-else class="text-[11px] text-slate-600 block mt-0.5">
-                                            تم الاحتفاظ بالمبلغ التأميني بالكامل وفق أسباب التسوية المعتمدة.
-                                        </span>
+                                        <dt class="text-[#5B6770]">المسدد</dt>
+                                        <dd class="mt-0.5 font-mono font-semibold tabular-nums text-emerald-700">{{ formatMoney(charge.paid_amount) }}</dd>
                                     </div>
-                                </div>
-
-                                <!-- زر تسجيل صرف الرد المعلق لاحقاً -->
-                                <button
-                                    v-if="security_deposit.settlement.refund_status === 'pending' && (security_deposit.settlement.refundable_balance || 0) > 0"
-                                    type="button"
-                                    @click="showPendingRefundModal = true"
-                                    class="px-4 py-2 rounded-xl bg-amber-800 hover:bg-amber-900 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 shrink-0 shadow-2xs cursor-pointer self-start sm:self-auto"
-                                >
-                                    <RotateCcw class="w-3.5 h-3.5" />
-                                    <span>تسجيل صرف التأمين للمستأجر</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- سبب الاحتفاظ بالتأمين في حالة عدم الرد -->
-                        <div v-if="security_deposit.settlement.retention_reason" class="p-3 bg-white/80 rounded-xl border border-blue-200 text-xs space-y-1">
-                            <span class="font-bold text-blue-950 block">أسباب الاحتفاظ بالمبلغ التأميني:</span>
-                            <p class="text-blue-900 leading-relaxed">{{ security_deposit.settlement.retention_reason }}</p>
-                        </div>
-
-                        <!-- ملاحظات فحص الوحدة والتسوية -->
-                        <p v-if="security_deposit.settlement.inspection_notes" class="text-blue-950 leading-relaxed bg-white/70 p-3 rounded-xl border border-blue-200">
-                            {{ security_deposit.settlement.inspection_notes }}
-                        </p>
-
-                        <div v-if="security_deposit.settlement.settled_at" class="text-[11px] text-blue-700 pt-2 border-t border-blue-200/80 flex items-center gap-1">
-                            <CheckCircle2 class="w-3.5 h-3.5 text-blue-600" />
-                            <span>تم اعتماد التسوية بواسطة {{ security_deposit.settlement.settled_by }} في {{ security_deposit.settlement.settled_at }}</span>
-                        </div>
-                    </div>
-
-                    <!-- سجل الحركات المالية الموثقة للتأمين (Audit Trail) -->
-                    <div class="space-y-6 pt-2">
-                        <div class="flex items-center gap-2 pb-2 border-b border-[#D6E0E7]">
-                            <History class="w-4 h-4 text-[#163E3E]" />
-                            <h4 class="text-sm font-bold text-[#163E3E]">سجل الحركات المالية الموثقة للتأمين</h4>
-                        </div>
-
-                        <!-- 1. سندات استلام التأمين -->
-                        <div class="space-y-2.5">
-                            <div class="flex items-center justify-between">
-                                <span class="text-xs font-bold text-[#5B6770]">سندات استلام التأمين ({{ security_deposit.payments.length }})</span>
-                            </div>
-
-                            <div v-if="security_deposit.payments.length > 0">
-                                <!-- عرض الموبايل: بطاقات دفعات التأمين (Mobile Cards for < sm) -->
-                                <div class="block sm:hidden space-y-2.5">
-                                    <div
-                                        v-for="p in security_deposit.payments"
-                                        :key="p.id"
-                                        class="p-3.5 rounded-xl border border-[#D6E0E7] bg-white space-y-2 shadow-2xs"
-                                        :class="p.is_reversed ? 'opacity-60 bg-slate-50' : ''"
+                                    <div>
+                                        <dt class="text-[#5B6770]">المتبقي</dt>
+                                        <dd
+                                            class="mt-0.5 font-mono font-semibold tabular-nums"
+                                            :class="charge.outstanding_balance > 0 ? 'text-[#163E3E]' : 'text-[#8A9AA7]'"
+                                        >
+                                            {{ formatMoney(charge.outstanding_balance) }}
+                                        </dd>
+                                    </div>
+                                </dl>
+                                <div class="flex items-center justify-between text-xs text-[#5B6770]">
+                                    <span>الاستحقاق <span class="font-mono tabular-nums">{{ charge.due_date }}</span></span>
+                                    <button
+                                        v-if="isLeaseActive && charge.outstanding_balance > 0"
+                                        type="button"
+                                        :class="linkButton"
+                                        @click="openRentPayment(charge)"
                                     >
-                                        <div class="flex items-center justify-between text-xs">
-                                            <span class="font-mono font-bold text-[#163E3E]">{{ p.reference }}</span>
-                                            <span v-if="p.is_reversed" class="text-rose-700 bg-rose-50 px-2 py-0.5 rounded font-bold text-[10px]">ملغاة</span>
-                                            <span v-else class="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-bold text-[10px]">سارية</span>
-                                        </div>
-                                        <div class="flex items-baseline justify-between">
-                                            <span class="font-mono font-black text-base text-[#163E3E]">
-                                                {{ p.amount.toLocaleString() }} {{ currency_symbol }}
-                                            </span>
-                                            <span class="text-xs text-[#5B6770]">{{ p.payment_method_label }}</span>
-                                        </div>
-                                        <div class="flex items-center justify-between text-[11px] text-[#5B6770] pt-1.5 border-t border-[#D6E0E7]/60">
-                                            <span class="font-mono">{{ p.paid_at }}</span>
-                                            <span>{{ p.recorded_by }}</span>
-                                        </div>
-                                        <div v-if="!p.is_reversed && security_deposit.status !== 'settled'" class="pt-1 text-left">
-                                            <button
-                                                @click="openReversePayment(p)"
-                                                type="button"
-                                                class="text-rose-600 hover:text-rose-800 text-xs font-bold cursor-pointer"
-                                            >
-                                                عكس الدفعة
-                                            </button>
-                                        </div>
-                                    </div>
+                                        سداد هذه الفترة
+                                    </button>
                                 </div>
+                            </li>
+                        </ul>
 
-                                <!-- عرض الديسكتوب: جدول دفعات التأمين (Desktop Table for sm+) -->
-                                <div class="hidden sm:block rounded-2xl border border-[#D6E0E7] overflow-hidden">
-                                    <table class="w-full text-right text-xs">
-                                        <thead class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
-                                            <tr>
-                                                <th class="py-3 px-4">المرجع</th>
-                                                <th class="py-3 px-4">المبلغ</th>
-                                                <th class="py-3 px-4">طريقة الدفع</th>
-                                                <th class="py-3 px-4">التاريخ</th>
-                                                <th class="py-3 px-4">المسجل</th>
-                                                <th class="py-3 px-4">الحالة</th>
-                                                <th class="py-3 px-4 text-left">إجراء</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-[#D6E0E7]">
-                                            <tr v-for="p in security_deposit.payments" :key="p.id" :class="p.is_reversed ? 'bg-slate-50 opacity-60 line-through' : 'hover:bg-[#F8FAFC] transition'">
-                                                <td class="py-3 px-4 font-mono font-bold text-[#163E3E]">{{ p.reference }}</td>
-                                                <td class="py-3 px-4 font-mono font-bold text-[#163E3E]">{{ p.amount.toLocaleString() }} {{ currency_symbol }}</td>
-                                                <td class="py-3 px-4">{{ p.payment_method_label }}</td>
-                                                <td class="py-3 px-4 font-mono text-[#5B6770]">{{ p.paid_at }}</td>
-                                                <td class="py-3 px-4 text-[#5B6770]">{{ p.recorded_by }}</td>
-                                                <td class="py-3 px-4">
-                                                    <span v-if="p.is_reversed" class="text-rose-700 bg-rose-50 px-2 py-0.5 rounded font-bold">
-                                                        ملغاة: {{ p.reversal_reason }}
-                                                    </span>
-                                                    <span v-else class="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-bold">
-                                                        سارية
-                                                    </span>
-                                                </td>
-                                                <td class="py-3 px-4 text-left">
-                                                    <button
-                                                        v-if="!p.is_reversed && security_deposit.status !== 'settled'"
-                                                        @click="openReversePayment(p)"
-                                                        type="button"
-                                                        class="text-rose-600 hover:text-rose-800 text-xs font-semibold cursor-pointer"
-                                                    >
-                                                        عكس الدفعة
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <p v-else class="text-xs text-slate-400 p-3.5 bg-[#F8FAFC] rounded-2xl border border-dashed border-[#D6E0E7] text-center">
-                                لم يتم تسجيل أي دفعة تأمين حتى الآن.
-                            </p>
-                        </div>
-
-                        <!-- 2. خصومات التأمين -->
-                        <div class="space-y-2.5">
-                            <div class="flex items-center justify-between">
-                                <span class="text-xs font-bold text-[#5B6770]">خصومات التأمين ({{ security_deposit.deductions.length }})</span>
-                            </div>
-
-                            <div v-if="security_deposit.deductions.length > 0">
-                                <!-- عرض الموبايل: بطاقات الخصومات (Mobile Cards for < sm) -->
-                                <div class="block sm:hidden space-y-2.5">
-                                    <div
-                                        v-for="d in security_deposit.deductions"
-                                        :key="d.id"
-                                        class="p-3.5 rounded-xl border border-rose-200 bg-rose-50/40 space-y-2 shadow-2xs"
-                                    >
-                                        <div class="flex items-center justify-between text-xs">
-                                            <span class="font-bold text-rose-900 bg-rose-100 px-2 py-0.5 rounded">{{ d.category_label }}</span>
-                                            <span class="font-mono font-black text-rose-700 text-sm">
-                                                -{{ d.amount.toLocaleString() }} {{ currency_symbol }}
-                                            </span>
-                                        </div>
-                                        <p class="text-xs text-[#163E3E] leading-relaxed">{{ d.description }}</p>
-                                        <p v-if="d.notes" class="text-[11px] text-[#5B6770] bg-white/70 p-2 rounded-lg border border-rose-200/60">{{ d.notes }}</p>
-                                        <div v-if="d.attachment_url" class="pt-0.5">
-                                            <a :href="d.attachment_url" target="_blank" class="inline-flex items-center gap-1 text-[11px] text-[#163E3E] hover:underline font-bold">
-                                                <FileText class="w-3 h-3" />
-                                                <span>عرض المرفق / الفاتورة</span>
-                                            </a>
-                                        </div>
-                                        <div class="flex items-center justify-between text-[11px] text-[#5B6770] pt-1.5 border-t border-rose-200/60">
-                                            <span class="font-mono">{{ d.deducted_at }}</span>
-                                            <div v-if="security_deposit.status !== 'settled'" class="flex items-center gap-2">
-                                                <button
-                                                    @click="openEditDeductionModal(d)"
-                                                    type="button"
-                                                    class="text-[#163E3E] hover:text-[#1E3A5F] font-bold text-xs cursor-pointer"
-                                                >
-                                                    تعديل
-                                                </button>
-                                                <button
-                                                    @click="deleteDeduction(d.id)"
-                                                    type="button"
-                                                    class="text-rose-700 hover:text-rose-900 font-bold flex items-center gap-1 cursor-pointer"
-                                                >
-                                                    <Trash2 class="w-3.5 h-3.5" />
-                                                    <span>حذف</span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- عرض الديسكتوب: جدول الخصومات (Desktop Table for sm+) -->
-                                <div class="hidden sm:block rounded-2xl border border-[#D6E0E7] overflow-hidden">
-                                    <table class="w-full text-right text-xs">
-                                        <thead class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
-                                            <tr>
-                                                <th class="py-3 px-4">البند والتصنيف</th>
-                                                <th class="py-3 px-4">المبلغ المخصوم</th>
-                                                <th class="py-3 px-4">الوصف والمبرر</th>
-                                                <th class="py-3 px-4">التاريخ</th>
-                                                <th class="py-3 px-4">المسجل</th>
-                                                <th class="py-3 px-4 text-left" v-if="security_deposit.status !== 'settled'">إجراءات</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-[#D6E0E7]">
-                                            <tr v-for="d in security_deposit.deductions" :key="d.id" class="hover:bg-[#F8FAFC] transition">
-                                                <td class="py-3 px-4 font-bold text-[#163E3E]">{{ d.category_label }}</td>
-                                                <td class="py-3 px-4 font-mono font-bold text-rose-700">{{ d.amount.toLocaleString() }} {{ currency_symbol }}</td>
-                                                <td class="py-3 px-4 text-[#5B6770]">
-                                                    <div>{{ d.description }}</div>
-                                                    <div v-if="d.notes" class="text-[11px] text-[#5B6770]/80 mt-0.5">{{ d.notes }}</div>
-                                                    <div v-if="d.attachment_url" class="mt-1">
-                                                        <a :href="d.attachment_url" target="_blank" class="inline-flex items-center gap-1 text-[#163E3E] hover:underline font-bold text-[11px]">
-                                                            <FileText class="w-3 h-3" />
-                                                            <span>عرض المرفق</span>
-                                                        </a>
-                                                    </div>
-                                                </td>
-                                                <td class="py-3 px-4 font-mono text-[#5B6770]">{{ d.deducted_at }}</td>
-                                                <td class="py-3 px-4 text-[#5B6770]">{{ d.recorded_by }}</td>
-                                                <td class="py-3 px-4 text-left" v-if="security_deposit.status !== 'settled'">
-                                                    <div class="flex items-center gap-2.5 justify-end">
-                                                        <button
-                                                            @click="openEditDeductionModal(d)"
-                                                            type="button"
-                                                            class="text-[#163E3E] hover:text-[#1E3A5F] font-bold text-xs cursor-pointer"
-                                                            title="تعديل بند الخصم"
-                                                        >
-                                                            تعديل
-                                                        </button>
-                                                        <button
-                                                            @click="deleteDeduction(d.id)"
-                                                            type="button"
-                                                            class="text-rose-600 hover:text-rose-800 p-1 rounded hover:bg-rose-50 cursor-pointer"
-                                                            title="إلغاء الخصم"
-                                                        >
-                                                            <Trash2 class="w-3.5 h-3.5" />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <p v-else class="text-xs text-slate-400 p-3.5 bg-[#F8FAFC] rounded-2xl border border-dashed border-[#D6E0E7] text-center">
-                                لا توجد أي خصومات مسجلة على التأمين (الوحدة بدون أضرار).
-                            </p>
-                        </div>
-
-                        <!-- 3. المبالغ المستردة للمستأجر -->
-                        <div class="space-y-2.5">
-                            <div class="flex items-center justify-between">
-                                <span class="text-xs font-bold text-[#5B6770]">المبالغ المستردة للمستأجر ({{ security_deposit.refunds.length }})</span>
-                            </div>
-
-                            <div v-if="security_deposit.refunds.length > 0">
-                                <!-- عرض الموبايل: بطاقات المبالغ المستردة (Mobile Cards for < sm) -->
-                                <div class="block sm:hidden space-y-2.5">
-                                    <div
-                                        v-for="r in security_deposit.refunds"
-                                        :key="r.id"
-                                        class="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/40 space-y-2 shadow-2xs"
-                                    >
-                                        <div class="flex items-center justify-between text-xs">
-                                            <span class="font-mono font-bold text-emerald-800">{{ r.reference }}</span>
-                                            <span class="font-mono font-black text-emerald-700 text-sm">
-                                                {{ r.amount.toLocaleString() }} {{ currency_symbol }}
-                                            </span>
-                                        </div>
-                                        <div class="flex items-center justify-between text-xs text-[#5B6770]">
-                                            <span>طريقة التحويل: {{ r.payment_method_label }}</span>
-                                            <span class="font-mono">{{ r.refunded_at }}</span>
-                                        </div>
-                                        <p v-if="r.notes" class="text-xs text-[#163E3E] pt-1 border-t border-emerald-200/60">{{ r.notes }}</p>
-                                    </div>
-                                </div>
-
-                                <!-- عرض الديسكتوب: جدول المبالغ المستردة (Desktop Table for sm+) -->
-                                <div class="hidden sm:block rounded-2xl border border-[#D6E0E7] overflow-hidden">
-                                    <table class="w-full text-right text-xs">
-                                        <thead class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
-                                            <tr>
-                                                <th class="py-3 px-4">المرجع</th>
-                                                <th class="py-3 px-4">المبلغ المسترد</th>
-                                                <th class="py-3 px-4">طريقة التحويل</th>
-                                                <th class="py-3 px-4">تاريخ الرد</th>
-                                                <th class="py-3 px-4">المسجل</th>
-                                                <th class="py-3 px-4">ملاحظات</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-[#D6E0E7]">
-                                            <tr v-for="r in security_deposit.refunds" :key="r.id" class="hover:bg-[#F8FAFC] transition">
-                                                <td class="py-3 px-4 font-mono font-bold text-emerald-700">{{ r.reference }}</td>
-                                                <td class="py-3 px-4 font-mono font-bold text-emerald-700">{{ r.amount.toLocaleString() }} {{ currency_symbol }}</td>
-                                                <td class="py-3 px-4">{{ r.payment_method_label }}</td>
-                                                <td class="py-3 px-4 font-mono text-[#5B6770]">{{ r.refunded_at }}</td>
-                                                <td class="py-3 px-4 text-[#5B6770]">{{ r.recorded_by }}</td>
-                                                <td class="py-3 px-4 text-[#5B6770]">{{ r.notes || '—' }}</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <p v-else class="text-xs text-slate-400 p-3.5 bg-[#F8FAFC] rounded-2xl border border-dashed border-[#D6E0E7] text-center">
-                                لم يتم توثيق أي رد لمبلغ التأمين حتى الآن.
-                            </p>
-                        </div>
-                    </div>
-                        </div>
-                    </details>
-                </div>
-
-                <!-- جدول استحقاقات وفواتير الإيجار (Rent Charges) للتمييز التام والواضح -->
-                <div class="rounded-2xl sm:rounded-3xl border border-[#D6E0E7] bg-white p-4 sm:p-6 shadow-2xs space-y-4">
-                    <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
-                        <div class="flex items-center gap-2">
-                            <FileText class="w-4 h-4 text-[#163E3E]" />
-                            <h3 class="text-sm font-bold text-[#163E3E]">فواتير واستحقاقات الإيجار (منفصلة تماماً عن التأمين)</h3>
-                        </div>
-                        <span class="text-xs text-[#5B6770]">{{ rent_charges.length }} فترة إيجارية</span>
-                    </div>
-
-                    <!-- عرض الموبايل: بطاقات فواتير الإيجار (Mobile Cards for < sm) -->
-                    <div class="block sm:hidden space-y-3">
-                        <div
-                            v-for="c in rent_charges"
-                            :key="c.id"
-                            class="p-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] space-y-2.5 shadow-2xs"
-                        >
-                            <div class="flex items-center justify-between text-xs">
-                                <span class="font-bold text-[#163E3E]">{{ c.period }}</span>
-                                <span v-if="c.status === 'paid'" class="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-bold text-[10px]">مسدد بالكامل</span>
-                                <span v-else-if="c.status === 'overdue'" class="text-rose-700 bg-rose-50 px-2 py-0.5 rounded font-bold text-[10px]">متأخر</span>
-                                <span v-else class="text-amber-700 bg-amber-50 px-2 py-0.5 rounded font-bold text-[10px]">مستحق</span>
-                            </div>
-                            <div class="grid grid-cols-3 gap-2 text-xs">
-                                <div>
-                                    <span class="text-[10px] text-[#5B6770] block">المطلوب</span>
-                                    <span class="font-mono font-bold text-[#163E3E]">{{ c.amount.toLocaleString() }}</span>
-                                </div>
-                                <div>
-                                    <span class="text-[10px] text-[#5B6770] block">المسدد</span>
-                                    <span class="font-mono font-bold text-emerald-700">{{ c.paid_amount.toLocaleString() }}</span>
-                                </div>
-                                <div>
-                                    <span class="text-[10px] text-[#5B6770] block">المتبقي</span>
-                                    <span class="font-mono font-bold" :class="c.outstanding_balance > 0 ? 'text-amber-700' : 'text-slate-400'">
-                                        {{ c.outstanding_balance.toLocaleString() }}
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="text-[11px] text-[#5B6770] font-mono pt-1.5 border-t border-[#D6E0E7]/60">
-                                استحقاق: {{ c.due_date }}
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- عرض الديسكتوب: جدول استحقاقات الإيجار (Desktop Table for sm+) -->
-                    <div class="hidden sm:block rounded-2xl border border-[#D6E0E7] overflow-hidden">
-                        <table class="w-full text-right text-xs">
-                            <thead class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
+                        <table class="hidden w-full text-right text-sm sm:table">
+                            <thead class="bg-[#FBFAF6] text-xs text-[#5B6770]">
                                 <tr>
-                                    <th class="py-3 px-4">الفترة الإيجارية</th>
-                                    <th class="py-3 px-4">تاريخ الاستحقاق</th>
-                                    <th class="py-3 px-4">القيمة الإيجارية</th>
-                                    <th class="py-3 px-4">المسدد</th>
-                                    <th class="py-3 px-4">المتبقي</th>
-                                    <th class="py-3 px-4">الحالة</th>
+                                    <th scope="col" class="px-5 py-3 font-medium">الفترة</th>
+                                    <th scope="col" class="px-3 py-3 font-medium">الاستحقاق</th>
+                                    <th scope="col" class="px-3 py-3 font-medium">القيمة</th>
+                                    <th scope="col" class="px-3 py-3 font-medium">المسدد</th>
+                                    <th scope="col" class="px-3 py-3 font-medium">المتبقي</th>
+                                    <th scope="col" class="px-3 py-3 font-medium">الحالة</th>
+                                    <th scope="col" class="px-5 py-3"><span class="sr-only">إجراء</span></th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-[#D6E0E7]">
-                                <tr v-for="c in rent_charges" :key="c.id" class="hover:bg-[#F8FAFC] transition">
-                                    <td class="py-3 px-4 font-bold text-[#163E3E]">{{ c.period }}</td>
-                                    <td class="py-3 px-4 font-mono text-[#5B6770]">{{ c.due_date }}</td>
-                                    <td class="py-3 px-4 font-mono font-bold text-[#163E3E]">{{ c.amount.toLocaleString() }} {{ currency_symbol }}</td>
-                                    <td class="py-3 px-4 font-mono text-emerald-700 font-bold">{{ c.paid_amount.toLocaleString() }} {{ currency_symbol }}</td>
-                                    <td class="py-3 px-4 font-mono font-bold" :class="c.outstanding_balance > 0 ? 'text-amber-700' : 'text-slate-400'">
-                                        {{ c.outstanding_balance.toLocaleString() }} {{ currency_symbol }}
+                            <tbody class="divide-y divide-[#E6ECF0]">
+                                <tr v-for="charge in rent_charges" :key="charge.id" class="transition-colors hover:bg-[#FBFAF6]">
+                                    <td class="px-5 py-3.5 font-mono font-semibold tabular-nums text-[#163E3E]">{{ charge.period }}</td>
+                                    <td class="px-3 py-3.5 font-mono tabular-nums text-[#5B6770]">{{ charge.due_date }}</td>
+                                    <td class="px-3 py-3.5 font-mono tabular-nums text-[#163E3E]">{{ formatMoney(charge.amount) }}</td>
+                                    <td class="px-3 py-3.5 font-mono tabular-nums text-emerald-700">{{ formatMoney(charge.paid_amount) }}</td>
+                                    <td
+                                        class="px-3 py-3.5 font-mono font-semibold tabular-nums"
+                                        :class="charge.outstanding_balance > 0 ? 'text-[#163E3E]' : 'text-[#8A9AA7]'"
+                                    >
+                                        {{ formatMoney(charge.outstanding_balance) }}
                                     </td>
-                                    <td class="py-3 px-4">
-                                        <span v-if="c.status === 'paid'" class="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-bold">مسدد بالكامل</span>
-                                        <span v-else-if="c.status === 'overdue'" class="text-rose-700 bg-rose-50 px-2 py-0.5 rounded font-bold">متأخر</span>
-                                        <span v-else class="text-amber-700 bg-amber-50 px-2 py-0.5 rounded font-bold">مستحق قريباً</span>
+                                    <td class="px-3 py-3.5">
+                                        <StatusBadge :status="rentChargeBadge(charge).status" :label="rentChargeBadge(charge).label" size="sm" />
+                                    </td>
+                                    <td class="px-5 py-3.5 text-left">
+                                        <button
+                                            v-if="isLeaseActive && charge.outstanding_balance > 0"
+                                            type="button"
+                                            :class="linkButton"
+                                            @click="openRentPayment(charge)"
+                                        >
+                                            سداد
+                                        </button>
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
+                    </template>
+                </section>
+
+                <section v-if="hasDeposit" aria-labelledby="deposit-heading" class="overflow-hidden rounded-2xl border border-[#D6E0E7] bg-white">
+                    <header class="flex flex-wrap items-start justify-between gap-3 border-b border-[#E6ECF0] px-5 py-4">
+                        <div>
+                            <h2 id="deposit-heading" class="text-base font-bold text-[#163E3E]">التأمين</h2>
+                            <p class="mt-0.5 text-xs text-[#5B6770]">مبلغ مسترد يُحفظ منفصلاً عن الإيجار ويُسوّى عند نهاية العقد.</p>
+                        </div>
+                        <StatusBadge :status="depositBadgeStatus" :label="security_deposit.status_label" />
+                    </header>
+
+                    <div class="space-y-4 px-5 py-5">
+                        <dl class="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[#E6ECF0] bg-[#E6ECF0] sm:grid-cols-4">
+                            <div class="bg-[#FBFAF6] p-3.5">
+                                <dt class="text-xs text-[#5B6770]">المستلم من المستأجر</dt>
+                                <dd class="mt-1 font-mono text-lg font-semibold tabular-nums text-[#163E3E]">{{ formatMoney(security_deposit.total_received) }}</dd>
+                                <dd class="text-xs text-[#5B6770]">من {{ formatMoney(security_deposit.agreed_amount) }} متفق عليه</dd>
+                            </div>
+                            <div class="bg-[#FBFAF6] p-3.5">
+                                <dt class="text-xs text-[#5B6770]"><span aria-hidden="true">− </span>الخصومات</dt>
+                                <dd class="mt-1 font-mono text-lg font-semibold tabular-nums" :class="security_deposit.total_deductions > 0 ? 'text-rose-700' : 'text-[#163E3E]'">
+                                    {{ formatMoney(security_deposit.total_deductions) }}
+                                </dd>
+                                <dd class="text-xs text-[#5B6770]">للمالك مقابل أضرار أو مستحقات</dd>
+                            </div>
+                            <div class="bg-[#FBFAF6] p-3.5">
+                                <dt class="text-xs text-[#5B6770]"><span aria-hidden="true">− </span>المردود للمستأجر</dt>
+                                <dd class="mt-1 font-mono text-lg font-semibold tabular-nums text-[#163E3E]">{{ formatMoney(security_deposit.total_refunded) }}</dd>
+                                <dd class="text-xs text-[#5B6770]">صُرف فعلياً</dd>
+                            </div>
+                            <div class="bg-[#E8F0F0] p-3.5">
+                                <dt class="text-xs font-semibold text-[#163E3E]"><span aria-hidden="true">= </span>المحفوظ لديك الآن</dt>
+                                <dd class="mt-1 font-mono text-lg font-bold tabular-nums text-[#163E3E]">{{ formatMoney(security_deposit.refundable_balance) }}</dd>
+                                <dd class="text-xs text-[#163E3E]/70">{{ currency_symbol }} قابلة للرد</dd>
+                            </div>
+                        </dl>
+
+                        <div v-if="security_deposit.outstanding_amount > 0" class="space-y-1.5">
+                            <div class="flex items-center justify-between text-xs text-[#5B6770]">
+                                <span>استُلم {{ depositPercentReceived }}% من التأمين المتفق عليه</span>
+                                <span class="font-mono tabular-nums">متبقٍ {{ formatMoney(security_deposit.outstanding_amount) }} {{ currency_symbol }}</span>
+                            </div>
+                            <div
+                                class="h-1.5 overflow-hidden rounded-full bg-[#EEF2F4]"
+                                role="progressbar"
+                                aria-label="نسبة تحصيل التأمين"
+                                :aria-valuenow="depositPercentReceived"
+                                aria-valuemin="0"
+                                aria-valuemax="100"
+                            >
+                                <div class="h-full rounded-full bg-amber-500" :style="{ width: `${depositPercentReceived}%` }"></div>
+                            </div>
+                        </div>
+
+                        <div
+                            v-if="depositNextStep || depositOtherActions.length"
+                            class="rounded-xl border px-4 py-3.5"
+                            :class="depositNextStep?.needsAttention ? 'border-amber-200 bg-amber-50/60' : 'border-[#E6ECF0] bg-[#FBFAF6]'"
+                        >
+                            <div v-if="depositNextStep" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <p class="text-sm leading-6 text-[#163E3E]">
+                                    <span class="font-semibold">{{ depositNextStep.needsAttention ? 'الخطوة التالية:' : 'الوضع الحالي:' }}</span>
+                                    {{ depositNextStep.message }}
+                                </p>
+                                <button v-if="depositNextStep.action" type="button" :class="buttonPrimary" class="shrink-0" @click="depositNextStep.action.run">
+                                    {{ depositNextStep.action.label }}
+                                </button>
+                            </div>
+                            <div
+                                v-if="depositOtherActions.length"
+                                class="flex flex-wrap items-center gap-x-4 gap-y-2"
+                                :class="depositNextStep ? 'mt-3 border-t border-black/5 pt-3' : ''"
+                            >
+                                <span class="text-xs text-[#5B6770]">{{ depositNextStep ? 'إجراءات أخرى:' : 'إجراءات التأمين:' }}</span>
+                                <button
+                                    v-for="depositAction in depositOtherActions"
+                                    :key="depositAction.label"
+                                    type="button"
+                                    :class="linkButton"
+                                    @click="depositAction.run"
+                                >
+                                    {{ depositAction.label }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <SettlementSummary
+                            v-if="security_deposit.settlement"
+                            :settlement="security_deposit.settlement"
+                            :currency-symbol="currency_symbol"
+                            :export-url="route('leases.security-deposit.export', lease.id)"
+                            :statement-url="route('leases.security-deposit.statement', lease.id)"
+                        />
                     </div>
-                </div>
+
+                    <div class="border-t border-[#E6ECF0]">
+                        <div class="flex items-center justify-between gap-3 px-5 pt-4">
+                            <h3 class="text-sm font-bold text-[#163E3E]">حركة التأمين</h3>
+                            <span v-if="depositLedger.length" class="text-xs text-[#5B6770]">من الأقدم للأحدث</span>
+                        </div>
+                        <p v-if="depositLedger.length === 0" class="px-5 pb-6 pt-3 text-center text-xs text-[#5B6770]">
+                            لم تُسجل أي حركة على التأمين بعد.
+                        </p>
+                        <ol v-else class="divide-y divide-[#E6ECF0] px-5 pb-2">
+                            <li v-for="entry in depositLedger" :key="entry.key" class="flex items-start gap-3 py-3.5">
+                                <span class="mt-2 h-2 w-2 shrink-0 rounded-full" :class="depositLedgerStyles[entry.kind].dot" aria-hidden="true"></span>
+                                <div class="min-w-0 flex-1">
+                                    <div :class="entry.isReversed ? 'opacity-60' : ''">
+                                        <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                                            <p class="text-sm font-semibold text-[#163E3E]">
+                                                {{ entry.title }}
+                                                <span v-if="entry.isReversed" class="text-xs font-semibold text-rose-700">· ملغاة</span>
+                                            </p>
+                                            <p
+                                                class="text-sm font-semibold"
+                                                :class="[depositLedgerStyles[entry.kind].amount, entry.isReversed ? 'line-through' : '']"
+                                            >
+                                                <span class="font-mono tabular-nums" dir="ltr">{{ depositLedgerStyles[entry.kind].sign }}{{ formatMoney(entry.amount) }}</span>
+                                                <span class="ms-1 text-xs font-medium">{{ currency_symbol }}</span>
+                                            </p>
+                                        </div>
+                                        <p class="mt-0.5 text-xs text-[#5B6770]">
+                                            <span class="font-mono tabular-nums">{{ entry.occurredAt }}</span>
+                                            <span v-if="entry.method"> · {{ entry.method }}</span>
+                                            <span v-if="entry.reference"> · <span class="font-mono">{{ entry.reference }}</span></span>
+                                            · بواسطة {{ entry.recordedBy }}
+                                        </p>
+                                        <p v-if="entry.description" class="mt-1 text-xs leading-5 text-[#334155]">{{ entry.description }}</p>
+                                        <p v-if="entry.notes" class="mt-1 text-xs leading-5 text-[#5B6770]">{{ entry.notes }}</p>
+                                        <p v-if="entry.isReversed && entry.reversalReason" class="mt-1 text-xs text-rose-700">سبب الإلغاء: {{ entry.reversalReason }}</p>
+                                    </div>
+                                    <div
+                                        v-if="entry.attachmentUrl || (canChangeDepositRecords && !entry.isReversed && (entry.payment || entry.deduction))"
+                                        class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1"
+                                    >
+                                        <a
+                                            v-if="entry.attachmentUrl"
+                                            :href="entry.attachmentUrl"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            :class="linkButton"
+                                            class="inline-flex items-center gap-1"
+                                        >
+                                            <Paperclip class="h-3.5 w-3.5" />
+                                            <span>عرض المرفق</span>
+                                        </a>
+                                        <template v-if="canChangeDepositRecords && !entry.isReversed">
+                                            <button v-if="entry.payment" type="button" :class="linkButtonDanger" @click="openReversePayment(entry.payment)">
+                                                عكس الدفعة
+                                            </button>
+                                            <template v-if="entry.deduction">
+                                                <button type="button" :class="linkButton" @click="openEditDeductionModal(entry.deduction)">تعديل الخصم</button>
+                                                <button type="button" :class="linkButtonDanger" class="inline-flex items-center gap-1" @click="deleteDeduction(entry.deduction)">
+                                                    <Trash2 class="h-3.5 w-3.5" />
+                                                    <span>حذف</span>
+                                                </button>
+                                            </template>
+                                        </template>
+                                    </div>
+                                </div>
+                            </li>
+                        </ol>
+                    </div>
+                </section>
+
+                <section v-else class="flex items-start gap-3 rounded-2xl border border-dashed border-[#D6E0E7] bg-white/60 px-5 py-4">
+                    <Shield class="mt-0.5 h-5 w-5 shrink-0 text-[#8A9AA7]" />
+                    <div>
+                        <h2 class="text-sm font-bold text-[#163E3E]">لا يوجد تأمين على هذا العقد</h2>
+                        <p class="mt-0.5 text-xs leading-5 text-[#5B6770]">أُنشئ العقد بدون مبلغ تأمين، لذلك لا توجد تسوية تأمين عند إنهائه.</p>
+                    </div>
+                </section>
             </div>
+
+            <aside class="space-y-6">
+                <section aria-labelledby="renter-heading" class="rounded-2xl border border-[#D6E0E7] bg-white">
+                    <header class="flex items-start justify-between gap-3 px-5 pt-5">
+                        <div class="min-w-0">
+                            <p id="renter-heading" class="text-xs font-medium text-[#5B6770]">المستأجر</p>
+                            <Link
+                                :href="route('renters.show', renter.id)"
+                                class="mt-0.5 block truncate text-base font-bold text-[#163E3E] underline-offset-4 hover:underline"
+                            >
+                                {{ renter.name }}
+                            </Link>
+                        </div>
+                        <div v-if="renter.phone" class="flex shrink-0 items-center gap-1.5">
+                            <a
+                                :href="`https://wa.me/20${renter.phone.replace(/^0+/, '')}`"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                :class="iconButton"
+                                aria-label="محادثة واتساب"
+                                title="محادثة واتساب"
+                            >
+                                <MessageCircle class="h-4 w-4" />
+                            </a>
+                            <a :href="`tel:${renter.phone}`" :class="iconButton" aria-label="اتصال هاتفي" title="اتصال هاتفي">
+                                <Phone class="h-4 w-4" />
+                            </a>
+                        </div>
+                    </header>
+                    <dl class="divide-y divide-[#EEF2F4] px-5 py-2 text-sm">
+                        <div class="flex items-center justify-between gap-4 py-2.5">
+                            <dt class="text-[#5B6770]">الجوال</dt>
+                            <dd class="font-mono tabular-nums text-[#163E3E]" dir="ltr">{{ renter.phone || '—' }}</dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-4 py-2.5">
+                            <dt class="text-[#5B6770]">رقم الهوية</dt>
+                            <dd class="font-mono tabular-nums text-[#163E3E]">{{ renter.national_id || 'غير مسجل' }}</dd>
+                        </div>
+                        <div v-if="renter.email" class="flex items-center justify-between gap-4 py-2.5">
+                            <dt class="text-[#5B6770]">البريد</dt>
+                            <dd class="truncate text-[#163E3E]" dir="ltr">{{ renter.email }}</dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-4 py-2.5">
+                            <dt class="text-[#5B6770]">الجنس</dt>
+                            <dd class="text-[#163E3E]">{{ renter.gender_label || 'غير محدد' }}</dd>
+                        </div>
+                    </dl>
+                    <div class="border-t border-[#EEF2F4] px-5 py-3">
+                        <Link :href="route('renters.show', renter.id)" :class="linkButton" class="inline-flex items-center gap-1">
+                            <span>ملف المستأجر وسجل مدفوعاته</span>
+                            <ArrowLeft class="h-3.5 w-3.5" />
+                        </Link>
+                    </div>
+                </section>
+
+                <section aria-labelledby="unit-heading" class="rounded-2xl border border-[#D6E0E7] bg-white">
+                    <header class="px-5 pt-5">
+                        <p id="unit-heading" class="text-xs font-medium text-[#5B6770]">الوحدة</p>
+                        <p class="mt-0.5 text-base font-bold text-[#163E3E]">{{ unit.name }}</p>
+                    </header>
+                    <dl class="divide-y divide-[#EEF2F4] px-5 py-2 text-sm">
+                        <div class="flex items-center justify-between gap-4 py-2.5">
+                            <dt class="text-[#5B6770]">النوع</dt>
+                            <dd class="flex items-center gap-1.5 text-[#163E3E]">
+                                <span>{{ unit.unit_type_label }}</span>
+                                <span
+                                    v-if="unit.apartment_gender"
+                                    class="rounded-md border px-1.5 py-0.5 text-[11px] font-semibold"
+                                    :class="unit.apartment_gender.badge_class"
+                                >
+                                    {{ unit.apartment_gender.short_label }}
+                                </span>
+                            </dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-4 py-2.5">
+                            <dt class="text-[#5B6770]">الرمز</dt>
+                            <dd class="font-mono text-[#163E3E]">{{ unit.code || '—' }}</dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-4 py-2.5">
+                            <dt class="text-[#5B6770]">العقار</dt>
+                            <dd class="min-w-0 truncate">
+                                <Link :href="route('properties.show', unit.property_id)" :class="linkButton">{{ unit.property_name }}</Link>
+                            </dd>
+                        </div>
+                        <div v-if="unit.property_address" class="flex items-start justify-between gap-4 py-2.5">
+                            <dt class="shrink-0 text-[#5B6770]">العنوان</dt>
+                            <dd class="text-left text-[#163E3E]">{{ unit.property_address }}</dd>
+                        </div>
+                    </dl>
+                </section>
+
+                <section aria-labelledby="contract-heading" class="rounded-2xl border border-[#D6E0E7] bg-white">
+                    <header class="px-5 pt-5">
+                        <p id="contract-heading" class="text-xs font-medium text-[#5B6770]">بيانات العقد</p>
+                        <p class="mt-0.5 font-mono text-base font-bold text-[#163E3E]">{{ lease.contract_number }}</p>
+                    </header>
+                    <dl class="divide-y divide-[#EEF2F4] px-5 py-2 text-sm">
+                        <div class="flex items-center justify-between gap-4 py-2.5">
+                            <dt class="text-[#5B6770]">تاريخ البداية</dt>
+                            <dd class="font-mono tabular-nums text-[#163E3E]">{{ lease.starts_on }}</dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-4 py-2.5">
+                            <dt class="text-[#5B6770]">تاريخ النهاية</dt>
+                            <dd class="font-mono tabular-nums text-[#163E3E]">{{ lease.ends_on }}</dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-4 py-2.5">
+                            <dt class="text-[#5B6770]">أُنشئ في</dt>
+                            <dd class="font-mono tabular-nums text-[#163E3E]">{{ lease.created_at }}</dd>
+                        </div>
+                    </dl>
+                    <div v-if="lease.notes" class="mx-5 mb-4 rounded-xl bg-[#FBFAF6] px-3.5 py-3">
+                        <p class="text-xs font-medium text-[#5B6770]">ملاحظات العقد</p>
+                        <p class="mt-1 whitespace-pre-line text-sm leading-6 text-[#334155]">{{ lease.notes }}</p>
+                    </div>
+
+                    <div class="border-t border-[#EEF2F4] px-5 py-4">
+                        <p class="text-xs font-medium text-[#5B6770]">نسخة العقد الموقّعة</p>
+                        <div v-if="lease.has_contract_image && lease.contract_image_url" class="mt-2 flex flex-wrap items-center gap-2">
+                            <a :href="lease.contract_image_url" target="_blank" rel="noopener noreferrer" :class="buttonSecondary" class="flex-1 justify-center">
+                                <FileText class="h-4 w-4" />
+                                <span>عرض العقد</span>
+                            </a>
+                            <button type="button" :class="buttonGhost" @click="showContractUploadModal = true">استبدال</button>
+                            <button type="button" :class="iconButtonDanger" aria-label="حذف نسخة العقد" title="حذف نسخة العقد" @click="deleteContractImage">
+                                <Trash2 class="h-4 w-4" />
+                            </button>
+                        </div>
+                        <div v-else class="mt-2 space-y-2">
+                            <p class="text-xs leading-5 text-[#5B6770]">لم تُرفق نسخة بعد. ارفع صورة أو ملف PDF للعقد الموقّع، ويُحفظ مشفّراً.</p>
+                            <button type="button" :class="buttonSecondary" class="w-full justify-center" @click="showContractUploadModal = true">
+                                <Upload class="h-4 w-4" />
+                                <span>رفع نسخة العقد</span>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </aside>
         </div>
 
         <!-- مودال 1: تسجيل استلام دفعة تأمين -->
@@ -2563,5 +2520,14 @@ const depositBadgeClass = computed(() => {
                 </form>
             </div>
         </div>
+        <ModalRecordPayment
+            v-if="showRentPaymentModal"
+            :show="true"
+            :renters="rentPaymentRenters"
+            :initial-renter-id="renter.id"
+            :initial-amount="rentPaymentInitialAmount"
+            :initial-rent-charge-id="rentPaymentCharge?.id"
+            @close="closeRentPayment"
+        />
     </AppLayout>
 </template>

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
+import { useConfirmDialog } from '@/composables/useConfirmDialog';
+import { useToast } from '@/composables/useToast';
 import {
     AlertCircle,
     Building2,
@@ -134,8 +136,9 @@ const uploadError = ref<string | null>(null);
 const activePreviewImage = ref<{ url: string; title: string } | null>(null);
 
 // Delete confirmation modal
-const attachmentToDelete = ref<AttachmentItem | null>(null);
-const isDeletingAttachment = ref(false);
+const deletingAttachmentId = ref<number | null>(null);
+const confirmDialog = useConfirmDialog();
+const toast = useToast();
 
 // Load maintenance details from JSON API
 const loadDetails = async () => {
@@ -185,7 +188,10 @@ const handleStatusTransition = (newStatus: 'in_progress' | 'completed' | 'pendin
     if (!details.value || isTransitioning.value) return;
 
     if (newStatus === 'completed' && !details.value.can_be_completed) {
-        alert('لا يمكن إنهاء طلب الصيانة قبل تسجيل التكلفة من صفحة المصروفات.');
+        confirmDialog.notice({
+            title: 'سجّل تكلفة الصيانة أولاً',
+            message: 'لا يمكن إنهاء طلب الصيانة قبل تسجيل تكلفته من صفحة المصروفات.',
+        });
         return;
     }
 
@@ -200,9 +206,6 @@ const handleStatusTransition = (newStatus: 'in_progress' | 'completed' | 'pendin
             loadDetails();
             emit('updated');
         },
-        onError: (errs) => {
-            alert(errs.status || 'حدث خطأ أثناء تغيير حالة الطلب.');
-        },
         onFinish: () => {
             isTransitioning.value = false;
         },
@@ -212,23 +215,27 @@ const handleStatusTransition = (newStatus: 'in_progress' | 'completed' | 'pendin
 // Handle expense payment recording/reversing
 const isRecordingPayment = ref(false);
 
-const handleRecordExpensePayment = () => {
+const handleRecordExpensePayment = async () => {
     if (!details.value?.expense?.id || isRecordingPayment.value) return;
+    const expenseId = details.value.expense.id;
 
-    if (!confirm('هل أنت متأكد من تسجيل سداد تكلفة الصيانة؟')) {
+    const confirmed = await confirmDialog.confirm({
+        icon: CreditCard,
+        title: 'تسجيل سداد تكلفة الصيانة؟',
+        message: 'يُسجل مصروف الصيانة كمدفوع بتاريخ اليوم.',
+        confirmLabel: 'تسجيل السداد',
+    });
+    if (!confirmed) {
         return;
     }
 
     isRecordingPayment.value = true;
-    router.post(route('expenses.payment.record', details.value.expense.id), {}, {
+    router.post(route('expenses.payment.record', expenseId), {}, {
         preserveScroll: true,
         preserveState: true,
         onSuccess: () => {
             loadDetails();
             emit('updated');
-        },
-        onError: (errs: any) => {
-            alert(errs?.amount || 'حدث خطأ أثناء تسجيل السداد.');
         },
         onFinish: () => {
             isRecordingPayment.value = false;
@@ -236,23 +243,28 @@ const handleRecordExpensePayment = () => {
     });
 };
 
-const handleReverseExpensePayment = () => {
+const handleReverseExpensePayment = async () => {
     if (!details.value?.expense?.id || isRecordingPayment.value) return;
+    const expenseId = details.value.expense.id;
 
-    if (!confirm('هل تريد إلغاء تسجيل سداد هذا المصروف وإعادته كغير مدفوع؟')) {
+    const confirmed = await confirmDialog.confirm({
+        tone: 'danger',
+        title: 'إلغاء سداد هذا المصروف؟',
+        message: 'يعود المصروف إلى حالة غير مدفوع، ويمكنك تسجيل سداده مرة أخرى لاحقاً.',
+        confirmLabel: 'إلغاء السداد',
+        cancelLabel: 'إبقاؤه مدفوعاً',
+    });
+    if (!confirmed) {
         return;
     }
 
     isRecordingPayment.value = true;
-    router.post(route('expenses.payment.reverse', details.value.expense.id), {}, {
+    router.post(route('expenses.payment.reverse', expenseId), {}, {
         preserveScroll: true,
         preserveState: true,
         onSuccess: () => {
             loadDetails();
             emit('updated');
-        },
-        onError: () => {
-            alert('حدث خطأ أثناء إلغاء السداد.');
         },
         onFinish: () => {
             isRecordingPayment.value = false;
@@ -398,19 +410,30 @@ const uploadPendingAttachments = async () => {
 };
 
 // Handle attachment deletion
-const confirmDeleteAttachment = (att: AttachmentItem) => {
-    attachmentToDelete.value = att;
+const confirmDeleteAttachment = async (att: AttachmentItem) => {
+    if (deletingAttachmentId.value !== null) return;
+
+    const confirmed = await confirmDialog.confirm({
+        tone: 'danger',
+        icon: Trash2,
+        title: 'حذف هذا المرفق؟',
+        message: 'يُحذف الملف نهائياً من مرفقات طلب الصيانة.',
+        details: [{ label: 'الملف', value: att.original_filename }],
+        confirmLabel: 'حذف المرفق',
+    });
+    if (confirmed) {
+        await deleteAttachment(att.id);
+    }
 };
 
-const executeDeleteAttachment = async () => {
-    if (!details.value || !attachmentToDelete.value || isDeletingAttachment.value) return;
+const deleteAttachment = async (attId: number) => {
+    if (!details.value) return;
 
-    isDeletingAttachment.value = true;
-    const attId = attachmentToDelete.value.id;
+    deletingAttachmentId.value = attId;
 
     try {
         const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
-        const response = await fetch(`/maintenance/${details.value.id}/attachments/${attId}`, {
+        const response = await fetch(route('maintenance.attachments.destroy', [details.value.id, attId]), {
             method: 'DELETE',
             headers: {
                 'Accept': 'application/json',
@@ -425,12 +448,11 @@ const executeDeleteAttachment = async () => {
         }
 
         details.value.attachments = details.value.attachments.filter(a => a.id !== attId);
-        attachmentToDelete.value = null;
         emit('updated');
     } catch (err: any) {
-        alert(err?.message || 'حدث خطأ أثناء حذف المرفق.');
+        toast.error(err?.message || 'حدث خطأ أثناء حذف المرفق.');
     } finally {
-        isDeletingAttachment.value = false;
+        deletingAttachmentId.value = null;
     }
 };
 
@@ -988,10 +1010,13 @@ const close = () => {
                                             <button
                                                 @click="confirmDeleteAttachment(att)"
                                                 type="button"
-                                                class="h-7 w-7 rounded-lg text-rose-600 hover:bg-rose-50 transition flex items-center justify-center cursor-pointer"
+                                                :disabled="deletingAttachmentId !== null"
+                                                class="h-7 w-7 rounded-lg text-rose-600 hover:bg-rose-50 transition flex items-center justify-center cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
                                                 title="حذف المرفق"
+                                                aria-label="حذف المرفق"
                                             >
-                                                <Trash2 class="w-3.5 h-3.5" />
+                                                <Loader2 v-if="deletingAttachmentId === att.id" class="w-3.5 h-3.5 animate-spin" />
+                                                <Trash2 v-else class="w-3.5 h-3.5" />
                                             </button>
                                         </div>
                                     </div>
@@ -1121,7 +1146,7 @@ const close = () => {
         <!-- Lightbox Image Modal -->
         <div
             v-if="activePreviewImage"
-            class="fixed inset-0 z-60 overflow-y-auto flex items-center justify-center p-4"
+            class="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center p-4"
         >
             <div @click="activePreviewImage = null" class="fixed inset-0 bg-black/80 backdrop-blur-xs"></div>
             <div class="relative max-w-3xl max-h-[90vh] bg-white rounded-3xl overflow-hidden shadow-2xl z-10 flex flex-col">
@@ -1133,43 +1158,6 @@ const close = () => {
                 </div>
                 <div class="p-2 overflow-auto flex items-center justify-center bg-slate-950">
                     <img :src="activePreviewImage.url" class="max-h-[75vh] object-contain rounded-xl" />
-                </div>
-            </div>
-        </div>
-
-        <!-- Delete Attachment Confirm Modal -->
-        <div
-            v-if="attachmentToDelete"
-            class="fixed inset-0 z-60 overflow-y-auto flex items-center justify-center p-4"
-        >
-            <div @click="attachmentToDelete = null" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
-            <div class="relative w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-[#D6E0E7] z-10 space-y-4">
-                <div class="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
-                    <Trash2 class="w-6 h-6 stroke-[2]" />
-                </div>
-                <div class="text-center space-y-1">
-                    <h4 class="text-base font-bold text-[#163E3E]">تأكيد حذف المرفق</h4>
-                    <p class="text-xs text-[#5B6770]">
-                        هل أنت متأكد من حذف الملف "{{ attachmentToDelete.original_filename }}"؟ سيتم مسح الملف نهائياً من وحدة التخزين الآمنة.
-                    </p>
-                </div>
-                <div class="flex items-center justify-center gap-3 pt-2">
-                    <button
-                        @click="attachmentToDelete = null"
-                        type="button"
-                        class="h-9 px-4 rounded-xl border border-[#D6E0E7] text-xs font-bold text-[#5B6770] hover:bg-[#F8FAFC]"
-                    >
-                        إلغاء
-                    </button>
-                    <button
-                        @click="executeDeleteAttachment"
-                        :disabled="isDeletingAttachment"
-                        type="button"
-                        class="h-9 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
-                    >
-                        <Loader2 v-if="isDeletingAttachment" class="w-3.5 h-3.5 animate-spin" />
-                        <span>{{ isDeletingAttachment ? 'جاري الحذف...' : 'نعم، احذف المرفق' }}</span>
-                    </button>
                 </div>
             </div>
         </div>

@@ -6,6 +6,7 @@ import AppNavbar from '@/Components/Layout/AppNavbar.vue';
 import AppFooter from '@/Components/Layout/AppFooter.vue';
 import ModalNewAction from '@/Components/Common/ModalNewAction.vue';
 import ModalRecordPayment from '@/Components/Common/ModalRecordPayment.vue';
+import ConfirmDialog from '@/Components/Common/ConfirmDialog.vue';
 import GlobalToast from '@/Components/Common/GlobalToast.vue';
 import { AlertOctagon, X } from 'lucide-vue-next';
 
@@ -193,5 +194,6 @@ function handleNewAction() {
 
         <!-- نظام الإشعارات والتنبيهات الشامل (Global Toast Center) -->
         <GlobalToast />
+        <ConfirmDialog />
     </div>
 </template>

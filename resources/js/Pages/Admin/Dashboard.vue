@@ -36,6 +36,7 @@ import {
     Wrench,
     X,
 } from 'lucide-vue-next';
+import { useConfirmDialog } from '@/composables/useConfirmDialog';
 
 interface Props {
     adminUser: {
@@ -224,8 +225,18 @@ function toggleAdminRole(userId: number) {
     router.patch(route('admin.users.toggle-admin', userId));
 }
 
-function deleteUser(userId: number, name: string) {
-    if (confirm(`هل أنت متأكد من حذف المستخدم (${name})؟`)) {
+const confirmDialog = useConfirmDialog();
+
+async function deleteUser(userId: number, name: string) {
+    const confirmed = await confirmDialog.confirm({
+        tone: 'danger',
+        title: 'حذف هذا المستخدم؟',
+        message: 'يُحذف حساب المستخدم ولن يتمكن من تسجيل الدخول مرة أخرى.',
+        details: [{ label: 'المستخدم', value: name }],
+        confirmLabel: 'حذف المستخدم',
+    });
+
+    if (confirmed) {
         router.delete(route('admin.users.destroy', userId));
     }
 }
@@ -247,8 +258,16 @@ function submitEditWorkspace() {
     });
 }
 
-function deleteWorkspace(wsId: number, name: string) {
-    if (confirm(`تحذير: هل أنت متأكد تمامًا من حذف مساحة العمل (${name}) وكافة بياناتها؟`)) {
+async function deleteWorkspace(wsId: number, name: string) {
+    const confirmed = await confirmDialog.confirm({
+        tone: 'danger',
+        title: 'حذف مساحة العمل؟',
+        message: 'تُحذف مساحة العمل نهائياً ولا يمكن التراجع عن ذلك.',
+        details: [{ label: 'مساحة العمل', value: name }],
+        confirmLabel: 'حذف مساحة العمل',
+    });
+
+    if (confirmed) {
         router.delete(route('admin.workspaces.destroy', wsId));
     }
 }

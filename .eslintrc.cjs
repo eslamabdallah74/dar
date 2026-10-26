@@ -14,6 +14,8 @@ module.exports = {
     },
     rules: {
         "vue/multi-word-component-names": "off",
-        "no-undef": "off"
+        "no-undef": "off",
+        // Unused imports, variables and parameters are defects, not style: fail `npm run lint:check`.
+        "@typescript-eslint/no-unused-vars": "error"
     }
 }

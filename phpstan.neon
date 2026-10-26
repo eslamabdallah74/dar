@@ -1,0 +1,84 @@
+# Quality gate run by `composer analyse` and CI. See "Code Quality Gate" in AGENTS.md.
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - vendor/pestphp/pest-plugin-phpstan/extension.neon
+    - vendor/phpstan/phpstan-strict-rules/rules.neon
+    - vendor/phpstan/phpstan-deprecation-rules/rules.neon
+    - vendor/shipmonk/dead-code-detector/rules.neon
+    - vendor/tomasvotruba/cognitive-complexity/config/extension.neon
+    # Pre-existing level-9 `mixed` findings only (levels 0-8 have none). It may only shrink.
+    - phpstan-baseline.neon
+
+parameters:
+    level: 9
+
+    paths:
+        - app
+        - bootstrap/app.php
+        - config
+        - database
+        - routes
+        - tests
+
+    tmpDir: storage/framework/cache/phpstan
+
+    # Per method: SonarQube's default limit. Per class: just above the largest class after the
+    # refactoring, so a growing class has to be split instead of quietly passing.
+    cognitive_complexity:
+        function: 15
+        class: 80
+
+    # The models declare casts in a casts() method without an array-shape return type; parsing the
+    # method body lets Larastan type cast attributes (dates as Carbon, enums, ...) precisely.
+    parseModelCastsMethod: true
+
+    strictRules:
+        # False positives on every Eloquent builder chain, Facade and macro: Laravel forwards these
+        # instance calls through __call/__callStatic, which the rule reads as static calls.
+        dynamicCallOnStaticMethod: false
+        # Truthiness rules (if ($x), empty(), ?:). Rewriting the ~400 existing conditions changes
+        # semantics for '0' / 0 operands, which is a risk in money code with no defect behind it.
+        booleansInConditions: false
+        disallowedEmpty: false
+        disallowedShortTernary: false
+        # Larastan types model attributes from the schema, but unsaved or unrefreshed models hold raw
+        # values: removing a "useless" (bool) cast from User::isAdmin() broke 63 tests. Casts stay.
+        uselessCast: false
+
+    ignoreErrors:
+        -
+            # Laravel's container builds actions, services and gateways through reflection-based autowiring,
+            # which static analysis cannot follow. A class that is truly unused still shows up through its
+            # other dead members, so only constructors are exempt.
+            identifier: shipmonk.deadMethod
+            message: '#^Unused [^ ]+::__construct$#'
+        -
+            # Eloquent calls boot{Trait}() / initialize{Trait}() on model traits by naming convention.
+            identifier: shipmonk.deadMethod
+            message: '#^Unused App\\Models\\Concerns\\\w+::(boot|initialize)[A-Z]\w*$#'
+            path: app/Models/Concerns/*
+        -
+            # Breeze's verification flow dispatches Verified for App\Models\User, which has the verification
+            # methods (via Foundation\Auth\User) but deliberately does not implement the MustVerifyEmail
+            # contract: implementing it would make email verification mandatory. The event's parameter is
+            # only typed in PHPDoc, so there is no runtime error.
+            identifier: argument.type
+            message: '#^Parameter \#1 \$user of class Illuminate\\Auth\\Events\\Verified constructor expects Illuminate\\Contracts\\Auth\\MustVerifyEmail, App\\Models\\User given\.$#'
+            path: app/Http/Controllers/Auth/VerifyEmailController.php
+        -
+            # Untouched Laravel skeleton configuration, kept identical to upstream so framework upgrades
+            # diff cleanly: array_filter() relies on its default truthiness filter.
+            identifier: arrayFilter.strict
+            paths:
+                - config/app.php
+                - config/database.php
+        -
+            # Same skeleton line: env('APP_URL', 'http://localhost') is typed bool|string.
+            identifier: argument.type
+            message: '#^Parameter \#1 \$string of function rtrim expects string, bool\|string given\.$#'
+            path: config/filesystems.php
+        -
+            # The queue reads a job's $tries / $maxExceptions / $timeout by property access when it builds the payload.
+            identifier: shipmonk.deadProperty.neverRead
+            message: '#^Property App\\Jobs\\\w+::\$(tries|maxExceptions|timeout) is never read$#'
+            path: app/Jobs/*

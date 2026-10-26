@@ -1,0 +1,1003 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 1
+			path: app/Actions/Leases/CreateLeaseAction.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 2
+			path: app/Actions/Leases/CreateLeaseAction.php
+
+		-
+			message: '#^Parameter \#1 \$time of static method Carbon\\Carbon\:\:parse\(\) expects Carbon\\Month\|Carbon\\WeekDay\|DateTimeInterface\|float\|int\|string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Actions/Leases/CreateLeaseAction.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 1
+			path: app/Actions/Payments/CorrectPaymentAction.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: app/Actions/Payments/CorrectPaymentAction.php
+
+		-
+			message: '#^Parameter \#1 \$time of static method Carbon\\Carbon\:\:parse\(\) expects Carbon\\Month\|Carbon\\WeekDay\|DateTimeInterface\|float\|int\|string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Actions/Payments/CorrectPaymentAction.php
+
+		-
+			message: '#^Property App\\Models\\Payment\:\:\$notes \(string\|null\) does not accept mixed\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Actions/Payments/CorrectPaymentAction.php
+
+		-
+			message: '#^Property App\\Models\\Payment\:\:\$payment_method \(''bank_transfer''\|''cash''\|''cheque''\|''other''\) does not accept mixed\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Actions/Payments/CorrectPaymentAction.php
+
+		-
+			message: '#^Property App\\Models\\Payment\:\:\$reference \(string\|null\) does not accept mixed\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Actions/Payments/CorrectPaymentAction.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 1
+			path: app/Actions/Payments/RecordPaymentAction.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 2
+			path: app/Actions/Payments/RecordPaymentAction.php
+
+		-
+			message: '#^Parameter \#1 \$time of static method Carbon\\Carbon\:\:parse\(\) expects Carbon\\Month\|Carbon\\WeekDay\|DateTimeInterface\|float\|int\|string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Actions/Payments/RecordPaymentAction.php
+
+		-
+			message: '#^Parameter \#1 \$key of function trans expects string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Auth/NewPasswordController.php
+
+		-
+			message: '#^Parameter \#1 \$value of static method Illuminate\\Support\\Facades\\Hash\:\:make\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Auth/NewPasswordController.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 3
+			path: app/Http/Controllers/ExpenseController.php
+
+		-
+			message: '#^Binary operation "\." between non\-falsy\-string and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Http/Controllers/LeaseController.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 2
+			path: app/Http/Controllers/LeaseController.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
+			path: app/Http/Controllers/LeaseController.php
+
+		-
+			message: '#^Parameter \#2 \$newStatus of method App\\Services\\MaintenanceExpenseService\:\:transitionStatus\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/MaintenanceController.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 1
+			path: app/Http/Controllers/PaymentController.php
+
+		-
+			message: '#^Binary operation "\." between ''شارع '' and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Http/Controllers/PropertyController.php
+
+		-
+			message: '#^Binary operation "\." between ''مبنى '' and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Http/Controllers/PropertyController.php
+
+		-
+			message: '#^Binary operation "/" between mixed and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Http/Controllers/PropertyController.php
+
+		-
+			message: '#^Cannot access offset ''rent_amount'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/PropertyController.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 1
+			path: app/Http/Controllers/PropertyController.php
+
+		-
+			message: '#^Parameter \#2 \$array of function implode expects array\<string\>, array\<int, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/PropertyController.php
+
+		-
+			message: '#^Parameter \#2 \$billableCounts of class App\\Http\\Resources\\PropertyResource constructor expects array\<int, int\>, array\<mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/PropertyController.php
+
+		-
+			message: '#^Parameter \#2 \$config of method App\\Services\\PropertyUnitGeneratorService\:\:generateForProperty\(\) expects array\<string, mixed\>\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/PropertyController.php
+
+		-
+			message: '#^Parameter \#3 \$customUnits of method App\\Services\\PropertyUnitGeneratorService\:\:generateForProperty\(\) expects array\<int, array\<string, mixed\>\>\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/PropertyController.php
+
+		-
+			message: '#^Parameter \$parentUnitId of method App\\Services\\UnitHierarchyService\:\:validateHierarchy\(\) expects int\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Http/Controllers/PropertyController.php
+
+		-
+			message: '#^Parameter \$unitType of method App\\Services\\UnitHierarchyService\:\:validateHierarchy\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Http/Controllers/PropertyController.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 1
+			path: app/Http/Controllers/RenterController.php
+
+		-
+			message: '#^Parameter \#1 \$string of function trim expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/RenterController.php
+
+		-
+			message: '#^Cannot access offset 0 on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/SecurityDepositController.php
+
+		-
+			message: '#^Parameter \#1 \$value of function count expects array\|Countable, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/SecurityDepositController.php
+
+		-
+			message: '#^Parameter \#2 \$fields of function fputcsv expects array\<int\|string, bool\|float\|int\|string\|null\>, array\<int, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/SecurityDepositController.php
+
+		-
+			message: '#^Parameter \#3 \$deductions of method App\\Services\\SecurityDepositService\:\:recordDeductions\(\) expects array\<int, array\<string, mixed\>\>, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/SecurityDepositController.php
+
+		-
+			message: '#^Parameter \#4 \$data of method App\\Services\\SecurityDepositService\:\:updateDeduction\(\) expects array\<string, mixed\>, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/SecurityDepositController.php
+
+		-
+			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 2
+			path: app/Http/Controllers/WhatsAppWebhookController.php
+
+		-
+			message: '#^Cannot access offset ''changes'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/WhatsAppWebhookController.php
+
+		-
+			message: '#^Cannot access offset ''code'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/WhatsAppWebhookController.php
+
+		-
+			message: '#^Cannot access offset ''errors'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/WhatsAppWebhookController.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/WhatsAppWebhookController.php
+
+		-
+			message: '#^Cannot access offset ''message'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/WhatsAppWebhookController.php
+
+		-
+			message: '#^Cannot access offset ''status'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/WhatsAppWebhookController.php
+
+		-
+			message: '#^Cannot access offset ''statuses'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/WhatsAppWebhookController.php
+
+		-
+			message: '#^Cannot access offset ''title'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/WhatsAppWebhookController.php
+
+		-
+			message: '#^Cannot access offset ''value'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/WhatsAppWebhookController.php
+
+		-
+			message: '#^Cannot access offset 0 on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/WhatsAppWebhookController.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 3
+			path: app/Http/Controllers/WhatsAppWebhookController.php
+
+		-
+			message: '#^Parameter \#1 \$known_string of function hash_equals expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/WhatsAppWebhookController.php
+
+		-
+			message: '#^Part \$providerMessageId \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: app/Http/Controllers/WhatsAppWebhookController.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
+			path: app/Http/Middleware/SetCurrentWorkspace.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 3
+			path: app/Http/Requests/Admin/AdminLoginRequest.php
+
+		-
+			message: '#^Parameter \#1 \$string of function strlen expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Requests/Admin/AdminLoginRequest.php
+
+		-
+			message: '#^Parameter \#1 \$value of static method Illuminate\\Support\\Facades\\Hash\:\:make\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Requests/Admin/AdminLoginRequest.php
+
+		-
+			message: '#^Parameter \#1 \$value of static method Illuminate\\Support\\Str\:\:lower\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Http/Requests/Admin/AdminLoginRequest.php
+
+		-
+			message: '#^Property App\\Models\\User\:\:\$name \(string\) does not accept mixed\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Http/Requests/Admin/AdminLoginRequest.php
+
+		-
+			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 1
+			path: app/Http/Requests/Leases/TerminateLeaseRequest.php
+
+		-
+			message: '#^Cannot access offset ''amount'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Requests/Leases/TerminateLeaseRequest.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 1
+			path: app/Http/Requests/Leases/TerminateLeaseRequest.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: app/Http/Requests/Leases/TerminateLeaseRequest.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
+			path: app/Http/Requests/Payments/StorePaymentRequest.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 1
+			path: app/Http/Requests/SecurityDeposits/RecordPendingRefundPaymentRequest.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 1
+			path: app/Http/Resources/PropertyResource.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 1
+			path: app/Http/Resources/RentChargeResource.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 1
+			path: app/Http/Resources/RenterResource.php
+
+		-
+			message: '#^Parameter \#2 \.\.\.\$values of function sprintf expects bool\|float\|int\|string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/DataCleanupJob.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 3
+			path: app/Models/Lease.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 1
+			path: app/Models/Payment.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 1
+			path: app/Models/RentCharge.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		-
+			message: '#^Binary operation "\." between ''من أصل '' and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Services/Dashboard/WorkspaceDashboardService.php
+
+		-
+			message: '#^Cannot access property \$due_date on mixed\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Dashboard/WorkspaceDashboardService.php
+
+		-
+			message: '#^Cannot access property \$ends_on on mixed\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Dashboard/WorkspaceDashboardService.php
+
+		-
+			message: '#^Cannot access property \$id on mixed\.$#'
+			identifier: property.nonObject
+			count: 5
+			path: app/Services/Dashboard/WorkspaceDashboardService.php
+
+		-
+			message: '#^Cannot access property \$lease on mixed\.$#'
+			identifier: property.nonObject
+			count: 3
+			path: app/Services/Dashboard/WorkspaceDashboardService.php
+
+		-
+			message: '#^Cannot access property \$outstanding_balance on mixed\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: app/Services/Dashboard/WorkspaceDashboardService.php
+
+		-
+			message: '#^Cannot access property \$refundable_deposit_balance on mixed\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: app/Services/Dashboard/WorkspaceDashboardService.php
+
+		-
+			message: '#^Cannot access property \$rent_amount on mixed\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Dashboard/WorkspaceDashboardService.php
+
+		-
+			message: '#^Cannot access property \$renter on mixed\.$#'
+			identifier: property.nonObject
+			count: 4
+			path: app/Services/Dashboard/WorkspaceDashboardService.php
+
+		-
+			message: '#^Cannot access property \$reportedByRenter on mixed\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Dashboard/WorkspaceDashboardService.php
+
+		-
+			message: '#^Cannot access property \$title on mixed\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Services/Dashboard/WorkspaceDashboardService.php
+
+		-
+			message: '#^Cannot access property \$unit on mixed\.$#'
+			identifier: property.nonObject
+			count: 5
+			path: app/Services/Dashboard/WorkspaceDashboardService.php
+
+		-
+			message: '#^Parameter \#1 \$overdueCharges of method App\\Services\\Dashboard\\WorkspaceDashboardService\:\:buildAttentionItems\(\) expects Illuminate\\Support\\Collection\<int, mixed\>, Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\RentCharge\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Dashboard/WorkspaceDashboardService.php
+
+		-
+			message: '#^Parameter \#2 \$expiringLeases of method App\\Services\\Dashboard\\WorkspaceDashboardService\:\:buildAttentionItems\(\) expects Illuminate\\Support\\Collection\<int, mixed\>, Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Lease\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Dashboard/WorkspaceDashboardService.php
+
+		-
+			message: '#^Parameter \#3 \$openMaintenance of method App\\Services\\Dashboard\\WorkspaceDashboardService\:\:buildAttentionItems\(\) expects Illuminate\\Support\\Collection\<int, mixed\>, Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\MaintenanceRequest\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Dashboard/WorkspaceDashboardService.php
+
+		-
+			message: '#^Parameter \#4 \$underReviewLeases of method App\\Services\\Dashboard\\WorkspaceDashboardService\:\:buildAttentionItems\(\) expects Illuminate\\Support\\Collection\<int, mixed\>, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Dashboard/WorkspaceDashboardService.php
+
+		-
+			message: '#^Method App\\Services\\EncryptedFileService\:\:get\(\) should return string\|null but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/EncryptedFileService.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 2
+			path: app/Services/MaintenanceExpenseService.php
+
+		-
+			message: '#^Cannot access offset ''amount'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Payments/LogPaymentGateway.php
+
+		-
+			message: '#^Cannot access offset ''currency'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Payments/LogPaymentGateway.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Payments/LogPaymentGateway.php
+
+		-
+			message: '#^Cannot access offset ''metadata'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Payments/LogPaymentGateway.php
+
+		-
+			message: '#^Cannot access offset ''status'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Payments/LogPaymentGateway.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 1
+			path: app/Services/Payments/LogPaymentGateway.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 4
+			path: app/Services/Payments/LogPaymentGateway.php
+
+		-
+			message: '#^Binary operation "\." between ''فشل إنشاء جلسة…'' and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: app/Services/Payments/MoyasarPaymentGateway.php
+
+		-
+			message: '#^Cannot access offset ''amount'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Payments/MoyasarPaymentGateway.php
+
+		-
+			message: '#^Cannot access offset ''currency'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Payments/MoyasarPaymentGateway.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Services/Payments/MoyasarPaymentGateway.php
+
+		-
+			message: '#^Cannot access offset ''metadata'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Payments/MoyasarPaymentGateway.php
+
+		-
+			message: '#^Cannot access offset ''status'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Payments/MoyasarPaymentGateway.php
+
+		-
+			message: '#^Cannot access offset ''url'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/Payments/MoyasarPaymentGateway.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 1
+			path: app/Services/Payments/MoyasarPaymentGateway.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 7
+			path: app/Services/Payments/MoyasarPaymentGateway.php
+
+		-
+			message: '#^Method App\\Services\\Payments\\MoyasarPaymentGateway\:\:createCheckoutSession\(\) should return array\{id\: string, checkout_url\: string, raw\: array\<mixed\>\} but returns array\{id\: string, checkout_url\: string, raw\: mixed\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/Payments/MoyasarPaymentGateway.php
+
+		-
+			message: '#^Parameter \#1 \$string of function strtolower expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Payments/MoyasarPaymentGateway.php
+
+		-
+			message: '#^Parameter \#1 \$driver of method App\\Services\\Payments\\PaymentGatewayManager\:\:createDriver\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Payments/PaymentGatewayManager.php
+
+		-
+			message: '#^Possibly invalid array key type mixed\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 3
+			path: app/Services/Payments/PaymentGatewayManager.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 9
+			path: app/Services/PropertyUnitGeneratorService.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 4
+			path: app/Services/PropertyUnitGeneratorService.php
+
+		-
+			message: '#^Parameter \#2 \$unitType of method App\\Services\\PropertyUnitGeneratorService\:\:createUnit\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/PropertyUnitGeneratorService.php
+
+		-
+			message: '#^Parameter \#4 \$code of method App\\Services\\PropertyUnitGeneratorService\:\:createUnit\(\) expects string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/PropertyUnitGeneratorService.php
+
+		-
+			message: '#^Parameter \#5 \$name of method App\\Services\\PropertyUnitGeneratorService\:\:createUnit\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/PropertyUnitGeneratorService.php
+
+		-
+			message: '#^Possibly invalid array key type mixed\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 2
+			path: app/Services/PropertyUnitGeneratorService.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 4
+			path: app/Services/ReportService.php
+
+		-
+			message: '#^Parameter \#2 \$fields of function fputcsv expects array\<int\|string, bool\|float\|int\|string\|null\>, array\<int, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/ReportService.php
+
+		-
+			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 2
+			path: app/Services/SecurityDepositService.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/SecurityDepositService.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 6
+			path: app/Services/SecurityDepositService.php
+
+		-
+			message: '#^Parameter \#1 \$deductions of method App\\Services\\SecurityDepositService\:\:sumDeductionAmounts\(\) expects iterable\<array\<string, mixed\>\>, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/SecurityDepositService.php
+
+		-
+			message: '#^Parameter \#1 \$value of function collect expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), array\<string, mixed\>\>\|iterable\<\(int\|string\), array\<string, mixed\>\>\|null, iterable\<array\<string, mixed\>\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/SecurityDepositService.php
+
+		-
+			message: '#^Parameter \#2 \$deductionIndex of method App\\Services\\SecurityDepositService\:\:storeDeductionAttachment\(\) expects int\|string, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/SecurityDepositService.php
+
+		-
+			message: '#^Parameter \#4 \$deductionData of method App\\Services\\SecurityDepositService\:\:confirmExistingDeduction\(\) expects array\<string, mixed\>, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/SecurityDepositService.php
+
+		-
+			message: '#^Parameter \#4 \$deductionData of method App\\Services\\SecurityDepositService\:\:createConfirmedDeduction\(\) expects array\<string, mixed\>, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Services/SecurityDepositService.php
+
+		-
+			message: '#^Parameter \#7 \$deductedAt of method App\\Services\\SecurityDepositService\:\:createConfirmedDeduction\(\) expects DateTimeInterface\|string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/SecurityDepositService.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 2
+			path: app/Services/Storage/DocumentStorageService.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/WhatsApp/MetaCloudApiGateway.php
+
+		-
+			message: '#^Cannot access offset ''messages'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/WhatsApp/MetaCloudApiGateway.php
+
+		-
+			message: '#^Cannot access offset 0 on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Services/WhatsApp/MetaCloudApiGateway.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: app/Services/WhatsApp/MetaCloudApiGateway.php
+
+		-
+			message: '#^Method App\\Services\\WhatsApp\\MetaCloudApiGateway\:\:sendTemplate\(\) should return array\{success\: bool, provider_message_id\: string\|null, status\: string, error_message\: string\|null\} but returns array\{success\: false, provider_message_id\: null, status\: ''failed'', error_message\: mixed\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/WhatsApp/MetaCloudApiGateway.php
+
+		-
+			message: '#^Method App\\Services\\WhatsApp\\MetaCloudApiGateway\:\:sendTemplate\(\) should return array\{success\: bool, provider_message_id\: string\|null, status\: string, error_message\: string\|null\} but returns array\{success\: true, provider_message_id\: mixed, status\: ''sent'', error_message\: null\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/WhatsApp/MetaCloudApiGateway.php
+
+		-
+			message: '#^Property App\\Services\\WhatsApp\\MetaCloudApiGateway\:\:\$apiVersion \(string\) does not accept mixed\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/WhatsApp/MetaCloudApiGateway.php
+
+		-
+			message: '#^Property App\\Services\\WhatsApp\\MetaCloudApiGateway\:\:\$phoneNumberId \(string\|null\) does not accept mixed\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/WhatsApp/MetaCloudApiGateway.php
+
+		-
+			message: '#^Property App\\Services\\WhatsApp\\MetaCloudApiGateway\:\:\$token \(string\|null\) does not accept mixed\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: app/Services/WhatsApp/MetaCloudApiGateway.php
+
+		-
+			message: '#^Binary operation "\." between mixed and string results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: database/factories/MessageLogFactory.php
+
+		-
+			message: '#^Binary operation "\." between mixed and string results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: database/factories/RenterFactory.php
+
+		-
+			message: '#^Parameter \#1 \$value of static method Illuminate\\Support\\Facades\\Hash\:\:make\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: database/seeders/AdminUserSeeder.php
+
+		-
+			message: '#^Part \$appName \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 1
+			path: tests/Feature/DarNavigationAndPagesTest.php
+
+		-
+			message: '#^Cannot access offset ''allocations'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 4
+			path: tests/Feature/FinancialBusinessRulesTest.php
+
+		-
+			message: '#^Cannot access offset ''amount'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: tests/Feature/FinancialBusinessRulesTest.php
+
+		-
+			message: '#^Cannot access offset ''props'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/Feature/FinancialBusinessRulesTest.php
+
+		-
+			message: '#^Cannot access offset ''stats'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/Feature/FinancialBusinessRulesTest.php
+
+		-
+			message: '#^Cannot access offset ''total_advance'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/Feature/FinancialBusinessRulesTest.php
+
+		-
+			message: '#^Cannot access offset ''total_billed'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/Feature/FinancialBusinessRulesTest.php
+
+		-
+			message: '#^Cannot access offset ''total_collected'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/Feature/FinancialBusinessRulesTest.php
+
+		-
+			message: '#^Cannot access offset 0 on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: tests/Feature/FinancialBusinessRulesTest.php
+
+		-
+			message: '#^Cannot cast mixed to float\.$#'
+			identifier: cast.double
+			count: 5
+			path: tests/Feature/FinancialBusinessRulesTest.php
+
+		-
+			message: '#^Cannot access offset ''can_rent'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: tests/Feature/FlexibleRoomAndBedLeasingCombinationTest.php
+
+		-
+			message: '#^Cannot access offset ''descendant_has_active_lease'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/Feature/FlexibleRoomAndBedLeasingCombinationTest.php
+
+		-
+			message: '#^Cannot access offset ''props'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/Feature/FlexibleRoomAndBedLeasingCombinationTest.php
+
+		-
+			message: '#^Cannot access offset ''status'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: tests/Feature/FlexibleRoomAndBedLeasingCombinationTest.php
+
+		-
+			message: '#^Cannot access offset ''units'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/Feature/FlexibleRoomAndBedLeasingCombinationTest.php
+
+		-
+			message: '#^Cannot access offset ''activities'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/Feature/MaintenanceAttachmentsAndHistoryTest.php
+
+		-
+			message: '#^Cannot access offset ''attachments'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: tests/Feature/MaintenanceAttachmentsAndHistoryTest.php
+
+		-
+			message: '#^Cannot access offset ''is_image'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/Feature/MaintenanceAttachmentsAndHistoryTest.php
+
+		-
+			message: '#^Cannot access offset ''note'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/Feature/MaintenanceAttachmentsAndHistoryTest.php
+
+		-
+			message: '#^Cannot access offset ''notes'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: tests/Feature/MaintenanceAttachmentsAndHistoryTest.php
+
+		-
+			message: '#^Cannot access offset ''original_filename'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/Feature/MaintenanceAttachmentsAndHistoryTest.php
+
+		-
+			message: '#^Cannot access offset 0 on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: tests/Feature/MaintenanceAttachmentsAndHistoryTest.php
+
+		-
+			message: '#^Parameter \#1 \$value of function count expects array\|Countable, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Feature/MaintenanceAttachmentsAndHistoryTest.php
+
+		-
+			message: '#^Cannot call method get\(\) on mixed\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: tests/Feature/MaintenanceExpenseIntegrationTest.php
+
+		-
+			message: '#^Cannot access offset ''occupancy_rate_percent'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/Feature/QueueJobsTest.php
+
+		-
+			message: '#^Cannot access offset ''total_properties'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/Feature/QueueJobsTest.php
+
+		-
+			message: '#^Cannot access offset ''total_units'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: tests/Feature/QueueJobsTest.php

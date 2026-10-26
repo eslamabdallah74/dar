@@ -297,7 +297,7 @@ test('an owner can create a lease for a shop, record rent payments, and settle i
         'reference' => 'RENT-REC-01',
     ]);
 
-    expect((float) $charge->fresh()->outstanding_balance)->toBe(0.0);
+    expect((float) $charge->refresh()->outstanding_balance)->toBe(0.0);
 
     // Security deposit remains separate!
     expect((float) $this->workspace->payments()->sum('amount'))->toBe(15000.0)

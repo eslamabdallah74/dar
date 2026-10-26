@@ -16,9 +16,6 @@ import ModalRecordPayment from '@/Components/Common/ModalRecordPayment.vue';
 import {
     Plus,
     CreditCard,
-    Building2,
-    Calendar,
-    Sparkles,
     Shield,
     AlertCircle,
 } from 'lucide-vue-next';

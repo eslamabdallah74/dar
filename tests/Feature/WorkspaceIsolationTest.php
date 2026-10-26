@@ -63,10 +63,10 @@ test('workspaces cannot read records belonging to other workspaces', function ()
     // Workspace B creates its own records
     $propB = Property::create(['name' => 'Property B', 'property_type' => 'building', 'address' => 'Giza']);
     expect(Property::count())->toBe(1);
-    expect(Property::first()->id)->toBe($propB->id);
+    expect(Property::firstOrFail()->id)->toBe($propB->id);
 
     // Switch back to Workspace A
     app(CurrentWorkspace::class)->set($workspaceA);
     expect(Property::count())->toBe(1);
-    expect(Property::first()->id)->toBe($propA->id);
+    expect(Property::firstOrFail()->id)->toBe($propA->id);
 });

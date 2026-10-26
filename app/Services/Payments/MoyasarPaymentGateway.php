@@ -12,8 +12,6 @@ class MoyasarPaymentGateway implements PaymentGatewayInterface
 {
     protected string $apiKey;
 
-    protected string $publishableKey;
-
     protected string $webhookSecret;
 
     protected string $baseUrl;
@@ -21,7 +19,6 @@ class MoyasarPaymentGateway implements PaymentGatewayInterface
     public function __construct()
     {
         $this->apiKey = (string) config('services.payment_gateway.moyasar.secret_key', '');
-        $this->publishableKey = (string) config('services.payment_gateway.moyasar.publishable_key', '');
         $this->webhookSecret = (string) config('services.payment_gateway.moyasar.webhook_secret', '');
         $this->baseUrl = 'https://api.moyasar.com/v1';
     }
@@ -38,15 +35,15 @@ class MoyasarPaymentGateway implements PaymentGatewayInterface
         }
 
         // Amount in halalas (Moyasar requires minor currency units: 100 SAR = 10000)
-        $amountInHalalas = (int) round(($params['amount'] ?? 0) * 100);
+        $amountInHalalas = (int) round($params['amount'] * 100);
 
         $response = Http::withBasicAuth($this->apiKey, '')
             ->post("{$this->baseUrl}/invoices", [
                 'amount' => $amountInHalalas,
-                'currency' => strtoupper($params['currency'] ?? 'SAR'),
-                'description' => $params['description'] ?? 'سداد إيجار عبر Nook Mate',
+                'currency' => strtoupper($params['currency']),
+                'description' => $params['description'],
                 'callback_url' => $params['callback_url'],
-                'metadata' => $params['metadata'] ?? [],
+                'metadata' => $params['metadata'],
             ]);
 
         if (! $response->successful()) {
@@ -108,31 +105,6 @@ class MoyasarPaymentGateway implements PaymentGatewayInterface
             'amount' => $amount,
             'currency' => (string) ($data['currency'] ?? 'SAR'),
             'metadata' => (array) ($data['metadata'] ?? []),
-        ];
-    }
-
-    public function fetchPayment(string $paymentId): array
-    {
-        if (! $this->isConfigured()) {
-            throw new RuntimeException('بوابة الدفع (ميسر) غير مهيأة.');
-        }
-
-        $response = Http::withBasicAuth($this->apiKey, '')
-            ->get("{$this->baseUrl}/payments/{$paymentId}");
-
-        if (! $response->successful()) {
-            throw new RuntimeException('تعذر جلب تفاصيل عملية الدفع من ميسر.');
-        }
-
-        $data = $response->json();
-
-        return [
-            'id' => (string) ($data['id'] ?? $paymentId),
-            'status' => strtolower($data['status'] ?? 'failed'),
-            'amount' => isset($data['amount']) ? ((float) $data['amount'] / 100) : 0.0,
-            'currency' => (string) ($data['currency'] ?? 'SAR'),
-            'fee' => isset($data['fee']) ? ((float) $data['fee'] / 100) : 0.0,
-            'message' => $data['description'] ?? null,
         ];
     }
 }

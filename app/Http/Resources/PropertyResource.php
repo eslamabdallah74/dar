@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
-use App\Enums\PropertyType;
 use App\Models\Property;
 use App\Services\UnitHierarchyService;
 use Illuminate\Http\Request;
@@ -51,7 +50,7 @@ class PropertyResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'property_type' => $this->property_type instanceof PropertyType ? $this->property_type->value : (string) $this->property_type,
+            'property_type' => $this->property_type->value,
             'type_label' => $this->type_label,
             'address' => $this->address ?? 'القاهرة، جمهورية مصر العربية',
             'apartment_gender' => $apartmentGender,

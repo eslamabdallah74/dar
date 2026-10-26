@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PrimaryKpiRow from '@/Components/Dashboard/PrimaryKpiRow.vue';
 import OperationalKpiRow from '@/Components/Dashboard/OperationalKpiRow.vue';
@@ -15,22 +15,12 @@ import InputLabel from '@/Components/InputLabel.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import DangerButton from '@/Components/DangerButton.vue';
 import Checkbox from '@/Components/Checkbox.vue';
 
 import {
-    Activity,
-    AlertCircle,
-    AlertTriangle,
-    ArrowUpRight,
     Building2,
-    Calendar,
-    CheckCircle2,
-    Coins,
     CreditCard,
-    DollarSign,
     Edit3,
-    ExternalLink,
     FileText,
     Home,
     Layers,
@@ -39,12 +29,8 @@ import {
     MessageSquare,
     Plus,
     RefreshCw,
-    Search,
     Shield,
-    ShieldAlert,
     ShieldCheck,
-    Sliders,
-    Sparkles,
     Trash2,
     Users,
     Wrench,

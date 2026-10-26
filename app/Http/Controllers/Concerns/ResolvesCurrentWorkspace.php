@@ -21,10 +21,7 @@ trait ResolvesCurrentWorkspace
             abort(403, 'لا توجد مساحة عمل نشطة أو مصرح بها.');
         }
 
-        $user = $request->user();
-        if (! $user) {
-            abort(401);
-        }
+        $user = $this->authenticatedUser($request);
 
         $isAuthorized = $user->isAdmin()
             || $workspace->owner_user_id === $user->id

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Lease;
+use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\Property;
 use App\Models\Renter;
@@ -32,8 +33,7 @@ test('admin can login with configured env credentials', function () {
     $response->assertRedirect(route('admin.dashboard'));
     $this->assertAuthenticated();
 
-    $user = auth()->user();
-    expect($user->isAdmin())->toBeTrue();
+    expect(auth()->user()?->isAdmin())->toBeTrue();
 });
 
 test('non-admin user cannot login through admin login', function () {
@@ -157,8 +157,9 @@ test('admin can update workspace settings', function () {
         ]);
 
     $response->assertSessionHas('success');
-    expect($workspace->fresh()->name)->toBe('New Name Workspace');
-    expect($workspace->fresh()->currency)->toBe('SAR');
+    $workspace->refresh();
+    expect($workspace->name)->toBe('New Name Workspace');
+    expect($workspace->currency)->toBe('SAR');
 });
 
 test('admin can create a new user from admin panel', function () {
@@ -174,8 +175,7 @@ test('admin can create a new user from admin panel', function () {
     ]);
 
     $response->assertSessionHas('success');
-    $created = User::where('email', 'new.manager@dar.rent')->first();
-    expect($created)->not->toBeNull();
+    $created = User::where('email', 'new.manager@dar.rent')->firstOrFail();
     expect($created->isAdmin())->toBeTrue();
 });
 
@@ -192,13 +192,13 @@ test('admin can toggle admin role on another user', function () {
         ->patch(route('admin.users.toggle-admin', $targetUser));
 
     $response->assertSessionHas('success');
-    expect($targetUser->fresh()->isAdmin())->toBeTrue();
+    expect($targetUser->refresh()->isAdmin())->toBeTrue();
 
     // Toggle back
     $this->actingAs($admin)
         ->patch(route('admin.users.toggle-admin', $targetUser));
 
-    expect($targetUser->fresh()->isAdmin())->toBeFalse();
+    expect($targetUser->refresh()->isAdmin())->toBeFalse();
 });
 
 test('admin can change workspace subscription plan', function () {
@@ -225,7 +225,7 @@ test('admin can change workspace subscription plan', function () {
         ]);
 
     $response->assertSessionHas('success');
-    $sub = $workspace->subscriptions()->latest()->first();
+    $sub = $workspace->subscriptions()->latest()->firstOrFail();
     expect($sub->plan_id)->toBe($plan->id);
     expect($sub->status)->toBe('active');
 });
@@ -304,7 +304,7 @@ test('admin can update lease status', function () {
         ]);
 
     $response->assertSessionHas('success');
-    expect($lease->fresh()->status)->toBe('terminated');
+    expect($lease->refresh()->status)->toBe('terminated');
 });
 
 test('admin can logout', function () {
@@ -315,4 +315,19 @@ test('admin can logout', function () {
 
     $response->assertRedirect(route('admin.login'));
     $this->assertGuest();
+});
+
+test('admin dashboard identifies leases by contract number and payments by receipt reference and method', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $workspace = Workspace::factory()->create();
+    $lease = Lease::factory()->create(['workspace_id' => $workspace->id]);
+    Payment::factory()->create(['workspace_id' => $workspace->id, 'reference' => 'REC-2026-0042', 'payment_method' => 'cash']);
+
+    $response = $this->actingAs($admin)->get(route('admin.dashboard'));
+
+    $response->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->where('leases.0.lease_number', $lease->contract_number)
+        ->where('payments.0.payment_number', 'REC-2026-0042')
+        ->where('payments.0.method', 'cash')
+    );
 });

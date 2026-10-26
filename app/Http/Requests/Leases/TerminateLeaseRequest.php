@@ -4,14 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Leases;
 
+use App\Enums\PaymentMethod;
+use App\Enums\SecurityDepositRefundStatus;
+use App\Enums\SecurityDepositSettlementType;
+use App\Http\Requests\Concerns\ResolvesRouteLease;
 use App\Models\Lease;
 use App\Support\CurrentWorkspace;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class TerminateLeaseRequest extends FormRequest
 {
+    use ResolvesRouteLease;
+
     public function authorize(): bool
     {
         $lease = $this->route('lease');
@@ -30,19 +37,14 @@ class TerminateLeaseRequest extends FormRequest
      */
     public function rules(): array
     {
-        /** @var Lease|null $lease */
-        $lease = $this->route('lease');
-
-        $hasDeposit = $lease && ((float) $lease->security_deposit_amount > 0 || $lease->total_deposit_received > 0);
-
-        if (! $hasDeposit) {
+        if (! $this->routeLease()?->hasSecurityDeposit()) {
             return [
                 'notes' => ['nullable', 'string', 'max:2000'],
             ];
         }
 
         return [
-            'settlement_type' => ['required', 'in:full_refund,partial_refund,no_refund'],
+            'settlement_type' => ['required', Rule::in(SecurityDepositSettlementType::values())],
             'inspection_category' => ['nullable', 'string', 'max:50'],
             'inspection_notes' => ['nullable', 'string', 'max:2000'],
             'retention_reason' => ['nullable', 'string', 'max:2000'],
@@ -53,8 +55,8 @@ class TerminateLeaseRequest extends FormRequest
             'deductions.*.description' => ['required_with:deductions', 'string', 'max:1000'],
             'deductions.*.notes' => ['nullable', 'string', 'max:1000'],
             'deductions.*.attachment' => ['nullable', 'file', 'mimes:jpeg,png,jpg,pdf,webp', 'max:10240'],
-            'refund_status' => ['nullable', 'in:pending,refunded,not_applicable'],
-            'refund_method' => ['required_if:refund_status,refunded', 'nullable', 'in:cash,bank_transfer,cheque,other'],
+            'refund_status' => ['nullable', Rule::in(SecurityDepositRefundStatus::values())],
+            'refund_method' => ['required_if:refund_status,refunded', 'nullable', Rule::in(PaymentMethod::values())],
             'refund_payment_date' => ['required_if:refund_status,refunded', 'nullable', 'date'],
             'refund_reference' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:2000'],
@@ -63,69 +65,74 @@ class TerminateLeaseRequest extends FormRequest
 
     public function withValidator(Validator $validator): void
     {
-        $validator->after(function (Validator $v) {
-            /** @var Lease|null $lease */
-            $lease = $this->route('lease');
-            if (! $lease) {
+        $validator->after(function (Validator $validator) {
+            $lease = $this->routeLease();
+            if ($lease === null) {
                 return;
             }
 
             if ($lease->status === 'terminated') {
-                $v->errors()->add('lease', 'هذا العقد منتهٍ بالفعل.');
+                $validator->errors()->add('lease', 'هذا العقد منتهٍ بالفعل.');
 
                 return;
             }
 
-            $hasDeposit = (float) $lease->security_deposit_amount > 0 || $lease->total_deposit_received > 0;
-            if (! $hasDeposit) {
+            if (! $lease->hasSecurityDeposit()) {
                 return;
             }
 
-            $settlementType = $this->input('settlement_type');
-            $totalReceived = (float) $lease->total_deposit_received;
-            $previouslyRefunded = (float) $lease->total_deposit_refunded;
-            $previouslyDeducted = (float) $lease->total_deposit_deductions;
-            $availableBalance = max(0.0, $totalReceived - $previouslyRefunded - $previouslyDeducted);
+            $availableBalance = max(0.0, $lease->total_deposit_received - $lease->total_deposit_refunded - $lease->total_deposit_deductions);
 
-            if ($settlementType === 'partial_refund') {
-                $deductions = $this->input('deductions', []);
-                if (empty($deductions)) {
-                    $v->errors()->add('deductions', 'يجب إضافة بند خصم واحد على الأقل في حالة الرد الجزئي.');
-
-                    return;
-                }
-
-                $newDeductionsTotal = 0.0;
-                foreach ($deductions as $d) {
-                    $newDeductionsTotal += (float) ($d['amount'] ?? 0);
-                }
-
-                if ($newDeductionsTotal > $availableBalance) {
-                    $v->errors()->add('deductions', "مجموع الخصومات ({$newDeductionsTotal} ج.م) يتجاوز الرصيد المتاح من مبلغ التأمين ({$availableBalance} ج.م).");
-                }
-
-                $remainingToRefund = max(0.0, $availableBalance - $newDeductionsTotal);
-                if ($remainingToRefund > 0) {
-                    $refundStatus = $this->input('refund_status');
-                    if (! in_array($refundStatus, ['pending', 'refunded'], true)) {
-                        $v->errors()->add('refund_status', 'يجب تحديد حالة صرف المبلغ المتبقي المستحق للمستأجر (معلق أو تم الصرف).');
-                    }
-                }
-            } elseif ($settlementType === 'full_refund') {
-                if ($availableBalance > 0) {
-                    $refundStatus = $this->input('refund_status');
-                    if (! in_array($refundStatus, ['pending', 'refunded'], true)) {
-                        $v->errors()->add('refund_status', 'يجب تحديد حالة صرف مبلغ التأمين للمستأجر (معلق أو تم الصرف).');
-                    }
-                }
-            } elseif ($settlementType === 'no_refund') {
-                $reason = trim((string) $this->input('retention_reason', ''));
-                $deductions = $this->input('deductions', []);
-                if (mb_strlen($reason) < 3 && empty($deductions)) {
-                    $v->errors()->add('retention_reason', 'يجب تسجيل أسباب واضحة وموثقة للاحتفاظ بمبلغ التأمين بالكامل.');
-                }
-            }
+            match ($this->input('settlement_type')) {
+                'partial_refund' => $this->validatePartialRefund($validator, $availableBalance),
+                'full_refund' => $this->validateRefundStatusChosen($validator, $availableBalance, 'يجب تحديد حالة صرف مبلغ التأمين للمستأجر (معلق أو تم الصرف).'),
+                'no_refund' => $this->validateRetentionIsJustified($validator),
+                default => null,
+            };
         });
+    }
+
+    private function validatePartialRefund(Validator $validator, float $availableBalance): void
+    {
+        $deductions = $this->input('deductions', []);
+        if (empty($deductions)) {
+            $validator->errors()->add('deductions', 'يجب إضافة بند خصم واحد على الأقل في حالة الرد الجزئي.');
+
+            return;
+        }
+
+        $newDeductionsTotal = 0.0;
+        foreach ($deductions as $deduction) {
+            $newDeductionsTotal += (float) ($deduction['amount'] ?? 0);
+        }
+
+        if ($newDeductionsTotal > $availableBalance) {
+            $validator->errors()->add('deductions', "مجموع الخصومات ({$newDeductionsTotal} ج.م) يتجاوز الرصيد المتاح من مبلغ التأمين ({$availableBalance} ج.م).");
+        }
+
+        $this->validateRefundStatusChosen(
+            $validator,
+            max(0.0, $availableBalance - $newDeductionsTotal),
+            'يجب تحديد حالة صرف المبلغ المتبقي المستحق للمستأجر (معلق أو تم الصرف).'
+        );
+    }
+
+    /**
+     * Whenever money remains to be returned, the form must say whether it was already paid out.
+     */
+    private function validateRefundStatusChosen(Validator $validator, float $remainingToRefund, string $message): void
+    {
+        if ($remainingToRefund > 0 && ! in_array($this->input('refund_status'), ['pending', 'refunded'], true)) {
+            $validator->errors()->add('refund_status', $message);
+        }
+    }
+
+    private function validateRetentionIsJustified(Validator $validator): void
+    {
+        $reason = trim((string) $this->input('retention_reason', ''));
+        if (mb_strlen($reason) < 3 && empty($this->input('deductions', []))) {
+            $validator->errors()->add('retention_reason', 'يجب تسجيل أسباب واضحة وموثقة للاحتفاظ بمبلغ التأمين بالكامل.');
+        }
     }
 
     public function messages(): array

@@ -82,6 +82,9 @@ enum PropertyType: string
      */
     public static function options(): array
     {
+        $excluded = [self::Standalone, self::Commercial];
+        $cases = array_values(array_filter(self::cases(), fn (self $type) => ! in_array($type, $excluded, true)));
+
         return array_map(fn (self $type) => [
             'value' => $type->value,
             'label' => $type->label(),
@@ -89,14 +92,6 @@ enum PropertyType: string
             'description' => $type->description(),
             'icon' => $type->icon(),
             'suggested_units' => $type->suggestedUnits(),
-        ], self::cases());
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    public static function values(): array
-    {
-        return array_column(self::cases(), 'value');
+        ], $cases);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\PropertyType;
 use App\Models\Concerns\BelongsToWorkspace;
 use App\Services\UnitHierarchyService;
+use Database\Factories\PropertyFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Storage;
 
 class Property extends Model
 {
+    /** @use HasFactory<PropertyFactory> */
     use BelongsToWorkspace, HasFactory;
 
     protected $fillable = [
@@ -61,6 +63,8 @@ class Property extends Model
 
     /**
      * Get the full URL for the cover image.
+     *
+     * @return Attribute<string|null, never>
      */
     protected function coverImageUrl(): Attribute
     {
@@ -71,48 +75,43 @@ class Property extends Model
 
     public function isBuilding(): bool
     {
-        return $this->property_type === PropertyType::Building || $this->property_type === 'building';
+        return $this->property_type === PropertyType::Building;
     }
 
     public function isApartment(): bool
     {
-        return $this->property_type === PropertyType::Apartment || $this->property_type === 'apartment';
+        return $this->property_type === PropertyType::Apartment;
     }
 
     public function isShop(): bool
     {
-        return $this->property_type === PropertyType::Shop || $this->property_type === 'shop';
-    }
-
-    public function isCommercial(): bool
-    {
-        return $this->property_type === PropertyType::Commercial || $this->property_type === 'commercial';
-    }
-
-    public function isVilla(): bool
-    {
-        return $this->property_type === PropertyType::Villa || $this->property_type === 'villa';
+        return $this->property_type === PropertyType::Shop;
     }
 
     public function getTypeLabelAttribute(): string
     {
-        if ($this->property_type instanceof PropertyType) {
-            return $this->property_type->label();
-        }
-
-        return PropertyType::tryFrom((string) $this->property_type)?->label() ?? 'عقار';
+        return $this->property_type->label();
     }
 
+    /**
+     * @return HasMany<Unit, $this>
+     */
     public function units(): HasMany
     {
         return $this->hasMany(Unit::class);
     }
 
+    /**
+     * @return HasMany<Lease, $this>
+     */
     public function leases(): HasMany
     {
         return $this->hasMany(Lease::class);
     }
 
+    /**
+     * @return HasMany<MaintenanceRequest, $this>
+     */
     public function maintenanceRequests(): HasMany
     {
         return $this->hasMany(MaintenanceRequest::class);

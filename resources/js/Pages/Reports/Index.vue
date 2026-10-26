@@ -1,33 +1,23 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { router, Link } from '@inertiajs/vue3';
+import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import {
-    AlertCircle,
     ArrowDownRight,
     ArrowUpRight,
     BarChart3,
-    Building2,
-    Calendar,
     CheckCircle2,
     Clock,
     Coins,
-    CreditCard,
-    DollarSign,
     Download,
-    ExternalLink,
     FileSpreadsheet,
     FileText,
     Filter,
-    HelpCircle,
-    Home,
-    Layers,
     Receipt,
     RefreshCw,
     Shield,
     TrendingDown,
     TrendingUp,
-    Wallet,
 } from 'lucide-vue-next';
 
 interface Stats {

@@ -7,9 +7,9 @@ namespace App\Actions\Payments;
 use App\Models\Payment;
 use App\Models\PaymentAllocation;
 use App\Models\RentCharge;
+use App\Models\Workspace;
 use App\Services\FinancialObligationService;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -26,7 +26,7 @@ class CorrectPaymentAction
      *
      * @throws ValidationException
      */
-    public function execute(Payment $payment, array $data, int $userId): Payment
+    public function execute(Workspace $workspace, Payment $payment, array $data, int $userId): Payment
     {
         $reason = trim((string) ($data['reason'] ?? ''));
         if (empty($reason)) {
@@ -35,148 +35,108 @@ class CorrectPaymentAction
             ]);
         }
 
-        return DB::transaction(function () use ($payment, $data, $userId, $reason) {
-            /** @var Payment $lockedPayment */
+        return DB::transaction(function () use ($workspace, $payment, $data, $userId, $reason) {
             $lockedPayment = Payment::withoutGlobalScopes()
                 ->where('id', $payment->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $workspace = $lockedPayment->workspace;
             $renterId = (int) $lockedPayment->renter_id;
+            $correctedAmount = isset($data['amount']) ? round((float) $data['amount'], 2) : (float) $lockedPayment->amount;
+            $correctedPaidAt = ! empty($data['paid_at']) ? Carbon::parse($data['paid_at']) : $lockedPayment->paid_at;
+            $correctedRecordDate = ! empty($data['record_date']) ? Carbon::parse($data['record_date']) : $lockedPayment->created_at;
 
-            $newAmount = isset($data['amount']) ? round((float) $data['amount'], 2) : (float) $lockedPayment->amount;
-            $newPaidAt = ! empty($data['paid_at']) ? Carbon::parse($data['paid_at']) : $lockedPayment->paid_at;
-            $newRecordDate = ! empty($data['record_date']) ? Carbon::parse($data['record_date']) : $lockedPayment->created_at;
+            $snapshotBeforeCorrection = $this->auditSnapshot($lockedPayment);
 
-            // Capture old snapshot for audit trail
-            $oldAllocations = $lockedPayment->allocations()
-                ->with('rentCharge')
-                ->get()
-                ->map(fn (PaymentAllocation $pa) => [
-                    'id' => $pa->id,
-                    'rent_charge_id' => $pa->rent_charge_id,
-                    'period' => $pa->rentCharge?->period_start?->format('m/Y'),
-                    'amount' => (float) $pa->amount,
-                ])
-                ->toArray();
-
-            $oldData = [
-                'amount' => (float) $lockedPayment->amount,
-                'paid_at' => $lockedPayment->paid_at?->toIso8601String(),
-                'created_at' => $lockedPayment->created_at?->toIso8601String(),
-                'payment_method' => $lockedPayment->payment_method,
-                'reference' => $lockedPayment->reference,
-                'notes' => $lockedPayment->notes,
-                'allocations' => $oldAllocations,
-            ];
-
-            // 1. Temporarily clear old allocations for this payment so capacity is restored
+            // Release the old allocations first so their amounts count as outstanding capacity again.
             $lockedPayment->allocations()->delete();
 
-            // 2. Fetch and lock all eligible charges for this renter up to permitted window
-            $permittedCutoff = $newPaidAt->copy()->addMonth()->endOfMonth()->toDateString();
-            $this->obligationService->ensureEligibleChargesExist(
-                $lockedPayment->renter->leases()->where('status', 'active')->first() ?? $lockedPayment->allocations->first()?->rentCharge?->lease ?? $lockedPayment->renter->leases()->latest()->first(),
-                $newPaidAt
-            );
+            $this->obligationService->ensureChargesExistForActiveLeases($workspace, $renterId, $correctedPaidAt);
 
-            /** @var Collection<int, RentCharge> $charges */
-            $charges = $workspace->rentCharges()
-                ->whereHas('lease', fn ($q) => $q->where('renter_id', $renterId))
-                ->where('period_start', '<=', $permittedCutoff)
-                ->lockForUpdate()
-                ->orderBy('due_date')
-                ->orderBy('id')
-                ->get();
+            $lockedCharges = $this->obligationService->lockPayableChargesForRenter($workspace, $renterId, $correctedPaidAt);
+            $totalCapacity = round($lockedCharges->sum(fn (RentCharge $charge) => $charge->outstanding_balance), 2);
 
-            // Calculate available capacity across all eligible charges
-            $totalCapacity = round((float) $charges->sum(fn (RentCharge $c) => $c->outstanding_balance), 2);
-
-            if ($newAmount > $totalCapacity) {
-                // Rollback and restore
+            if ($correctedAmount > $totalCapacity) {
                 throw ValidationException::withMessages([
-                    'amount' => "المبلغ المصحح ({$newAmount} ج.م) يتجاوز إجمالي الالتزامات الإيجارية المؤهلة للسداد ({$totalCapacity} ج.م).",
+                    'amount' => "المبلغ المصحح ({$correctedAmount} ج.م) يتجاوز إجمالي الالتزامات الإيجارية المؤهلة للسداد ({$totalCapacity} ج.م).",
                 ]);
             }
 
-            // 3. Re-allocate new amount strictly oldest-first across eligible charges
-            $remaining = $newAmount;
-            foreach ($charges as $c) {
-                if ($remaining <= 0.00) {
-                    break;
-                }
-                $bal = $c->outstanding_balance;
-                if ($bal > 0.00) {
-                    $alloc = min($remaining, $bal);
-                    PaymentAllocation::create([
-                        'workspace_id' => $workspace->id,
-                        'payment_id' => $lockedPayment->id,
-                        'rent_charge_id' => $c->id,
-                        'amount' => $alloc,
-                    ]);
-                    $remaining = round($remaining - $alloc, 2);
-                }
-            }
+            $unallocatedAmount = $this->obligationService->allocatePaymentToCharges($lockedPayment, $lockedCharges, $correctedAmount);
 
-            if ($remaining > 0.00) {
+            if ($unallocatedAmount > 0.00) {
                 throw ValidationException::withMessages([
-                    'amount' => "تعذر استيعاب كامل المبلغ المصحح ({$newAmount} ج.م): تبقى رصيد غير مخصص بقيمة {$remaining} ج.م.",
+                    'amount' => "تعذر استيعاب كامل المبلغ المصحح ({$correctedAmount} ج.م): تبقى رصيد غير مخصص بقيمة {$unallocatedAmount} ج.م.",
                 ]);
             }
 
-            // 4. Update payment record
-            $lockedPayment->amount = $newAmount;
-            $lockedPayment->paid_at = $newPaidAt;
-            $lockedPayment->created_at = $newRecordDate;
-            if (isset($data['payment_method'])) {
-                $lockedPayment->payment_method = $data['payment_method'];
-            }
-            if (isset($data['reference'])) {
-                $lockedPayment->reference = $data['reference'];
-            }
-            if (array_key_exists('notes', $data)) {
-                $lockedPayment->notes = $data['notes'];
-            }
+            $lockedPayment->amount = $correctedAmount;
+            $lockedPayment->paid_at = $correctedPaidAt;
+            $lockedPayment->created_at = $correctedRecordDate;
+            $this->applyOptionalCorrections($lockedPayment, $data);
             $lockedPayment->save();
 
-            // Refresh allocations for audit log
-            $newAllocations = $lockedPayment->allocations()
-                ->with('rentCharge')
-                ->get()
-                ->map(fn (PaymentAllocation $pa) => [
-                    'id' => $pa->id,
-                    'rent_charge_id' => $pa->rent_charge_id,
-                    'period' => $pa->rentCharge?->period_start?->format('m/Y'),
-                    'amount' => (float) $pa->amount,
-                ])
-                ->toArray();
+            $snapshotAfterCorrection = $this->auditSnapshot($lockedPayment);
 
-            $newData = [
-                'amount' => (float) $lockedPayment->amount,
-                'paid_at' => $lockedPayment->paid_at?->toIso8601String(),
-                'created_at' => $lockedPayment->created_at?->toIso8601String(),
-                'payment_method' => $lockedPayment->payment_method,
-                'reference' => $lockedPayment->reference,
-                'notes' => $lockedPayment->notes,
-                'allocations' => $newAllocations,
-            ];
-
-            // 5. Persistent audit log
             activity('financial')
                 ->performedOn($lockedPayment)
                 ->causedBy($userId)
                 ->withProperties([
                     'event' => 'payment_corrected',
                     'reason' => $reason,
-                    'previous' => $oldData,
-                    'updated' => $newData,
-                    'old' => $oldData,
-                    'new' => $newData,
+                    'previous' => $snapshotBeforeCorrection,
+                    'updated' => $snapshotAfterCorrection,
+                    'old' => $snapshotBeforeCorrection,
+                    'new' => $snapshotAfterCorrection,
                 ])
                 ->log("تصحيح مالي لسند القبض رقم {$lockedPayment->reference}: {$reason}");
 
             return $lockedPayment;
         });
+    }
+
+    /**
+     * Copy the optional descriptive fields; absent keys keep the stored value, while an explicit null notes clears it.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function applyOptionalCorrections(Payment $payment, array $data): void
+    {
+        if (isset($data['payment_method'])) {
+            $payment->payment_method = $data['payment_method'];
+        }
+        if (isset($data['reference'])) {
+            $payment->reference = $data['reference'];
+        }
+        if (array_key_exists('notes', $data)) {
+            $payment->notes = $data['notes'];
+        }
+    }
+
+    /**
+     * @return array{amount: float, paid_at: string, created_at: string|null, payment_method: string, reference: string|null, notes: string|null, allocations: array<int, array{id: int, rent_charge_id: int, period: string|null, amount: float}>}
+     */
+    private function auditSnapshot(Payment $payment): array
+    {
+        $allocations = $payment->allocations()
+            ->with('rentCharge')
+            ->get()
+            ->map(fn (PaymentAllocation $allocation) => [
+                'id' => $allocation->id,
+                'rent_charge_id' => $allocation->rent_charge_id,
+                'period' => $allocation->rentCharge?->period_start->format('m/Y'),
+                'amount' => (float) $allocation->amount,
+            ])
+            ->all();
+
+        return [
+            'amount' => (float) $payment->amount,
+            'paid_at' => $payment->paid_at->toIso8601String(),
+            'created_at' => $payment->created_at?->toIso8601String(),
+            'payment_method' => $payment->payment_method,
+            'reference' => $payment->reference,
+            'notes' => $payment->notes,
+            'allocations' => $allocations,
+        ];
     }
 }

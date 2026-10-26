@@ -7,6 +7,9 @@ use InvalidArgumentException;
 
 class PaymentGatewayManager
 {
+    /**
+     * @var array<string, PaymentGatewayInterface>
+     */
     protected array $drivers = [];
 
     public function driver(?string $driver = null): PaymentGatewayInterface

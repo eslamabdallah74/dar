@@ -88,7 +88,7 @@ test('meta webhook updates message log status on delivery and read events', func
         ],
     ];
 
-    $content = json_encode($payload);
+    $content = json_encode($payload, JSON_THROW_ON_ERROR);
     $signature = 'sha256='.hash_hmac('sha256', $content, 'test_meta_app_secret_abc');
 
     $response = $this->call(
@@ -111,8 +111,39 @@ test('meta webhook updates message log status on delivery and read events', func
         ->and($log->sent_at)->not->toBeNull();
 });
 
+test('meta webhook marks a message log as failed with the reported error', function () {
+    $log = MessageLog::create([
+        'workspace_id' => $this->workspace->id,
+        'renter_id' => $this->renter->id,
+        'recipient_phone' => '+966500000000',
+        'template_name' => 'rent_due_reminder',
+        'deduplication_key' => 'dedup_test_msg_failed',
+        'status' => 'sent',
+        'provider_message_id' => 'wamid.FAILED',
+        'scheduled_at' => now(),
+    ]);
+    $content = json_encode(['entry' => [['changes' => [['value' => ['statuses' => [[
+        'id' => 'wamid.FAILED',
+        'status' => 'failed',
+        'errors' => [['code' => 131026, 'title' => 'Message undeliverable']],
+    ]]]]]]]], JSON_THROW_ON_ERROR);
+
+    $response = $this->call('POST', '/webhooks/whatsapp', [], [], [], [
+        'HTTP_X_HUB_SIGNATURE_256' => 'sha256='.hash_hmac('sha256', $content, 'test_meta_app_secret_abc'),
+        'CONTENT_TYPE' => 'application/json',
+    ], $content);
+
+    $response->assertOk();
+    $this->assertDatabaseHas('message_logs', [
+        'id' => $log->id,
+        'status' => 'failed',
+        'error_code' => '131026',
+        'error_message' => 'Message undeliverable',
+    ]);
+});
+
 test('meta webhook rejects request with invalid hmac signature', function () {
-    $content = json_encode(['entry' => []]);
+    $content = json_encode(['entry' => []], JSON_THROW_ON_ERROR);
     $invalidSignature = 'sha256=invalid_hash';
 
     $response = $this->call(

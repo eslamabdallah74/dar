@@ -99,8 +99,7 @@ test('1. active contract past its end date does not terminate automatically and 
 
     // Unit currentLease() must still return this active lease and unit remains occupied
     $this->unit->refresh();
-    expect($this->unit->currentLease)->not->toBeNull()
-        ->and($this->unit->currentLease->id)->toBe($lease->id)
+    expect($this->unit->currentLease()->firstOrFail()->id)->toBe($lease->id)
         ->and($this->unit->is_occupied)->toBeTrue();
 
     // In lease index, past_end_date stats count and flag are reported
@@ -346,14 +345,14 @@ test('7. admin can terminate with partial refund, deductions, notes and attachme
     $deductions = SecurityDepositDeduction::where('lease_id', $lease->id)->get();
     expect($deductions)->toHaveCount(2);
 
-    $fixtureDeduction = $deductions->firstWhere('category', 'fixture_damage');
+    $fixtureDeduction = $deductions->firstOrFail('category', 'fixture_damage');
     expect((float) $fixtureDeduction->amount)->toBe(1000.0)
-        ->and($fixtureDeduction->notes)->toBe('فاتورة الفني والسباك مرفقة')
-        ->and($fixtureDeduction->attachment_path)->not->toBeNull();
+        ->and($fixtureDeduction->notes)->toBe('فاتورة الفني والسباك مرفقة');
 
+    $this->assertNotNull($fixtureDeduction->attachment_path);
     Storage::disk('public')->assertExists($fixtureDeduction->attachment_path);
 
-    $unpaidDuesDeduction = $deductions->firstWhere('category', 'unpaid_dues');
+    $unpaidDuesDeduction = $deductions->firstOrFail('category', 'unpaid_dues');
     expect((float) $unpaidDuesDeduction->amount)->toBe(500.0)
         ->and($unpaidDuesDeduction->notes)->toBe('قراءة العداد معتمدة');
 
@@ -395,7 +394,7 @@ test('8. partial refund fails if deductions exceed available deposit balance', f
     ]);
 
     $response->assertSessionHasErrors('deductions');
-    expect($lease->fresh()->status)->toBe('active');
+    expect($lease->refresh()->status)->toBe('active');
 });
 
 test('9. admin can terminate with no refund and requires retention reason', function () {

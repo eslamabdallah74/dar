@@ -130,7 +130,7 @@ test('TEST A — Create unit maintenance: request created without cost, exactly 
     $expenses = Expense::where('maintenance_request_id', $request->id)->get();
     expect($expenses)->toHaveCount(1);
 
-    $expense = $expenses->first();
+    $expense = $expenses->firstOrFail();
     expect($expense->amount)->toBeNull()
         ->and($expense->origin)->toBe('maintenance')
         ->and($expense->payment_status)->toBe('unpaid')
@@ -229,11 +229,10 @@ test('TEST C — Start maintenance: transition to in_progress records started_at
     $activity = Activity::where('subject_type', MaintenanceRequest::class)
         ->where('subject_id', $request->id)
         ->latest()
-        ->first();
+        ->firstOrFail();
 
-    expect($activity)->not->toBeNull()
-        ->and($activity->description)->toBe('تم بدء العمل في طلب الصيانة')
-        ->and($activity->properties['to_status'])->toBe(MaintenanceStatus::InProgress->value);
+    expect($activity->description)->toBe('تم بدء العمل في طلب الصيانة')
+        ->and($activity->getProperty('to_status'))->toBe(MaintenanceStatus::InProgress->value);
 });
 
 test('TEST D — Prevent completion without cost: UI and service reject completion if amount is null', function () {
@@ -496,7 +495,7 @@ test('TEST H — Attachments: multi-file upload, secure download, authorized del
     $attachments = MaintenanceAttachment::where('maintenance_request_id', $request->id)->get();
     expect($attachments)->toHaveCount(2);
 
-    $firstAttachment = $attachments->first();
+    $firstAttachment = $attachments->firstOrFail();
     Storage::disk('local')->assertExists($firstAttachment->file_path);
 
     // 2. Authorized user can download attachment

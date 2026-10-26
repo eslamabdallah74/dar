@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace App\Actions\Payments;
 
 use App\Models\Payment;
-use App\Models\PaymentAllocation;
 use App\Models\RentCharge;
 use App\Models\Workspace;
 use App\Services\FinancialObligationService;
 use App\Services\WhatsAppService;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -39,7 +38,6 @@ class RecordPaymentAction
         $paidAt = ! empty($data['paid_at']) ? Carbon::parse($data['paid_at']) : Carbon::now();
         $recordDate = ! empty($data['record_date']) ? Carbon::parse($data['record_date']) : Carbon::now();
 
-        // 1. Backend validation against business rules
         $this->obligationService->validatePayment(
             workspace: $workspace,
             renterId: $renterId,
@@ -48,28 +46,13 @@ class RecordPaymentAction
             asOf: $paidAt
         );
 
-        // 2. Atomic persistence with locks to prevent concurrent overpayment
         $payment = DB::transaction(function () use ($workspace, $data, $userId, $renterId, $amount, $targetChargeId, $paidAt, $recordDate) {
-            $reference = $data['reference'] ?? ('REC-'.date('Y').'-'.str_pad((string) ($workspace->payments()->count() + 1), 4, '0', STR_PAD_LEFT));
-
-            // Lock eligible charges for update
-            $permittedCutoff = $paidAt->copy()->addMonth()->endOfMonth()->toDateString();
-            $nextMonthStart = $paidAt->copy()->addMonth()->startOfMonth()->toDateString();
-
-            /** @var Collection<int, RentCharge> $lockedCharges */
-            $lockedCharges = $workspace->rentCharges()
-                ->whereHas('lease', fn ($q) => $q->where('renter_id', $renterId))
-                ->where('period_start', '<=', $permittedCutoff)
-                ->lockForUpdate()
-                ->orderBy('due_date')
-                ->orderBy('id')
-                ->get();
-
-            // Check fresh outstanding balances under lock
-            $totalFreshBalance = round((float) $lockedCharges->sum(fn (RentCharge $c) => $c->outstanding_balance), 2);
-            if ($amount > $totalFreshBalance) {
+            // Re-check the balance under row locks so concurrent payments cannot overpay the same charges.
+            $lockedCharges = $this->obligationService->lockPayableChargesForRenter($workspace, $renterId, $paidAt);
+            $lockedOutstandingBalance = round($lockedCharges->sum(fn (RentCharge $charge) => $charge->outstanding_balance), 2);
+            if ($amount > $lockedOutstandingBalance) {
                 throw ValidationException::withMessages([
-                    'amount' => "تعذر إتمام العملية: المبلغ المطلوب ({$amount} ج.م) يتجاوز الرصيد المستحق المتبقي ({$totalFreshBalance} ج.م) نظراً لتسجيل سداد متزامن.",
+                    'amount' => "تعذر إتمام العملية: المبلغ المطلوب ({$amount} ج.م) يتجاوز الرصيد المستحق المتبقي ({$lockedOutstandingBalance} ج.م) نظراً لتسجيل سداد متزامن.",
                 ]);
             }
 
@@ -79,62 +62,21 @@ class RecordPaymentAction
                 'amount' => $amount,
                 'paid_at' => $paidAt,
                 'payment_method' => $data['payment_method'],
-                'reference' => $reference,
+                'reference' => $data['reference'] ?? $this->nextReceiptReference($workspace),
                 'notes' => $data['notes'] ?? null,
                 'receipt_path' => $data['receipt_path'] ?? null,
                 'created_at' => $recordDate,
             ]);
 
-            $remainingAmount = $amount;
+            $unallocatedAmount = $this->allocate($payment, $lockedCharges, $amount, $targetChargeId);
 
-            // Allocation strategy:
-            // If a specific charge was chosen, verify it is eligible and no earlier arrears exist (already validated)
-            if ($targetChargeId) {
-                $charge = $lockedCharges->firstWhere('id', $targetChargeId);
-                if ($charge && $charge->outstanding_balance > 0.00) {
-                    $allocAmount = min($remainingAmount, $charge->outstanding_balance);
-                    PaymentAllocation::create([
-                        'workspace_id' => $workspace->id,
-                        'payment_id' => $payment->id,
-                        'rent_charge_id' => $charge->id,
-                        'amount' => $allocAmount,
-                    ]);
-                    $remainingAmount = round($remainingAmount - $allocAmount, 2);
-                }
-            }
-
-            // Allocate remaining amount to oldest eligible unpaid charges
-            if ($remainingAmount > 0.00) {
-                foreach ($lockedCharges as $c) {
-                    if ($targetChargeId && $c->id === $targetChargeId) {
-                        continue;
-                    }
-                    if ($remainingAmount <= 0.00) {
-                        break;
-                    }
-
-                    $balance = $c->outstanding_balance;
-                    if ($balance > 0.00) {
-                        $allocAmount = min($remainingAmount, $balance);
-                        PaymentAllocation::create([
-                            'workspace_id' => $workspace->id,
-                            'payment_id' => $payment->id,
-                            'rent_charge_id' => $c->id,
-                            'amount' => $allocAmount,
-                        ]);
-                        $remainingAmount = round($remainingAmount - $allocAmount, 2);
-                    }
-                }
-            }
-
-            // Rule 4.3: Reject if amount exceeds total eligible obligations (must not leave excess unallocated)
-            if ($remainingAmount > 0.00) {
+            // Rule 4.3: the whole amount must be absorbed by eligible obligations.
+            if ($unallocatedAmount > 0.00) {
                 throw ValidationException::withMessages([
-                    'amount' => "لم يتم استيعاب كامل مبلغ الدفعة: تبقى مبلغ {$remainingAmount} ج.م غير مخصص لأي التزام إيجاري مؤهل.",
+                    'amount' => "لم يتم استيعاب كامل مبلغ الدفعة: تبقى مبلغ {$unallocatedAmount} ج.م غير مخصص لأي التزام إيجاري مؤهل.",
                 ]);
             }
 
-            // Audit log
             activity('financial')
                 ->performedOn($payment)
                 ->causedBy($userId)
@@ -142,7 +84,7 @@ class RecordPaymentAction
                     'event' => 'payment_created',
                     'amount' => $payment->amount,
                     'paid_at' => $payment->paid_at->toIso8601String(),
-                    'created_at' => $payment->created_at->toIso8601String(),
+                    'created_at' => $payment->created_at?->toIso8601String(),
                     'reference' => $payment->reference,
                     'method' => $payment->payment_method,
                     'allocations' => $payment->allocations()->get(['id', 'rent_charge_id', 'amount'])->toArray(),
@@ -158,5 +100,34 @@ class RecordPaymentAction
         }
 
         return $payment;
+    }
+
+    /**
+     * Allocate to the explicitly targeted charge first (already validated), then oldest-first.
+     *
+     * @param  Collection<int, RentCharge>  $lockedCharges
+     * @return float The part of the amount that no charge could absorb.
+     */
+    private function allocate(Payment $payment, Collection $lockedCharges, float $amount, ?int $targetChargeId): float
+    {
+        $targetCharge = $targetChargeId !== null ? $lockedCharges->firstWhere('id', $targetChargeId) : null;
+        if ($targetCharge === null) {
+            return $this->obligationService->allocatePaymentToCharges($payment, $lockedCharges, $amount);
+        }
+
+        $unallocatedAmount = $this->obligationService->allocatePaymentToCharges($payment, [$targetCharge], $amount);
+
+        return $this->obligationService->allocatePaymentToCharges(
+            $payment,
+            $lockedCharges->reject(fn (RentCharge $charge) => $charge->id === $targetCharge->id),
+            $unallocatedAmount
+        );
+    }
+
+    private function nextReceiptReference(Workspace $workspace): string
+    {
+        $sequenceNumber = $workspace->payments()->count() + 1;
+
+        return 'REC-'.date('Y').'-'.str_pad((string) $sequenceNumber, 4, '0', STR_PAD_LEFT);
     }
 }

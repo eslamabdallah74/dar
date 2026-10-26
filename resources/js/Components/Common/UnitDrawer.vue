@@ -2,10 +2,7 @@
 import { computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import {
-    Calendar,
     CreditCard,
-    DollarSign,
-    FileText,
     Home,
     DoorClosed,
     Bed,
@@ -14,19 +11,14 @@ import {
     Phone,
     Plus,
     Shield,
-    Sparkles,
     Store,
     Tag,
     User,
     Wrench,
     X,
-    ExternalLink,
-    Clock,
-    AlertCircle,
     CheckCircle2,
     Edit3,
     Trash2,
-    Lock,
 } from 'lucide-vue-next';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
 import type { UnitItem } from '@/Components/Properties/UnitHierarchyTree.vue';

@@ -32,8 +32,8 @@ test('is_admin cannot be mass assigned when creating a user', function () {
         'is_admin' => true, // Attempted privilege escalation via mass assignment
     ]);
 
-    expect($createdUser->fresh()->is_admin)->toBeFalse();
-    expect($createdUser->fresh()->isAdmin())->toBeFalse();
+    expect($createdUser->refresh()->is_admin)->toBeFalse();
+    expect($createdUser->refresh()->isAdmin())->toBeFalse();
 });
 
 test('is_admin cannot be mass assigned when updating a user', function () {
@@ -42,8 +42,8 @@ test('is_admin cannot be mass assigned when updating a user', function () {
         'is_admin' => true, // Attempted privilege escalation via mass update
     ]);
 
-    expect($this->user->fresh()->is_admin)->toBeFalse();
-    expect($this->user->fresh()->isAdmin())->toBeFalse();
+    expect($this->user->refresh()->is_admin)->toBeFalse();
+    expect($this->user->refresh()->isAdmin())->toBeFalse();
 });
 
 test('unauthenticated guest is redirected away from admin dashboard', function () {

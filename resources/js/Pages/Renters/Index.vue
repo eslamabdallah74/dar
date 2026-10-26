@@ -9,17 +9,12 @@ import {
     AlertTriangle,
     Check,
     CreditCard,
-    DollarSign,
-    FileText,
-    Image as ImageIcon,
     MessageCircle,
-    Plus,
     Search,
     Trash2,
     Upload,
     User,
     UserPlus,
-    Users,
     X,
 } from 'lucide-vue-next';
 

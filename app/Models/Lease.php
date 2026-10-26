@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToWorkspace;
+use Database\Factories\LeaseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Lease extends Model
 {
+    /** @use HasFactory<LeaseFactory> */
     use BelongsToWorkspace, HasFactory;
 
     protected $fillable = [
@@ -35,6 +37,14 @@ class Lease extends Model
         'contract_image_url',
     ];
 
+    /**
+     * Display number of the contract shown to users (not stored).
+     */
+    public function getContractNumberAttribute(): string
+    {
+        return 'C-02'.($this->id + 4);
+    }
+
     public function getContractImageUrlAttribute(): ?string
     {
         return $this->contract_image ? route('leases.contract-image', $this) : null;
@@ -56,9 +66,9 @@ class Lease extends Model
     {
         parent::boot();
 
-        static::creating(function ($lease) {
+        static::creating(function (Lease $lease) {
             if (empty($lease->billing_anchor_day) && ! empty($lease->starts_on)) {
-                $lease->billing_anchor_day = (int) $lease->starts_on->format('j');
+                $lease->billing_anchor_day = max(1, $lease->starts_on->day);
             }
             if (empty($lease->first_due_date) && ! empty($lease->starts_on)) {
                 $lease->first_due_date = $lease->starts_on;
@@ -70,54 +80,92 @@ class Lease extends Model
         });
     }
 
+    /**
+     * @return BelongsTo<Unit, $this>
+     */
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class);
     }
 
+    /**
+     * @return BelongsTo<Renter, $this>
+     */
     public function renter(): BelongsTo
     {
         return $this->belongsTo(Renter::class);
     }
 
+    /**
+     * @return BelongsTo<Lease, $this>
+     */
     public function renewedFromLease(): BelongsTo
     {
         return $this->belongsTo(Lease::class, 'renewed_from_lease_id');
     }
 
+    /**
+     * @return HasOne<Lease, $this>
+     */
     public function renewalLease(): HasOne
     {
         return $this->hasOne(Lease::class, 'renewed_from_lease_id');
     }
 
+    /**
+     * @return HasMany<RentCharge, $this>
+     */
     public function rentCharges(): HasMany
     {
         return $this->hasMany(RentCharge::class);
     }
 
+    /**
+     * @return HasMany<MessageLog, $this>
+     */
     public function messageLogs(): HasMany
     {
         return $this->hasMany(MessageLog::class);
     }
 
+    /**
+     * @return HasMany<SecurityDepositPayment, $this>
+     */
     public function securityDepositPayments(): HasMany
     {
         return $this->hasMany(SecurityDepositPayment::class);
     }
 
+    /**
+     * @return HasOne<SecurityDepositSettlement, $this>
+     */
     public function securityDepositSettlement(): HasOne
     {
         return $this->hasOne(SecurityDepositSettlement::class);
     }
 
+    /**
+     * @return HasMany<SecurityDepositDeduction, $this>
+     */
     public function securityDepositDeductions(): HasMany
     {
         return $this->hasMany(SecurityDepositDeduction::class);
     }
 
+    /**
+     * @return HasMany<SecurityDepositRefund, $this>
+     */
     public function securityDepositRefunds(): HasMany
     {
         return $this->hasMany(SecurityDepositRefund::class);
+    }
+
+    /**
+     * A deposit was agreed in the contract or has been (partly) received anyway.
+     */
+    public function hasSecurityDeposit(): bool
+    {
+        return (float) $this->security_deposit_amount > 0 || $this->total_deposit_received > 0;
     }
 
     public function getTotalDepositReceivedAttribute(): float
@@ -176,13 +224,12 @@ class Lease extends Model
 
     public function getIsPastEndDateAttribute(): bool
     {
-        return $this->status === 'active' && $this->ends_on !== null && $this->ends_on->lt(today());
+        return $this->status === 'active' && $this->ends_on->lt(today());
     }
 
     public function getIsExpiringSoonAttribute(): bool
     {
         return $this->status === 'active'
-            && $this->ends_on !== null
             && $this->ends_on->gte(today())
             && $this->ends_on->lte(today()->addDays(30));
     }

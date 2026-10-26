@@ -29,7 +29,7 @@ class AdminDashboardController extends Controller
      */
     public function index(Request $request): Response
     {
-        return Inertia::render('Admin/Dashboard', $this->adminDashboardService->build($request->user()));
+        return Inertia::render('Admin/Dashboard', $this->adminDashboardService->build($this->authenticatedUser($request)));
     }
 
     /**
@@ -141,7 +141,7 @@ class AdminDashboardController extends Controller
      */
     public function toggleAdmin(Request $request, User $user): RedirectResponse
     {
-        if ($user->id === $request->user()->id) {
+        if ($user->id === $this->authenticatedUser($request)->id) {
             return back()->with('error', 'لا يمكنك إزالة صلاحية الإدارة عن حسابك الحالي.');
         }
 
@@ -158,7 +158,7 @@ class AdminDashboardController extends Controller
      */
     public function destroyUser(Request $request, User $user): RedirectResponse
     {
-        if ($user->id === $request->user()->id) {
+        if ($user->id === $this->authenticatedUser($request)->id) {
             return back()->with('error', 'لا يمكنك حذف حسابك الإداري الحالي.');
         }
 
@@ -178,7 +178,7 @@ class AdminDashboardController extends Controller
             'status' => ['required', 'string', Rule::in(['active', 'suspended', 'cancelled', 'expired'])],
         ]);
 
-        $plan = Plan::findOrFail($validated['plan_id']);
+        $plan = Plan::findOrFail((int) $validated['plan_id']);
 
         $subscription = $workspace->subscriptions()->latest()->first();
 
@@ -186,14 +186,14 @@ class AdminDashboardController extends Controller
             $subscription->update([
                 'plan_id' => $plan->id,
                 'status' => $validated['status'],
-                'activated_by' => $request->user()->id,
+                'activated_by' => $this->authenticatedUser($request)->id,
                 'starts_at' => $subscription->starts_at ?? now(),
             ]);
         } else {
             $workspace->subscriptions()->create([
                 'plan_id' => $plan->id,
                 'status' => $validated['status'],
-                'activated_by' => $request->user()->id,
+                'activated_by' => $this->authenticatedUser($request)->id,
                 'starts_at' => now(),
             ]);
         }
@@ -212,7 +212,7 @@ class AdminDashboardController extends Controller
 
         $lease->update($validated);
 
-        return back()->with('success', 'تم تحديث حالة العقد رقم '.$lease->lease_number.' بنجاح.');
+        return back()->with('success', 'تم تحديث حالة العقد رقم '.$lease->contract_number.' بنجاح.');
     }
 
     /**

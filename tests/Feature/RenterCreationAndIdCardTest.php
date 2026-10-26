@@ -90,8 +90,7 @@ test('a user can create a renter with front and back ID images stored cleanly un
     $response->assertRedirect();
     $response->assertSessionHas('success');
 
-    $renter = Renter::where('phone', '01198765432')->first();
-    expect($renter)->not->toBeNull();
+    $renter = Renter::where('phone', '01198765432')->firstOrFail();
 
     // Check directory structure: ids/{customer_id}/...
     expect($renter->id_card_front)->toStartWith("ids/{$renter->id}/");
@@ -102,6 +101,8 @@ test('a user can create a renter with front and back ID images stored cleanly un
     expect($renter->id_card_back)->not->toContain('my_original_id_back');
 
     // Check files actually exist on disk
+    $this->assertNotNull($renter->id_card_front);
+    $this->assertNotNull($renter->id_card_back);
     Storage::disk('local')->assertExists($renter->id_card_front);
     Storage::disk('local')->assertExists($renter->id_card_back);
 
@@ -145,8 +146,9 @@ test('updating renter with new ID images replaces old files and saves cleanly', 
         'id_card_back' => $back1,
     ]);
 
-    $renter = Renter::where('phone', '01511223344')->first();
+    $renter = Renter::where('phone', '01511223344')->firstOrFail();
     $oldFrontPath = $renter->id_card_front;
+    $this->assertNotNull($oldFrontPath);
     Storage::disk('local')->assertExists($oldFrontPath);
 
     $front2 = UploadedFile::fake()->image('new_front.jpg');
@@ -166,6 +168,7 @@ test('updating renter with new ID images replaces old files and saves cleanly', 
 
     // Old file deleted, new file exists
     Storage::disk('local')->assertMissing($oldFrontPath);
+    $this->assertNotNull($renter->id_card_front);
     Storage::disk('local')->assertExists($renter->id_card_front);
 });
 
@@ -177,7 +180,7 @@ test('renter show page renders with ID card front and back URLs', function () {
         'id_card_front' => $front,
     ]);
 
-    $renter = Renter::where('phone', '01099887766')->first();
+    $renter = Renter::where('phone', '01099887766')->firstOrFail();
 
     $response = $this->actingAs($this->user)->get(route('renters.show', $renter->id));
     $response->assertOk();

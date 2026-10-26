@@ -37,6 +37,9 @@ class EncryptedFileService
         }
 
         $storedBytes = Storage::disk($disk)->get($path);
+        if ($storedBytes === null) {
+            return null;
+        }
 
         try {
             return Crypt::decrypt($storedBytes);
@@ -56,6 +59,9 @@ class EncryptedFileService
         }
 
         $storedBytes = Storage::disk($disk)->get($path);
+        if ($storedBytes === null) {
+            return false;
+        }
 
         try {
             Crypt::decrypt($storedBytes);

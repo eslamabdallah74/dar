@@ -7,6 +7,7 @@ namespace App\Http\Requests\Maintenance;
 use App\Models\MaintenanceRequest;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class UpdateMaintenanceStatusRequest extends FormRequest
 {
@@ -25,9 +26,9 @@ class UpdateMaintenanceStatusRequest extends FormRequest
         ];
     }
 
-    public function withValidator($validator): void
+    public function withValidator(Validator $validator): void
     {
-        $validator->after(function ($validator) {
+        $validator->after(function (Validator $validator) {
             $status = $this->input('status');
 
             if (in_array($status, ['completed', 'closed'], true)) {

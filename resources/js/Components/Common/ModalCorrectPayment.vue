@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { computed, watch } from 'vue';
 import { useForm, usePage } from '@inertiajs/vue3';
-import { AlertOctagon, AlertTriangle, Check, CreditCard, History, X } from 'lucide-vue-next';
+import { AlertOctagon, AlertTriangle, Check, History, X } from 'lucide-vue-next';
 
 interface PaymentReceiptItem {
     id: number;

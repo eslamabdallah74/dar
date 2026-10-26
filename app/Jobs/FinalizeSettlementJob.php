@@ -37,7 +37,7 @@ class FinalizeSettlementJob extends BaseJob
         $renter = $lease?->renter;
 
         if ($renter && ! empty($renter->email)) {
-            $unitNumber = $lease->unit?->unit_number ?? 'الوحدة';
+            $unitNumber = $lease->unit->name ?? 'الوحدة';
             $received = number_format((float) $settlement->total_received, 2);
             $deductions = number_format((float) $settlement->total_deductions, 2);
             $refunded = number_format((float) $settlement->total_refunded, 2);
@@ -47,7 +47,7 @@ class FinalizeSettlementJob extends BaseJob
                 recipient: $renter->email,
                 mailSubject: "تقرير تسوية التأمين النهائي - وحدة {$unitNumber}",
                 contentBody: "عزيزي المستأجر {$renter->name}،\n\nنحيطكم علماً بأنه قد تم اعتماد المخالصة والتسوية النهائية لمبلغ التأمين للوحدة ({$unitNumber}).\n\nملخص التسوية:\n- إجمالي التأمين المستلم: {$received} ج.م\n- إجمالي الخصومات المعتمدة: {$deductions} ج.م\n- إجمالي المبالغ المستردة: {$refunded} ج.م\n- الرصيد المتبقي: {$remaining} ج.م\n\nشاكرين لكم حسن تعاونكم."
-            ))->onQueue(QueueName::Notifications->value);
+            ));
         }
 
         Log::info("[FinalizeSettlementJob] Finalized audit and notifications for settlement #{$settlement->id}");

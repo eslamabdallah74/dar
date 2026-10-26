@@ -28,19 +28,4 @@ class PaymentFactory extends Factory
             'notes' => fake()->sentence(),
         ];
     }
-
-    public function bankTransfer(): static
-    {
-        return $this->state(fn () => ['payment_method' => 'bank_transfer']);
-    }
-
-    public function cash(): static
-    {
-        return $this->state(fn () => ['payment_method' => 'cash']);
-    }
-
-    public function cheque(): static
-    {
-        return $this->state(fn () => ['payment_method' => 'cheque']);
-    }
 }

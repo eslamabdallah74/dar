@@ -27,7 +27,7 @@ test('database seeder seeds real data across all entities and tables', function 
     expect(User::where('email', 'test@example.com')->exists())->toBeTrue()
         ->and(User::count())->toBeGreaterThanOrEqual(3);
 
-    $user = User::where('email', 'test@example.com')->first();
+    $user = User::where('email', 'test@example.com')->firstOrFail();
     expect(Hash::check('password', $user->password))->toBeTrue()
         ->and($user->isAdmin())->toBeTrue();
 
@@ -42,21 +42,19 @@ test('database seeder seeds real data across all entities and tables', function 
         ->and(WorkspaceMember::count())->toBeGreaterThanOrEqual(2)
         ->and(WorkspaceSubscription::where('status', 'active')->count())->toBeGreaterThanOrEqual(2);
 
-    $workspace = Workspace::where('slug', 'al-nour-real-estate')->first();
-    expect($workspace)->not->toBeNull()
-        ->and($workspace->currency)->toBe('EGP')
-        ->and($workspace->activeSubscription)->not->toBeNull()
-        ->and($workspace->activeSubscription->plan->slug)->toBe('enterprise')
-        ->and($workspace->activeSubscription->plan->unit_limit)->toBeNull();
+    $workspace = Workspace::where('slug', 'al-nour-real-estate')->firstOrFail();
+    $activePlan = $workspace->activeSubscription()->firstOrFail()->plan()->firstOrFail();
+    expect($workspace->currency)->toBe('EGP')
+        ->and($activePlan->slug)->toBe('enterprise')
+        ->and($activePlan->unit_limit)->toBeNull();
 
     // 4. Properties & Units
     expect(Property::where('workspace_id', $workspace->id)->count())->toBe(4)
         ->and(Unit::where('workspace_id', $workspace->id)->count())->toBeGreaterThanOrEqual(20);
 
     // Verify unit hierarchy
-    $parentUnit = Unit::where('code', 'VIL-MAIN')->first();
-    expect($parentUnit)->not->toBeNull()
-        ->and($parentUnit->childUnits()->count())->toBe(2);
+    $parentUnit = Unit::where('code', 'VIL-MAIN')->firstOrFail();
+    expect($parentUnit->childUnits()->count())->toBe(2);
 
     $billableCount = Unit::billableCountForWorkspace($workspace->id);
     expect($billableCount)->toBeGreaterThanOrEqual(20);
@@ -106,7 +104,7 @@ test('database seeder is idempotent and can be run multiple times safely', funct
 test('dashboard page renders with real seeded data without errors', function () {
     $this->seed(DatabaseSeeder::class);
 
-    $user = User::where('email', 'test@example.com')->first();
+    $user = User::where('email', 'test@example.com')->firstOrFail();
 
     $response = $this->actingAs($user)->get(route('dashboard'));
 
@@ -124,7 +122,7 @@ test('dashboard page renders with real seeded data without errors', function () 
 test('first test example has active unlimited enterprise subscription', function () {
     $this->seed(DatabaseSeeder::class);
 
-    $user = User::where('email', 'test@example.com')->first();
+    $user = User::where('email', 'test@example.com')->firstOrFail();
 
     $response = $this->actingAs($user)->get(route('subscription.index'));
 

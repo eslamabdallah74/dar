@@ -6,7 +6,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, Lock, Mail, Shield, ShieldCheck } from 'lucide-vue-next';
+import { Lock, Mail, Shield, ShieldCheck } from 'lucide-vue-next';
 
 const props = defineProps<{
     status?: string;

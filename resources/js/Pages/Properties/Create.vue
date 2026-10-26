@@ -3,7 +3,6 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import {
-    AlertCircle,
     ArrowLeft,
     ArrowRight,
     ArrowUpDown,
@@ -11,7 +10,6 @@ import {
     BellRing,
     Boxes,
     Building2,
-    Calendar,
     Car,
     Check,
     CheckCircle2,
@@ -21,13 +19,11 @@ import {
     FileText,
     Flame,
     Home,
-    ImagePlus,
     Info,
     MapPin,
     PhoneCall,
     Plus,
     Receipt,
-    Shield,
     ShieldCheck,
     Sparkles,
     Store,
@@ -106,7 +102,7 @@ const form = useForm({
     commercial_activity: '',
     year_built: new Date().getFullYear(),
     finishing_type: 'super_lux',
-    amenities: ['elevator', 'water_tank', 'intercom'] as string[],
+    amenities: [] as string[],
     electricity_meter_number: '',
     water_meter_number: '',
     gas_meter_number: '',
@@ -583,15 +579,20 @@ function toggleAmenity(id: string) {
 }
 
 // Summary computations
-const totalUnitsCount = computed(() => form.units.length);
 const totalBillableUnitsCount = computed(() => form.units.filter((u) => u.is_rentable).length);
 const totalApartmentsCount = computed(() => form.units.filter((u) => u.unit_type === 'apartment').length);
 const totalShopsCount = computed(() => form.units.filter((u) => u.unit_type === 'shop').length);
 const totalRoomsCount = computed(() => form.units.filter((u) => u.unit_type === 'room').length);
 const totalBedsCount = computed(() => form.units.filter((u) => u.unit_type === 'bed').length);
 
+const availablePropertyTypes = computed(() => {
+    return props.property_types.filter(
+        (t) => t.value !== 'standalone' && t.value !== 'commercial'
+    );
+});
+
 const selectedTypeDetails = computed(() => {
-    return props.property_types.find((t) => t.value === form.property_type) || props.property_types[0];
+    return availablePropertyTypes.value.find((t) => t.value === form.property_type) || availablePropertyTypes.value[0] || props.property_types[0];
 });
 
 // Step navigation validation
@@ -771,7 +772,7 @@ function submit() {
                             </label>
                             <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                                 <button
-                                    v-for="type in property_types"
+                                    v-for="type in availablePropertyTypes"
                                     :key="type.value"
                                     type="button"
                                     @click="form.property_type = type.value"
@@ -1345,10 +1346,15 @@ function submit() {
 
                         <!-- Amenities Checklist (Filtered based on property type) -->
                         <div v-if="form.property_type !== 'shop'" class="space-y-4">
-                            <h3 class="flex items-center gap-2 text-sm font-extrabold text-[#18705A]">
-                                <Sparkles class="size-4" />
-                                <span>المرافق والخدمات المتوفرة</span>
-                            </h3>
+                            <div>
+                                <h3 class="flex items-center gap-2 text-sm font-extrabold text-[#18705A]">
+                                    <Sparkles class="size-4" />
+                                    <span>المرافق والخدمات المتوفرة</span>
+                                </h3>
+                                <p class="mt-1 text-xs text-[#556960]">
+                                    اختر المرافق والخدمات المتوفرة في العقار
+                                </p>
+                            </div>
 
                             <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
                                 <button

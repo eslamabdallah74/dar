@@ -25,19 +25,4 @@ class WorkspaceFactory extends Factory
             'rent_reminder_days_before' => 5,
         ];
     }
-
-    public function active(): static
-    {
-        return $this->state(fn () => ['status' => 'active']);
-    }
-
-    public function suspended(): static
-    {
-        return $this->state(fn () => ['status' => 'suspended']);
-    }
-
-    public function cancelled(): static
-    {
-        return $this->state(fn () => ['status' => 'cancelled']);
-    }
 }

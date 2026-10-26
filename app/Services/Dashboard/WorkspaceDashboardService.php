@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Dashboard;
 
+use App\Enums\PropertyType;
 use App\Models\Lease;
 use App\Models\RentCharge;
 use App\Models\Unit;
@@ -22,7 +23,7 @@ class WorkspaceDashboardService
     public function build(Workspace $workspace, User $user): array
     {
         $currencyCode = $workspace->currency ?? 'EGP';
-        $currencySymbol = $this->resolveCurrencySymbol($currencyCode);
+        $currencySymbol = $workspace->currencySymbol();
         $currencyLabel = $this->resolveCurrencyLabel($currencyCode);
 
         $startOfMonth = now()->startOfMonth();
@@ -105,11 +106,10 @@ class WorkspaceDashboardService
         $upcomingDues = $this->buildUpcomingDues($workspace, $currencySymbol);
 
         // 5. Security deposit metrics
-        $securityDeposits = $this->buildSecurityDepositMetrics($workspace, $currencySymbol);
+        $securityDeposits = $this->buildSecurityDepositMetrics($workspace);
 
         // 6. Attention required items
         $attentionItems = $this->buildAttentionItems(
-            $workspace,
             $overdueCharges,
             $expiringLeases,
             $openMaintenance,
@@ -271,19 +271,6 @@ class WorkspaceDashboardService
         ];
     }
 
-    private function resolveCurrencySymbol(string $currencyCode): string
-    {
-        return match (strtoupper($currencyCode)) {
-            'EGP' => 'ج.م',
-            'SAR' => 'ر.س',
-            'AED' => 'د.إ',
-            'USD' => '$',
-            'EUR' => '€',
-            'KWD' => 'د.ك',
-            default => $currencyCode,
-        };
-    }
-
     private function resolveCurrencyLabel(string $currencyCode): string
     {
         return match (strtoupper($currencyCode)) {
@@ -379,18 +366,18 @@ class WorkspaceDashboardService
 
                 return [
                     'id' => $charge->id,
-                    'tenant' => $renter?->name ?? 'مستأجر',
+                    'tenant' => $renter->name ?? 'مستأجر',
                     'renter_id' => $renter?->id,
-                    'unit' => ($unit?->code ? $unit->code.' • ' : '').($unit?->property?->name ?? $unit?->name ?? 'وحدة'),
-                    'due_date' => $charge->due_date?->format('d/m/Y') ?? '',
-                    'due_date_iso' => $charge->due_date?->toDateString(),
+                    'unit' => ($unit?->code ? $unit->code.' • ' : '').($unit?->property->name ?? $unit->name ?? 'وحدة'),
+                    'due_date' => $charge->due_date->format('d/m/Y'),
+                    'due_date_iso' => $charge->due_date->toDateString(),
                     'amount' => number_format((float) $charge->amount).' '.$currencySymbol,
                     'amount_raw' => (float) $charge->amount,
                     'outstanding_balance' => (float) $outstanding,
                     'currency_symbol' => $currencySymbol,
                     'status' => $status,
                     'status_label' => $statusLabel,
-                    'phone' => $renter?->phone ?? '',
+                    'phone' => $renter->phone ?? '',
                 ];
             })->values()->all();
     }
@@ -398,7 +385,7 @@ class WorkspaceDashboardService
     /**
      * @return array<string, mixed>
      */
-    private function buildSecurityDepositMetrics(Workspace $workspace, string $currencySymbol): array
+    private function buildSecurityDepositMetrics(Workspace $workspace): array
     {
         $heldLeases = $workspace->leases()
             ->where('security_deposit_status', 'held')
@@ -435,7 +422,6 @@ class WorkspaceDashboardService
      * @return array<int, array<string, mixed>>
      */
     private function buildAttentionItems(
-        Workspace $workspace,
         Collection $overdueCharges,
         Collection $expiringLeases,
         Collection $openMaintenance,
@@ -450,8 +436,8 @@ class WorkspaceDashboardService
                 'id' => $charge->id,
                 'type' => 'overdue',
                 'title' => 'إيجار متأخر ('.$days.' يوم)',
-                'desc' => ($charge->lease?->renter?->name ?? 'مستأجر').' • '.($charge->lease?->unit?->name ?? 'وحدة').' ('.number_format((float) $charge->outstanding_balance).' '.$currencySymbol.')',
-                'phone' => $charge->lease?->renter?->phone ?? '',
+                'desc' => ($charge->lease?->renter->name ?? 'مستأجر').' • '.($charge->lease?->unit->name ?? 'وحدة').' ('.number_format((float) $charge->outstanding_balance).' '.$currencySymbol.')',
+                'phone' => $charge->lease?->renter->phone ?? '',
                 'amount' => (float) $charge->outstanding_balance,
                 'severity' => 'danger',
                 'link' => route('payments.index'),
@@ -464,8 +450,8 @@ class WorkspaceDashboardService
                 'id' => $lease->id,
                 'type' => 'lease_expiring',
                 'title' => 'عقد ينتهي خلال '.max(0, $days).' يوم',
-                'desc' => ($lease->renter?->name ?? 'مستأجر').' • '.($lease->unit?->name ?? 'وحدة'),
-                'phone' => $lease->renter?->phone ?? '',
+                'desc' => ($lease->renter->name ?? 'مستأجر').' • '.($lease->unit->name ?? 'وحدة'),
+                'phone' => $lease->renter->phone ?? '',
                 'amount' => (float) $lease->rent_amount,
                 'severity' => 'warning',
                 'link' => route('leases.index'),
@@ -477,8 +463,8 @@ class WorkspaceDashboardService
                 'id' => $request->id,
                 'type' => 'maintenance',
                 'title' => 'طلب صيانة: '.$request->title,
-                'desc' => ($request->unit?->property?->name ?? 'عقار').($request->unit ? ' • '.$request->unit->name : ''),
-                'phone' => $request->reportedByRenter?->phone ?? '',
+                'desc' => ($request->unit?->property->name ?? 'عقار').($request->unit ? ' • '.$request->unit->name : ''),
+                'phone' => $request->reportedByRenter->phone ?? '',
                 'amount' => 0,
                 'severity' => 'info',
                 'link' => route('maintenance.index'),
@@ -489,9 +475,9 @@ class WorkspaceDashboardService
             $attentionItems[] = [
                 'id' => $lease->id,
                 'type' => 'security_deposit_review',
-                'title' => 'تسوية تأمين معلقة: '.($lease->renter?->name ?? 'مستأجر'),
-                'desc' => ($lease->unit?->name ?? 'وحدة').' ('.number_format((float) $lease->refundable_deposit_balance).' '.$currencySymbol.')',
-                'phone' => $lease->renter?->phone ?? '',
+                'title' => 'تسوية تأمين معلقة: '.($lease->renter->name ?? 'مستأجر'),
+                'desc' => ($lease->unit->name ?? 'وحدة').' ('.number_format((float) $lease->refundable_deposit_balance).' '.$currencySymbol.')',
+                'phone' => $lease->renter->phone ?? '',
                 'amount' => (float) $lease->refundable_deposit_balance,
                 'severity' => 'warning',
                 'link' => route('leases.show', $lease->id),
@@ -522,8 +508,8 @@ class WorkspaceDashboardService
                     'name' => $property->name,
                     'property_type' => $property->property_type,
                     'property_type_label' => match ($property->property_type) {
-                        'building' => 'عمارة سكنية',
-                        'villa' => 'فيلا',
+                        PropertyType::Building => 'عمارة سكنية',
+                        PropertyType::Villa => 'فيلا',
                         default => 'عقار تجاري / سكني',
                     },
                     'address' => $property->address ?: 'الموقع غير محدد',
@@ -547,9 +533,9 @@ class WorkspaceDashboardService
                 'id' => 'p-'.$payment->id,
                 'type' => 'payment',
                 'title' => 'تم استلام دفعة بقيمة '.number_format((float) $payment->amount).' '.$currencySymbol,
-                'subtitle' => 'المستأجر: '.($payment->renter?->name ?? 'مستأجر').($payment->reference ? ' (إيصال: '.$payment->reference.')' : ''),
-                'time_ago' => $payment->paid_at?->diffForHumans() ?? 'مؤخراً',
-                'timestamp' => $payment->paid_at?->timestamp ?? 0,
+                'subtitle' => 'المستأجر: '.($payment->renter->name ?? 'مستأجر').($payment->reference ? ' (إيصال: '.$payment->reference.')' : ''),
+                'time_ago' => $payment->paid_at->diffForHumans(),
+                'timestamp' => $payment->paid_at->timestamp,
             ]);
         }
 
@@ -558,9 +544,9 @@ class WorkspaceDashboardService
                 'id' => 'l-'.$lease->id,
                 'type' => 'lease',
                 'title' => 'تم إنشاء عقد إيجار جديد بقيمة '.number_format((float) $lease->rent_amount).' '.$currencySymbol.'/شهر',
-                'subtitle' => ($lease->renter?->name ?? 'مستأجر').' • '.($lease->unit?->name ?? 'وحدة'),
+                'subtitle' => ($lease->renter->name ?? 'مستأجر').' • '.($lease->unit->name ?? 'وحدة'),
                 'time_ago' => $lease->created_at?->diffForHumans() ?? 'مؤخراً',
-                'timestamp' => $lease->created_at?->timestamp ?? 0,
+                'timestamp' => $lease->created_at->timestamp ?? 0,
             ]);
         }
 
@@ -569,9 +555,9 @@ class WorkspaceDashboardService
                 'id' => 'm-'.$request->id,
                 'type' => 'maintenance',
                 'title' => 'طلب صيانة: '.$request->title,
-                'subtitle' => ($request->unit?->property?->name ?? 'عقار').($request->unit ? ' • '.$request->unit->name : '').' ('.($request->status === 'open' ? 'جديد ومفتوح' : 'قيد التنفيذ').')',
+                'subtitle' => ($request->unit?->property->name ?? 'عقار').($request->unit ? ' • '.$request->unit->name : '').' ('.($request->status === 'open' ? 'جديد ومفتوح' : 'قيد التنفيذ').')',
                 'time_ago' => $request->created_at?->diffForHumans() ?? 'مؤخراً',
-                'timestamp' => $request->created_at?->timestamp ?? 0,
+                'timestamp' => $request->created_at->timestamp ?? 0,
             ]);
         }
 
@@ -584,7 +570,7 @@ class WorkspaceDashboardService
     private function buildSubscriptionUsage(Workspace $workspace, int $totalBillableUnits): array
     {
         $activeSubscription = $workspace->activeSubscription()->with('plan')->first();
-        $planName = $activeSubscription?->plan?->name ?? 'باقة الانطلاق (Starter)';
+        $planName = $activeSubscription?->plan->name ?? 'باقة الانطلاق (Starter)';
         $unitsLimit = $activeSubscription ? $activeSubscription->plan?->unit_limit : 5;
         $unitsUsed = $totalBillableUnits;
         $usagePercentage = ($unitsLimit !== null && $unitsLimit > 0)
@@ -637,7 +623,7 @@ class WorkspaceDashboardService
     }
 
     /**
-     * @return Collection<int, array<string, mixed>>
+     * @return Collection<int, array{id: int, name: string, phone: string, active_lease: array{id: int, unit_name: string|null, rent_amount: float}|null}>
      */
     private function buildRenterSummaries(Workspace $workspace): Collection
     {

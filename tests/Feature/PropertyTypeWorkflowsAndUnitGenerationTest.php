@@ -83,7 +83,7 @@ test('creating a shop generates exactly one independent rentable shop unit by de
     $units = $property->units;
     expect($units)->toHaveCount(1);
 
-    $unit = $units->first();
+    $unit = $units->firstOrFail();
     expect($unit->unit_type)->toBe('shop')
         ->and($unit->code)->toBe('SHP-99')
         ->and($unit->name)->toBe('محل الأمل للملابس')
@@ -154,7 +154,7 @@ test('creating an apartment in whole rental mode generates 1 rentable apartment 
     $units = $property->units;
     expect($units)->toHaveCount(1);
 
-    $unit = $units->first();
+    $unit = $units->firstOrFail();
     expect($unit->unit_type)->toBe('apartment')
         ->and($unit->code)->toBe('APT-14')
         ->and($unit->parent_unit_id)->toBeNull()
@@ -180,9 +180,8 @@ test('creating an apartment in rooms rental mode generates 1 parent apartment an
     // 1 parent apartment + 3 rooms = 4 total units
     expect($units)->toHaveCount(4);
 
-    $parentApt = $units->where('unit_type', 'apartment')->first();
-    expect($parentApt)->not->toBeNull()
-        ->and($parentApt->parent_unit_id)->toBeNull()
+    $parentApt = $units->where('unit_type', 'apartment')->firstOrFail();
+    expect($parentApt->parent_unit_id)->toBeNull()
         ->and((bool) $parentApt->is_rentable)->toBeFalse(); // Parent is not directly rentable
 
     $rooms = $units->where('unit_type', 'room');
@@ -214,7 +213,7 @@ test('creating an apartment in beds rental mode generates apartment -> rooms -> 
     // 1 apartment + 2 rooms + 4 beds = 7 total units
     expect($units)->toHaveCount(7);
 
-    $parentApt = $units->where('unit_type', 'apartment')->first();
+    $parentApt = $units->where('unit_type', 'apartment')->firstOrFail();
     expect($parentApt->parent_unit_id)->toBeNull()
         ->and((bool) $parentApt->is_rentable)->toBeFalse();
 
@@ -321,9 +320,9 @@ test('creating units from custom list respects topological sort and parent temp_
     $units = $property->units;
     expect($units)->toHaveCount(3);
 
-    $parentApt = $units->where('unit_type', 'apartment')->first();
-    $room = $units->where('unit_type', 'room')->first();
-    $bed = $units->where('unit_type', 'bed')->first();
+    $parentApt = $units->where('unit_type', 'apartment')->firstOrFail();
+    $room = $units->where('unit_type', 'room')->firstOrFail();
+    $bed = $units->where('unit_type', 'bed')->firstOrFail();
 
     expect($parentApt->parent_unit_id)->toBeNull()
         ->and((bool) $parentApt->is_rentable)->toBeFalse()
@@ -439,6 +438,6 @@ test('updating property details preserves existing units, active leases, and ten
     expect($unit->property_id)->toBe($property->id)
         ->and($unit->name)->toBe('شقة 101')
         ->and($unit->leases)->toHaveCount(1)
-        ->and($unit->leases->first()->id)->toBe($lease->id)
-        ->and($unit->leases->first()->renter_id)->toBe($renter->id);
+        ->and($unit->leases->firstOrFail()->id)->toBe($lease->id)
+        ->and($unit->leases->firstOrFail()->renter_id)->toBe($renter->id);
 });

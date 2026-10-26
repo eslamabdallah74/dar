@@ -5,23 +5,16 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import EmptyState from '@/Components/Common/EmptyState.vue';
 import {
     AlertCircle,
-    Building2,
-    Calendar,
     Check,
     CheckCircle2,
     Clock,
     Coins,
     CreditCard,
-    DollarSign,
     Edit3,
-    ExternalLink,
-    FileText,
-    HelpCircle,
     Loader2,
     Plus,
     Receipt,
     Search,
-    TrendingDown,
     Wrench,
     X,
 } from 'lucide-vue-next';

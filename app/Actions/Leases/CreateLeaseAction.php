@@ -25,26 +25,27 @@ class CreateLeaseAction
     {
         $unit = Unit::withoutGlobalScopes()
             ->where('workspace_id', $workspace->id)
-            ->findOrFail($data['unit_id']);
+            ->findOrFail((int) $data['unit_id']);
 
-        $renter = Renter::withoutGlobalScopes()
+        // Responds with 404 when the renter belongs to another workspace.
+        Renter::withoutGlobalScopes()
             ->where('workspace_id', $workspace->id)
-            ->findOrFail($data['renter_id']);
+            ->findOrFail((int) $data['renter_id']);
 
-        $hierarchyIds = $unit->getHierarchyUnitIds();
-        $startsCarbon = Carbon::parse($data['starts_on']);
+        $hierarchyUnitIds = $unit->getHierarchyUnitIds();
+        $startsOn = Carbon::parse($data['starts_on']);
         $depositAmount = isset($data['security_deposit_amount']) ? (float) $data['security_deposit_amount'] : 0.00;
         $depositStatus = $depositAmount > 0 ? 'due' : 'not_required';
 
-        return DB::transaction(function () use ($workspace, $data, $startsCarbon, $hierarchyIds, $unit, $depositAmount, $depositStatus) {
-            // Lock affected units in hierarchy for update
+        return DB::transaction(function () use ($workspace, $data, $startsOn, $hierarchyUnitIds, $unit, $depositAmount, $depositStatus) {
+            // Serialize concurrent lease creation on any unit of the same hierarchy.
             Unit::withoutGlobalScopes()
-                ->whereIn('id', $hierarchyIds)
+                ->whereIn('id', $hierarchyUnitIds)
                 ->lockForUpdate()
                 ->get();
 
             $conflictingLease = $workspace->leases()
-                ->whereIn('unit_id', $hierarchyIds)
+                ->whereIn('unit_id', $hierarchyUnitIds)
                 ->whereIn('status', ['active', 'draft'])
                 ->where('starts_on', '<=', $data['ends_on'])
                 ->where('ends_on', '>=', $data['starts_on'])
@@ -71,18 +72,17 @@ class CreateLeaseAction
                 'security_deposit_amount' => $depositAmount,
                 'security_deposit_status' => $depositStatus,
                 'billing_interval' => 'monthly',
-                'billing_anchor_day' => min(28, (int) $startsCarbon->format('j')),
+                'billing_anchor_day' => min(28, $startsOn->day),
                 'first_due_date' => $data['starts_on'],
                 'status' => 'active',
                 'contract_image' => $data['contract_image'] ?? null,
                 'notes' => $data['notes'] ?? null,
             ]);
 
-            // Automatically create first month rent charge
             $workspace->rentCharges()->create([
                 'lease_id' => $lease->id,
-                'period_start' => $startsCarbon->startOfMonth()->toDateString(),
-                'period_end' => $startsCarbon->copy()->endOfMonth()->toDateString(),
+                'period_start' => $startsOn->copy()->startOfMonth()->toDateString(),
+                'period_end' => $startsOn->copy()->endOfMonth()->toDateString(),
                 'due_date' => $lease->starts_on,
                 'amount' => $lease->rent_amount,
             ]);

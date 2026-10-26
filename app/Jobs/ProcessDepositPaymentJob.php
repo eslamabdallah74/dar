@@ -42,16 +42,16 @@ class ProcessDepositPaymentJob extends BaseJob
 
         // Dispatch Email if renter has email
         if ($renter && ! empty($renter->email)) {
-            $unitNumber = $lease->unit?->unit_number ?? 'الوحدة';
+            $unitNumber = $lease->unit->name ?? 'الوحدة';
             $amount = number_format((float) $payment->amount, 2);
             $receipt = $payment->reference ?? "DEP-{$payment->id}";
-            $paidDate = $payment->paid_at?->format('d/m/Y') ?? now()->format('d/m/Y');
+            $paidDate = $payment->paid_at->format('d/m/Y');
 
             dispatch(new EmailNotificationJob(
                 recipient: $renter->email,
                 mailSubject: "سند استلام مبلغ تأمين - عقد وحدة {$unitNumber}",
                 contentBody: "عزيزي المستأجر {$renter->name}،\n\nتم استلام دفعة تأمين بقيمة {$amount} ج.م للوحدة ({$unitNumber}) بنجاح.\nرقم السند: {$receipt}\nتاريخ الاستلام: {$paidDate}\n\nيُحفظ مبلغ التأمين كضمان مسترد للوحدة وفقاً لبنود العقد.\n\nشكراً لتعاونكم."
-            ))->onQueue(QueueName::Notifications->value);
+            ));
         }
 
         Log::info("[ProcessDepositPaymentJob] Successfully processed post-payment tasks for deposit payment #{$payment->id}");

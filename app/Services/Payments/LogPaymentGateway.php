@@ -49,16 +49,4 @@ class LogPaymentGateway implements PaymentGatewayInterface
             'metadata' => (array) ($payload['data']['metadata'] ?? []),
         ];
     }
-
-    public function fetchPayment(string $paymentId): array
-    {
-        return [
-            'id' => $paymentId,
-            'status' => 'paid',
-            'amount' => 1000.0,
-            'currency' => 'SAR',
-            'fee' => 15.0,
-            'message' => 'عملية محاكاة ناجحة',
-        ];
-    }
 }

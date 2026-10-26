@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\SecurityDeposits;
 
+use App\Http\Requests\Concerns\ResolvesRouteLease;
 use App\Models\Lease;
+use App\Models\SecurityDepositDeduction;
 use App\Support\CurrentWorkspace;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -12,6 +14,8 @@ use Illuminate\Validation\Validator;
 
 class StoreSecurityDepositDeductionRequest extends FormRequest
 {
+    use ResolvesRouteLease;
+
     public function authorize(): bool
     {
         $lease = $this->route('lease');
@@ -64,8 +68,7 @@ class StoreSecurityDepositDeductionRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $v) {
-            /** @var Lease|null $lease */
-            $lease = $this->route('lease');
+            $lease = $this->routeLease();
             if (! $lease) {
                 return;
             }
@@ -77,11 +80,11 @@ class StoreSecurityDepositDeductionRequest extends FormRequest
                 return;
             }
 
-            $deductions = $this->input('deductions', []);
+            $deductions = $this->array('deductions');
             $editingDeduction = $this->route('deduction');
 
             $availableForDeduction = (float) $lease->refundable_deposit_balance;
-            if ($editingDeduction) {
+            if ($editingDeduction instanceof SecurityDepositDeduction) {
                 $availableForDeduction += (float) $editingDeduction->amount;
             }
 

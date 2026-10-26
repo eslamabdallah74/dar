@@ -21,25 +21,101 @@ use App\Models\WorkspaceSubscription;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use LogicException;
 use Spatie\Activitylog\Models\Activity;
 
 class RentalDemoSeeder extends Seeder
 {
+    private ?Plan $proPlan = null;
+
+    private ?Plan $enterprisePlan = null;
+
+    private User $primaryUser;
+
+    private User $secondaryOwner;
+
+    private Workspace $workspace;
+
+    private Workspace $secondaryWorkspace;
+
+    private Property $propBuilding;
+
+    private Property $propVilla;
+
+    private Property $propTower;
+
+    private Property $propYasminVillas;
+
+    private Property $propRiyadh;
+
+    private Property $propNakheel;
+
+    private Property $propHittin;
+
+    private Unit $suiteEast;
+
+    private Unit $suiteWest;
+
+    /** @var array<int|string, Unit> */
+    private array $unitsAlNour = [];
+
+    /** @var array<int|string, Unit> */
+    private array $unitsTower = [];
+
+    /** @var array<int|string, Unit> */
+    private array $unitsYasminVillas = [];
+
+    /** @var array<int|string, Unit> */
+    private array $unitsSaudi = [];
+
+    /** @var array<int|string, Renter> Renters of the primary workspace keyed by national id. */
+    private array $renters = [];
+
+    private Renter $saudiRenter1;
+
+    private Renter $saudiRenter2;
+
+    private Renter $saudiRenter3;
+
+    private Renter $saudiRenter4;
+
+    private Renter $saudiRenter5;
+
+    /** @var list<MaintenanceRequest> */
+    private array $maintenanceRequests = [];
+
+    /** @var list<Lease> */
+    private array $allLeases = [];
+
+    private int $nextPaymentNumber = 1;
+
     public function run(): void
     {
-        // -------------------------------------------------------------
-        // 0. Ensure Subscription Plans exist
-        // -------------------------------------------------------------
+        $this->seedPlans();
+        $this->seedUsers();
+        $this->seedWorkspaces();
+        $this->seedSubscriptions();
+        $this->seedProperties();
+        $this->seedUnits();
+        $this->seedRenters();
+        $this->seedLeasesAndPayments();
+        $this->seedMaintenanceRequests();
+        $this->seedExpenses();
+        $this->seedMessageLogs();
+        $this->seedActivityLog();
+    }
+
+    private function seedPlans(): void
+    {
         $this->call(PlanSeeder::class);
 
-        $growthPlan = Plan::where('slug', 'growth')->first();
-        $proPlan = Plan::where('slug', 'pro')->first();
-        $enterprisePlan = Plan::where('slug', 'enterprise')->first();
+        $this->proPlan = Plan::where('slug', 'pro')->first();
+        $this->enterprisePlan = Plan::where('slug', 'enterprise')->first();
+    }
 
-        // -------------------------------------------------------------
-        // 1. Users
-        // -------------------------------------------------------------
-        $primaryUser = User::updateOrCreate(
+    private function seedUsers(): void
+    {
+        $this->primaryUser = User::updateOrCreate(
             ['email' => 'test@example.com'],
             [
                 'name' => 'أحمد حسن',
@@ -47,9 +123,9 @@ class RentalDemoSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
-        $primaryUser->forceFill(['is_admin' => true])->save();
+        $this->primaryUser->forceFill(['is_admin' => true])->save();
 
-        $accountantUser = User::updateOrCreate(
+        User::updateOrCreate(
             ['email' => 'abdullah.kh@al-nour.com.eg'],
             [
                 'name' => 'عبدالله خالد (المحاسب المالي)',
@@ -58,7 +134,7 @@ class RentalDemoSeeder extends Seeder
             ]
         );
 
-        $secondaryOwner = User::updateOrCreate(
+        $this->secondaryOwner = User::updateOrCreate(
             ['email' => 'saad.tamimi@example.com'],
             [
                 'name' => 'سعد التميمي',
@@ -66,16 +142,15 @@ class RentalDemoSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
+    }
 
-        // -------------------------------------------------------------
-        // 2. Workspaces & Memberships
-        // -------------------------------------------------------------
-        // Primary Workspace (Dar Real Estate - Egypt portfolio)
-        $workspace = Workspace::updateOrCreate(
+    private function seedWorkspaces(): void
+    {
+        $this->workspace = Workspace::updateOrCreate(
             ['slug' => 'al-nour-real-estate'],
             [
                 'name' => 'عقارات النور',
-                'owner_user_id' => $primaryUser->id,
+                'owner_user_id' => $this->primaryUser->id,
                 'currency' => 'EGP',
                 'timezone' => 'Africa/Cairo',
                 'status' => 'active',
@@ -84,16 +159,16 @@ class RentalDemoSeeder extends Seeder
         );
 
         WorkspaceMember::firstOrCreate(
-            ['workspace_id' => $workspace->id, 'user_id' => $primaryUser->id],
+            ['workspace_id' => $this->workspace->id, 'user_id' => $this->primaryUser->id],
             ['role' => 'owner']
         );
 
         // Secondary Workspace (Saudi portfolio)
-        $secondaryWorkspace = Workspace::updateOrCreate(
+        $this->secondaryWorkspace = Workspace::updateOrCreate(
             ['slug' => 'al-ofoq-real-estate'],
             [
                 'name' => 'مجموعة الأفق العقارية',
-                'owner_user_id' => $secondaryOwner->id,
+                'owner_user_id' => $this->secondaryOwner->id,
                 'currency' => 'SAR',
                 'timezone' => 'Asia/Riyadh',
                 'status' => 'active',
@@ -102,23 +177,23 @@ class RentalDemoSeeder extends Seeder
         );
 
         WorkspaceMember::firstOrCreate(
-            ['workspace_id' => $secondaryWorkspace->id, 'user_id' => $secondaryOwner->id],
+            ['workspace_id' => $this->secondaryWorkspace->id, 'user_id' => $this->secondaryOwner->id],
             ['role' => 'owner']
         );
+    }
 
-        // -------------------------------------------------------------
-        // 3. Workspace Subscriptions
-        // -------------------------------------------------------------
-        if ($enterprisePlan) {
+    private function seedSubscriptions(): void
+    {
+        if ($this->enterprisePlan) {
             // First test example (Al-Nour Real Estate) gets the Unlimited Enterprise plan with unrestricted units
-            WorkspaceSubscription::where('workspace_id', $workspace->id)
-                ->where('plan_id', '!=', $enterprisePlan->id)
+            WorkspaceSubscription::where('workspace_id', $this->workspace->id)
+                ->where('plan_id', '!=', $this->enterprisePlan->id)
                 ->delete();
 
             WorkspaceSubscription::updateOrCreate(
-                ['workspace_id' => $workspace->id, 'plan_id' => $enterprisePlan->id],
+                ['workspace_id' => $this->workspace->id, 'plan_id' => $this->enterprisePlan->id],
                 [
-                    'activated_by' => $primaryUser->id,
+                    'activated_by' => $this->primaryUser->id,
                     'status' => 'active',
                     'starts_at' => now()->subMonths(6),
                     'ends_at' => now()->addYears(2),
@@ -127,11 +202,11 @@ class RentalDemoSeeder extends Seeder
             );
         }
 
-        if ($proPlan) {
+        if ($this->proPlan) {
             WorkspaceSubscription::updateOrCreate(
-                ['workspace_id' => $secondaryWorkspace->id, 'plan_id' => $proPlan->id],
+                ['workspace_id' => $this->secondaryWorkspace->id, 'plan_id' => $this->proPlan->id],
                 [
-                    'activated_by' => $secondaryOwner->id,
+                    'activated_by' => $this->secondaryOwner->id,
                     'status' => 'active',
                     'starts_at' => now()->subMonths(3),
                     'ends_at' => now()->addMonths(9),
@@ -139,36 +214,36 @@ class RentalDemoSeeder extends Seeder
                 ]
             );
         }
+    }
 
-        // -------------------------------------------------------------
-        // 4. Properties (Primary Workspace)
-        // -------------------------------------------------------------
-        $propBuilding = Property::firstOrCreate(
-            ['workspace_id' => $workspace->id, 'name' => 'عمارة النور السكنية'],
+    private function seedProperties(): void
+    {
+        $this->propBuilding = Property::firstOrCreate(
+            ['workspace_id' => $this->workspace->id, 'name' => 'عمارة النور السكنية'],
             [
                 'property_type' => 'building',
                 'address' => 'المعادي، شارع النصر تقاطع اللاسلكي، القاهرة',
             ]
         );
 
-        $propYasminVillas = Property::firstOrCreate(
-            ['workspace_id' => $workspace->id, 'name' => 'فلل الياسمين'],
+        $this->propYasminVillas = Property::firstOrCreate(
+            ['workspace_id' => $this->workspace->id, 'name' => 'فلل الياسمين'],
             [
                 'property_type' => 'building',
                 'address' => 'التجمع الخامس، الحي الخامس بالقرب من شارع التسعين، القاهرة الجديدة',
             ]
         );
 
-        $propTower = Property::firstOrCreate(
-            ['workspace_id' => $workspace->id, 'name' => 'برج الأندلس'],
+        $this->propTower = Property::firstOrCreate(
+            ['workspace_id' => $this->workspace->id, 'name' => 'برج الأندلس'],
             [
                 'property_type' => 'building',
                 'address' => 'مدينة نصر، شارع عباس العقاد، القاهرة',
             ]
         );
 
-        $propVilla = Property::firstOrCreate(
-            ['workspace_id' => $workspace->id, 'name' => 'فيلا المعمورة'],
+        $this->propVilla = Property::firstOrCreate(
+            ['workspace_id' => $this->workspace->id, 'name' => 'فيلا المعمورة'],
             [
                 'property_type' => 'villa',
                 'address' => 'الشروق، المنطقة الأولى، القاهرة',
@@ -176,35 +251,34 @@ class RentalDemoSeeder extends Seeder
         );
 
         // Secondary Workspace Properties (Riyadh, Saudi Arabia)
-        $propRiyadh = Property::firstOrCreate(
-            ['workspace_id' => $secondaryWorkspace->id, 'name' => 'برج العليا التنفيذي'],
+        $this->propRiyadh = Property::firstOrCreate(
+            ['workspace_id' => $this->secondaryWorkspace->id, 'name' => 'برج العليا التنفيذي'],
             [
                 'property_type' => 'building',
                 'address' => 'حي العليا، طريق الملك فهد، الرياض',
             ]
         );
 
-        $propNakheel = Property::firstOrCreate(
-            ['workspace_id' => $secondaryWorkspace->id, 'name' => 'وحدات النخيل'],
+        $this->propNakheel = Property::firstOrCreate(
+            ['workspace_id' => $this->secondaryWorkspace->id, 'name' => 'وحدات النخيل'],
             [
                 'property_type' => 'building',
                 'address' => 'حي النخيل، طريق الإمام سعود بن عبدالعزيز، الرياض',
             ]
         );
 
-        $propHittin = Property::firstOrCreate(
-            ['workspace_id' => $secondaryWorkspace->id, 'name' => 'فيلا حطين الفاخرة'],
+        $this->propHittin = Property::firstOrCreate(
+            ['workspace_id' => $this->secondaryWorkspace->id, 'name' => 'فيلا حطين الفاخرة'],
             [
                 'property_type' => 'villa',
                 'address' => 'حي حطين النموذجي، شمال الرياض',
             ]
         );
+    }
 
-        // -------------------------------------------------------------
-        // 5. Units
-        // -------------------------------------------------------------
-        // A. Units for عمارة النور (12 apartments across 3 floors)
-        $unitsAlNour = [];
+    private function seedUnits(): void
+    {
+        $this->unitsAlNour = [];
         $buildingUnitsData = [
             ['code' => 'APT-101', 'name' => 'شقة 101 (الدور الأول - واجهة بحرية)', 'type' => 'apartment'],
             ['code' => 'APT-102', 'name' => 'شقة 102 (الدور الأول - واجهة داخلية)', 'type' => 'apartment'],
@@ -221,8 +295,8 @@ class RentalDemoSeeder extends Seeder
         ];
 
         foreach ($buildingUnitsData as $u) {
-            $unitsAlNour[$u['code']] = Unit::firstOrCreate(
-                ['workspace_id' => $workspace->id, 'property_id' => $propBuilding->id, 'code' => $u['code']],
+            $this->unitsAlNour[$u['code']] = Unit::firstOrCreate(
+                ['workspace_id' => $this->workspace->id, 'property_id' => $this->propBuilding->id, 'code' => $u['code']],
                 [
                     'name' => $u['name'],
                     'unit_type' => $u['type'],
@@ -232,7 +306,7 @@ class RentalDemoSeeder extends Seeder
         }
 
         // B. Units for فلل الياسمين (6 units: villas & duplexes)
-        $unitsYasminVillas = [];
+        $this->unitsYasminVillas = [];
         $yasminVillaUnitsData = [
             ['code' => 'VIL-01', 'name' => 'فيلا 01 (تاون هاوس زاوية بحديقة)', 'type' => 'apartment'],
             ['code' => 'VIL-02', 'name' => 'فيلا 02 (تاون هاوس وسطي بحديقة)', 'type' => 'apartment'],
@@ -243,8 +317,8 @@ class RentalDemoSeeder extends Seeder
         ];
 
         foreach ($yasminVillaUnitsData as $u) {
-            $unitsYasminVillas[$u['code']] = Unit::firstOrCreate(
-                ['workspace_id' => $workspace->id, 'property_id' => $propYasminVillas->id, 'code' => $u['code']],
+            $this->unitsYasminVillas[$u['code']] = Unit::firstOrCreate(
+                ['workspace_id' => $this->workspace->id, 'property_id' => $this->propYasminVillas->id, 'code' => $u['code']],
                 [
                     'name' => $u['name'],
                     'unit_type' => $u['type'],
@@ -254,7 +328,7 @@ class RentalDemoSeeder extends Seeder
         }
 
         // C. Units for برج الأندلس (2 luxury apartments + 2 commercial shops)
-        $unitsTower = [];
+        $this->unitsTower = [];
         $towerUnitsData = [
             ['code' => 'APT-501', 'name' => 'شقة 501 (إطلالة بانورامية كاملة)', 'type' => 'apartment'],
             ['code' => 'APT-502', 'name' => 'شقة 502 (مفروشة بالكامل الترا سوبر لوكس)', 'type' => 'apartment'],
@@ -263,8 +337,8 @@ class RentalDemoSeeder extends Seeder
         ];
 
         foreach ($towerUnitsData as $u) {
-            $unitsTower[$u['code']] = Unit::firstOrCreate(
-                ['workspace_id' => $workspace->id, 'property_id' => $propTower->id, 'code' => $u['code']],
+            $this->unitsTower[$u['code']] = Unit::firstOrCreate(
+                ['workspace_id' => $this->workspace->id, 'property_id' => $this->propTower->id, 'code' => $u['code']],
                 [
                     'name' => $u['name'],
                     'unit_type' => $u['type'],
@@ -275,7 +349,7 @@ class RentalDemoSeeder extends Seeder
 
         // D. Units for فيلا المعمورة (Hierarchical units to test scopeBillableLeaves)
         $villaMain = Unit::firstOrCreate(
-            ['workspace_id' => $workspace->id, 'property_id' => $propVilla->id, 'code' => 'VIL-MAIN'],
+            ['workspace_id' => $this->workspace->id, 'property_id' => $this->propVilla->id, 'code' => 'VIL-MAIN'],
             [
                 'name' => 'فيلا المعمورة الكاملة',
                 'unit_type' => 'apartment',
@@ -283,8 +357,8 @@ class RentalDemoSeeder extends Seeder
             ]
         );
 
-        $suiteWest = Unit::firstOrCreate(
-            ['workspace_id' => $workspace->id, 'property_id' => $propVilla->id, 'code' => 'SUITE-A'],
+        $this->suiteWest = Unit::firstOrCreate(
+            ['workspace_id' => $this->workspace->id, 'property_id' => $this->propVilla->id, 'code' => 'SUITE-A'],
             [
                 'parent_unit_id' => $villaMain->id,
                 'name' => 'جناح المعمورة الغربي (مدخل مستقل وحديقة خاصة)',
@@ -293,8 +367,8 @@ class RentalDemoSeeder extends Seeder
             ]
         );
 
-        $suiteEast = Unit::firstOrCreate(
-            ['workspace_id' => $workspace->id, 'property_id' => $propVilla->id, 'code' => 'SUITE-B'],
+        $this->suiteEast = Unit::firstOrCreate(
+            ['workspace_id' => $this->workspace->id, 'property_id' => $this->propVilla->id, 'code' => 'SUITE-B'],
             [
                 'parent_unit_id' => $villaMain->id,
                 'name' => 'جناح المعمورة الشرقي (مدخل مستقل وتراس علوي)',
@@ -305,20 +379,20 @@ class RentalDemoSeeder extends Seeder
 
         // Secondary Workspace Units
         $saudiUnitsList = [
-            ['property_id' => $propRiyadh->id, 'code' => 'STE-101', 'name' => 'جناح تنفيذي 101', 'unit_type' => 'apartment'],
-            ['property_id' => $propRiyadh->id, 'code' => 'STE-102', 'name' => 'جناح تنفيذي 102', 'unit_type' => 'apartment'],
-            ['property_id' => $propRiyadh->id, 'code' => 'STE-201', 'name' => 'جناح تنفيذي 201', 'unit_type' => 'apartment'],
-            ['property_id' => $propRiyadh->id, 'code' => 'OFC-301', 'name' => 'مكتب تجاري 301', 'unit_type' => 'other'],
-            ['property_id' => $propNakheel->id, 'code' => 'VIL-01', 'name' => 'فيلا تاون هاوس 1', 'unit_type' => 'apartment'],
-            ['property_id' => $propNakheel->id, 'code' => 'VIL-02', 'name' => 'فيلا تاون هاوس 2', 'unit_type' => 'apartment'],
-            ['property_id' => $propNakheel->id, 'code' => 'APT-01', 'name' => 'شقة دوبلكس راقية 01', 'unit_type' => 'apartment'],
-            ['property_id' => $propHittin->id, 'code' => 'VIL-H1', 'name' => 'فيلا حطين المستقلة', 'unit_type' => 'other'],
+            ['property_id' => $this->propRiyadh->id, 'code' => 'STE-101', 'name' => 'جناح تنفيذي 101', 'unit_type' => 'apartment'],
+            ['property_id' => $this->propRiyadh->id, 'code' => 'STE-102', 'name' => 'جناح تنفيذي 102', 'unit_type' => 'apartment'],
+            ['property_id' => $this->propRiyadh->id, 'code' => 'STE-201', 'name' => 'جناح تنفيذي 201', 'unit_type' => 'apartment'],
+            ['property_id' => $this->propRiyadh->id, 'code' => 'OFC-301', 'name' => 'مكتب تجاري 301', 'unit_type' => 'other'],
+            ['property_id' => $this->propNakheel->id, 'code' => 'VIL-01', 'name' => 'فيلا تاون هاوس 1', 'unit_type' => 'apartment'],
+            ['property_id' => $this->propNakheel->id, 'code' => 'VIL-02', 'name' => 'فيلا تاون هاوس 2', 'unit_type' => 'apartment'],
+            ['property_id' => $this->propNakheel->id, 'code' => 'APT-01', 'name' => 'شقة دوبلكس راقية 01', 'unit_type' => 'apartment'],
+            ['property_id' => $this->propHittin->id, 'code' => 'VIL-H1', 'name' => 'فيلا حطين المستقلة', 'unit_type' => 'other'],
         ];
 
-        $unitsSaudi = [];
+        $this->unitsSaudi = [];
         foreach ($saudiUnitsList as $su) {
-            $unitsSaudi[$su['code']] = Unit::firstOrCreate(
-                ['workspace_id' => $secondaryWorkspace->id, 'code' => $su['code']],
+            $this->unitsSaudi[$su['code']] = Unit::firstOrCreate(
+                ['workspace_id' => $this->secondaryWorkspace->id, 'code' => $su['code']],
                 [
                     'property_id' => $su['property_id'],
                     'name' => $su['name'],
@@ -327,10 +401,10 @@ class RentalDemoSeeder extends Seeder
                 ]
             );
         }
+    }
 
-        // -------------------------------------------------------------
-        // 6. Renters (Primary Workspace)
-        // -------------------------------------------------------------
+    private function seedRenters(): void
+    {
         $rentersData = [
             [
                 'national_id' => '29010150102345',
@@ -496,18 +570,18 @@ class RentalDemoSeeder extends Seeder
             ],
         ];
 
-        $renters = [];
+        $this->renters = [];
         foreach ($rentersData as $r) {
-            $renters[$r['national_id']] = Renter::updateOrCreate(
-                ['workspace_id' => $workspace->id, 'national_id' => $r['national_id']],
+            $this->renters[$r['national_id']] = Renter::updateOrCreate(
+                ['workspace_id' => $this->workspace->id, 'national_id' => $r['national_id']],
                 [
                     'name' => $r['name'],
                     'phone' => $r['phone'],
                     'email' => $r['email'],
-                    'gender' => $r['gender'] ?? null,
+                    'gender' => $r['gender'],
                     'whatsapp_opt_in_at' => now()->subMonths(4),
                     'whatsapp_opt_in_source' => $r['source'],
-                    'whatsapp_opt_in_recorded_by' => $primaryUser->id,
+                    'whatsapp_opt_in_recorded_by' => $this->primaryUser->id,
                     'notes' => $r['notes'],
                 ]
             );
@@ -515,32 +589,32 @@ class RentalDemoSeeder extends Seeder
             // Seed Renter Documents
             RenterDocument::firstOrCreate(
                 [
-                    'workspace_id' => $workspace->id,
-                    'renter_id' => $renters[$r['national_id']]->id,
+                    'workspace_id' => $this->workspace->id,
+                    'renter_id' => $this->renters[$r['national_id']]->id,
                     'document_type' => 'national_id',
                 ],
                 [
-                    'storage_path' => 'documents/renters/'.$renters[$r['national_id']]->id.'/national_id_card.pdf',
-                    'uploaded_by' => $primaryUser->id,
+                    'storage_path' => 'documents/renters/'.$this->renters[$r['national_id']]->id.'/national_id_card.pdf',
+                    'uploaded_by' => $this->primaryUser->id,
                 ]
             );
 
             RenterDocument::firstOrCreate(
                 [
-                    'workspace_id' => $workspace->id,
-                    'renter_id' => $renters[$r['national_id']]->id,
+                    'workspace_id' => $this->workspace->id,
+                    'renter_id' => $this->renters[$r['national_id']]->id,
                     'document_type' => 'employment_letter',
                 ],
                 [
-                    'storage_path' => 'documents/renters/'.$renters[$r['national_id']]->id.'/employment_verification.pdf',
-                    'uploaded_by' => $primaryUser->id,
+                    'storage_path' => 'documents/renters/'.$this->renters[$r['national_id']]->id.'/employment_verification.pdf',
+                    'uploaded_by' => $this->primaryUser->id,
                 ]
             );
         }
 
         // Secondary Workspace Renters
-        $saudiRenter1 = Renter::updateOrCreate(
-            ['workspace_id' => $secondaryWorkspace->id, 'national_id' => '1083746251'],
+        $this->saudiRenter1 = Renter::updateOrCreate(
+            ['workspace_id' => $this->secondaryWorkspace->id, 'national_id' => '1083746251'],
             [
                 'name' => 'خالد بن فهد العتيبي',
                 'phone' => '0558765432',
@@ -552,8 +626,8 @@ class RentalDemoSeeder extends Seeder
             ]
         );
 
-        $saudiRenter2 = Renter::updateOrCreate(
-            ['workspace_id' => $secondaryWorkspace->id, 'national_id' => '1058273645'],
+        $this->saudiRenter2 = Renter::updateOrCreate(
+            ['workspace_id' => $this->secondaryWorkspace->id, 'national_id' => '1058273645'],
             [
                 'name' => 'سلطان بن عبدالعزيز الدوسري',
                 'phone' => '0531987465',
@@ -565,8 +639,8 @@ class RentalDemoSeeder extends Seeder
             ]
         );
 
-        $saudiRenter3 = Renter::updateOrCreate(
-            ['workspace_id' => $secondaryWorkspace->id, 'national_id' => '1029384756'],
+        $this->saudiRenter3 = Renter::updateOrCreate(
+            ['workspace_id' => $this->secondaryWorkspace->id, 'national_id' => '1029384756'],
             [
                 'name' => 'فيصل بن محمد القحطاني',
                 'phone' => '0504123890',
@@ -578,8 +652,8 @@ class RentalDemoSeeder extends Seeder
             ]
         );
 
-        $saudiRenter4 = Renter::updateOrCreate(
-            ['workspace_id' => $secondaryWorkspace->id, 'national_id' => '1098765432'],
+        $this->saudiRenter4 = Renter::updateOrCreate(
+            ['workspace_id' => $this->secondaryWorkspace->id, 'national_id' => '1098765432'],
             [
                 'name' => 'نورة بنت عبدالله السبيعي',
                 'phone' => '0546781234',
@@ -591,8 +665,8 @@ class RentalDemoSeeder extends Seeder
             ]
         );
 
-        $saudiRenter5 = Renter::updateOrCreate(
-            ['workspace_id' => $secondaryWorkspace->id, 'national_id' => '7001928374'],
+        $this->saudiRenter5 = Renter::updateOrCreate(
+            ['workspace_id' => $this->secondaryWorkspace->id, 'national_id' => '7001928374'],
             [
                 'name' => 'شركة الرواد للحلول التقنية',
                 'phone' => '0567890123',
@@ -602,15 +676,24 @@ class RentalDemoSeeder extends Seeder
                 'notes' => 'عقد تجاري للمكتب 301 برج العليا',
             ]
         );
+    }
 
-        // -------------------------------------------------------------
-        // 7. Leases, Charges, Payments & Allocations
-        // -------------------------------------------------------------
+    private function seedLeasesAndPayments(): void
+    {
+        $this->seedPrimaryWorkspaceLeases();
+        $this->seedSecondaryWorkspaceLeases();
+        $this->seedSecondaryWorkspaceMaintenance();
+        $this->seedSecondaryWorkspaceExpenses();
+        $this->seedSecondaryWorkspaceMessageLogs();
+    }
+
+    private function seedPrimaryWorkspaceLeases(): void
+    {
         $leasesConfig = [
             // Active Ongoing Leases (Stable)
             [
-                'unit' => $unitsAlNour['APT-101'],
-                'renter' => $renters['29010150102345'], // محمد علي
+                'unit' => $this->unitsAlNour['APT-101'],
+                'renter' => $this->renter('29010150102345'), // محمد علي
                 'rent' => 4500.00,
                 'starts' => now()->subMonths(5)->startOfMonth(),
                 'ends' => now()->addMonths(7)->endOfMonth(),
@@ -619,8 +702,8 @@ class RentalDemoSeeder extends Seeder
                 'current_status' => 'paid',
             ],
             [
-                'unit' => $unitsAlNour['APT-102'],
-                'renter' => $renters['29508120104567'], // سارة الشناوي
+                'unit' => $this->unitsAlNour['APT-102'],
+                'renter' => $this->renter('29508120104567'), // سارة الشناوي
                 'rent' => 4200.00,
                 'starts' => now()->subMonths(6)->startOfMonth(),
                 'ends' => now()->addMonths(6)->endOfMonth(),
@@ -629,8 +712,8 @@ class RentalDemoSeeder extends Seeder
                 'current_status' => 'partial', // 2,000 paid out of 4,200
             ],
             [
-                'unit' => $unitsAlNour['APT-103'],
-                'renter' => $renters['28803150107890'], // عمر خالد
+                'unit' => $this->unitsAlNour['APT-103'],
+                'renter' => $this->renter('28803150107890'), // عمر خالد
                 'rent' => 4000.00,
                 'starts' => now()->subMonths(4)->startOfMonth(),
                 'ends' => now()->addMonths(8)->endOfMonth(),
@@ -639,8 +722,8 @@ class RentalDemoSeeder extends Seeder
                 'current_status' => 'overdue', // 0 paid, overdue 10 days
             ],
             [
-                'unit' => $unitsAlNour['APT-104'],
-                'renter' => $renters['29111300105678'], // كريم النجار
+                'unit' => $this->unitsAlNour['APT-104'],
+                'renter' => $this->renter('29111300105678'), // كريم النجار
                 'rent' => 4300.00,
                 'starts' => now()->subMonths(3)->startOfMonth(),
                 'ends' => now()->addMonths(9)->endOfMonth(),
@@ -649,8 +732,8 @@ class RentalDemoSeeder extends Seeder
                 'current_status' => 'paid',
             ],
             [
-                'unit' => $unitsAlNour['APT-201'],
-                'renter' => $renters['29204190103456'], // طارق محمود
+                'unit' => $this->unitsAlNour['APT-201'],
+                'renter' => $this->renter('29204190103456'), // طارق محمود
                 'rent' => 4600.00,
                 'starts' => now()->subMonths(8)->startOfMonth(),
                 'ends' => now()->addMonths(4)->endOfMonth(),
@@ -659,8 +742,8 @@ class RentalDemoSeeder extends Seeder
                 'current_status' => 'paid',
             ],
             [
-                'unit' => $unitsAlNour['APT-202'],
-                'renter' => $renters['28912250108765'], // منى فاروق
+                'unit' => $this->unitsAlNour['APT-202'],
+                'renter' => $this->renter('28912250108765'), // منى فاروق
                 'rent' => 4800.00,
                 'starts' => now()->subMonths(2)->startOfMonth(),
                 'ends' => now()->addMonths(10)->endOfMonth(),
@@ -669,8 +752,8 @@ class RentalDemoSeeder extends Seeder
                 'current_status' => 'paid',
             ],
             [
-                'unit' => $unitsAlNour['APT-203'],
-                'renter' => $renters['29406080101234'], // أحمد ممدوح
+                'unit' => $this->unitsAlNour['APT-203'],
+                'renter' => $this->renter('29406080101234'), // أحمد ممدوح
                 'rent' => 4500.00,
                 'starts' => now()->subMonths(7)->startOfMonth(),
                 'ends' => now()->addMonths(5)->endOfMonth(),
@@ -679,8 +762,8 @@ class RentalDemoSeeder extends Seeder
                 'current_status' => 'paid',
             ],
             [
-                'unit' => $unitsAlNour['APT-301'],
-                'renter' => $renters['29009090102143'], // زياد بدر
+                'unit' => $this->unitsAlNour['APT-301'],
+                'renter' => $this->renter('29009090102143'), // زياد بدر
                 'rent' => 5500.00,
                 'starts' => now()->subMonths(5)->startOfMonth(),
                 'ends' => now()->addMonths(7)->endOfMonth(),
@@ -689,8 +772,8 @@ class RentalDemoSeeder extends Seeder
                 'current_status' => 'paid',
             ],
             [
-                'unit' => $unitsYasminVillas['VIL-01'],
-                'renter' => $renters['28705200104321'], // شريف الديب
+                'unit' => $this->unitsYasminVillas['VIL-01'],
+                'renter' => $this->renter('28705200104321'), // شريف الديب
                 'rent' => 14000.00,
                 'starts' => now()->subMonths(6)->startOfMonth(),
                 'ends' => now()->addMonths(6)->endOfMonth(),
@@ -699,8 +782,8 @@ class RentalDemoSeeder extends Seeder
                 'current_status' => 'paid',
             ],
             [
-                'unit' => $unitsYasminVillas['VIL-02'],
-                'renter' => $renters['29302170108901'], // رانيا زكي
+                'unit' => $this->unitsYasminVillas['VIL-02'],
+                'renter' => $this->renter('29302170108901'), // رانيا زكي
                 'rent' => 13500.00,
                 'starts' => now()->subMonths(4)->startOfMonth(),
                 'ends' => now()->addMonths(8)->endOfMonth(),
@@ -709,8 +792,8 @@ class RentalDemoSeeder extends Seeder
                 'current_status' => 'paid',
             ],
             [
-                'unit' => $unitsYasminVillas['DUP-01'],
-                'renter' => $renters['28607110103456'], // حسام مصطفى
+                'unit' => $this->unitsYasminVillas['DUP-01'],
+                'renter' => $this->renter('28607110103456'), // حسام مصطفى
                 'rent' => 9000.00,
                 'starts' => now()->subMonths(7)->startOfMonth(),
                 'ends' => now()->addMonths(5)->endOfMonth(),
@@ -719,8 +802,8 @@ class RentalDemoSeeder extends Seeder
                 'current_status' => 'paid',
             ],
             [
-                'unit' => $unitsTower['SHP-01'],
-                'renter' => $renters['28504040107654'], // شركة التكنولوجيا (محمد جمال)
+                'unit' => $this->unitsTower['SHP-01'],
+                'renter' => $this->renter('28504040107654'), // شركة التكنولوجيا (محمد جمال)
                 'rent' => 16000.00,
                 'starts' => now()->subMonths(10)->startOfMonth(),
                 'ends' => now()->addMonths(2)->endOfMonth(),
@@ -729,8 +812,8 @@ class RentalDemoSeeder extends Seeder
                 'current_status' => 'paid',
             ],
             [
-                'unit' => $suiteWest,
-                'renter' => $renters['29107220101122'], // عمرو نبيل
+                'unit' => $this->suiteWest,
+                'renter' => $this->renter('29107220101122'), // عمرو نبيل
                 'rent' => 2800.00,
                 'starts' => now()->subMonths(3)->startOfMonth(),
                 'ends' => now()->addMonths(9)->endOfMonth(),
@@ -741,8 +824,8 @@ class RentalDemoSeeder extends Seeder
 
             // Expiring Soon Leases (Ending in 10-30 days to light up Dashboard Expiring Leases!)
             [
-                'unit' => $unitsAlNour['APT-204'],
-                'renter' => $renters['29609140109012'], // نورهان الشرقاوي
+                'unit' => $this->unitsAlNour['APT-204'],
+                'renter' => $this->renter('29609140109012'), // نورهان الشرقاوي
                 'rent' => 4300.00,
                 'starts' => now()->subMonths(11)->startOfMonth(),
                 'ends' => now()->addDays(12),
@@ -751,8 +834,8 @@ class RentalDemoSeeder extends Seeder
                 'current_status' => 'due_soon', // Unpaid upcoming
             ],
             [
-                'unit' => $unitsYasminVillas['DUP-02'],
-                'renter' => $renters['29701050106789'], // ياسمين خليل
+                'unit' => $this->unitsYasminVillas['DUP-02'],
+                'renter' => $this->renter('29701050106789'), // ياسمين خليل
                 'rent' => 9200.00,
                 'starts' => now()->subMonths(11)->startOfMonth(),
                 'ends' => now()->addDays(20),
@@ -761,8 +844,8 @@ class RentalDemoSeeder extends Seeder
                 'current_status' => 'paid',
             ],
             [
-                'unit' => $suiteEast,
-                'renter' => $renters['29804200105566'], // هبة عصام
+                'unit' => $this->suiteEast,
+                'renter' => $this->renter('29804200105566'), // هبة عصام
                 'rent' => 2700.00,
                 'starts' => now()->subMonths(11)->startOfMonth(),
                 'ends' => now()->addDays(28),
@@ -773,8 +856,8 @@ class RentalDemoSeeder extends Seeder
 
             // Past Expired Lease (History)
             [
-                'unit' => $unitsAlNour['APT-303'],
-                'renter' => $renters['28905160103344'], // مصطفى كمال
+                'unit' => $this->unitsAlNour['APT-303'],
+                'renter' => $this->renter('28905160103344'), // مصطفى كمال
                 'rent' => 3800.00,
                 'starts' => now()->subMonths(16)->startOfMonth(),
                 'ends' => now()->subMonths(4)->endOfMonth(),
@@ -785,8 +868,8 @@ class RentalDemoSeeder extends Seeder
 
             // Draft Lease (Future)
             [
-                'unit' => $unitsTower['SHP-02'],
-                'renter' => $renters['28308180109876'], // د. وائل رضوان
+                'unit' => $this->unitsTower['SHP-02'],
+                'renter' => $this->renter('28308180109876'), // د. وائل رضوان
                 'rent' => 15000.00,
                 'starts' => now()->addMonth()->startOfMonth(),
                 'ends' => now()->addMonths(13)->endOfMonth(),
@@ -796,137 +879,134 @@ class RentalDemoSeeder extends Seeder
             ],
         ];
 
-        $paymentCounter = 1;
-        $allLeases = [];
+        $this->allLeases = [];
 
-        foreach ($leasesConfig as $cfg) {
+        foreach ($leasesConfig as $leaseConfig) {
             $lease = Lease::firstOrCreate(
                 [
-                    'workspace_id' => $workspace->id,
-                    'unit_id' => $cfg['unit']->id,
-                    'renter_id' => $cfg['renter']->id,
+                    'workspace_id' => $this->workspace->id,
+                    'unit_id' => $leaseConfig['unit']->id,
+                    'renter_id' => $leaseConfig['renter']->id,
                 ],
                 [
-                    'starts_on' => $cfg['starts']->toDateString(),
-                    'ends_on' => $cfg['ends']->toDateString(),
-                    'rent_amount' => $cfg['rent'],
+                    'starts_on' => $leaseConfig['starts']->toDateString(),
+                    'ends_on' => $leaseConfig['ends']->toDateString(),
+                    'rent_amount' => $leaseConfig['rent'],
                     'billing_interval' => 'monthly',
                     'billing_anchor_day' => 1,
-                    'first_due_date' => $cfg['starts']->toDateString(),
-                    'status' => $cfg['status'],
-                    'notes' => $cfg['notes'],
+                    'first_due_date' => $leaseConfig['starts']->toDateString(),
+                    'status' => $leaseConfig['status'],
+                    'notes' => $leaseConfig['notes'],
                 ]
             );
 
-            $allLeases[] = $lease;
+            $this->allLeases[] = $lease;
 
-            // Generate monthly rent charges and payments for the lease period
-            if (in_array($cfg['status'], ['active', 'expired'])) {
-                // Determine months between start and min(ends, now + 1 month)
-                $chargeMonth = Carbon::parse($cfg['starts'])->startOfMonth();
-                $lastChargeMonth = now()->addMonth()->startOfMonth();
-                $leaseEndMonth = Carbon::parse($cfg['ends'])->startOfMonth();
-
-                if ($lastChargeMonth->gt($leaseEndMonth)) {
-                    $lastChargeMonth = $leaseEndMonth;
-                }
-
-                while ($chargeMonth->lte($lastChargeMonth)) {
-                    $periodStart = $chargeMonth->copy()->startOfMonth()->toDateString();
-                    $periodEnd = $chargeMonth->copy()->endOfMonth()->toDateString();
-                    $dueDate = $chargeMonth->copy()->startOfMonth()->toDateString();
-
-                    $charge = RentCharge::firstOrCreate(
-                        ['lease_id' => $lease->id, 'period_start' => $periodStart],
-                        [
-                            'workspace_id' => $workspace->id,
-                            'period_end' => $periodEnd,
-                            'due_date' => $dueDate,
-                            'amount' => $cfg['rent'],
-                        ]
-                    );
-
-                    $isCurrentMonth = $chargeMonth->isCurrentMonth();
-                    $isPastMonth = $chargeMonth->lt(now()->startOfMonth());
-
-                    // Handle payment creation
-                    if ($isPastMonth) {
-                        // All past charges are 100% paid
-                        $payRef = sprintf('PAY-%04d-%04d', now()->year, $paymentCounter++);
-                        $payment = Payment::firstOrCreate(
-                            ['workspace_id' => $workspace->id, 'reference' => $payRef],
-                            [
-                                'renter_id' => $cfg['renter']->id,
-                                'recorded_by' => $primaryUser->id,
-                                'amount' => $cfg['rent'],
-                                'paid_at' => $chargeMonth->copy()->addDays(rand(1, 5))->setTime(10, rand(10, 50)),
-                                'payment_method' => $paymentCounter % 3 === 0 ? 'cash' : 'bank_transfer',
-                                'notes' => $paymentCounter % 3 === 0 ? 'سداد نقدي في الخزينة - سند يدوي' : 'تحويل بنكي - البنك الأهلي المصري',
-                            ]
-                        );
-
-                        PaymentAllocation::firstOrCreate(
-                            ['payment_id' => $payment->id, 'rent_charge_id' => $charge->id],
-                            ['workspace_id' => $workspace->id, 'amount' => $cfg['rent']]
-                        );
-                    } elseif ($isCurrentMonth) {
-                        if ($cfg['current_status'] === 'paid') {
-                            $payRef = sprintf('PAY-%04d-%04d', now()->year, $paymentCounter++);
-                            $payment = Payment::firstOrCreate(
-                                ['workspace_id' => $workspace->id, 'reference' => $payRef],
-                                [
-                                    'renter_id' => $cfg['renter']->id,
-                                    'recorded_by' => $primaryUser->id,
-                                    'amount' => $cfg['rent'],
-                                    'paid_at' => now()->startOfMonth()->addDays(rand(1, 4))->setTime(11, 30),
-                                    'payment_method' => 'bank_transfer',
-                                    'notes' => 'تحويل بنكي - سداد إيجار شهر '.now()->translatedFormat('F Y'),
-                                ]
-                            );
-
-                            PaymentAllocation::firstOrCreate(
-                                ['payment_id' => $payment->id, 'rent_charge_id' => $charge->id],
-                                ['workspace_id' => $workspace->id, 'amount' => $cfg['rent']]
-                            );
-                        } elseif ($cfg['current_status'] === 'partial') {
-                            // Partial payment: 2,000 paid
-                            $partialAmount = 2000.00;
-                            $payRef = sprintf('PAY-%04d-%04d', now()->year, $paymentCounter++);
-                            $payment = Payment::firstOrCreate(
-                                ['workspace_id' => $workspace->id, 'reference' => $payRef],
-                                [
-                                    'renter_id' => $cfg['renter']->id,
-                                    'recorded_by' => $primaryUser->id,
-                                    'amount' => $partialAmount,
-                                    'paid_at' => now()->startOfMonth()->addDays(2)->setTime(14, 15),
-                                    'payment_method' => 'bank_transfer',
-                                    'notes' => 'سداد جزئي عبر إنستاباي، والمتبقي متفق عليه خلال أسبوع',
-                                ]
-                            );
-
-                            PaymentAllocation::firstOrCreate(
-                                ['payment_id' => $payment->id, 'rent_charge_id' => $charge->id],
-                                ['workspace_id' => $workspace->id, 'amount' => $partialAmount]
-                            );
-                        } elseif ($cfg['current_status'] === 'overdue') {
-                            // Update due date to 10 days ago so overdue scope picks it up immediately
-                            $charge->update(['due_date' => now()->subDays(10)->toDateString()]);
-                        } elseif ($cfg['current_status'] === 'due_soon') {
-                            // Due in 3 days
-                            $charge->update(['due_date' => now()->addDays(3)->toDateString()]);
-                        }
-                    }
-
-                    $chargeMonth->addMonth();
-                }
+            if (in_array($leaseConfig['status'], ['active', 'expired'], true)) {
+                $this->seedMonthlyCharges($lease, $leaseConfig);
             }
         }
+    }
 
-        // Secondary Workspace Leases, Historical Payments & Dues
+    /**
+     * One charge per month from the lease start until next month (or the lease end); past months are
+     * fully paid, the current month follows the configured `current_status`.
+     *
+     * @param  array{unit: Unit, renter: Renter, rent: float, starts: Carbon, ends: Carbon, status: string, notes: string, current_status: string}  $leaseConfig
+     */
+    private function seedMonthlyCharges(Lease $lease, array $leaseConfig): void
+    {
+        $chargeMonth = Carbon::parse($leaseConfig['starts'])->startOfMonth();
+        $lastChargeMonth = now()->addMonth()->startOfMonth();
+        $leaseEndMonth = Carbon::parse($leaseConfig['ends'])->startOfMonth();
+
+        if ($lastChargeMonth->gt($leaseEndMonth)) {
+            $lastChargeMonth = $leaseEndMonth;
+        }
+
+        while ($chargeMonth->lte($lastChargeMonth)) {
+            $charge = RentCharge::firstOrCreate(
+                ['lease_id' => $lease->id, 'period_start' => $chargeMonth->copy()->startOfMonth()->toDateString()],
+                [
+                    'workspace_id' => $this->workspace->id,
+                    'period_end' => $chargeMonth->copy()->endOfMonth()->toDateString(),
+                    'due_date' => $chargeMonth->copy()->startOfMonth()->toDateString(),
+                    'amount' => $leaseConfig['rent'],
+                ]
+            );
+
+            if ($chargeMonth->lt(now()->startOfMonth())) {
+                $reference = $this->nextPaymentReference();
+                $isCashPayment = $this->nextPaymentNumber % 3 === 0;
+                $this->recordDemoPayment($charge, $leaseConfig['renter'], $leaseConfig['rent'], $reference, [
+                    'paid_at' => $chargeMonth->copy()->addDays(rand(1, 5))->setTime(10, rand(10, 50)),
+                    'payment_method' => $isCashPayment ? 'cash' : 'bank_transfer',
+                    'notes' => $isCashPayment ? 'سداد نقدي في الخزينة - سند يدوي' : 'تحويل بنكي - البنك الأهلي المصري',
+                ]);
+            } elseif ($chargeMonth->isCurrentMonth()) {
+                $this->seedCurrentMonthState($charge, $leaseConfig);
+            }
+
+            $chargeMonth->addMonth();
+        }
+    }
+
+    /**
+     * @param  array{unit: Unit, renter: Renter, rent: float, starts: Carbon, ends: Carbon, status: string, notes: string, current_status: string}  $leaseConfig
+     */
+    private function seedCurrentMonthState(RentCharge $charge, array $leaseConfig): void
+    {
+        match ($leaseConfig['current_status']) {
+            'paid' => $this->recordDemoPayment($charge, $leaseConfig['renter'], $leaseConfig['rent'], $this->nextPaymentReference(), [
+                'paid_at' => now()->startOfMonth()->addDays(rand(1, 4))->setTime(11, 30),
+                'payment_method' => 'bank_transfer',
+                'notes' => 'تحويل بنكي - سداد إيجار شهر '.now()->translatedFormat('F Y'),
+            ]),
+            // Partial payment: 2,000 paid
+            'partial' => $this->recordDemoPayment($charge, $leaseConfig['renter'], 2000.00, $this->nextPaymentReference(), [
+                'paid_at' => now()->startOfMonth()->addDays(2)->setTime(14, 15),
+                'payment_method' => 'bank_transfer',
+                'notes' => 'سداد جزئي عبر إنستاباي، والمتبقي متفق عليه خلال أسبوع',
+            ]),
+            // Due 10 days ago so the overdue scope picks it up immediately
+            'overdue' => $charge->update(['due_date' => now()->subDays(10)->toDateString()]),
+            'due_soon' => $charge->update(['due_date' => now()->addDays(3)->toDateString()]),
+            default => null,
+        };
+    }
+
+    /**
+     * @param  array{paid_at: Carbon, payment_method: string, notes: string}  $paymentDetails
+     */
+    private function recordDemoPayment(RentCharge $charge, Renter $renter, mixed $amount, string $reference, array $paymentDetails): void
+    {
+        $payment = Payment::firstOrCreate(
+            ['workspace_id' => $this->workspace->id, 'reference' => $reference],
+            [
+                'renter_id' => $renter->id,
+                'recorded_by' => $this->primaryUser->id,
+                'amount' => $amount,
+                ...$paymentDetails,
+            ]
+        );
+
+        PaymentAllocation::firstOrCreate(
+            ['payment_id' => $payment->id, 'rent_charge_id' => $charge->id],
+            ['workspace_id' => $this->workspace->id, 'amount' => $amount]
+        );
+    }
+
+    private function nextPaymentReference(): string
+    {
+        return sprintf('PAY-%04d-%04d', now()->year, $this->nextPaymentNumber++);
+    }
+
+    private function seedSecondaryWorkspaceLeases(): void
+    {
         $saudiLeasesConfig = [
             [
-                'unit' => $unitsSaudi['STE-101'],
-                'renter' => $saudiRenter1,
+                'unit' => $this->unitsSaudi['STE-101'],
+                'renter' => $this->saudiRenter1,
                 'rent' => 5000.00,
                 'starts' => now()->subMonths(5)->startOfMonth(),
                 'ends' => now()->addMonths(7)->endOfMonth(),
@@ -934,8 +1014,8 @@ class RentalDemoSeeder extends Seeder
                 'current_status' => 'paid',
             ],
             [
-                'unit' => $unitsSaudi['STE-102'],
-                'renter' => $saudiRenter2,
+                'unit' => $this->unitsSaudi['STE-102'],
+                'renter' => $this->saudiRenter2,
                 'rent' => 6000.00,
                 'starts' => now()->subMonths(2)->startOfMonth(),
                 'ends' => now()->addMonths(10)->endOfMonth(),
@@ -943,8 +1023,8 @@ class RentalDemoSeeder extends Seeder
                 'current_status' => 'due_soon',
             ],
             [
-                'unit' => $unitsSaudi['VIL-01'],
-                'renter' => $saudiRenter3,
+                'unit' => $this->unitsSaudi['VIL-01'],
+                'renter' => $this->saudiRenter3,
                 'rent' => 14000.00,
                 'starts' => now()->subMonths(4)->startOfMonth(),
                 'ends' => now()->addMonths(8)->endOfMonth(),
@@ -952,8 +1032,8 @@ class RentalDemoSeeder extends Seeder
                 'current_status' => 'paid',
             ],
             [
-                'unit' => $unitsSaudi['APT-01'],
-                'renter' => $saudiRenter4,
+                'unit' => $this->unitsSaudi['APT-01'],
+                'renter' => $this->saudiRenter4,
                 'rent' => 4500.00,
                 'starts' => now()->subMonths(3)->startOfMonth(),
                 'ends' => now()->addMonths(9)->endOfMonth(),
@@ -961,8 +1041,8 @@ class RentalDemoSeeder extends Seeder
                 'current_status' => 'overdue',
             ],
             [
-                'unit' => $unitsSaudi['OFC-301'],
-                'renter' => $saudiRenter5,
+                'unit' => $this->unitsSaudi['OFC-301'],
+                'renter' => $this->saudiRenter5,
                 'rent' => 9000.00,
                 'starts' => now()->subMonths(11)->startOfMonth(),
                 'ends' => now()->addDays(18), // Expiring in 18 days!
@@ -975,7 +1055,7 @@ class RentalDemoSeeder extends Seeder
         foreach ($saudiLeasesConfig as $scfg) {
             $sLease = Lease::firstOrCreate(
                 [
-                    'workspace_id' => $secondaryWorkspace->id,
+                    'workspace_id' => $this->secondaryWorkspace->id,
                     'unit_id' => $scfg['unit']->id,
                     'renter_id' => $scfg['renter']->id,
                 ],
@@ -1001,7 +1081,7 @@ class RentalDemoSeeder extends Seeder
                         'period_start' => $sMonth->toDateString(),
                     ],
                     [
-                        'workspace_id' => $secondaryWorkspace->id,
+                        'workspace_id' => $this->secondaryWorkspace->id,
                         'period_end' => $sMonth->copy()->endOfMonth()->toDateString(),
                         'due_date' => $sMonth->toDateString(),
                         'amount' => $scfg['rent'],
@@ -1012,10 +1092,10 @@ class RentalDemoSeeder extends Seeder
                     // Paid
                     $spRef = sprintf('PAY-SAR-%04d-%03d', $sMonth->year, $saudiPayCount++);
                     $sPayment = Payment::firstOrCreate(
-                        ['workspace_id' => $secondaryWorkspace->id, 'reference' => $spRef],
+                        ['workspace_id' => $this->secondaryWorkspace->id, 'reference' => $spRef],
                         [
                             'renter_id' => $scfg['renter']->id,
-                            'recorded_by' => $secondaryOwner->id,
+                            'recorded_by' => $this->secondaryOwner->id,
                             'amount' => $scfg['rent'],
                             'paid_at' => $sMonth->copy()->addDays(2)->setTime(10, 30),
                             'payment_method' => 'bank_transfer',
@@ -1025,7 +1105,7 @@ class RentalDemoSeeder extends Seeder
 
                     PaymentAllocation::firstOrCreate(
                         ['payment_id' => $sPayment->id, 'rent_charge_id' => $sCharge->id],
-                        ['workspace_id' => $secondaryWorkspace->id, 'amount' => $scfg['rent']]
+                        ['workspace_id' => $this->secondaryWorkspace->id, 'amount' => $scfg['rent']]
                     );
                 } elseif ($scfg['current_status'] === 'overdue') {
                     $sCharge->update(['due_date' => now()->subDays(8)->toDateString()]);
@@ -1036,14 +1116,16 @@ class RentalDemoSeeder extends Seeder
                 $sMonth->addMonth();
             }
         }
+    }
 
-        // Secondary Workspace Maintenance
+    private function seedSecondaryWorkspaceMaintenance(): void
+    {
         MaintenanceRequest::firstOrCreate(
-            ['workspace_id' => $secondaryWorkspace->id, 'title' => 'عطل تكييف مركزي في جناح 102'],
+            ['workspace_id' => $this->secondaryWorkspace->id, 'title' => 'عطل تكييف مركزي في جناح 102'],
             [
-                'property_id' => $propRiyadh->id,
-                'unit_id' => $unitsSaudi['STE-102']->id,
-                'reported_by_renter_id' => $saudiRenter2->id,
+                'property_id' => $this->propRiyadh->id,
+                'unit_id' => $this->unitsSaudi['STE-102']->id,
+                'reported_by_renter_id' => $this->saudiRenter2->id,
                 'description' => 'التكييف المركزي يصدر صوتاً عالياً ولا يبرد بالشكل المطلوب.',
                 'status' => 'open',
                 'reported_at' => now()->subDays(2),
@@ -1051,9 +1133,9 @@ class RentalDemoSeeder extends Seeder
         );
 
         MaintenanceRequest::firstOrCreate(
-            ['workspace_id' => $secondaryWorkspace->id, 'title' => 'فحص مضخة الري واللاندسكيب - وحدات النخيل'],
+            ['workspace_id' => $this->secondaryWorkspace->id, 'title' => 'فحص مضخة الري واللاندسكيب - وحدات النخيل'],
             [
-                'property_id' => $propNakheel->id,
+                'property_id' => $this->propNakheel->id,
                 'unit_id' => null,
                 'reported_by_renter_id' => null,
                 'description' => 'فحص دوري لمضخات ري المسطحات الخضراء وشبكة التنقيط.',
@@ -1061,13 +1143,15 @@ class RentalDemoSeeder extends Seeder
                 'reported_at' => now()->subDays(4),
             ]
         );
+    }
 
-        // Secondary Workspace Expenses
+    private function seedSecondaryWorkspaceExpenses(): void
+    {
         Expense::firstOrCreate(
-            ['workspace_id' => $secondaryWorkspace->id, 'notes' => 'صيانة دورية للمصاعد وأنظمة السلامة برج العليا'],
+            ['workspace_id' => $this->secondaryWorkspace->id, 'notes' => 'صيانة دورية للمصاعد وأنظمة السلامة برج العليا'],
             [
-                'property_id' => $propRiyadh->id,
-                'recorded_by' => $secondaryOwner->id,
+                'property_id' => $this->propRiyadh->id,
+                'recorded_by' => $this->secondaryOwner->id,
                 'category' => 'maintenance',
                 'amount' => 1800.00,
                 'expense_date' => now()->subDays(5)->toDateString(),
@@ -1077,10 +1161,10 @@ class RentalDemoSeeder extends Seeder
         );
 
         Expense::firstOrCreate(
-            ['workspace_id' => $secondaryWorkspace->id, 'notes' => 'فاتورة الكهرباء الشهرية للمناطق المشتركة برج العليا'],
+            ['workspace_id' => $this->secondaryWorkspace->id, 'notes' => 'فاتورة الكهرباء الشهرية للمناطق المشتركة برج العليا'],
             [
-                'property_id' => $propRiyadh->id,
-                'recorded_by' => $secondaryOwner->id,
+                'property_id' => $this->propRiyadh->id,
+                'recorded_by' => $this->secondaryOwner->id,
                 'category' => 'كهرباء ومياه',
                 'amount' => 3200.00,
                 'expense_date' => now()->subDays(7)->toDateString(),
@@ -1088,21 +1172,23 @@ class RentalDemoSeeder extends Seeder
                 'paid_at' => now()->subDays(7),
             ]
         );
+    }
 
-        // Secondary Workspace Message Logs
+    private function seedSecondaryWorkspaceMessageLogs(): void
+    {
         $saudiMessages = [
-            ['renter' => $saudiRenter1, 'status' => 'delivered', 'template' => 'payment_receipt_instant_ar', 'days_ago' => 2],
-            ['renter' => $saudiRenter2, 'status' => 'delivered', 'template' => 'rent_due_reminder_ar', 'days_ago' => 3],
-            ['renter' => $saudiRenter3, 'status' => 'delivered', 'template' => 'payment_receipt_instant_ar', 'days_ago' => 1],
-            ['renter' => $saudiRenter4, 'status' => 'delivered', 'template' => 'overdue_notice_ar', 'days_ago' => 5],
-            ['renter' => $saudiRenter5, 'status' => 'sent', 'template' => 'contract_renewal_ar', 'days_ago' => 1],
+            ['renter' => $this->saudiRenter1, 'status' => 'delivered', 'template' => 'payment_receipt_instant_ar', 'days_ago' => 2],
+            ['renter' => $this->saudiRenter2, 'status' => 'delivered', 'template' => 'rent_due_reminder_ar', 'days_ago' => 3],
+            ['renter' => $this->saudiRenter3, 'status' => 'delivered', 'template' => 'payment_receipt_instant_ar', 'days_ago' => 1],
+            ['renter' => $this->saudiRenter4, 'status' => 'delivered', 'template' => 'overdue_notice_ar', 'days_ago' => 5],
+            ['renter' => $this->saudiRenter5, 'status' => 'sent', 'template' => 'contract_renewal_ar', 'days_ago' => 1],
         ];
 
         foreach ($saudiMessages as $idx => $sm) {
-            $dedupKey = sprintf('msg_log_%d_%s_%s', $secondaryWorkspace->id, $sm['renter']->id, $sm['template'].'_'.$idx);
+            $dedupKey = sprintf('msg_log_%d_%s_%s', $this->secondaryWorkspace->id, $sm['renter']->id, $sm['template'].'_'.$idx);
 
             MessageLog::firstOrCreate(
-                ['workspace_id' => $secondaryWorkspace->id, 'deduplication_key' => $dedupKey],
+                ['workspace_id' => $this->secondaryWorkspace->id, 'deduplication_key' => $dedupKey],
                 [
                     'renter_id' => $sm['renter']->id,
                     'recipient_phone' => $sm['renter']->phone,
@@ -1118,15 +1204,15 @@ class RentalDemoSeeder extends Seeder
                 ]
             );
         }
+    }
 
-        // -------------------------------------------------------------
-        // 8. Maintenance Requests
-        // -------------------------------------------------------------
+    private function seedMaintenanceRequests(): void
+    {
         $maintenanceData = [
             [
-                'property_id' => $propBuilding->id,
-                'unit_id' => $unitsAlNour['APT-102']->id,
-                'reported_by_renter_id' => $renters['29508120104567']->id, // سارة الشناوي
+                'property_id' => $this->propBuilding->id,
+                'unit_id' => $this->unitsAlNour['APT-102']->id,
+                'reported_by_renter_id' => $this->renter('29508120104567')->id, // سارة الشناوي
                 'title' => 'تسريب مياه في محبس المغسلة الرئيسي',
                 'description' => 'يوجد تسريب مياه مستمر أسفل حوض الحمام الرئيسي يحتاج إلى تغيير قلب المحبس والجلد العازلة.',
                 'status' => 'open',
@@ -1134,9 +1220,9 @@ class RentalDemoSeeder extends Seeder
                 'resolved_at' => null,
             ],
             [
-                'property_id' => $propBuilding->id,
-                'unit_id' => $unitsAlNour['APT-201']->id,
-                'reported_by_renter_id' => $renters['29204190103456']->id, // طارق محمود
+                'property_id' => $this->propBuilding->id,
+                'unit_id' => $this->unitsAlNour['APT-201']->id,
+                'reported_by_renter_id' => $this->renter('29204190103456')->id, // طارق محمود
                 'title' => 'عطل في لوحة مفاتيح التكييف المركزي',
                 'description' => 'المكيف لا يعمل عن طريق الثرموستات الجداري، يصدر إشارة خطأ E-4 ويحتاج فحص دائرة التحكم.',
                 'status' => 'in_progress',
@@ -1144,7 +1230,7 @@ class RentalDemoSeeder extends Seeder
                 'resolved_at' => null,
             ],
             [
-                'property_id' => $propBuilding->id,
+                'property_id' => $this->propBuilding->id,
                 'unit_id' => null,
                 'reported_by_renter_id' => null,
                 'title' => 'فحص دوري لمصعد العمارة واستبدال سيور',
@@ -1154,7 +1240,7 @@ class RentalDemoSeeder extends Seeder
                 'resolved_at' => now()->subDays(10),
             ],
             [
-                'property_id' => $propBuilding->id,
+                'property_id' => $this->propBuilding->id,
                 'unit_id' => null,
                 'reported_by_renter_id' => null,
                 'title' => 'إصلاح إنارة المدخل الرئيسي والسلالم',
@@ -1164,7 +1250,7 @@ class RentalDemoSeeder extends Seeder
                 'resolved_at' => now()->subDays(14),
             ],
             [
-                'property_id' => $propYasminVillas->id,
+                'property_id' => $this->propYasminVillas->id,
                 'unit_id' => null,
                 'reported_by_renter_id' => null,
                 'title' => 'صيانة وبرمجة بوابة الجراج الإلكترونية',
@@ -1174,9 +1260,9 @@ class RentalDemoSeeder extends Seeder
                 'resolved_at' => null,
             ],
             [
-                'property_id' => $propYasminVillas->id,
-                'unit_id' => $unitsYasminVillas['DUP-01']->id,
-                'reported_by_renter_id' => $renters['28607110103456']->id, // حسام مصطفى
+                'property_id' => $this->propYasminVillas->id,
+                'unit_id' => $this->unitsYasminVillas['DUP-01']->id,
+                'reported_by_renter_id' => $this->renter('28607110103456')->id, // حسام مصطفى
                 'title' => 'تسريب مياه بسيط تحت حوض المطبخ',
                 'description' => 'تسريب في ماسورة صرف حوض المطبخ عند استخدام الغسالة.',
                 'status' => 'open',
@@ -1184,9 +1270,9 @@ class RentalDemoSeeder extends Seeder
                 'resolved_at' => null,
             ],
             [
-                'property_id' => $propTower->id,
-                'unit_id' => $unitsTower['SHP-01']->id,
-                'reported_by_renter_id' => $renters['28504040107654']->id, // محمد جمال
+                'property_id' => $this->propTower->id,
+                'unit_id' => $this->unitsTower['SHP-01']->id,
+                'reported_by_renter_id' => $this->renter('28504040107654')->id, // محمد جمال
                 'title' => 'صيانة دورية لتبريد مقر المعرض التجاري',
                 'description' => 'تنظيف الفلاتر وفحص ضغط غاز الفريون قبل موسم التخفيضات.',
                 'status' => 'closed',
@@ -1194,7 +1280,7 @@ class RentalDemoSeeder extends Seeder
                 'resolved_at' => now()->subDays(7),
             ],
             [
-                'property_id' => $propBuilding->id,
+                'property_id' => $this->propBuilding->id,
                 'unit_id' => null,
                 'reported_by_renter_id' => null,
                 'title' => 'فحص ضغط مضخة المياه العلوية',
@@ -1205,11 +1291,11 @@ class RentalDemoSeeder extends Seeder
             ],
         ];
 
-        $maintenanceRequests = [];
+        $this->maintenanceRequests = [];
         foreach ($maintenanceData as $md) {
-            $maintenanceRequests[] = MaintenanceRequest::firstOrCreate(
+            $this->maintenanceRequests[] = MaintenanceRequest::firstOrCreate(
                 [
-                    'workspace_id' => $workspace->id,
+                    'workspace_id' => $this->workspace->id,
                     'title' => $md['title'],
                 ],
                 [
@@ -1223,52 +1309,52 @@ class RentalDemoSeeder extends Seeder
                 ]
             );
         }
+    }
 
-        // -------------------------------------------------------------
-        // 9. Operating & Maintenance Expenses
-        // -------------------------------------------------------------
+    private function seedExpenses(): void
+    {
         $expensesData = [
             // Maintenance category (linked or property-wide)
             [
-                'property_id' => $propBuilding->id,
-                'unit_id' => $unitsAlNour['APT-102']->id,
-                'maintenance_request_id' => $maintenanceRequests[0]->id,
+                'property_id' => $this->propBuilding->id,
+                'unit_id' => $this->unitsAlNour['APT-102']->id,
+                'maintenance_request_id' => $this->maintenanceRequests[0]->id,
                 'category' => 'maintenance',
                 'amount' => 380.00,
                 'expense_date' => now()->subDays(2)->toDateString(),
                 'notes' => 'أتعاب سباك وشراء محابس وقطع غيار ألمانية لشقة 102',
             ],
             [
-                'property_id' => $propBuilding->id,
-                'unit_id' => $unitsAlNour['APT-201']->id,
-                'maintenance_request_id' => $maintenanceRequests[1]->id,
+                'property_id' => $this->propBuilding->id,
+                'unit_id' => $this->unitsAlNour['APT-201']->id,
+                'maintenance_request_id' => $this->maintenanceRequests[1]->id,
                 'category' => 'maintenance',
                 'amount' => 750.00,
                 'expense_date' => now()->subDays(3)->toDateString(),
                 'notes' => 'فحص ثرموستات التكييف وشحن فريون R410A لشقة 201',
             ],
             [
-                'property_id' => $propBuilding->id,
+                'property_id' => $this->propBuilding->id,
                 'unit_id' => null,
-                'maintenance_request_id' => $maintenanceRequests[2]->id,
+                'maintenance_request_id' => $this->maintenanceRequests[2]->id,
                 'category' => 'maintenance',
                 'amount' => 1200.00,
                 'expense_date' => now()->subDays(10)->toDateString(),
                 'notes' => 'فاتورة عقد الصيانة الشهرية لمصعد عمارة النور - شركة شندلر',
             ],
             [
-                'property_id' => $propBuilding->id,
+                'property_id' => $this->propBuilding->id,
                 'unit_id' => null,
-                'maintenance_request_id' => $maintenanceRequests[3]->id,
+                'maintenance_request_id' => $this->maintenanceRequests[3]->id,
                 'category' => 'maintenance',
                 'amount' => 450.00,
                 'expense_date' => now()->subDays(14)->toDateString(),
                 'notes' => 'شراء كشافات ولمبات LED موفرة لإنارة المداخل وبئر السلم',
             ],
             [
-                'property_id' => $propYasminVillas->id,
+                'property_id' => $this->propYasminVillas->id,
                 'unit_id' => null,
-                'maintenance_request_id' => $maintenanceRequests[4]->id,
+                'maintenance_request_id' => $this->maintenanceRequests[4]->id,
                 'category' => 'maintenance',
                 'amount' => 850.00,
                 'expense_date' => now()->subDays(4)->toDateString(),
@@ -1277,7 +1363,7 @@ class RentalDemoSeeder extends Seeder
 
             // Operating: Utilities (كهرباء ومياه)
             [
-                'property_id' => $propBuilding->id,
+                'property_id' => $this->propBuilding->id,
                 'unit_id' => null,
                 'maintenance_request_id' => null,
                 'category' => 'كهرباء ومياه',
@@ -1286,7 +1372,7 @@ class RentalDemoSeeder extends Seeder
                 'notes' => 'فاتورة كهرباء العداد المشترك (المصعد والمداخل والإنارة الخارجية)',
             ],
             [
-                'property_id' => $propBuilding->id,
+                'property_id' => $this->propBuilding->id,
                 'unit_id' => null,
                 'maintenance_request_id' => null,
                 'category' => 'كهرباء ومياه',
@@ -1295,7 +1381,7 @@ class RentalDemoSeeder extends Seeder
                 'notes' => 'فاتورة المياه المجمعة لعمارة النور لشهر سبتمبر',
             ],
             [
-                'property_id' => $propYasminVillas->id,
+                'property_id' => $this->propYasminVillas->id,
                 'unit_id' => null,
                 'maintenance_request_id' => null,
                 'category' => 'كهرباء ومياه',
@@ -1306,7 +1392,7 @@ class RentalDemoSeeder extends Seeder
 
             // Operating: Cleaning & Services (نظافة وخدمات)
             [
-                'property_id' => $propBuilding->id,
+                'property_id' => $this->propBuilding->id,
                 'unit_id' => null,
                 'maintenance_request_id' => null,
                 'category' => 'نظافة وخدمات',
@@ -1315,7 +1401,7 @@ class RentalDemoSeeder extends Seeder
                 'notes' => 'أتعاب شركة النظافة الدورية ومكافحة الحشرات لعمارة النور',
             ],
             [
-                'property_id' => $propYasminVillas->id,
+                'property_id' => $this->propYasminVillas->id,
                 'unit_id' => null,
                 'maintenance_request_id' => null,
                 'category' => 'نظافة وخدمات',
@@ -1326,7 +1412,7 @@ class RentalDemoSeeder extends Seeder
 
             // Operating: Security (أمن وحراسة)
             [
-                'property_id' => $propYasminVillas->id,
+                'property_id' => $this->propYasminVillas->id,
                 'unit_id' => null,
                 'maintenance_request_id' => null,
                 'category' => 'أمن وحراسة',
@@ -1337,7 +1423,7 @@ class RentalDemoSeeder extends Seeder
 
             // Operating: Admin & Licensing (مصاريف إدارية)
             [
-                'property_id' => $propBuilding->id,
+                'property_id' => $this->propBuilding->id,
                 'unit_id' => null,
                 'maintenance_request_id' => null,
                 'category' => 'إدارية وتراخيص',
@@ -1346,7 +1432,7 @@ class RentalDemoSeeder extends Seeder
                 'notes' => 'اشتراك خط إنترنت فايبر مخصص لكاميرات المراقبة السحابية',
             ],
             [
-                'property_id' => $propTower->id,
+                'property_id' => $this->propTower->id,
                 'unit_id' => null,
                 'maintenance_request_id' => null,
                 'category' => 'إدارية وتراخيص',
@@ -1359,14 +1445,14 @@ class RentalDemoSeeder extends Seeder
         foreach ($expensesData as $exp) {
             Expense::firstOrCreate(
                 [
-                    'workspace_id' => $workspace->id,
+                    'workspace_id' => $this->workspace->id,
                     'notes' => $exp['notes'],
                 ],
                 [
                     'property_id' => $exp['property_id'],
                     'unit_id' => $exp['unit_id'],
                     'maintenance_request_id' => $exp['maintenance_request_id'],
-                    'recorded_by' => $primaryUser->id,
+                    'recorded_by' => $this->primaryUser->id,
                     'category' => $exp['category'],
                     'amount' => $exp['amount'],
                     'expense_date' => $exp['expense_date'],
@@ -1375,13 +1461,13 @@ class RentalDemoSeeder extends Seeder
                 ]
             );
         }
+    }
 
-        // -------------------------------------------------------------
-        // 10. WhatsApp Message Logs
-        // -------------------------------------------------------------
+    private function seedMessageLogs(): void
+    {
         $messagesData = [
             [
-                'renter' => $renters['29010150102345'], // محمد علي
+                'renter' => $this->renter('29010150102345'), // محمد علي
                 'template' => 'rent_due_reminder_ar',
                 'days_ago' => 6,
                 'status' => 'delivered',
@@ -1390,7 +1476,7 @@ class RentalDemoSeeder extends Seeder
                 'error_message' => null,
             ],
             [
-                'renter' => $renters['29010150102345'],
+                'renter' => $this->renter('29010150102345'),
                 'template' => 'payment_receipt_instant_ar',
                 'days_ago' => 4,
                 'status' => 'delivered',
@@ -1399,7 +1485,7 @@ class RentalDemoSeeder extends Seeder
                 'error_message' => null,
             ],
             [
-                'renter' => $renters['29508120104567'], // سارة الشناوي
+                'renter' => $this->renter('29508120104567'), // سارة الشناوي
                 'template' => 'rent_due_reminder_ar',
                 'days_ago' => 5,
                 'status' => 'delivered',
@@ -1408,7 +1494,7 @@ class RentalDemoSeeder extends Seeder
                 'error_message' => null,
             ],
             [
-                'renter' => $renters['29508120104567'],
+                'renter' => $this->renter('29508120104567'),
                 'template' => 'payment_receipt_instant_ar',
                 'days_ago' => 2,
                 'status' => 'delivered',
@@ -1417,7 +1503,7 @@ class RentalDemoSeeder extends Seeder
                 'error_message' => null,
             ],
             [
-                'renter' => $renters['28803150107890'], // عمر خالد
+                'renter' => $this->renter('28803150107890'), // عمر خالد
                 'template' => 'rent_due_reminder_ar',
                 'days_ago' => 12,
                 'status' => 'delivered',
@@ -1426,7 +1512,7 @@ class RentalDemoSeeder extends Seeder
                 'error_message' => null,
             ],
             [
-                'renter' => $renters['28803150107890'],
+                'renter' => $this->renter('28803150107890'),
                 'template' => 'overdue_notice_ar',
                 'days_ago' => 4,
                 'status' => 'delivered',
@@ -1435,7 +1521,7 @@ class RentalDemoSeeder extends Seeder
                 'error_message' => null,
             ],
             [
-                'renter' => $renters['29609140109012'], // نورهان الشرقاوي
+                'renter' => $this->renter('29609140109012'), // نورهان الشرقاوي
                 'template' => 'contract_renewal_ar',
                 'days_ago' => 3,
                 'status' => 'delivered',
@@ -1444,7 +1530,7 @@ class RentalDemoSeeder extends Seeder
                 'error_message' => null,
             ],
             [
-                'renter' => $renters['29204190103456'], // طارق محمود
+                'renter' => $this->renter('29204190103456'), // طارق محمود
                 'template' => 'payment_receipt_instant_ar',
                 'days_ago' => 3,
                 'status' => 'delivered',
@@ -1453,7 +1539,7 @@ class RentalDemoSeeder extends Seeder
                 'error_message' => null,
             ],
             [
-                'renter' => $renters['28705200104321'], // شريف الديب
+                'renter' => $this->renter('28705200104321'), // شريف الديب
                 'template' => 'payment_receipt_instant_ar',
                 'days_ago' => 2,
                 'status' => 'delivered',
@@ -1462,7 +1548,7 @@ class RentalDemoSeeder extends Seeder
                 'error_message' => null,
             ],
             [
-                'renter' => $renters['29701050106789'], // ياسمين خليل
+                'renter' => $this->renter('29701050106789'), // ياسمين خليل
                 'template' => 'contract_renewal_ar',
                 'days_ago' => 1,
                 'status' => 'sent',
@@ -1471,7 +1557,7 @@ class RentalDemoSeeder extends Seeder
                 'error_message' => null,
             ],
             [
-                'renter' => $renters['29804200105566'], // هبة عصام
+                'renter' => $this->renter('29804200105566'), // هبة عصام
                 'template' => 'rent_due_reminder_ar',
                 'days_ago' => 0,
                 'status' => 'pending',
@@ -1480,7 +1566,7 @@ class RentalDemoSeeder extends Seeder
                 'error_message' => null,
             ],
             [
-                'renter' => $renters['29406080101234'], // أحمد العطار
+                'renter' => $this->renter('29406080101234'), // أحمد العطار
                 'template' => 'rent_due_reminder_ar',
                 'days_ago' => 2,
                 'status' => 'failed',
@@ -1491,11 +1577,11 @@ class RentalDemoSeeder extends Seeder
         ];
 
         foreach ($messagesData as $idx => $m) {
-            $dedupKey = sprintf('msg_log_%d_%s_%s', $workspace->id, $m['renter']->id, $m['template'].'_'.$idx);
+            $dedupKey = sprintf('msg_log_%d_%s_%s', $this->workspace->id, $m['renter']->id, $m['template'].'_'.$idx);
 
             MessageLog::firstOrCreate(
                 [
-                    'workspace_id' => $workspace->id,
+                    'workspace_id' => $this->workspace->id,
                     'deduplication_key' => $dedupKey,
                 ],
                 [
@@ -1514,17 +1600,17 @@ class RentalDemoSeeder extends Seeder
                 ]
             );
         }
+    }
 
-        // -------------------------------------------------------------
-        // 11. Activity Log (Audit Trail)
-        // -------------------------------------------------------------
+    private function seedActivityLog(): void
+    {
         if (class_exists(Activity::class)) {
             $activities = [
-                ['description' => 'تم توثيق عقد إيجار جديد للوحدة APT-101 للمستأجر محمد علي إبراهيم', 'subject' => $allLeases[0] ?? null],
-                ['description' => 'تم تسجيل سند قبض إلكتروني بمبلغ 4,500 ج.م للمستأجر محمد علي إبراهيم', 'subject' => $allLeases[0] ?? null],
-                ['description' => 'تم فتح تذكرة صيانة طارئة: تسريب مياه في محبس المغسلة الرئيسي', 'subject' => $propBuilding],
-                ['description' => 'تم تسجيل مصروف صيانة دورية لمصعد عمارة النور بمبلغ 1,200 ج.م', 'subject' => $propBuilding],
-                ['description' => 'تم إرسال تذكير إيجار عبر WhatsApp للمستأجر عمر خالد عبد الرحمن', 'subject' => $workspace],
+                ['description' => 'تم توثيق عقد إيجار جديد للوحدة APT-101 للمستأجر محمد علي إبراهيم', 'subject' => $this->allLeases[0] ?? null],
+                ['description' => 'تم تسجيل سند قبض إلكتروني بمبلغ 4,500 ج.م للمستأجر محمد علي إبراهيم', 'subject' => $this->allLeases[0] ?? null],
+                ['description' => 'تم فتح تذكرة صيانة طارئة: تسريب مياه في محبس المغسلة الرئيسي', 'subject' => $this->propBuilding],
+                ['description' => 'تم تسجيل مصروف صيانة دورية لمصعد عمارة النور بمبلغ 1,200 ج.م', 'subject' => $this->propBuilding],
+                ['description' => 'تم إرسال تذكير إيجار عبر WhatsApp للمستأجر عمر خالد عبد الرحمن', 'subject' => $this->workspace],
             ];
 
             foreach ($activities as $act) {
@@ -1535,14 +1621,19 @@ class RentalDemoSeeder extends Seeder
                     ],
                     [
                         'subject_type' => $act['subject'] ? get_class($act['subject']) : Workspace::class,
-                        'subject_id' => $act['subject'] ? $act['subject']->id : $workspace->id,
+                        'subject_id' => $act['subject'] ? $act['subject']->id : $this->workspace->id,
                         'causer_type' => User::class,
-                        'causer_id' => $primaryUser->id,
+                        'causer_id' => $this->primaryUser->id,
                         'properties' => ['ip' => '127.0.0.1'],
                         'created_at' => now()->subHours(rand(1, 48)),
                     ]
                 );
             }
         }
+    }
+
+    private function renter(string $nationalId): Renter
+    {
+        return $this->renters[$nationalId] ?? throw new LogicException("Demo renter {$nationalId} has not been seeded.");
     }
 }

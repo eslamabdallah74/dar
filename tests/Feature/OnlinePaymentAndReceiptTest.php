@@ -137,7 +137,7 @@ test('unauthorized cross-workspace user cannot view payment receipt', function (
 
     $response = $this->actingAs($otherUser)->get(route('payments.receipt', $payment));
 
-    expect(in_array($response->status(), [403, 404]))->toBeTrue();
+    expect(in_array($response->status(), [403, 404], true))->toBeTrue();
 });
 
 test('online payment checkout initiates session with payment gateway', function () {
@@ -182,7 +182,7 @@ test('payment webhook records payment and allocation idempotently', function () 
 
     expect(Payment::where('reference', $externalPaymentId)->count())->toBe(1);
 
-    $payment = Payment::where('reference', $externalPaymentId)->first();
+    $payment = Payment::where('reference', $externalPaymentId)->firstOrFail();
     expect($payment->amount)->toEqual(4500)
         ->and($payment->renter_id)->toBe($this->renter->id);
 
@@ -217,10 +217,9 @@ test('recording payment allows uploading an optional receipt photo or screenshot
 
     $response->assertRedirect();
 
-    $payment = Payment::where('reference', 'INSTA-123456')->first();
-    expect($payment)->not->toBeNull()
-        ->and($payment->receipt_path)->not->toBeNull();
+    $payment = Payment::where('reference', 'INSTA-123456')->firstOrFail();
 
+    $this->assertNotNull($payment->receipt_path);
     Storage::disk('local')->assertExists($payment->receipt_path);
 
     // Verify authorized user can download / view the attachment
@@ -240,9 +239,8 @@ test('recording payment succeeds without receipt image because it is not require
 
     $response->assertRedirect();
 
-    $payment = Payment::where('reference', 'CASH-998877')->first();
-    expect($payment)->not->toBeNull()
-        ->and($payment->receipt_path)->toBeNull();
+    $payment = Payment::where('reference', 'CASH-998877')->firstOrFail();
+    expect($payment->receipt_path)->toBeNull();
 });
 
 test('unauthorized cross-workspace user cannot access payment attachment', function () {
@@ -276,5 +274,5 @@ test('unauthorized cross-workspace user cannot access payment attachment', funct
     app(CurrentWorkspace::class)->set($otherWorkspace);
 
     $response = $this->actingAs($otherUser)->get(route('payments.attachment', $payment));
-    expect(in_array($response->status(), [403, 404]))->toBeTrue();
+    expect(in_array($response->status(), [403, 404], true))->toBeTrue();
 });

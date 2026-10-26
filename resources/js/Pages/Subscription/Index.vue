@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
 import {
@@ -9,11 +8,7 @@ import {
     Crown,
     Download,
     FileText,
-    HelpCircle,
-    Layers,
-    ShieldCheck,
     Sparkles,
-    Zap,
 } from 'lucide-vue-next';
 
 interface PlanItem {
@@ -36,7 +31,7 @@ interface InvoiceItem {
     status_label: string;
 }
 
-const props = defineProps<{
+defineProps<{
     current_plan: {
         name: string;
         units_used: number;

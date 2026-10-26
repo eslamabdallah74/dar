@@ -4,19 +4,11 @@ import { useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
 import {
-    Bell,
-    Check,
     CheckCheck,
-    CheckCircle2,
     Clock,
-    Copy,
     MessageCircle,
     MessageSquare,
-    Phone,
     Send,
-    Settings,
-    ShieldCheck,
-    Smartphone,
     X,
     Zap,
 } from 'lucide-vue-next';

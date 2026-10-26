@@ -70,8 +70,7 @@ test('uploading valid raster image JPEG or PNG is accepted', function () {
     ]);
 
     $response->assertSessionHasNoErrors();
-    $property = Property::where('name', 'برج النخبة الآمن')->first();
-    expect($property)->not->toBeNull();
+    $property = Property::where('name', 'برج النخبة الآمن')->firstOrFail();
     expect($property->cover_image)->not->toBeNull();
 });
 

@@ -11,6 +11,7 @@ use App\Http\Resources\PropertyResource;
 use App\Models\Plan;
 use App\Models\Property;
 use App\Models\Unit;
+use App\Services\Properties\PropertyUnitBoardService;
 use App\Services\PropertyUnitGeneratorService;
 use App\Services\Storage\DocumentStorageService;
 use App\Services\UnitHierarchyService;
@@ -59,279 +60,17 @@ class PropertyController extends Controller
         ]);
     }
 
-    public function show(Request $request, Property $property): Response
+    public function show(Request $request, Property $property, PropertyUnitBoardService $unitBoard): Response
     {
         $workspace = $this->resolveWorkspace($request);
 
         abort_if($property->workspace_id !== $workspace->id, 403, 'غير مصرح لك بعرض هذا العقار.');
 
         $currency = $workspace->currency ?? 'EGP';
-        $currencySymbol = match ($currency) {
-            'SAR' => 'ر.س',
-            'AED' => 'د.إ',
-            'USD' => '$',
-            default => 'ج.م',
-        };
+        $currencySymbol = $workspace->currencySymbol();
 
-        $hierarchyService = app(UnitHierarchyService::class);
-
-        $property->load([
-            'units' => fn ($q) => $q->with([
-                'parentUnit.parentUnit',
-                'childUnits' => fn ($c) => $c->with([
-                    'childUnits' => fn ($b) => $b->with([
-                        'leases' => fn ($l) => $l->where('status', 'active')->with('renter'),
-                        'maintenanceRequests' => fn ($m) => $m->whereIn('status', ['open', 'in_progress']),
-                    ]),
-                    'leases' => fn ($l) => $l->where('status', 'active')->with('renter'),
-                    'maintenanceRequests' => fn ($m) => $m->whereIn('status', ['open', 'in_progress']),
-                ]),
-                'leases' => fn ($l) => $l->where('status', 'active')->with('renter'),
-                'maintenanceRequests' => fn ($m) => $m->whereIn('status', ['open', 'in_progress']),
-            ]),
-            'maintenanceRequests.reportedByRenter',
-        ]);
-
-        // Pre-index active leases and parent/child tree in memory to avoid N+1 recursive SQL queries
-        $allPropertyUnits = $property->units;
-        $activeLeasesByUnitId = [];
-        $parentMap = [];
-        $childrenMap = [];
-        foreach ($allPropertyUnits as $u) {
-            $parentMap[$u->id] = $u->parent_unit_id;
-            if ($u->parent_unit_id !== null) {
-                $childrenMap[$u->parent_unit_id][] = $u->id;
-            }
-            $al = $u->leases->first();
-            if ($al) {
-                $activeLeasesByUnitId[$u->id] = $al;
-            }
-        }
-
-        $getAncestorsInMemory = function (int $unitId) use ($parentMap): array {
-            $ancestors = [];
-            $curr = $parentMap[$unitId] ?? null;
-            while ($curr !== null && ! in_array($curr, $ancestors, true)) {
-                $ancestors[] = $curr;
-                $curr = $parentMap[$curr] ?? null;
-            }
-
-            return $ancestors;
-        };
-
-        $getDescendantsInMemory = function (int $unitId) use ($childrenMap): array {
-            $descendants = [];
-            $queue = $childrenMap[$unitId] ?? [];
-            while (! empty($queue)) {
-                $childId = array_shift($queue);
-                $descendants[] = $childId;
-                if (! empty($childrenMap[$childId])) {
-                    foreach ($childrenMap[$childId] as $grandChildId) {
-                        $queue[] = $grandChildId;
-                    }
-                }
-            }
-
-            return $descendants;
-        };
-
-        $unitsById = $allPropertyUnits->keyBy('id');
-
-        $findApartmentId = function (int $unitId) use ($parentMap, $unitsById): ?int {
-            $unit = $unitsById->get($unitId);
-            if (! $unit) {
-                return null;
-            }
-            if ($unit->unit_type === 'apartment') {
-                return $unit->id;
-            }
-            $curr = $parentMap[$unitId] ?? null;
-            while ($curr !== null) {
-                $p = $unitsById->get($curr);
-                if ($p && $p->unit_type === 'apartment') {
-                    return $p->id;
-                }
-                $curr = $parentMap[$curr] ?? null;
-            }
-
-            return null;
-        };
-
-        $apartmentGenderCache = [];
-        $getApartmentGender = function (?int $apartmentId) use (&$apartmentGenderCache, $getDescendantsInMemory, $activeLeasesByUnitId, $hierarchyService): ?array {
-            if ($apartmentId === null) {
-                return null;
-            }
-            if (isset($apartmentGenderCache[$apartmentId])) {
-                return $apartmentGenderCache[$apartmentId];
-            }
-            $subtreeIds = array_merge([$apartmentId], $getDescendantsInMemory($apartmentId));
-            $occupants = [];
-            foreach ($subtreeIds as $sId) {
-                if (isset($activeLeasesByUnitId[$sId]) && $activeLeasesByUnitId[$sId]->renter) {
-                    $occupants[] = $activeLeasesByUnitId[$sId]->renter;
-                }
-            }
-            $info = $hierarchyService->computeApartmentGender($occupants);
-            $apartmentGenderCache[$apartmentId] = $info;
-
-            return $info;
-        };
-
-        $units = $allPropertyUnits->map(function (Unit $unit) use ($hierarchyService, $property, $activeLeasesByUnitId, $getAncestorsInMemory, $getDescendantsInMemory, $findApartmentId, $getApartmentGender) {
-            $activeLease = $unit->leases->first();
-            // Ancestor / descendant active lease checks in memory
-            $ancestorIds = $getAncestorsInMemory($unit->id);
-            $descendantIds = $getDescendantsInMemory($unit->id);
-
-            $ancestorHasActiveLease = false;
-            foreach ($ancestorIds as $aId) {
-                if (isset($activeLeasesByUnitId[$aId])) {
-                    $ancestorHasActiveLease = true;
-                    break;
-                }
-            }
-
-            $descendantHasActiveLease = false;
-            foreach ($descendantIds as $dId) {
-                if (isset($activeLeasesByUnitId[$dId])) {
-                    $descendantHasActiveLease = true;
-                    break;
-                }
-            }
-
-            $hasOpenMaintenance = $unit->maintenanceRequests->isNotEmpty();
-
-            $status = 'vacant';
-            $statusLabel = 'شاغرة';
-            if ($activeLease) {
-                $status = 'occupied';
-                $statusLabel = 'مؤجرة';
-            } elseif ($hasOpenMaintenance) {
-                $status = 'maintenance';
-                $statusLabel = 'تحت الصيانة';
-            } elseif ($ancestorHasActiveLease) {
-                $status = 'occupied';
-                $statusLabel = match ($unit->unit_type) {
-                    'bed' => 'محجوز (ضمن عقد الغرفة)',
-                    'room' => 'محجوزة (ضمن عقد الشقة)',
-                    default => 'محجوزة (ضمن عقد الوحدة الرئيسية)',
-                };
-            } elseif ($descendantHasActiveLease) {
-                $status = 'occupied';
-                $statusLabel = match ($unit->unit_type) {
-                    'room' => 'مؤجرة (بالأسِرّة)',
-                    'apartment' => 'مشغولة (غرف/أسرّة)',
-                    default => 'مشغولة بوحدات فرعية',
-                };
-            } elseif (! $unit->is_rentable) {
-                $status = 'unavailable';
-                $statusLabel = 'غير متاحة';
-            }
-
-            // Detect floor / grouping
-            $floorName = 'الوحدات الرئيسية';
-            if ($unit->parentUnit) {
-                $floorName = $unit->parentUnit->name;
-            } elseif (preg_match('/(الدور\s+[^\)\-]+|الطابق\s+[^\)\-]+)/u', $unit->name, $matches)) {
-                $floorName = trim($matches[0]);
-            } elseif (preg_match('/(?:APT|شقة|وحدة)[\s\-]*([1-9])\d{2}/ui', ($unit->code ?? '').' '.$unit->name, $numMatches)) {
-                $floorNum = (int) $numMatches[1];
-                $floorNames = [1 => 'الدور الأول', 2 => 'الدور الثاني', 3 => 'الدور الثالث', 4 => 'الدور الرابع', 5 => 'الدور الخامس'];
-                $floorName = $floorNames[$floorNum] ?? ('الدور '.$floorNum);
-            }
-
-            // Can subdivide check:
-            // Only apartments and rooms can have children.
-            // Apartment can add rooms if it has no active lease.
-            // Room can add beds if neither it nor its parent apartment has an active lease.
-            $canSubdivide = false;
-            $allowedChildType = null;
-            $allowedChildLabel = null;
-
-            if ($unit->unit_type === 'apartment') {
-                $allowedChildType = 'room';
-                $allowedChildLabel = 'إضافة أوضة';
-                $canSubdivide = ! $activeLease;
-            } elseif ($unit->unit_type === 'room') {
-                $allowedChildType = 'bed';
-                $allowedChildLabel = 'إضافة سرير';
-                $canSubdivide = ! $activeLease && ! $ancestorHasActiveLease;
-            }
-
-            // Can rent check: rentable = true, and no conflict with self, ancestors, or descendants
-            $canRent = $unit->is_rentable && ! $activeLease && ! $ancestorHasActiveLease && ! $descendantHasActiveLease;
-
-            $breadcrumb = $hierarchyService->buildHierarchyBreadcrumb($unit, $property->name);
-
-            return [
-                'id' => $unit->id,
-                'parent_unit_id' => $unit->parent_unit_id,
-                'parent_unit_name' => $unit->parentUnit?->name,
-                'floor_name' => $floorName,
-                'code' => $unit->code ?? '',
-                'name' => $unit->name,
-                'unit_type' => $unit->unit_type,
-                'type_label' => match ($unit->unit_type) {
-                    'apartment' => 'شقة',
-                    'room' => 'أوضة',
-                    'bed' => 'سرير',
-                    'shop' => 'محل',
-                    default => 'وحدة',
-                },
-                'breadcrumb' => $breadcrumb,
-                'is_rentable' => (bool) $unit->is_rentable,
-                'can_rent' => $canRent,
-                'can_subdivide' => $canSubdivide,
-                'allowed_child_type' => $allowedChildType,
-                'allowed_child_label' => $allowedChildLabel,
-                'status' => $status,
-                'status_label' => $statusLabel,
-                'ancestor_has_active_lease' => $ancestorHasActiveLease,
-                'descendant_has_active_lease' => $descendantHasActiveLease,
-                'apartment_gender' => $getApartmentGender($findApartmentId($unit->id)),
-                'active_lease' => $activeLease ? [
-                    'id' => $activeLease->id,
-                    'contract_number' => 'CNT-'.str_pad((string) $activeLease->id, 5, '0', STR_PAD_LEFT),
-                    'renter_id' => $activeLease->renter_id,
-                    'renter_name' => $activeLease->renter?->name ?? 'مستأجر',
-                    'renter_phone' => $activeLease->renter?->phone ?? '',
-                    'renter_national_id' => $activeLease->renter?->national_id ?? '',
-                    'renter_gender' => $activeLease->renter?->gender?->value,
-                    'renter_gender_label' => $activeLease->renter?->gender?->label(),
-                    'rent_amount' => (float) $activeLease->rent_amount,
-                    'security_deposit_amount' => $activeLease->security_deposit_amount ? (float) $activeLease->security_deposit_amount : null,
-                    'security_deposit_status' => $activeLease->security_deposit_status,
-                    'starts_on' => $activeLease->starts_on?->format('d/m/Y'),
-                    'ends_on' => $activeLease->ends_on?->format('d/m/Y'),
-                    'days_remaining' => $activeLease->ends_on ? max(0, (int) now()->startOfDay()->diffInDays($activeLease->ends_on, false)) : null,
-                    'billing_interval' => $activeLease->billing_interval ?? 'monthly',
-                ] : null,
-                'child_units' => $unit->childUnits->map(fn (Unit $c) => [
-                    'id' => $c->id,
-                    'code' => $c->code ?? '',
-                    'name' => $c->name,
-                    'unit_type' => $c->unit_type,
-                    'type_label' => match ($c->unit_type) {
-                        'apartment' => 'شقة',
-                        'room' => 'أوضة',
-                        'bed' => 'سرير',
-                        'shop' => 'محل',
-                        default => 'وحدة',
-                    },
-                    'status' => $c->leases->isNotEmpty() ? 'occupied' : 'vacant',
-                    'status_label' => $c->leases->isNotEmpty() ? 'مؤجرة' : 'شاغرة',
-                    'is_rentable' => (bool) $c->is_rentable,
-                ])->values()->all(),
-                'has_maintenance' => $hasOpenMaintenance,
-                'maintenance_requests' => $unit->maintenanceRequests->map(fn ($m) => [
-                    'id' => $m->id,
-                    'title' => $m->title,
-                    'status' => $m->status,
-                    'reported_at' => $m->reported_at?->format('d/m/Y'),
-                ])->values()->all(),
-            ];
-        });
+        ['units' => $units, 'apartment_gender' => $propertyApartmentGender] = $unitBoard->build($property);
+        $property->load('maintenanceRequests.reportedByRenter');
 
         $totalUnits = $units->count();
         $occupiedCount = $units->where('status', 'occupied')->count();
@@ -353,9 +92,9 @@ class PropertyController extends Controller
                 'id' => $property->id,
                 'name' => $property->name,
                 'code' => $property->code,
-                'property_type' => $property->property_type instanceof PropertyType ? $property->property_type->value : (string) $property->property_type,
+                'property_type' => $property->property_type->value,
                 'property_type_label' => $property->type_label,
-                'apartment_gender' => $property->isApartment() ? ($getApartmentGender($allPropertyUnits->firstWhere('unit_type', 'apartment')?->id) ?? $property->getApartmentGenderInfo()) : null,
+                'apartment_gender' => $propertyApartmentGender,
                 'address' => $property->address,
                 'city' => $property->city,
                 'district' => $property->district,
@@ -395,15 +134,16 @@ class PropertyController extends Controller
                 'id' => $m->id,
                 'title' => $m->title,
                 'status' => $m->status,
-                'reported_at' => $m->reported_at?->format('d/m/Y'),
-                'renter_name' => $m->reportedByRenter?->name ?? 'إدارة العقار',
+                'reported_at' => $m->reported_at->format('d/m/Y'),
+                'renter_name' => $m->reportedByRenter->name ?? 'إدارة العقار',
             ]),
         ]);
     }
 
     public function create(Request $request): Response
     {
-        $workspace = $this->resolveWorkspace($request);
+        // Only authorizes access to the active workspace; the form itself needs no workspace data.
+        $this->resolveWorkspace($request);
 
         return Inertia::render('Properties/Create', [
             'property_types' => PropertyType::options(),
@@ -445,16 +185,9 @@ class PropertyController extends Controller
             $coverImagePath = $storage->storePublic($request->file('cover_image_file'), 'properties');
         }
 
-        // Build combined address if address is empty but detailed fields are filled
         $address = $validated['address'] ?? null;
         if (! $address) {
-            $addressParts = array_filter([
-                ! empty($validated['building_number']) ? 'مبنى '.$validated['building_number'] : null,
-                ! empty($validated['street']) ? 'شارع '.$validated['street'] : null,
-                $validated['district'] ?? null,
-                $validated['city'] ?? null,
-            ]);
-            $address = implode('، ', $addressParts);
+            $address = $this->composeAddress($validated);
         }
 
         $property = DB::transaction(function () use ($workspace, $validated, $coverImagePath, $address, $generatorService) {
@@ -521,14 +254,9 @@ class PropertyController extends Controller
         }
 
         if (empty($validated['address'])) {
-            $addressParts = array_filter([
-                ! empty($validated['building_number']) ? 'مبنى '.$validated['building_number'] : null,
-                ! empty($validated['street']) ? 'شارع '.$validated['street'] : null,
-                $validated['district'] ?? null,
-                $validated['city'] ?? null,
-            ]);
-            if (! empty($addressParts)) {
-                $validated['address'] = implode('، ', $addressParts);
+            $composedAddress = $this->composeAddress($validated);
+            if ($composedAddress !== '') {
+                $validated['address'] = $composedAddress;
             }
         }
 
@@ -567,7 +295,7 @@ class PropertyController extends Controller
             if ($subscription === null) {
                 // Default to free starter plan limit (5 units) if no subscription exists
                 $starterPlan = Plan::where('slug', 'starter')->first();
-                $unitLimit = $starterPlan?->unit_limit ?? 5;
+                $unitLimit = $starterPlan->unit_limit ?? 5;
             }
 
             $property->units()->create([
@@ -618,7 +346,7 @@ class PropertyController extends Controller
 
             if ($subscription === null) {
                 $starterPlan = Plan::where('slug', 'starter')->first();
-                $unitLimit = $starterPlan?->unit_limit ?? 5;
+                $unitLimit = $starterPlan->unit_limit ?? 5;
             }
 
             $unit->update([
@@ -664,5 +392,22 @@ class PropertyController extends Controller
         $unit->delete();
 
         return back()->with('success', 'تم حذف الوحدة بنجاح');
+    }
+
+    /**
+     * Build the address line from the detailed address fields when no full address was entered.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function composeAddress(array $validated): string
+    {
+        $addressParts = array_filter([
+            ! empty($validated['building_number']) ? 'مبنى '.$validated['building_number'] : null,
+            ! empty($validated['street']) ? 'شارع '.$validated['street'] : null,
+            $validated['district'] ?? null,
+            $validated['city'] ?? null,
+        ], static fn (mixed $addressPart): bool => $addressPart !== null && $addressPart !== '');
+
+        return implode('، ', $addressParts);
     }
 }

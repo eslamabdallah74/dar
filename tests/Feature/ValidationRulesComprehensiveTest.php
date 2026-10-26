@@ -149,7 +149,7 @@ describe('Renter validation', function () {
         ]);
 
         $response->assertSessionHasErrors(['name']);
-        expect($renter->fresh()->name)->toBe('حسام الدين');
+        expect($renter->refresh()->name)->toBe('حسام الدين');
     });
 
     test('rejects renter update with non-Egyptian phone number', function () {
@@ -165,7 +165,7 @@ describe('Renter validation', function () {
         ]);
 
         $response->assertSessionHasErrors(['phone']);
-        expect($renter->fresh()->phone)->toBe('01234567890');
+        expect($renter->refresh()->phone)->toBe('01234567890');
     });
 
     test('check-phone endpoint rejects non-Egyptian phone with 422', function () {
@@ -254,8 +254,9 @@ describe('Settings validation', function () {
         ]);
 
         $response->assertRedirect();
-        expect($this->workspace->fresh()->name)->toBe('شركة العقارات الحديثة');
-        expect($this->workspace->fresh()->phone)->toBe('01011223344');
+        $this->workspace->refresh();
+        expect($this->workspace->name)->toBe('شركة العقارات الحديثة');
+        expect($this->workspace->phone)->toBe('01011223344');
     });
 });
 

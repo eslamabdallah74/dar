@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, watch } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import {
     AlertCircle,
@@ -7,17 +7,13 @@ import {
     Calendar,
     Check,
     CheckCircle2,
-    Clock,
     CreditCard,
-    DollarSign,
     Download,
     ExternalLink,
     Eye,
     FileText,
     History,
     Home,
-    Image as ImageIcon,
-    Layers,
     Loader2,
     MessageSquare,
     Paperclip,

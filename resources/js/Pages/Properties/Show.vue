@@ -10,12 +10,8 @@ import ModalUnitForm from '@/Components/Properties/ModalUnitForm.vue';
 import {
     ArrowRight,
     Building2,
-    Check,
-    CreditCard,
-    DollarSign,
     DoorClosed,
     FileText,
-    Grid,
     Home,
     Bed,
     Layers,
@@ -23,7 +19,6 @@ import {
     Plus,
     Search,
     Store,
-    Tag,
     User,
     Wrench,
     X,
@@ -31,13 +26,8 @@ import {
     Minimize2,
     AlertTriangle,
     MapPin,
-    Phone,
     ShieldCheck,
     Receipt,
-    Sparkles,
-    Droplets,
-    Zap,
-    ArrowUpDown,
 } from 'lucide-vue-next';
 
 const props = withDefaults(

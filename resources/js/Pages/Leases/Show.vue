@@ -7,30 +7,21 @@ import DeductionForm from '@/Components/Leases/SecurityDeposit/DeductionForm.vue
 import DeductionSection from '@/Components/Leases/SecurityDeposit/DeductionSection.vue';
 import SettlementSummary from '@/Components/Leases/SecurityDeposit/SettlementSummary.vue';
 import {
-    AlertCircle,
-    AlertTriangle,
-    ArrowLeft,
     ArrowRight,
     Ban,
     Building2,
-    Calendar,
-    Check,
     CheckCircle2,
     Clock,
     Coins,
     CreditCard,
-    DollarSign,
     ExternalLink,
     FileCheck,
     FileText,
     History,
     Home,
-    Info,
     MessageCircle,
     MinusCircle,
-    Paperclip,
     Phone,
-    Plus,
     RotateCcw,
     Shield,
     ShieldAlert,
@@ -38,7 +29,6 @@ import {
     Store,
     Trash2,
     Upload,
-    User,
     Wrench,
     X,
 } from 'lucide-vue-next';
@@ -394,19 +384,6 @@ const finalizeCalculatedOutcome = computed(() => {
     };
 });
 
-const confirmedDepositDeductions = computed(() => props.security_deposit.deductions.filter((deduction) => deduction.status === 'confirmed'));
-const finalSettlementDecision = computed(() => {
-    const refundDue = props.security_deposit.refundable_balance;
-
-    if (props.security_deposit.total_deductions <= 0) {
-        return refundDue > 0 ? 'رد كامل الرصيد المتبقي للمستأجر' : 'لا يوجد مبلغ متبقٍ للرد';
-    }
-
-    return refundDue > 0
-        ? `خصم البنود المعتمدة ورد ${refundDue.toLocaleString()} ${props.currency_symbol} للمستأجر`
-        : 'استهلاك الرصيد المتبقي في الخصومات المعتمدة، ولا يوجد مبلغ إضافي للرد';
-});
-
 const calculatedRefundDue = computed(() => {
     if (terminateForm.settlement_type === 'no_refund') {
         return 0;
@@ -544,12 +521,6 @@ const submitReversePayment = () => {
             activePaymentForReversal.value = null;
         },
     });
-};
-
-const terminateLease = () => {
-    if (confirm('هل أنت متأكد من إنهاء هذا العقد مبكراً وبدء مرحلة تسوية التأمين؟')) {
-        router.post(route('leases.terminate', props.lease.id));
-    }
 };
 
 // ----------------------------------------------------
@@ -920,7 +891,6 @@ const depositBadgeClass = computed(() => {
 
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
                             <ShieldCheck class="w-3 h-3 text-emerald-600" />
-                            <span>تشفير AES-256</span>
                         </span>
                     </div>
 

@@ -38,16 +38,25 @@ class User extends Authenticatable
         return (bool) $this->is_admin;
     }
 
+    /**
+     * @return HasMany<Workspace, $this>
+     */
     public function ownedWorkspaces(): HasMany
     {
         return $this->hasMany(Workspace::class, 'owner_user_id');
     }
 
+    /**
+     * @return HasMany<WorkspaceMember, $this>
+     */
     public function workspaceMemberships(): HasMany
     {
         return $this->hasMany(WorkspaceMember::class);
     }
 
+    /**
+     * @return BelongsToMany<Workspace, $this>
+     */
     public function workspaces(): BelongsToMany
     {
         return $this->belongsToMany(Workspace::class, 'workspace_members')

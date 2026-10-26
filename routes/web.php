@@ -74,6 +74,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ]);
 
         $user = $request->user();
+        if ($user === null) {
+            abort(401);
+        }
+
         $workspace = Workspace::where('id', $validated['workspace_id'])
             ->where(function ($query) use ($user) {
                 $query->where('owner_user_id', $user->id)

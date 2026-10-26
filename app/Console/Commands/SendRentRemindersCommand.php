@@ -64,42 +64,7 @@ class SendRentRemindersCommand extends Command
                 ->get();
 
             foreach ($charges as $charge) {
-                // Must have positive outstanding balance
-                if ($charge->outstanding_balance <= 0) {
-                    $totalSkipped++;
-
-                    continue;
-                }
-
-                $renter = $charge->lease?->renter;
-                if (! $renter || empty($renter->phone)) {
-                    $totalSkipped++;
-
-                    continue;
-                }
-
-                // Check opt-out
-                if ($renter->whatsapp_opted_out_at !== null) {
-                    $totalSkipped++;
-
-                    continue;
-                }
-
-                // Check opt-in consent (must not be explicitly opted out)
-                if (! $renter->whatsapp_opt_in_at) {
-                    $totalSkipped++;
-
-                    continue;
-                }
-
-                // Deduplication check
-                $dedupKey = "rent_due_{$charge->id}_{$targetDueDate}";
-                $alreadySent = $workspace->messageLogs()
-                    ->where('deduplication_key', $dedupKey)
-                    ->whereIn('status', ['sent', 'delivered', 'pending'])
-                    ->exists();
-
-                if ($alreadySent) {
+                if (! $this->shouldRemind($workspace, $charge, $targetDueDate)) {
                     $totalSkipped++;
 
                     continue;
@@ -121,5 +86,25 @@ class SendRentRemindersCommand extends Command
         Log::info('[SendRentRemindersCommand] '.$summary);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * A reminder goes out for an unpaid charge to a renter with a phone who opted in (and not out),
+     * unless one was already queued or sent for this due date.
+     */
+    private function shouldRemind(Workspace $workspace, RentCharge $charge, string $targetDueDate): bool
+    {
+        $renter = $charge->lease?->renter;
+
+        $isEligible = $charge->outstanding_balance > 0
+            && $renter !== null
+            && ! empty($renter->phone)
+            && $renter->whatsapp_opted_out_at === null
+            && $renter->whatsapp_opt_in_at;
+
+        return $isEligible && ! $workspace->messageLogs()
+            ->where('deduplication_key', "rent_due_{$charge->id}_{$targetDueDate}")
+            ->whereIn('status', ['sent', 'delivered', 'pending'])
+            ->exists();
     }
 }

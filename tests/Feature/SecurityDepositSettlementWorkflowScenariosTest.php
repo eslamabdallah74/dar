@@ -12,6 +12,7 @@ use App\Models\Workspace;
 use App\Models\WorkspaceMember;
 use App\Models\WorkspaceSubscription;
 use App\Support\CurrentWorkspace;
+use Tests\TestCase;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -78,7 +79,7 @@ beforeEach(function () {
 /**
  * Helper to create a lease with 1,000 EGP collected security deposit.
  */
-function createLeaseWithDeposit(object $test, float $depositAmount = 1000.0): Lease
+function createLeaseWithDeposit(TestCase $test, float $depositAmount = 1000.0): Lease
 {
     $lease = Lease::create([
         'workspace_id' => $test->workspace->id,
@@ -134,9 +135,8 @@ test('Scenario A: Full refund with 1,000 deposit, 0 deductions, and 1,000 refund
 
     expect($lease->security_deposit_status)->toBe('settled');
 
-    $settlement = $lease->securityDepositSettlement;
-    expect($settlement)->not->toBeNull()
-        ->and($settlement->settlement_type)->toBe('full_refund')
+    $settlement = $lease->securityDepositSettlement()->firstOrFail();
+    expect($settlement->settlement_type)->toBe('full_refund')
         ->and((float) $settlement->total_received)->toBe(1000.0)
         ->and((float) $settlement->total_deductions)->toBe(0.0)
         ->and((float) $settlement->refundable_balance)->toBe(1000.0)
@@ -178,9 +178,8 @@ test('Scenario B: Partial refund with 1,000 deposit, 300 damage and 200 cleaning
 
     expect($lease->security_deposit_status)->toBe('settled');
 
-    $settlement = $lease->securityDepositSettlement;
-    expect($settlement)->not->toBeNull()
-        ->and($settlement->settlement_type)->toBe('partial_refund')
+    $settlement = $lease->securityDepositSettlement()->firstOrFail();
+    expect($settlement->settlement_type)->toBe('partial_refund')
         ->and((float) $settlement->total_received)->toBe(1000.0)
         ->and((float) $settlement->total_deductions)->toBe(500.0)
         ->and((float) $settlement->refundable_balance)->toBe(500.0)
@@ -188,9 +187,9 @@ test('Scenario B: Partial refund with 1,000 deposit, 300 damage and 200 cleaning
 
     // Confirm individual deductions persisted
     expect($lease->securityDepositDeductions)->toHaveCount(2);
-    $unitDamage = $lease->securityDepositDeductions->firstWhere('category', 'unit_damage');
+    $unitDamage = $lease->securityDepositDeductions->firstOrFail('category', 'unit_damage');
     expect((float) $unitDamage->amount)->toBe(300.0);
-    $cleaning = $lease->securityDepositDeductions->firstWhere('category', 'cleaning');
+    $cleaning = $lease->securityDepositDeductions->firstOrFail('category', 'cleaning');
     expect((float) $cleaning->amount)->toBe(200.0);
 });
 
@@ -221,9 +220,8 @@ test('Scenario C: No refund with 1,000 deposit and 1,000 valid deductions', func
 
     expect($lease->security_deposit_status)->toBe('settled');
 
-    $settlement = $lease->securityDepositSettlement;
-    expect($settlement)->not->toBeNull()
-        ->and($settlement->settlement_type)->toBe('no_refund')
+    $settlement = $lease->securityDepositSettlement()->firstOrFail();
+    expect($settlement->settlement_type)->toBe('no_refund')
         ->and((float) $settlement->total_received)->toBe(1000.0)
         ->and((float) $settlement->total_deductions)->toBe(1000.0)
         ->and((float) $settlement->refundable_balance)->toBe(0.0)
@@ -380,7 +378,7 @@ test('Workflow: Administrator can edit an existing deduction before finalizing s
         'description' => 'تلف مبدئي',
     ])->assertSessionHasNoErrors();
 
-    $deduction = $lease->securityDepositDeductions()->first();
+    $deduction = $lease->securityDepositDeductions()->firstOrFail();
     expect((float) $deduction->amount)->toBe(300.0);
 
     // Update deduction to 450 EGP with maintenance category
@@ -424,7 +422,7 @@ test('Workflow: Refund status is tracked separately and saving settlement leaves
     ])->assertSessionHasNoErrors();
 
     $lease->refresh();
-    $settlement = $lease->securityDepositSettlement;
+    $settlement = $lease->securityDepositSettlement()->firstOrFail();
     expect($settlement->refund_status)->toBe('pending')
         ->and((float) $settlement->refundable_balance)->toBe(600.0)
         ->and($lease->securityDepositRefunds)->toHaveCount(0);

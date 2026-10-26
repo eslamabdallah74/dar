@@ -2,11 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use App\Models\Workspace;
 use App\Support\CurrentWorkspace;
 use Closure;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
 class SetCurrentWorkspace
@@ -16,44 +16,37 @@ class SetCurrentWorkspace
         $user = $request->user();
 
         if ($user) {
-            $workspace = null;
-            $workspaceId = $request->session()->get('active_workspace_id');
-
-            if ($workspaceId) {
-                if ($user->isAdmin()) {
-                    $workspace = Workspace::find($workspaceId);
-                } else {
-                    $workspace = Workspace::where('id', $workspaceId)
-                        ->where(function ($query) use ($user) {
-                            $query->where('owner_user_id', $user->id)
-                                ->orWhereHas('members', fn ($q) => $q->where('user_id', $user->id));
-                        })
-                        ->first();
-                }
-            }
-
-            if (! $workspace) {
-                // Default to owner's first workspace, or first workspace where they are a member
-                $workspace = $user->ownedWorkspaces()->first()
-                    ?? $user->workspaces()->first();
-
-                if ($workspace) {
-                    $request->session()->put('active_workspace_id', $workspace->id);
-                }
-            }
+            $workspace = $this->selectedWorkspace($user, $request->session()->get('active_workspace_id'))
+                ?? $user->ownedWorkspaces()->first()
+                ?? $user->workspaces()->first();
 
             if ($workspace) {
+                $request->session()->put('active_workspace_id', $workspace->id);
                 app(CurrentWorkspace::class)->set($workspace);
             }
-
-            Inertia::share('auth.workspace', fn () => $workspace ? [
-                'id' => $workspace->id,
-                'name' => $workspace->name,
-                'slug' => $workspace->slug,
-                'currency' => $workspace->currency,
-            ] : null);
         }
 
         return $next($request);
+    }
+
+    /**
+     * The workspace chosen in the session, if the user may still access it (admins may access any).
+     */
+    private function selectedWorkspace(User $user, mixed $workspaceId): ?Workspace
+    {
+        if (! $workspaceId) {
+            return null;
+        }
+
+        if ($user->isAdmin()) {
+            return Workspace::find((int) $workspaceId);
+        }
+
+        return Workspace::where('id', $workspaceId)
+            ->where(function ($query) use ($user) {
+                $query->where('owner_user_id', $user->id)
+                    ->orWhereHas('members', fn ($memberQuery) => $memberQuery->where('user_id', $user->id));
+            })
+            ->first();
     }
 }

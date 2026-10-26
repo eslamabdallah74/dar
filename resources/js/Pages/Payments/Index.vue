@@ -7,15 +7,11 @@ import EmptyState from '@/Components/Common/EmptyState.vue';
 import ModalRecordPayment from '@/Components/Common/ModalRecordPayment.vue';
 import ModalCorrectPayment from '@/Components/Common/ModalCorrectPayment.vue';
 import {
-    ArrowUpRight,
     Calendar,
     CheckCircle2,
     Clock,
-    Coins,
     CreditCard,
-    DollarSign,
     Download,
-    FileText,
     History,
     MessageCircle,
     Paperclip,
@@ -24,7 +20,6 @@ import {
     Printer,
     Receipt,
     Search,
-    TrendingUp,
 } from 'lucide-vue-next';
 
 interface ChargeItem {

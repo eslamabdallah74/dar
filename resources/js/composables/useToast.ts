@@ -101,7 +101,7 @@ export function useToast() {
         }
 
         const messages: string[] = [];
-        for (const [key, value] of Object.entries(errors)) {
+        for (const value of Object.values(errors)) {
             if (Array.isArray(value)) {
                 value.forEach(msg => {
                     if (typeof msg === 'string') {

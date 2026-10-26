@@ -11,10 +11,6 @@ use Illuminate\Validation\ValidationException;
 
 class PropertyUnitGeneratorService
 {
-    public function __construct(
-        protected UnitHierarchyService $hierarchyService
-    ) {}
-
     /**
      * Generate units for a property based on its type and configuration.
      * Guarantees transactional consistency, valid hierarchy, and prevents invalid parent-child relationships.
@@ -26,27 +22,21 @@ class PropertyUnitGeneratorService
     public function generateForProperty(Property $property, ?array $config = null, ?array $customUnits = null): Collection
     {
         return DB::transaction(function () use ($property, $config, $customUnits) {
-            // If automatic unit generation was explicitly disabled by user and no custom units were provided
-            if (isset($config['enabled']) && ! $config['enabled'] && empty($customUnits)) {
-                return collect();
-            }
-
-            // If explicit customized units array was submitted from the preview
             if (! empty($customUnits)) {
                 return $this->createFromCustomUnitsList($property, $customUnits);
             }
 
-            $type = $property->property_type instanceof PropertyType
-                ? $property->property_type->value
-                : (string) $property->property_type;
+            // Automatic generation explicitly disabled and no custom units submitted from the preview.
+            if (isset($config['enabled']) && ! $config['enabled']) {
+                return collect();
+            }
 
-            // Otherwise generate according to the property type and its configuration
-            return match ($type) {
-                PropertyType::Shop->value => $this->generateForShop($property, $config),
-                PropertyType::Apartment->value => $this->generateForApartment($property, $config),
-                PropertyType::Building->value => $this->generateForBuilding($property, $config),
-                PropertyType::Commercial->value => $this->generateForCommercial($property, $config),
-                PropertyType::Villa->value => $this->generateForVilla($property, $config),
+            return match ($property->property_type) {
+                PropertyType::Shop => $this->generateForShop($property),
+                PropertyType::Apartment => $this->generateForApartment($property, $config),
+                PropertyType::Building => $this->generateForBuilding($property, $config),
+                PropertyType::Commercial => $this->generateForCommercial($property, $config),
+                PropertyType::Villa => $this->generateForVilla($property, $config),
                 default => $this->generateDefaultStandalone($property),
             };
         });
@@ -55,116 +45,55 @@ class PropertyUnitGeneratorService
     /**
      * Shop Workflow: Always exactly 1 independent rentable shop unit by default.
      * Never generates building, apartment, room, or bed hierarchy.
+     *
+     * @return Collection<int, Unit>
      */
-    public function generateForShop(Property $property, ?array $config = null): Collection
+    private function generateForShop(Property $property): Collection
     {
-        // Prevent duplicate creation if unit already exists
-        $existing = Unit::where('property_id', $property->id)->first();
-        if ($existing) {
-            return collect([$existing]);
+        $existingUnit = Unit::where('property_id', $property->id)->first();
+        if ($existingUnit) {
+            return collect([$existingUnit]);
         }
 
-        $code = $property->code ?: 'SHP-01';
-        $name = $property->name;
-
-        $shop = Unit::create([
-            'workspace_id' => $property->workspace_id,
-            'property_id' => $property->id,
-            'parent_unit_id' => null,
-            'unit_type' => 'shop',
-            'code' => $code,
-            'name' => $name,
-            'is_rentable' => true,
+        return collect([
+            $this->createUnit($property, 'shop', null, $property->code ?: 'SHP-01', $property->name, isRentable: true),
         ]);
-
-        return collect([$shop]);
     }
 
     /**
      * Apartment Workflow:
      * 1. whole: 1 rentable apartment unit
      * 2. rooms: 1 non-rentable apartment parent + N rentable rooms
-     * 3. beds: 1 non-rentable apartment parent + N non-rentable rooms + M rentable beds per room
+     * 3. beds: 1 non-rentable apartment parent + N rentable rooms + M rentable beds per room
+     *
+     * @param  array<string, mixed>|null  $config
+     * @return Collection<int, Unit>
      */
-    public function generateForApartment(Property $property, ?array $config = null): Collection
+    private function generateForApartment(Property $property, ?array $config): Collection
     {
         $rentalMode = $config['rental_mode'] ?? 'whole';
         $roomsCount = max(1, (int) ($config['rooms_count'] ?? 3));
         $bedsPerRoom = max(1, (int) ($config['beds_per_room'] ?? 2));
 
-        $existing = Unit::where('property_id', $property->id)->first();
-        if ($existing) {
-            return Unit::where('property_id', $property->id)->get();
+        $existingUnits = $this->existingUnits($property);
+        if ($existingUnits !== null) {
+            return $existingUnits;
         }
 
-        $aptCode = $property->code ?: 'APT-01';
-        $aptName = $property->name;
+        $apartmentCode = $property->code ?: 'APT-01';
 
-        // 1. Whole apartment rental
         if ($rentalMode === 'whole') {
-            $apt = Unit::create([
-                'workspace_id' => $property->workspace_id,
-                'property_id' => $property->id,
-                'parent_unit_id' => null,
-                'unit_type' => 'apartment',
-                'code' => $aptCode,
-                'name' => $aptName,
-                'is_rentable' => true,
+            return collect([
+                $this->createUnit($property, 'apartment', null, $apartmentCode, $property->name, isRentable: true),
             ]);
-
-            return collect([$apt]);
         }
 
-        $units = collect();
+        // Room or bed rental: the apartment is only a container.
+        $apartment = $this->createUnit($property, 'apartment', null, $apartmentCode, $property->name, isRentable: false);
 
-        // 2 & 3. Room or Bed rental: Apartment is parent (not rentable directly)
-        $parentApt = Unit::create([
-            'workspace_id' => $property->workspace_id,
-            'property_id' => $property->id,
-            'parent_unit_id' => null,
-            'unit_type' => 'apartment',
-            'code' => $aptCode,
-            'name' => $aptName,
-            'is_rentable' => false,
-        ]);
-        $units->push($parentApt);
-
-        for ($r = 1; $r <= $roomsCount; $r++) {
-            $roomCode = "{$aptCode}-R{$r}";
-            $roomName = "غرفة {$r}";
-            $roomIsRentable = true;
-
-            $room = Unit::create([
-                'workspace_id' => $property->workspace_id,
-                'property_id' => $property->id,
-                'parent_unit_id' => $parentApt->id,
-                'unit_type' => 'room',
-                'code' => $roomCode,
-                'name' => $roomName,
-                'is_rentable' => $roomIsRentable,
-            ]);
-            $units->push($room);
-
-            if ($rentalMode === 'beds') {
-                for ($b = 1; $b <= $bedsPerRoom; $b++) {
-                    $bedCode = "{$roomCode}-B{$b}";
-                    $bedName = "سرير {$b} (غرفة {$r})";
-
-                    $bed = Unit::create([
-                        'workspace_id' => $property->workspace_id,
-                        'property_id' => $property->id,
-                        'parent_unit_id' => $room->id,
-                        'unit_type' => 'bed',
-                        'code' => $bedCode,
-                        'name' => $bedName,
-                        'is_rentable' => true,
-                    ]);
-                    $units->push($bed);
-                }
-            }
-        }
-
-        return $units;
+        return collect([$apartment])->concat(
+            $this->createRooms($property, $apartment, $roomsCount, $rentalMode === 'beds' ? $bedsPerRoom : 0, null)
+        );
     }
 
     /**
@@ -172,8 +101,11 @@ class PropertyUnitGeneratorService
      * Generates apartments across configured floors.
      * Optional ground-floor shops.
      * Only generates rooms or beds if explicitly chosen.
+     *
+     * @param  array<string, mixed>|null  $config
+     * @return Collection<int, Unit>
      */
-    public function generateForBuilding(Property $property, ?array $config = null): Collection
+    private function generateForBuilding(Property $property, ?array $config): Collection
     {
         $floorsCount = max(1, (int) ($config['floors_count'] ?? $property->floors_count ?? 4));
         $unitsPerFloor = max(1, (int) ($config['units_per_floor'] ?? 2));
@@ -183,85 +115,38 @@ class PropertyUnitGeneratorService
         $roomsPerApartment = max(1, (int) ($config['rooms_per_apartment'] ?? 3));
         $bedsPerRoom = max(1, (int) ($config['beds_per_room'] ?? 2));
 
-        $existing = Unit::where('property_id', $property->id)->first();
-        if ($existing) {
-            return Unit::where('property_id', $property->id)->get();
+        $existingUnits = $this->existingUnits($property);
+        if ($existingUnits !== null) {
+            return $existingUnits;
         }
 
         $units = collect();
 
-        // 1. Optional Ground Shops
-        if ($includeGroundShops && $shopsCount > 0) {
-            for ($s = 1; $s <= $shopsCount; $s++) {
-                $shopCode = sprintf('SHP-%02d', $s);
-                $shop = Unit::create([
-                    'workspace_id' => $property->workspace_id,
-                    'property_id' => $property->id,
-                    'parent_unit_id' => null,
-                    'unit_type' => 'shop',
-                    'code' => $shopCode,
-                    'name' => "محل تجاري {$s}",
-                    'is_rentable' => true,
-                ]);
-                $units->push($shop);
+        if ($includeGroundShops) {
+            for ($shopNumber = 1; $shopNumber <= $shopsCount; $shopNumber++) {
+                $units->push($this->createUnit($property, 'shop', null, sprintf('SHP-%02d', $shopNumber), "محل تجاري {$shopNumber}", isRentable: true));
             }
         }
 
-        // 2. Residential Floors and Apartments
-        for ($f = 1; $f <= $floorsCount; $f++) {
-            for ($u = 1; $u <= $unitsPerFloor; $u++) {
-                $aptNum = "{$f}0{$u}";
-                $aptCode = "APT-{$aptNum}";
-                $aptName = "شقة {$aptNum}";
-                $aptIsRentable = ($rentalMode === 'whole');
+        $isSubdivided = $rentalMode === 'rooms' || $rentalMode === 'beds';
 
-                $apt = Unit::create([
-                    'workspace_id' => $property->workspace_id,
-                    'property_id' => $property->id,
-                    'parent_unit_id' => null,
-                    'unit_type' => 'apartment',
-                    'code' => $aptCode,
-                    'name' => $aptName,
-                    'is_rentable' => $aptIsRentable,
-                ]);
-                $units->push($apt);
+        for ($floor = 1; $floor <= $floorsCount; $floor++) {
+            for ($position = 1; $position <= $unitsPerFloor; $position++) {
+                $apartmentNumber = "{$floor}0{$position}";
+                $apartment = $this->createUnit(
+                    $property,
+                    'apartment',
+                    null,
+                    "APT-{$apartmentNumber}",
+                    "شقة {$apartmentNumber}",
+                    isRentable: $rentalMode === 'whole'
+                );
+                $units->push($apartment);
 
-                // Subdivisions only if rentalMode requires it
-                if ($rentalMode === 'rooms' || $rentalMode === 'beds') {
-                    for ($r = 1; $r <= $roomsPerApartment; $r++) {
-                        $roomCode = "{$aptCode}-R{$r}";
-                        $roomName = "غرفة {$r} (شقة {$aptNum})";
-                        $roomIsRentable = true;
-
-                        $room = Unit::create([
-                            'workspace_id' => $property->workspace_id,
-                            'property_id' => $property->id,
-                            'parent_unit_id' => $apt->id,
-                            'unit_type' => 'room',
-                            'code' => $roomCode,
-                            'name' => $roomName,
-                            'is_rentable' => $roomIsRentable,
-                        ]);
-                        $units->push($room);
-
-                        if ($rentalMode === 'beds') {
-                            for ($b = 1; $b <= $bedsPerRoom; $b++) {
-                                $bedCode = "{$roomCode}-B{$b}";
-                                $bedName = "سرير {$b} (غرفة {$r} - شقة {$aptNum})";
-
-                                $bed = Unit::create([
-                                    'workspace_id' => $property->workspace_id,
-                                    'property_id' => $property->id,
-                                    'parent_unit_id' => $room->id,
-                                    'unit_type' => 'bed',
-                                    'code' => $bedCode,
-                                    'name' => $bedName,
-                                    'is_rentable' => true,
-                                ]);
-                                $units->push($bed);
-                            }
-                        }
-                    }
+                if ($isSubdivided) {
+                    $units = $units->concat(
+                        $this->createRooms($property, $apartment, $roomsPerApartment, $rentalMode === 'beds' ? $bedsPerRoom : 0, $apartmentNumber)
+                    );
                 }
             }
         }
@@ -272,29 +157,22 @@ class PropertyUnitGeneratorService
     /**
      * Commercial Property Workflow:
      * Generates commercial shops / office suites.
+     *
+     * @param  array<string, mixed>|null  $config
+     * @return Collection<int, Unit>
      */
-    public function generateForCommercial(Property $property, ?array $config = null): Collection
+    private function generateForCommercial(Property $property, ?array $config): Collection
     {
         $unitsCount = max(1, (int) ($config['units_count'] ?? 4));
 
-        $existing = Unit::where('property_id', $property->id)->first();
-        if ($existing) {
-            return Unit::where('property_id', $property->id)->get();
+        $existingUnits = $this->existingUnits($property);
+        if ($existingUnits !== null) {
+            return $existingUnits;
         }
 
         $units = collect();
-        for ($i = 1; $i <= $unitsCount; $i++) {
-            $code = sprintf('COM-%02d', $i);
-            $unit = Unit::create([
-                'workspace_id' => $property->workspace_id,
-                'property_id' => $property->id,
-                'parent_unit_id' => null,
-                'unit_type' => 'shop',
-                'code' => $code,
-                'name' => "وحدة تجارية {$i}",
-                'is_rentable' => true,
-            ]);
-            $units->push($unit);
+        for ($unitNumber = 1; $unitNumber <= $unitsCount; $unitNumber++) {
+            $units->push($this->createUnit($property, 'shop', null, sprintf('COM-%02d', $unitNumber), "وحدة تجارية {$unitNumber}", isRentable: true));
         }
 
         return $units;
@@ -303,54 +181,33 @@ class PropertyUnitGeneratorService
     /**
      * Villa Workflow:
      * Either 1 whole villa unit or divided into suites/rooms.
+     *
+     * @param  array<string, mixed>|null  $config
+     * @return Collection<int, Unit>
      */
-    public function generateForVilla(Property $property, ?array $config = null): Collection
+    private function generateForVilla(Property $property, ?array $config): Collection
     {
         $rentalMode = $config['rental_mode'] ?? 'whole';
         $roomsCount = max(1, (int) ($config['rooms_count'] ?? 4));
 
-        $existing = Unit::where('property_id', $property->id)->first();
-        if ($existing) {
-            return Unit::where('property_id', $property->id)->get();
+        $existingUnits = $this->existingUnits($property);
+        if ($existingUnits !== null) {
+            return $existingUnits;
         }
+
+        $villaCode = $property->code ?: 'VIL-01';
 
         if ($rentalMode === 'whole') {
-            $villa = Unit::create([
-                'workspace_id' => $property->workspace_id,
-                'property_id' => $property->id,
-                'parent_unit_id' => null,
-                'unit_type' => 'apartment',
-                'code' => $property->code ?: 'VIL-01',
-                'name' => $property->name,
-                'is_rentable' => true,
+            return collect([
+                $this->createUnit($property, 'apartment', null, $villaCode, $property->name, isRentable: true),
             ]);
-
-            return collect([$villa]);
         }
 
-        $units = collect();
-        $parentVilla = Unit::create([
-            'workspace_id' => $property->workspace_id,
-            'property_id' => $property->id,
-            'parent_unit_id' => null,
-            'unit_type' => 'apartment',
-            'code' => $property->code ?: 'VIL-01',
-            'name' => $property->name,
-            'is_rentable' => false,
-        ]);
-        $units->push($parentVilla);
+        $villa = $this->createUnit($property, 'apartment', null, $villaCode, $property->name, isRentable: false);
+        $units = collect([$villa]);
 
-        for ($r = 1; $r <= $roomsCount; $r++) {
-            $room = Unit::create([
-                'workspace_id' => $property->workspace_id,
-                'property_id' => $property->id,
-                'parent_unit_id' => $parentVilla->id,
-                'unit_type' => 'room',
-                'code' => "VIL-R{$r}",
-                'name' => "جناح / غرفة {$r}",
-                'is_rentable' => true,
-            ]);
-            $units->push($room);
+        for ($roomNumber = 1; $roomNumber <= $roomsCount; $roomNumber++) {
+            $units->push($this->createUnit($property, 'room', $villa->id, "VIL-R{$roomNumber}", "جناح / غرفة {$roomNumber}", isRentable: true));
         }
 
         return $units;
@@ -358,25 +215,19 @@ class PropertyUnitGeneratorService
 
     /**
      * Default Standalone fallback.
+     *
+     * @return Collection<int, Unit>
      */
-    public function generateDefaultStandalone(Property $property): Collection
+    private function generateDefaultStandalone(Property $property): Collection
     {
-        $existing = Unit::where('property_id', $property->id)->first();
-        if ($existing) {
-            return collect([$existing]);
+        $existingUnit = Unit::where('property_id', $property->id)->first();
+        if ($existingUnit) {
+            return collect([$existingUnit]);
         }
 
-        $unit = Unit::create([
-            'workspace_id' => $property->workspace_id,
-            'property_id' => $property->id,
-            'parent_unit_id' => null,
-            'unit_type' => 'apartment',
-            'code' => $property->code ?: 'U-01',
-            'name' => $property->name,
-            'is_rentable' => true,
+        return collect([
+            $this->createUnit($property, 'apartment', null, $property->code ?: 'U-01', $property->name, isRentable: true),
         ]);
-
-        return collect([$unit]);
     }
 
     /**
@@ -386,123 +237,167 @@ class PropertyUnitGeneratorService
      * @param  array<int, array<string, mixed>>  $customUnits
      * @return Collection<int, Unit>
      */
-    public function createFromCustomUnitsList(Property $property, array $customUnits): Collection
+    private function createFromCustomUnitsList(Property $property, array $customUnits): Collection
     {
-        // 1. Validate property type constraints
         if ($property->isShop()) {
-            foreach ($customUnits as $u) {
-                if (($u['unit_type'] ?? '') !== 'shop') {
-                    throw ValidationException::withMessages([
-                        'units' => 'لا يمكن إضافة شقق أو غرف أو أسرة لعقار من نوع محل تجاري.',
-                    ]);
-                }
-                if (! empty($u['parent_temp_id'])) {
-                    throw ValidationException::withMessages([
-                        'units' => 'المحل وحدة مستقلة ولا يمكن أن تكون تابعة لوحدة أب.',
-                    ]);
-                }
-            }
+            $this->assertOnlyStandaloneShops($customUnits);
         }
 
-        // 2. Validate hierarchy rules
-        // شقة: parent must be null
-        // محل: parent must be null
-        // غرفة: parent must be apartment
-        // سرير: parent must be room
-        $tempTypeMap = [];
-        foreach ($customUnits as $u) {
-            $tId = (string) ($u['temp_id'] ?? $u['id'] ?? uniqid());
-            $tempTypeMap[$tId] = $u['unit_type'] ?? 'apartment';
-        }
+        $this->assertValidCustomHierarchy($customUnits);
 
-        foreach ($customUnits as $u) {
-            $unitType = $u['unit_type'] ?? 'apartment';
-            $pTempId = ! empty($u['parent_temp_id']) ? (string) $u['parent_temp_id'] : null;
-
-            if ($unitType === 'apartment' && $pTempId !== null) {
-                throw ValidationException::withMessages([
-                    'units' => 'الشقة وحدة رئيسية ولا يمكن أن تكون تابعة لأي وحدة أخرى.',
-                ]);
-            }
-
-            if ($unitType === 'shop' && $pTempId !== null) {
-                throw ValidationException::withMessages([
-                    'units' => 'المحل وحدة مستقلة ولا يمكن ربطه بوحدة أب.',
-                ]);
-            }
-
-            if ($unitType === 'room') {
-                if ($pTempId === null) {
-                    throw ValidationException::withMessages([
-                        'units' => 'يجب أن تكون الغرفة تابعة لشقة.',
-                    ]);
-                }
-                $parentType = $tempTypeMap[$pTempId] ?? null;
-                if ($parentType !== 'apartment') {
-                    throw ValidationException::withMessages([
-                        'units' => 'لا يمكن للغرفة أن تكون تابعة إلا لشقة.',
-                    ]);
-                }
-            }
-
-            if ($unitType === 'bed') {
-                if ($pTempId === null) {
-                    throw ValidationException::withMessages([
-                        'units' => 'يجب أن يكون السرير تابعًا لغرفة.',
-                    ]);
-                }
-                $parentType = $tempTypeMap[$pTempId] ?? null;
-                if ($parentType !== 'room') {
-                    throw ValidationException::withMessages([
-                        'units' => 'لا يمكن للسرير أن يكون تابعًا إلا لغرفة.',
-                    ]);
-                }
-            }
-        }
-
-        // 3. Insert parents first, then children, mapping temp_id to real database IDs
-        $tempToRealId = [];
-        $createdUnits = collect();
-
-        // Sort items so parents are inserted before children
         $sortedUnits = $this->sortUnitsForInsertion($customUnits);
 
-        // Identify which units have children so their is_rentable is set correctly
-        $parentsWithChildren = [];
-        foreach ($sortedUnits as $u) {
-            if (! empty($u['parent_temp_id'])) {
-                $parentsWithChildren[(string) $u['parent_temp_id']] = true;
+        $tempIdsWithChildren = [];
+        foreach ($sortedUnits as $customUnit) {
+            if (! empty($customUnit['parent_temp_id'])) {
+                $tempIdsWithChildren[(string) $customUnit['parent_temp_id']] = true;
             }
         }
 
-        foreach ($sortedUnits as $u) {
-            $tempId = (string) ($u['temp_id'] ?? $u['id'] ?? uniqid());
-            $pTempId = ! empty($u['parent_temp_id']) ? (string) $u['parent_temp_id'] : null;
-            $realParentId = $pTempId ? ($tempToRealId[$pTempId] ?? null) : null;
+        $realIdByTempId = [];
+        $createdUnits = collect();
 
-            // An apartment that has children (rooms) is a building structure/container, not directly rentable.
-            // But a room remains flexible and rentable (as a whole room) even if it has beds, or if it has no beds.
-            $unitType = $u['unit_type'] ?? 'apartment';
-            $hasChildren = isset($parentsWithChildren[$tempId]);
-            $isRentable = ($unitType === 'apartment' && $hasChildren)
+        foreach ($sortedUnits as $customUnit) {
+            $tempId = (string) ($customUnit['temp_id'] ?? $customUnit['id'] ?? uniqid());
+            $parentTempId = $this->parentTempId($customUnit);
+            $unitType = $customUnit['unit_type'] ?? 'apartment';
+
+            // An apartment with rooms is a container, not directly rentable; a room stays rentable
+            // as a whole whether or not it has beds.
+            $isRentable = $unitType === 'apartment' && isset($tempIdsWithChildren[$tempId])
                 ? false
-                : (isset($u['is_rentable']) ? (bool) $u['is_rentable'] : true);
+                : (bool) ($customUnit['is_rentable'] ?? true);
 
-            $unit = Unit::create([
-                'workspace_id' => $property->workspace_id,
-                'property_id' => $property->id,
-                'parent_unit_id' => $realParentId,
-                'unit_type' => $u['unit_type'] ?? 'apartment',
-                'code' => $u['code'] ?? null,
-                'name' => $u['name'],
-                'is_rentable' => (bool) $isRentable,
-            ]);
+            $unit = $this->createUnit(
+                $property,
+                $unitType,
+                $parentTempId !== null ? ($realIdByTempId[$parentTempId] ?? null) : null,
+                $customUnit['code'] ?? null,
+                $customUnit['name'],
+                $isRentable
+            );
 
-            $tempToRealId[$tempId] = $unit->id;
+            $realIdByTempId[$tempId] = $unit->id;
             $createdUnits->push($unit);
         }
 
         return $createdUnits;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $customUnits
+     *
+     * @throws ValidationException
+     */
+    private function assertOnlyStandaloneShops(array $customUnits): void
+    {
+        foreach ($customUnits as $customUnit) {
+            if (($customUnit['unit_type'] ?? '') !== 'shop') {
+                throw ValidationException::withMessages([
+                    'units' => 'لا يمكن إضافة شقق أو غرف أو أسرة لعقار من نوع محل تجاري.',
+                ]);
+            }
+            if (! empty($customUnit['parent_temp_id'])) {
+                throw ValidationException::withMessages([
+                    'units' => 'المحل وحدة مستقلة ولا يمكن أن تكون تابعة لوحدة أب.',
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Apartments and shops are top-level units; a room belongs to an apartment and a bed to a room.
+     *
+     * @param  array<int, array<string, mixed>>  $customUnits
+     *
+     * @throws ValidationException
+     */
+    private function assertValidCustomHierarchy(array $customUnits): void
+    {
+        $unitTypeByTempId = [];
+        foreach ($customUnits as $customUnit) {
+            $unitTypeByTempId[(string) ($customUnit['temp_id'] ?? $customUnit['id'] ?? uniqid())] = $customUnit['unit_type'] ?? 'apartment';
+        }
+
+        foreach ($customUnits as $customUnit) {
+            $unitType = $customUnit['unit_type'] ?? 'apartment';
+            $parentTempId = $this->parentTempId($customUnit);
+            $parentType = $parentTempId !== null ? ($unitTypeByTempId[$parentTempId] ?? null) : null;
+
+            $violation = match (true) {
+                $unitType === 'apartment' && $parentTempId !== null => 'الشقة وحدة رئيسية ولا يمكن أن تكون تابعة لأي وحدة أخرى.',
+                $unitType === 'shop' && $parentTempId !== null => 'المحل وحدة مستقلة ولا يمكن ربطه بوحدة أب.',
+                $unitType === 'room' && $parentTempId === null => 'يجب أن تكون الغرفة تابعة لشقة.',
+                $unitType === 'room' && $parentType !== 'apartment' => 'لا يمكن للغرفة أن تكون تابعة إلا لشقة.',
+                $unitType === 'bed' && $parentTempId === null => 'يجب أن يكون السرير تابعًا لغرفة.',
+                $unitType === 'bed' && $parentType !== 'room' => 'لا يمكن للسرير أن يكون تابعًا إلا لغرفة.',
+                default => null,
+            };
+
+            if ($violation !== null) {
+                throw ValidationException::withMessages(['units' => $violation]);
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $customUnit
+     */
+    private function parentTempId(array $customUnit): ?string
+    {
+        return ! empty($customUnit['parent_temp_id']) ? (string) $customUnit['parent_temp_id'] : null;
+    }
+
+    /**
+     * Create the rentable rooms of an apartment and, when $bedsPerRoom > 0, the rentable beds of each room.
+     * Building apartments carry their number in the room and bed names.
+     *
+     * @return Collection<int, Unit>
+     */
+    private function createRooms(Property $property, Unit $apartment, int $roomsCount, int $bedsPerRoom, ?string $apartmentNumber): Collection
+    {
+        $units = collect();
+
+        for ($roomNumber = 1; $roomNumber <= $roomsCount; $roomNumber++) {
+            $roomCode = "{$apartment->code}-R{$roomNumber}";
+            $roomName = $apartmentNumber === null ? "غرفة {$roomNumber}" : "غرفة {$roomNumber} (شقة {$apartmentNumber})";
+            $room = $this->createUnit($property, 'room', $apartment->id, $roomCode, $roomName, isRentable: true);
+            $units->push($room);
+
+            for ($bedNumber = 1; $bedNumber <= $bedsPerRoom; $bedNumber++) {
+                $bedName = $apartmentNumber === null
+                    ? "سرير {$bedNumber} (غرفة {$roomNumber})"
+                    : "سرير {$bedNumber} (غرفة {$roomNumber} - شقة {$apartmentNumber})";
+                $units->push($this->createUnit($property, 'bed', $room->id, "{$roomCode}-B{$bedNumber}", $bedName, isRentable: true));
+            }
+        }
+
+        return $units;
+    }
+
+    private function createUnit(Property $property, string $unitType, ?int $parentUnitId, ?string $code, string $name, bool $isRentable): Unit
+    {
+        return Unit::create([
+            'workspace_id' => $property->workspace_id,
+            'property_id' => $property->id,
+            'parent_unit_id' => $parentUnitId,
+            'unit_type' => $unitType,
+            'code' => $code,
+            'name' => $name,
+            'is_rentable' => $isRentable,
+        ]);
+    }
+
+    /**
+     * Unit generation is idempotent: a property that already has units keeps them.
+     *
+     * @return Collection<int, Unit>|null
+     */
+    private function existingUnits(Property $property): ?Collection
+    {
+        $existingUnits = Unit::where('property_id', $property->id)->get();
+
+        return $existingUnits->isNotEmpty() ? $existingUnits : null;
     }
 
     /**
@@ -511,7 +406,7 @@ class PropertyUnitGeneratorService
      * @param  array<int, array<string, mixed>>  $units
      * @return array<int, array<string, mixed>>
      */
-    protected function sortUnitsForInsertion(array $units): array
+    private function sortUnitsForInsertion(array $units): array
     {
         $typePriority = [
             'apartment' => 1,
@@ -521,12 +416,7 @@ class PropertyUnitGeneratorService
             'other' => 4,
         ];
 
-        usort($units, function ($a, $b) use ($typePriority) {
-            $pA = $typePriority[$a['unit_type'] ?? 'other'] ?? 5;
-            $pB = $typePriority[$b['unit_type'] ?? 'other'] ?? 5;
-
-            return $pA <=> $pB;
-        });
+        usort($units, fn ($first, $second) => ($typePriority[$first['unit_type'] ?? 'other'] ?? 5) <=> ($typePriority[$second['unit_type'] ?? 'other'] ?? 5));
 
         return $units;
     }

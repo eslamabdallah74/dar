@@ -129,7 +129,7 @@ test('a user can update a renter gender', function () {
     ]);
 
     $response->assertRedirect();
-    expect($renter->fresh()->gender)->toBe(Gender::Male);
+    expect($renter->refresh()->gender)->toBe(Gender::Male);
 });
 
 test('renter check-phone endpoint returns gender and gender_label', function () {

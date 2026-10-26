@@ -33,7 +33,6 @@ class LeaseExpiryReminderJob extends BaseJob
 
         $leases = Lease::withoutGlobalScopes()
             ->where('status', 'active')
-            ->whereNotNull('ends_on')
             ->with(['renter', 'unit'])
             ->get();
 
@@ -41,10 +40,6 @@ class LeaseExpiryReminderJob extends BaseJob
 
         foreach ($leases as $lease) {
             $endsOn = $lease->ends_on;
-            if (! $endsOn) {
-                continue;
-            }
-
             $diffInDays = (int) $today->diffInDays($endsOn, false);
 
             if (in_array($diffInDays, $milestones, true)) {
@@ -54,14 +49,14 @@ class LeaseExpiryReminderJob extends BaseJob
                 // Queue Email if available
                 $renter = $lease->renter;
                 if ($renter && ! empty($renter->email)) {
-                    $unitNumber = $lease->unit?->unit_number ?? 'الوحدة';
+                    $unitNumber = $lease->unit->name ?? 'الوحدة';
                     $endDateStr = $endsOn->format('d/m/Y');
 
                     dispatch(new EmailNotificationJob(
                         recipient: $renter->email,
                         mailSubject: "تنبيه قرب موعد انتهاء عقد الإيجار - وحدة {$unitNumber}",
                         contentBody: "عزيزي المستأجر {$renter->name}،\n\nنود إحاطتكم بأن عقد إيجاركم للوحدة ({$unitNumber}) سينتهي بعد {$diffInDays} يوماً بتاريخ {$endDateStr}.\n\nفي حال رغبتكم بتجديد العقد، يرجى التواصل مع إدارة العقار لاتخاذ الإجراءات اللازمة.\n\nمع خالص الشكر والتقدير."
-                    ))->onQueue(QueueName::Notifications->value);
+                    ));
                 }
 
                 $dispatchedCount++;

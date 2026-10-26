@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToWorkspace;
+use Database\Factories\SecurityDepositRefundFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SecurityDepositRefund extends Model
 {
+    /** @use HasFactory<SecurityDepositRefundFactory> */
     use BelongsToWorkspace, HasFactory;
 
     protected $fillable = [
@@ -37,21 +39,33 @@ class SecurityDepositRefund extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<Lease, $this>
+     */
     public function lease(): BelongsTo
     {
         return $this->belongsTo(Lease::class);
     }
 
+    /**
+     * @return BelongsTo<SecurityDepositSettlement, $this>
+     */
     public function settlement(): BelongsTo
     {
         return $this->belongsTo(SecurityDepositSettlement::class, 'settlement_id');
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function recordedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by');
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function reversedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reversed_by');

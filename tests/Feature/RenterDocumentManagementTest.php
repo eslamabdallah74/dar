@@ -48,7 +48,7 @@ test('user can upload a renter document to private storage', function () {
 
     expect(RenterDocument::where('renter_id', $this->renter->id)->count())->toBe(1);
 
-    $doc = RenterDocument::where('renter_id', $this->renter->id)->first();
+    $doc = RenterDocument::where('renter_id', $this->renter->id)->firstOrFail();
     expect($doc->title)->toBe('بطاقة الهوية الوطنية')
         ->and($doc->document_type)->toBe('national_id')
         ->and($doc->original_filename)->toBe('id_card_scan.pdf');
@@ -113,7 +113,7 @@ test('unauthorized cross-workspace user cannot download private documents', func
     $response = $this->actingAs($otherUser)->get(route('renters.documents.download', [$this->renter, $doc]));
 
     // Blocked by tenant isolation (404 via global workspace scope or 403 authorization)
-    expect(in_array($response->status(), [403, 404]))->toBeTrue();
+    expect(in_array($response->status(), [403, 404], true))->toBeTrue();
 });
 
 test('user can delete a renter document and file is purged from storage', function () {
@@ -132,7 +132,7 @@ test('user can delete a renter document and file is purged from storage', functi
         'original_filename' => 'old_receipt.pdf',
     ]);
 
-    Storage::disk('local')->assertExists($path);
+    Storage::disk('local')->assertExists($doc->storage_path);
 
     $response = $this->actingAs($this->user)->delete(route('renters.documents.destroy', [$this->renter, $doc]));
 
@@ -140,5 +140,5 @@ test('user can delete a renter document and file is purged from storage', functi
     $response->assertSessionHas('success');
 
     expect(RenterDocument::where('id', $doc->id)->exists())->toBeFalse();
-    Storage::disk('local')->assertMissing($path);
+    Storage::disk('local')->assertMissing($doc->storage_path);
 });

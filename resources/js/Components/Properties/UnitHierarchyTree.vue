@@ -3,15 +3,10 @@ import { ref, computed, watch } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
 import {
-    Home,
-    DoorClosed,
-    Bed,
-    Store,
     ChevronDown,
     Plus,
     User,
     Users,
-    Edit3,
     ArrowUpRight,
     Lock,
     Eye,
@@ -651,7 +646,7 @@ watch(query, (q) => {
                                 <!-- Beds list -->
                                 <div v-else>
                                     <div
-                                        v-for="(bed, bedIndex) in getChildren(room.id)"
+                                        v-for="bed in getChildren(room.id)"
                                         :key="bed.id"
                                         v-show="isBedVisible(bed)"
                                         class="flex items-stretch border-b border-[#EFECE2] last:border-b-0 transition-colors hover:bg-[#F8F4EA]/30 group"

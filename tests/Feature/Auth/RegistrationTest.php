@@ -21,17 +21,15 @@ test('new users receive a workspace and are sent to the property setup wizard', 
     $this->assertAuthenticated();
     $response->assertRedirect(route('properties.create'));
 
-    $user = User::where('email', 'ahmed@example.com')->first();
-    expect($user)->not->toBeNull();
+    $user = User::where('email', 'ahmed@example.com')->firstOrFail();
     expect($user->name)->toBe('Ahmed Mansour');
 
-    $workspace = Workspace::where('owner_user_id', $user->id)->first();
-    expect($workspace)->not->toBeNull();
+    $workspace = Workspace::where('owner_user_id', $user->id)->firstOrFail();
     expect($workspace->name)->toBe("Ahmed Mansour's Workspace");
     expect($workspace->currency)->toBe('EGP');
 
     // Verify membership record with owner role
-    expect($workspace->members()->where('user_id', $user->id)->first()->role)->toBe('owner');
+    expect($workspace->members()->where('user_id', $user->id)->firstOrFail()->role)->toBe('owner');
 
     $this->actingAs($user)
         ->get(route('properties.create'))

@@ -49,11 +49,9 @@ const removeDeduction = (index: number) => {
 
 const handleFileChange = (index: number, event: Event) => {
     const target = event.target as HTMLInputElement;
-    if (target.files && target.files[0]) {
-        props.modelValue[index].attachment = target.files[0];
-    } else {
-        props.modelValue[index].attachment = null;
-    }
+    const updated = [...props.modelValue];
+    updated[index] = { ...updated[index], attachment: target.files?.[0] ?? null };
+    emit('update:modelValue', updated);
 };
 
 const totalDeductions = computed(() => {

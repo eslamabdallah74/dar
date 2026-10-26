@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Builder;
+use Database\Factories\WorkspaceSubscriptionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class WorkspaceSubscription extends Model
 {
+    /** @use HasFactory<WorkspaceSubscriptionFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -29,32 +30,27 @@ class WorkspaceSubscription extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<Workspace, $this>
+     */
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);
     }
 
+    /**
+     * @return BelongsTo<Plan, $this>
+     */
     public function plan(): BelongsTo
     {
         return $this->belongsTo(Plan::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function activatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'activated_by');
-    }
-
-    public function scopeActive(Builder $query): Builder
-    {
-        return $query->where('status', 'active')
-            ->where(function ($q) {
-                $q->whereNull('ends_at')
-                    ->orWhere('ends_at', '>', now());
-            });
-    }
-
-    public function isCurrentlyActive(): bool
-    {
-        return $this->status === 'active' && ($this->ends_at === null || $this->ends_at->isFuture());
     }
 }

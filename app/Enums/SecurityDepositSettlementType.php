@@ -14,8 +14,8 @@ enum SecurityDepositSettlementType: string
     {
         return match ($this) {
             self::FullRefund => 'رد المبلغ بالكامل',
-            self::PartialRefund => 'رد جزء من المبلغ مع خصومات',
-            self::NoRefund => 'احتجاز كامل المبلغ (بدون رد)',
+            self::PartialRefund => 'رد جزء من المبلغ',
+            self::NoRefund => 'عدم رد المبلغ',
         };
     }
 

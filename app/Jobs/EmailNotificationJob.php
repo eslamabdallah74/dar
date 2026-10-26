@@ -16,7 +16,6 @@ class EmailNotificationJob extends BaseJob
         public string $recipient,
         public string $mailSubject,
         public string $contentBody,
-        public array $details = []
     ) {
         $this->onQueue(QueueName::Notifications->value);
     }
@@ -29,7 +28,7 @@ class EmailNotificationJob extends BaseJob
     public function handle(): void
     {
         Mail::to($this->recipient)->send(
-            new GenericNotificationMail($this->mailSubject, $this->contentBody, $this->details)
+            new GenericNotificationMail($this->mailSubject, $this->contentBody)
         );
     }
 }

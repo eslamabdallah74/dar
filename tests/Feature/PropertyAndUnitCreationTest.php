@@ -268,9 +268,8 @@ test('nested units can be created under valid parent units at arbitrary depth', 
 
     $response->assertSessionHasNoErrors();
 
-    $bed = Unit::where('code', 'BED-A')->first();
-    expect($bed)->not->toBeNull()
-        ->and($bed->parent_unit_id)->toBe($room->id)
+    $bed = Unit::where('code', 'BED-A')->firstOrFail();
+    expect($bed->parent_unit_id)->toBe($room->id)
         ->and($room->parent_unit_id)->toBe($apartment->id);
 
     // Verify hierarchy traversal
@@ -690,7 +689,7 @@ test('user can render the new multi-step property creation wizard page', functio
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('Properties/Create')
-        ->has('property_types', 7)
+        ->has('property_types', 5)
         ->has('amenities_list')
         ->has('finishing_types')
     );

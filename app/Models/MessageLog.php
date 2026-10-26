@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToWorkspace;
+use Database\Factories\MessageLogFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MessageLog extends Model
 {
+    /** @use HasFactory<MessageLogFactory> */
     use BelongsToWorkspace, HasFactory;
 
     protected $fillable = [
@@ -40,16 +42,25 @@ class MessageLog extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<Renter, $this>
+     */
     public function renter(): BelongsTo
     {
         return $this->belongsTo(Renter::class);
     }
 
+    /**
+     * @return BelongsTo<Lease, $this>
+     */
     public function lease(): BelongsTo
     {
         return $this->belongsTo(Lease::class);
     }
 
+    /**
+     * @return BelongsTo<RentCharge, $this>
+     */
     public function rentCharge(): BelongsTo
     {
         return $this->belongsTo(RentCharge::class);

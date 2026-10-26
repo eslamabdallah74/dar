@@ -28,7 +28,7 @@ class PaymentController extends Controller
 
         // 1. Rent charges (Dues)
         $charges = $workspace->rentCharges()
-            ->with(['lease.renter', 'lease.unit.property', 'paymentAllocations.payment'])
+            ->with(['lease.renter', 'lease.unit.property', 'allocations.payment'])
             ->orderBy('due_date', 'desc')
             ->get();
 
@@ -112,7 +112,7 @@ class PaymentController extends Controller
         $recordPaymentAction->execute(
             workspace: $workspace,
             data: $data,
-            userId: $request->user()->id,
+            userId: $this->authenticatedUser($request)->id,
         );
 
         // Redirect to receipts tab so the newly recorded transaction is immediately visible to the user
@@ -129,9 +129,10 @@ class PaymentController extends Controller
         abort_if($payment->workspace_id !== $workspace->id, 403, 'غير مصرح لك بتعديل هذا السند.');
 
         $correctPaymentAction->execute(
+            workspace: $workspace,
             payment: $payment,
             data: $request->validated(),
-            userId: $request->user()->id,
+            userId: $this->authenticatedUser($request)->id,
         );
 
         return redirect()->route('payments.index', ['tab' => 'receipts'])

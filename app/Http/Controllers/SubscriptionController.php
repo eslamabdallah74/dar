@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Plan;
 use App\Models\Unit;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -17,8 +16,6 @@ class SubscriptionController extends Controller
         $totalBillableUnits = Unit::billableCountForWorkspace($workspace->id);
         $activeSubscription = $workspace->activeSubscription()->with('plan')->first();
         $currentPlan = $activeSubscription?->plan;
-
-        $dbPlans = Plan::where('is_active', true)->get();
 
         $plans = [
             [
@@ -88,7 +85,7 @@ class SubscriptionController extends Controller
             ],
         ];
 
-        $planName = $currentPlan?->name ?? 'باقة الانطلاق (Starter)';
+        $planName = $currentPlan->name ?? 'باقة الانطلاق (Starter)';
         $unitLimit = $activeSubscription ? $currentPlan?->unit_limit : 5;
 
         return Inertia::render('Subscription/Index', [
@@ -103,9 +100,9 @@ class SubscriptionController extends Controller
             'billing_history' => $activeSubscription ? [
                 [
                     'id' => 'SUB-'.$activeSubscription->id,
-                    'date' => $activeSubscription->starts_at?->format('d/m/Y') ?? now()->format('d/m/Y'),
+                    'date' => $activeSubscription->starts_at->format('d/m/Y'),
                     'description' => 'اشتراك '.$planName,
-                    'amount' => (float) ($currentPlan?->monthly_price ?? 0.0),
+                    'amount' => (float) ($currentPlan->monthly_price ?? 0.0),
                     'status' => 'paid',
                     'status_label' => 'نشط ومعتمد',
                 ],

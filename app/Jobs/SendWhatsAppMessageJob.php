@@ -11,6 +11,9 @@ use App\Services\WhatsAppService;
  */
 class SendWhatsAppMessageJob extends BaseJob
 {
+    /**
+     * @param  array<string, mixed>  $parameters  Template variables, see WhatsAppGatewayInterface::sendTemplate()
+     */
     public function __construct(
         public int $workspaceId,
         public ?int $renterId,

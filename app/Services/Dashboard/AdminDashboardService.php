@@ -85,7 +85,7 @@ class AdminDashboardService
 
         // Subscriptions & MRR
         $activeSubscriptions = WorkspaceSubscription::where('status', 'active')->with('plan')->get();
-        $mrr = (float) $activeSubscriptions->sum(fn ($s): float => (float) ($s->plan?->monthly_price ?? 0));
+        $mrr = (float) $activeSubscriptions->sum(fn ($s): float => (float) ($s->plan->monthly_price ?? 0));
 
         // 3. Historical Monthly Collections (Last 6 months across platform)
         $monthsNames = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
@@ -129,9 +129,9 @@ class AdminDashboardService
             $attentionItems[] = [
                 'id' => $charge->id,
                 'type' => 'overdue',
-                'title' => 'متأخرات إيجار ('.$days.' يوم) • '.($charge->workspace?->name ?? 'مساحة عمل'),
-                'desc' => ($charge->lease?->renter?->name ?? 'مستأجر').' • '.number_format((float) $charge->outstanding_balance).' ج.م',
-                'phone' => $charge->lease?->renter?->phone ?? '',
+                'title' => 'متأخرات إيجار ('.$days.' يوم) • '.($charge->workspace->name ?? 'مساحة عمل'),
+                'desc' => ($charge->lease?->renter->name ?? 'مستأجر').' • '.number_format((float) $charge->outstanding_balance).' ج.م',
+                'phone' => $charge->lease?->renter->phone ?? '',
                 'amount' => (float) $charge->outstanding_balance,
                 'severity' => 'danger',
             ];
@@ -147,9 +147,9 @@ class AdminDashboardService
             $attentionItems[] = [
                 'id' => $lease->id,
                 'type' => 'lease_expiring',
-                'title' => 'عقد ينتهي خلال '.max(0, $days).' يوم • '.($lease->workspace?->name ?? 'مساحة عمل'),
-                'desc' => ($lease->renter?->name ?? 'مستأجر').' • '.($lease->unit?->property?->name ?? 'عقار'),
-                'phone' => $lease->renter?->phone ?? '',
+                'title' => 'عقد ينتهي خلال '.max(0, $days).' يوم • '.($lease->workspace->name ?? 'مساحة عمل'),
+                'desc' => ($lease->renter->name ?? 'مستأجر').' • '.($lease->unit?->property->name ?? 'عقار'),
+                'phone' => $lease->renter->phone ?? '',
                 'amount' => (float) $lease->rent_amount,
                 'severity' => 'warning',
             ];
@@ -166,7 +166,7 @@ class AdminDashboardService
                     'title' => $act->description,
                     'subtitle' => 'سجل العمليات المركزي',
                     'time_ago' => $act->created_at?->diffForHumans() ?? 'مؤخراً',
-                    'timestamp' => $act->created_at?->timestamp ?? 0,
+                    'timestamp' => $act->created_at->timestamp ?? 0,
                 ]);
             }
         }
@@ -176,10 +176,10 @@ class AdminDashboardService
                 $recentActivities->push([
                     'id' => 'p-'.$payment->id,
                     'type' => 'payment',
-                    'title' => 'سداد بقيمة '.number_format((float) $payment->amount).' ج.م في '.($payment->workspace?->name ?? 'مساحة عمل'),
-                    'subtitle' => 'المستأجر: '.($payment->renter?->name ?? 'مستأجر'),
-                    'time_ago' => $payment->paid_at?->diffForHumans() ?? 'مؤخراً',
-                    'timestamp' => $payment->paid_at?->timestamp ?? 0,
+                    'title' => 'سداد بقيمة '.number_format((float) $payment->amount).' ج.م في '.($payment->workspace->name ?? 'مساحة عمل'),
+                    'subtitle' => 'المستأجر: '.($payment->renter->name ?? 'مستأجر'),
+                    'time_ago' => $payment->paid_at->diffForHumans(),
+                    'timestamp' => $payment->paid_at->timestamp,
                 ]);
             }
         }
@@ -195,15 +195,15 @@ class AdminDashboardService
                 'slug' => $w->slug,
                 'currency' => $w->currency,
                 'timezone' => $w->timezone,
-                'owner_name' => $w->owner?->name ?? 'غير محدد',
-                'owner_email' => $w->owner?->email ?? '—',
+                'owner_name' => $w->owner->name ?? 'غير محدد',
+                'owner_email' => $w->owner->email ?? '—',
                 'properties_count' => $w->properties_count,
                 'units_count' => $w->units_count,
                 'leases_count' => $w->leases_count,
                 'renters_count' => $w->renters_count,
-                'plan_name' => $w->activeSubscription?->plan?->name ?? 'بدون اشتراك',
-                'plan_slug' => $w->activeSubscription?->plan?->slug ?? 'starter',
-                'subscription_status' => $w->activeSubscription?->status ?? 'inactive',
+                'plan_name' => $w->activeSubscription?->plan->name ?? 'بدون اشتراك',
+                'plan_slug' => $w->activeSubscription?->plan->slug ?? 'starter',
+                'subscription_status' => $w->activeSubscription->status ?? 'inactive',
                 'created_at' => $w->created_at?->format('d/m/Y H:i'),
             ]);
 
@@ -230,7 +230,7 @@ class AdminDashboardService
             ->map(fn (Property $p): array => [
                 'id' => $p->id,
                 'name' => $p->name,
-                'workspace_name' => $p->workspace?->name ?? '—',
+                'workspace_name' => $p->workspace->name ?? '—',
                 'property_type' => $p->property_type,
                 'city' => $p->city ?? 'القاهرة',
                 'address' => $p->address ?? '—',
@@ -244,14 +244,14 @@ class AdminDashboardService
             ->get()
             ->map(fn (Lease $l): array => [
                 'id' => $l->id,
-                'lease_number' => $l->lease_number,
-                'workspace_name' => $l->workspace?->name ?? '—',
-                'renter_name' => $l->renter?->name ?? '—',
-                'unit_name' => $l->unit?->name ?? '—',
+                'lease_number' => $l->contract_number,
+                'workspace_name' => $l->workspace->name ?? '—',
+                'renter_name' => $l->renter->name ?? '—',
+                'unit_name' => $l->unit->name ?? '—',
                 'rent_amount' => (float) $l->rent_amount,
                 'status' => $l->status,
-                'starts_on' => $l->starts_on?->format('d/m/Y'),
-                'ends_on' => $l->ends_on?->format('d/m/Y'),
+                'starts_on' => $l->starts_on->format('d/m/Y'),
+                'ends_on' => $l->ends_on->format('d/m/Y'),
             ]);
 
         $payments = Payment::with(['renter:id,name', 'workspace:id,name'])
@@ -260,13 +260,13 @@ class AdminDashboardService
             ->get()
             ->map(fn (Payment $p): array => [
                 'id' => $p->id,
-                'payment_number' => $p->payment_number,
-                'workspace_name' => $p->workspace?->name ?? '—',
-                'renter_name' => $p->renter?->name ?? '—',
+                'payment_number' => $p->reference ?? (string) $p->id,
+                'workspace_name' => $p->workspace->name ?? '—',
+                'renter_name' => $p->renter->name ?? '—',
                 'amount' => (float) $p->amount,
-                'method' => $p->method,
+                'method' => $p->payment_method,
                 'reference' => $p->reference ?? '—',
-                'paid_at' => $p->paid_at?->format('d/m/Y H:i'),
+                'paid_at' => $p->paid_at->format('d/m/Y H:i'),
             ]);
 
         $plans = Plan::all()->map(fn (Plan $pl): array => [
@@ -284,12 +284,12 @@ class AdminDashboardService
             ->get()
             ->map(fn (MessageLog $m): array => [
                 'id' => $m->id,
-                'workspace_name' => $m->workspace?->name ?? '—',
-                'renter_name' => $m->renter?->name ?? '—',
+                'workspace_name' => $m->workspace->name ?? '—',
+                'renter_name' => $m->renter->name ?? '—',
                 'recipient_phone' => $m->recipient_phone,
                 'template_name' => $m->template_name,
                 'status' => $m->status,
-                'scheduled_at' => $m->scheduled_at?->format('d/m/Y H:i'),
+                'scheduled_at' => $m->scheduled_at->format('d/m/Y H:i'),
                 'sent_at' => $m->sent_at?->format('d/m/Y H:i') ?? '—',
             ]);
 
@@ -299,11 +299,12 @@ class AdminDashboardService
             ->get()
             ->map(fn (MaintenanceRequest $mr): array => [
                 'id' => $mr->id,
-                'workspace_name' => $mr->workspace?->name ?? '—',
+                'workspace_name' => $mr->workspace->name ?? '—',
                 'title' => $mr->title,
-                'priority' => $mr->priority,
+                // maintenance_requests has no priority or cost estimate; the admin table keeps its placeholders.
+                'priority' => null,
                 'status' => $mr->status,
-                'estimated_cost' => (float) $mr->estimated_cost,
+                'estimated_cost' => 0.0,
                 'created_at' => $mr->created_at?->format('d/m/Y'),
             ]);
 

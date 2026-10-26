@@ -17,6 +17,7 @@ use App\Models\WorkspaceMember;
 use App\Models\WorkspaceSubscription;
 use App\Support\CurrentWorkspace;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -267,9 +268,8 @@ test('6. a lease ending without qualifying issues can be settled with a full ref
         ->and($lease->total_deposit_refunded)->toBe(10000.0)
         ->and($lease->refundable_deposit_balance)->toBe(0.0);
 
-    $settlement = $lease->securityDepositSettlement;
-    expect($settlement)->not->toBeNull()
-        ->and($settlement->status)->toBe('settled')
+    $settlement = $lease->securityDepositSettlement()->firstOrFail();
+    expect($settlement->status)->toBe('settled')
         ->and((float) $settlement->total_received)->toBe(10000.0)
         ->and((float) $settlement->total_refunded)->toBe(10000.0)
         ->and((float) $settlement->total_deductions)->toBe(0.0);
@@ -688,6 +688,33 @@ test('16. lease show page displays complete security deposit section and lifecyc
         );
 });
 
+test('lease page lists a deposit deduction with its readable category label and attachment link', function () {
+    Storage::fake('public');
+    $lease = Lease::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'unit_id' => $this->unit->id,
+        'renter_id' => $this->renter->id,
+        'security_deposit_amount' => 5000.00,
+        'security_deposit_status' => 'held',
+    ]);
+    SecurityDepositDeduction::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'recorded_by' => $this->user->id,
+        'category' => 'unit_damage',
+        'attachment_path' => 'deposit_attachments/broken-door.jpg',
+    ]);
+
+    $response = $this->actingAs($this->user)->get(route('leases.show', $lease->id));
+
+    $response->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Leases/Show')
+            ->where('security_deposit.deductions.0.category_label', 'تلفيات في الوحدة')
+            ->where('security_deposit.deductions.0.attachment_url', Storage::disk('public')->url('deposit_attachments/broken-door.jpg'))
+        );
+});
+
 test('deposit issues can be recorded together as separate deductions within the available balance', function () {
     $lease = Lease::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -736,8 +763,9 @@ test('deposit issues can be recorded together as separate deductions within the 
     ]);
     Bus::assertDispatched(ProcessDepositDeductionJob::class, 2);
 
-    expect($lease->fresh()->total_deposit_deductions)->toBe(1500.0)
-        ->and($lease->fresh()->refundable_deposit_balance)->toBe(8500.0);
+    $lease->refresh();
+    expect($lease->total_deposit_deductions)->toBe(1500.0)
+        ->and($lease->refundable_deposit_balance)->toBe(8500.0);
 });
 
 test('deposit issue deductions are rejected together when their total exceeds the available balance', function () {
@@ -816,7 +844,7 @@ test('final deposit settlement shows its decision and exports itemized totals fo
         'inspection_notes' => 'تمت معاينة الوحدة',
     ])->assertRedirect();
 
-    $settlement = $lease->fresh()->securityDepositSettlement;
+    $settlement = $lease->securityDepositSettlement()->firstOrFail();
     expect($settlement->settlement_type)->toBe('partial_refund')
         ->and((float) $settlement->total_received)->toBe(10000.0)
         ->and((float) $settlement->total_deductions)->toBe(1500.0)

@@ -12,6 +12,7 @@ use App\Jobs\NotifyMaintenanceRequestCreatedJob;
 use App\Jobs\ProcessDepositDeductionJob;
 use App\Jobs\ProcessDepositPaymentJob;
 use App\Jobs\ProcessDepositRefundJob;
+use App\Jobs\SendWhatsAppMessageJob;
 use App\Mail\GenericNotificationMail;
 use App\Models\Lease;
 use App\Models\MaintenanceRequest;
@@ -33,6 +34,7 @@ use Carbon\Carbon;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -109,10 +111,10 @@ test('base job defines default retry, backoff, and without overlapping middlewar
 });
 
 test('whatsapp gateway interface is properly bound and sends template messages', function () {
+    expect(app()->bound(WhatsAppGatewayInterface::class))->toBeTrue();
     $gateway = app(WhatsAppGatewayInterface::class);
-    expect($gateway)->toBeInstanceOf(WhatsAppGatewayInterface::class);
 
-    $result = $gateway->sendTemplate('+201012345678', 'payment_receipt_instant_ar', ['5000']);
+    $result = $gateway->sendTemplate('+201012345678', 'payment_receipt_instant_ar', ['amount' => '5000']);
     expect($result['success'])->toBeTrue();
     expect($result['status'])->toBeIn(['sent', 'delivered']);
 });
@@ -130,7 +132,7 @@ test('whatsapp service enforces strict idempotency using deduplication key', fun
         deduplicationKey: $dedupKey
     );
 
-    expect($log1)->not->toBeNull();
+    $this->assertNotNull($log1);
     expect($log1->status)->toBeIn(['sent', 'delivered']);
 
     // Second call with same deduplication key must not create a duplicate log
@@ -143,7 +145,7 @@ test('whatsapp service enforces strict idempotency using deduplication key', fun
         deduplicationKey: $dedupKey
     );
 
-    expect($log2->id)->toBe($log1->id);
+    expect($log2?->id)->toBe($log1->id);
     expect(MessageLog::where('deduplication_key', $dedupKey)->count())->toBe(1);
 });
 
@@ -369,4 +371,37 @@ test('data cleanup job purges old delivered logs without errors', function () {
     $job->handle();
 
     expect(MessageLog::where('created_at', '<', now()->subDays(90))->count())->toBe(0);
+});
+
+test('deposit receipt email names the leased unit', function () {
+    Mail::fake();
+    $payment = SecurityDepositPayment::create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $this->lease->id,
+        'recorded_by' => $this->user->id,
+        'amount' => 5000.00,
+        'paid_at' => now(),
+        'payment_method' => 'cash',
+        'reference' => 'DEP-UNIT-NAME',
+    ]);
+
+    (new ProcessDepositPaymentJob($payment->id))->handle(app(WhatsAppService::class));
+
+    Mail::assertSent(GenericNotificationMail::class, fn (GenericNotificationMail $mail) => str_contains($mail->mailSubject, 'شقة 101 فاخرة'));
+});
+
+test('rent due WhatsApp reminder names the leased unit', function () {
+    Queue::fake();
+    $charge = RentCharge::create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $this->lease->id,
+        'period_start' => now()->startOfMonth()->toDateString(),
+        'period_end' => now()->endOfMonth()->toDateString(),
+        'due_date' => now()->addDays(2)->toDateString(),
+        'amount' => 5000.00,
+    ]);
+
+    app(WhatsAppService::class)->queueRentDueReminder($charge);
+
+    Queue::assertPushed(SendWhatsAppMessageJob::class, fn (SendWhatsAppMessageJob $job) => $job->parameters['unit'] === 'شقة 101 فاخرة');
 });

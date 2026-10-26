@@ -28,20 +28,4 @@ class RentChargeFactory extends Factory
             'amount' => 3000.00,
         ];
     }
-
-    public function overdue(): static
-    {
-        return $this->state(fn () => [
-            'due_date' => now()->subDays(10)->toDateString(),
-        ]);
-    }
-
-    public function future(): static
-    {
-        return $this->state(fn () => [
-            'period_start' => now()->addMonth()->startOfMonth()->toDateString(),
-            'period_end' => now()->addMonth()->endOfMonth()->toDateString(),
-            'due_date' => now()->addMonth()->startOfMonth()->toDateString(),
-        ]);
-    }
 }

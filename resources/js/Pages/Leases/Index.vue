@@ -11,7 +11,6 @@ import {
     Coins,
     Clock,
     FileCheck,
-    FilePlus,
     FileText,
     Home,
     MessageCircle,
@@ -20,10 +19,8 @@ import {
     Plus,
     Search,
     Shield,
-    ShieldAlert,
     ShieldCheck,
     Store,
-    User,
     X,
 } from 'lucide-vue-next';
 

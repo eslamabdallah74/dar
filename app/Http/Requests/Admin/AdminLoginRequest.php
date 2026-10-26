@@ -57,10 +57,9 @@ class AdminLoginRequest extends FormRequest
             ]);
         }
 
-        /** @var User $user */
         $user = Auth::user();
 
-        if (! $user->isAdmin()) {
+        if (! $user instanceof User || ! $user->isAdmin()) {
             Auth::logout();
             $this->session()->invalidate();
             $this->session()->regenerateToken();

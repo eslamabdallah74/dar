@@ -25,19 +25,4 @@ class RenterDocumentFactory extends Factory
             'uploaded_by' => User::factory(),
         ];
     }
-
-    public function nationalId(): static
-    {
-        return $this->state(fn () => ['document_type' => 'national_id']);
-    }
-
-    public function passport(): static
-    {
-        return $this->state(fn () => ['document_type' => 'passport']);
-    }
-
-    public function employmentLetter(): static
-    {
-        return $this->state(fn () => ['document_type' => 'employment_letter']);
-    }
 }

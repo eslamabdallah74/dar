@@ -36,6 +36,14 @@ enum SecurityDepositDeductionCategory: string
     }
 
     /**
+     * Unpaid rent and dues are offset against the renter's outstanding rent charges.
+     */
+    public function settlesRentArrears(): bool
+    {
+        return $this === self::UnpaidRent || $this === self::UnpaidDues;
+    }
+
+    /**
      * The 5 primary options suggested in the UI workflow.
      *
      * @return array<int, array{value: string, label: string}>
@@ -49,15 +57,5 @@ enum SecurityDepositDeductionCategory: string
             ['value' => self::Cleaning->value, 'label' => self::Cleaning->label()],
             ['value' => self::Other->value, 'label' => self::Other->label()],
         ];
-    }
-
-    /**
-     * All valid category string values.
-     *
-     * @return array<int, string>
-     */
-    public static function values(): array
-    {
-        return array_column(self::cases(), 'value');
     }
 }

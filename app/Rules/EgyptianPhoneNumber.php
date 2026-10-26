@@ -38,7 +38,7 @@ class EgyptianPhoneNumber implements ValidationRule
             return false;
         }
 
-        $cleaned = preg_replace('/[\s\-\(\)\.]/', '', (string) $value);
+        $cleaned = preg_replace('/[\s\-\(\)\.]/', '', (string) $value) ?? '';
 
         return (bool) preg_match(self::PATTERN, $cleaned);
     }
@@ -48,7 +48,7 @@ class EgyptianPhoneNumber implements ValidationRule
      */
     public static function normalize(string $value, bool $international = false): string
     {
-        $cleaned = preg_replace('/[\s\-\(\)\.]/', '', $value);
+        $cleaned = preg_replace('/[\s\-\(\)\.]/', '', $value) ?? '';
 
         if (! preg_match('/^(?:\+20|0020|20)?0?(1[0125][0-9]{8})$/', $cleaned, $matches)) {
             return $value;

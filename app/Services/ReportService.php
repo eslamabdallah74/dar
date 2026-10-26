@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\ExpenseStatus;
+use App\Models\Expense;
 use App\Models\Lease;
+use App\Models\Payment;
 use App\Models\PaymentAllocation;
 use App\Models\Property;
 use App\Models\RentCharge;
@@ -14,6 +17,9 @@ use App\Models\SecurityDepositRefund;
 use App\Models\Unit;
 use App\Models\Workspace;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -72,6 +78,12 @@ class ReportService
         return $report;
     }
 
+    private const ARABIC_MONTH_NAMES = [
+        1 => 'يناير', 2 => 'فبراير', 3 => 'مارس', 4 => 'أبريل',
+        5 => 'مايو', 6 => 'يونيو', 7 => 'يوليو', 8 => 'أغسطس',
+        9 => 'سبتمبر', 10 => 'أكتوبر', 11 => 'نوفمبر', 12 => 'ديسمبر',
+    ];
+
     /**
      * Compile complete financial report data with KPIs, trends, and category breakdowns.
      *
@@ -86,204 +98,38 @@ class ReportService
         ?string $category = null,
         string $transactionType = 'all'
     ): array {
-        // 1. Total rent collected in date range (Money In)
-        $paymentsQuery = $workspace->payments()
-            ->whereBetween('paid_at', [$startDate, $endDate]);
+        $totalCollected = $this->totalCollected($workspace, $startDate, $endDate, $propertyId, $unitId);
 
-        if ($propertyId) {
-            $paymentsQuery->where(function ($query) use ($propertyId): void {
-                $query->whereHas('allocations.rentCharge.lease.unit', fn ($uq) => $uq->where('property_id', $propertyId))
-                    ->orWhereHas('renter.leases.unit', fn ($uq) => $uq->where('property_id', $propertyId));
-            });
-        }
-        if ($unitId) {
-            $paymentsQuery->where(function ($query) use ($unitId): void {
-                $query->whereHas('allocations.rentCharge.lease', fn ($uq) => $uq->where('unit_id', $unitId))
-                    ->orWhereHas('renter.leases', fn ($uq) => $uq->where('unit_id', $unitId));
-            });
-        }
-        $totalCollected = (float) $paymentsQuery->sum('amount');
-
-        // Advance payments received in date range allocated to future periods beyond range
+        // Advance payments received in the range but allocated to periods due after it
         $advanceAllocationsQuery = PaymentAllocation::where('workspace_id', $workspace->id)
-            ->whereHas('payment', fn ($query) => $query->whereBetween('paid_at', [$startDate, $endDate]))
-            ->whereHas('rentCharge', fn ($query) => $query->where('due_date', '>', $endDate->toDateString()));
-
-        if ($propertyId) {
-            $advanceAllocationsQuery->whereHas('rentCharge.lease.unit', fn ($query) => $query->where('property_id', $propertyId));
-        }
-        if ($unitId) {
-            $advanceAllocationsQuery->whereHas('rentCharge.lease', fn ($query) => $query->where('unit_id', $unitId));
-        }
+            ->whereHas('payment', fn ($paymentQuery) => $paymentQuery->whereBetween('paid_at', [$startDate, $endDate]))
+            ->whereHas('rentCharge', fn ($chargeQuery) => $chargeQuery->where('due_date', '>', $endDate->toDateString()));
+        $this->whereLeaseLocation($advanceAllocationsQuery, 'rentCharge.lease', $propertyId, $unitId);
         $totalAdvance = (float) $advanceAllocationsQuery->sum('amount');
 
-        // 2. Total rent billed / obligations in date range
         $chargesQuery = $workspace->rentCharges()
             ->whereBetween('due_date', [$startDate->toDateString(), $endDate->toDateString()]);
-
-        if ($propertyId) {
-            $chargesQuery->whereHas('lease.unit', fn ($query) => $query->where('property_id', $propertyId));
-        }
-        if ($unitId) {
-            $chargesQuery->whereHas('lease', fn ($query) => $query->where('unit_id', $unitId));
-        }
+        $this->whereLeaseLocation($chargesQuery, 'lease', $propertyId, $unitId);
         $totalBilled = (float) $chargesQuery->sum('amount');
+        $totalOutstanding = (float) (clone $chargesQuery)->with('allocations')->get()
+            ->sum(fn (RentCharge $charge): float => $charge->outstanding_balance);
 
-        // 3. Outstanding overdue balance for charges in range
-        $outstandingCharges = (clone $chargesQuery)->with('allocations')->get();
-        $totalOutstanding = (float) $outstandingCharges->sum(fn ($c): float => (float) $c->outstanding_balance);
-
-        // 4. Operating expenses in date range
         $expensesQuery = $workspace->expenses()
             ->whereBetween('expense_date', [$startDate->toDateString(), $endDate->toDateString()]);
-
-        if ($propertyId) {
-            $expensesQuery->where('property_id', $propertyId);
-        }
-        if ($unitId) {
-            $expensesQuery->where('unit_id', $unitId);
-        }
-        if ($category && $category !== 'all') {
-            $expensesQuery->where('category', $category);
-        }
-
+        $this->whereExpenseFilters($expensesQuery, $propertyId, $unitId, $category);
         $allExpenses = $expensesQuery->get();
 
-        // Recorded financially active expenses (have a valid amount > 0)
-        $activeExpenses = $allExpenses->filter(fn ($e): bool => $e->amount !== null && (float) $e->amount > 0);
-        $paidExpenses = $activeExpenses->filter(fn ($e): bool => $e->isPaid());
+        // Paid expenses with a recorded amount are the actual cash outflow
+        $paidExpenses = $allExpenses
+            ->filter(fn (Expense $expense): bool => $expense->amount !== null && (float) $expense->amount > 0)
+            ->filter(fn (Expense $expense): bool => $expense->isPaid());
         $totalExpenses = (float) $paidExpenses->sum('amount');
 
-        // Actual Maintenance Expenses that represent actual cash outflow (paid)
-        $actualMaintenanceExpenses = (float) $paidExpenses->where('origin', 'maintenance')->sum('amount');
-
-        // 5. Pending Maintenance Costs
         $pendingMaintenanceExpenses = $allExpenses->where('origin', 'maintenance')
-            ->filter(fn ($e): bool => $e->amount === null || (float) $e->amount <= 0 || $e->status === 'pending_amount');
+            ->filter(fn (Expense $expense): bool => $expense->amount === null || (float) $expense->amount <= 0 || $expense->status === 'pending_amount');
         $pendingCostCount = $pendingMaintenanceExpenses->count();
-        $totalPendingAmount = (float) $pendingMaintenanceExpenses->whereNotNull('amount')->sum('amount');
-
-        // 6. Net Cash Flow
-        $netCashFlow = $totalCollected - $totalExpenses;
-
-        // 7. Security Deposits
-        $depositPaymentsQuery = SecurityDepositPayment::where('workspace_id', $workspace->id)
-            ->where('is_reversed', false)
-            ->whereBetween('paid_at', [$startDate, $endDate]);
-
-        if ($propertyId) {
-            $depositPaymentsQuery->whereHas('lease.unit', fn ($query) => $query->where('property_id', $propertyId));
-        }
-        if ($unitId) {
-            $depositPaymentsQuery->whereHas('lease', fn ($query) => $query->where('unit_id', $unitId));
-        }
-        $securityDepositsReceived = (float) $depositPaymentsQuery->sum('amount');
-
-        $depositRefundsQuery = SecurityDepositRefund::where('workspace_id', $workspace->id)
-            ->where('is_reversed', false)
-            ->whereBetween('refunded_at', [$startDate, $endDate]);
-
-        if ($propertyId) {
-            $depositRefundsQuery->whereHas('lease.unit', fn ($query) => $query->where('property_id', $propertyId));
-        }
-        if ($unitId) {
-            $depositRefundsQuery->whereHas('lease', fn ($query) => $query->where('unit_id', $unitId));
-        }
-        $securityDepositsRefunded = (float) $depositRefundsQuery->sum('amount');
-
-        $depositDeductionsQuery = SecurityDepositDeduction::where('workspace_id', $workspace->id)
-            ->where('status', 'confirmed')
-            ->whereBetween('deducted_at', [$startDate, $endDate]);
-
-        if ($propertyId) {
-            $depositDeductionsQuery->whereHas('lease.unit', fn ($query) => $query->where('property_id', $propertyId));
-        }
-        if ($unitId) {
-            $depositDeductionsQuery->whereHas('lease', fn ($query) => $query->where('unit_id', $unitId));
-        }
-        $securityDepositsRetained = (float) $depositDeductionsQuery->sum('amount');
-
-        // Total held deposits currently sitting in custody
-        $heldLeasesQuery = Lease::where('workspace_id', $workspace->id)
-            ->whereIn('security_deposit_status', ['held', 'under_review', 'partially_refunded']);
-
-        if ($propertyId) {
-            $heldLeasesQuery->whereHas('unit', fn ($query) => $query->where('property_id', $propertyId));
-        }
-        if ($unitId) {
-            $heldLeasesQuery->where('unit_id', $unitId);
-        }
-        $securityDepositBalance = (float) $heldLeasesQuery->sum('security_deposit_amount');
-
-        // 8. Recorded Expenses by category
-        $expensesByCategory = $paidExpenses->groupBy('category')->map(fn ($grp): array => [
-            'category' => $grp->first()->category,
-            'total' => (float) $grp->whereNotNull('amount')->sum('amount'),
-            'count' => $grp->count(),
-        ])->values()->all();
-
-        // 9. Monthly breakdown for the year
-        $monthlyBreakdown = [];
-        $targetYear = $startDate->year;
-        for ($m = 1; $m <= 12; $m++) {
-            $mStart = Carbon::create($targetYear, $m, 1)->startOfMonth();
-            $mEnd = $mStart->copy()->endOfMonth();
-
-            $mCollectedQuery = $workspace->payments()->whereBetween('paid_at', [$mStart, $mEnd]);
-            if ($propertyId) {
-                $mCollectedQuery->whereHas('allocations.rentCharge.lease.unit', fn ($query) => $query->where('property_id', $propertyId));
-            }
-            if ($unitId) {
-                $mCollectedQuery->whereHas('allocations.rentCharge.lease', fn ($query) => $query->where('unit_id', $unitId));
-            }
-            $collected = (float) $mCollectedQuery->sum('amount');
-
-            $mSpentQuery = $workspace->expenses()
-                ->whereNotNull('amount')
-                ->where('amount', '>', 0)
-                ->where(function ($query): void {
-                    $query->where('payment_status', 'paid')
-                        ->orWhereNotNull('paid_at');
-                })
-                ->whereBetween('expense_date', [$mStart->toDateString(), $mEnd->toDateString()]);
-
-            if ($propertyId) {
-                $mSpentQuery->where('property_id', $propertyId);
-            }
-            if ($unitId) {
-                $mSpentQuery->where('unit_id', $unitId);
-            }
-            if ($category && $category !== 'all') {
-                $mSpentQuery->where('category', $category);
-            }
-            $spent = (float) $mSpentQuery->whereNotNull('amount')->sum('amount');
-
-            $monthlyBreakdown[] = [
-                'month' => $m,
-                'month_name' => match ($m) {
-                    1 => 'يناير', 2 => 'فبراير', 3 => 'مارس', 4 => 'أبريل',
-                    5 => 'مايو', 6 => 'يونيو', 7 => 'يوليو', 8 => 'أغسطس',
-                    9 => 'سبتمبر', 10 => 'أكتوبر', 11 => 'نوفمبر', 12 => 'ديسمبر',
-                    default => (string) $m,
-                },
-                'collected' => $collected,
-                'expenses' => $spent,
-                'net' => $collected - $spent,
-            ];
-        }
 
         $currency = $workspace->currency ?? 'EGP';
-        $currencySymbol = match (strtoupper($currency)) {
-            'EGP' => 'ج.م',
-            'SAR' => 'ر.س',
-            'AED' => 'د.إ',
-            'USD' => '$',
-            default => $currency,
-        };
-
-        $properties = $workspace->properties()
-            ->with('units:id,property_id,name')
-            ->get(['id', 'name']);
 
         return [
             'stats' => [
@@ -292,25 +138,25 @@ class ReportService
                 'total_outstanding' => $totalOutstanding,
                 'total_advance' => $totalAdvance,
                 'total_expenses' => $totalExpenses,
-                'net_cash_flow' => $netCashFlow,
+                'net_cash_flow' => $totalCollected - $totalExpenses,
                 'collection_rate' => $totalBilled > 0 ? (int) round(($totalCollected / $totalBilled) * 100) : 0,
 
                 // Maintenance expenses distinctions
-                'actual_maintenance_expenses' => $actualMaintenanceExpenses,
+                'actual_maintenance_expenses' => (float) $paidExpenses->where('origin', 'maintenance')->sum('amount'),
                 'pending_maintenance_costs_count' => $pendingCostCount,
                 'pending_expenses_count' => $pendingCostCount,
-                'pending_expenses_amount' => $totalPendingAmount,
+                'pending_expenses_amount' => (float) $pendingMaintenanceExpenses->whereNotNull('amount')->sum('amount'),
                 'pending_cost_count' => $pendingCostCount,
                 'ready_to_apply_count' => 0,
 
-                // Security Deposits breakdown
-                'security_deposits_received' => $securityDepositsReceived,
-                'security_deposits_refunded' => $securityDepositsRefunded,
-                'security_deposits_retained' => $securityDepositsRetained,
-                'security_deposit_balance' => $securityDepositBalance,
+                ...$this->securityDepositFigures($workspace, $startDate, $endDate, $propertyId, $unitId),
             ],
-            'expenses_by_category' => $expensesByCategory,
-            'monthly_breakdown' => $monthlyBreakdown,
+            'expenses_by_category' => $paidExpenses->groupBy('category')->map(fn (Collection $categoryExpenses, int|string $categoryName): array => [
+                'category' => (string) $categoryName,
+                'total' => (float) $categoryExpenses->whereNotNull('amount')->sum('amount'),
+                'count' => $categoryExpenses->count(),
+            ])->values()->all(),
+            'monthly_breakdown' => $this->monthlyBreakdown($workspace, $startDate->year, $propertyId, $unitId, $category),
             'date_range' => [
                 'start_date' => $startDate->toDateString(),
                 'end_date' => $endDate->toDateString(),
@@ -321,9 +167,9 @@ class ReportService
                 'category' => $category ?? 'all',
                 'transaction_type' => $transactionType,
             ],
-            'properties' => $properties,
+            'properties' => $workspace->properties()->with('units:id,property_id,name')->get(['id', 'name']),
             'currency' => $currency,
-            'currency_symbol' => $currencySymbol,
+            'currency_symbol' => $workspace->currencySymbol(),
         ];
     }
 
@@ -337,50 +183,31 @@ class ReportService
             ->orderBy('due_date', 'desc')
             ->get();
 
-        $filename = 'dar-collections-'.date('Y-m-d').'.csv';
-
-        return response()->streamDownload(function () use ($charges): void {
-            $handle = fopen('php://output', 'w');
-            if ($handle === false) {
-                return;
-            }
-            fwrite($handle, "\xEF\xBB\xBF");
-
-            fputcsv($handle, [
-                'رقم المعرف',
-                'المستأجر',
-                'رقم الهاتف',
-                'العقار',
-                'الوحدة',
-                'الفترة',
-                'تاريخ الاستحقاق',
-                'المبلغ المطلوب',
-                'المبلغ المسدد',
-                'المتبقي',
-                'الحالة',
-            ]);
-
-            foreach ($charges as $c) {
-                fputcsv($handle, $this->sanitizeCsvRow([
-                    $c->id,
-                    $c->lease?->renter?->name ?? '—',
-                    $c->lease?->renter?->phone ?? '—',
-                    $c->lease?->unit?->property?->name ?? '—',
-                    $c->lease?->unit?->name ?? '—',
-                    $c->period_start?->format('m/Y'),
-                    $c->due_date?->format('Y-m-d'),
-                    number_format((float) $c->amount, 2, '.', ''),
-                    number_format((float) $c->paid_amount, 2, '.', ''),
-                    number_format((float) $c->outstanding_balance, 2, '.', ''),
-                    $c->is_fully_paid ? 'مسدد بالكامل' : ($c->is_overdue ? 'متأخر' : 'مستحق'),
-                ]));
-            }
-
-            fclose($handle);
-        }, $filename, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ]);
+        return $this->streamCsv('dar-collections-'.date('Y-m-d').'.csv', [
+            'رقم المعرف',
+            'المستأجر',
+            'رقم الهاتف',
+            'العقار',
+            'الوحدة',
+            'الفترة',
+            'تاريخ الاستحقاق',
+            'المبلغ المطلوب',
+            'المبلغ المسدد',
+            'المتبقي',
+            'الحالة',
+        ], $charges->map(fn (RentCharge $charge): array => [
+            $charge->id,
+            $charge->lease?->renter->name ?? '—',
+            $charge->lease?->renter->phone ?? '—',
+            $charge->lease?->unit?->property->name ?? '—',
+            $charge->lease?->unit->name ?? '—',
+            $charge->period_start->format('m/Y'),
+            $charge->due_date->format('Y-m-d'),
+            number_format((float) $charge->amount, 2, '.', ''),
+            number_format($charge->paid_amount, 2, '.', ''),
+            number_format($charge->outstanding_balance, 2, '.', ''),
+            $charge->is_fully_paid ? 'مسدد بالكامل' : ($charge->is_overdue ? 'متأخر' : 'مستحق'),
+        ]));
     }
 
     /**
@@ -393,52 +220,35 @@ class ReportService
             ->latest('paid_at')
             ->get();
 
-        $filename = 'dar-payments-'.date('Y-m-d').'.csv';
+        return $this->streamCsv('dar-payments-'.date('Y-m-d').'.csv', [
+            'رقم السند',
+            'المستأجر',
+            'رقم الهاتف',
+            'العقار والوحدة',
+            'المبلغ المحصل',
+            'طريقة الدفع',
+            'تاريخ التحصيل',
+            'الملاحظات',
+        ], $payments->map(function (Payment $payment): array {
+            $unit = $payment->allocations->first()?->rentCharge?->lease?->unit;
+            $property = $unit?->property;
 
-        return response()->streamDownload(function () use ($payments): void {
-            $handle = fopen('php://output', 'w');
-            if ($handle === false) {
-                return;
-            }
-            fwrite($handle, "\xEF\xBB\xBF");
-
-            fputcsv($handle, [
-                'رقم السند',
-                'المستأجر',
-                'رقم الهاتف',
-                'العقار والوحدة',
-                'المبلغ المحصل',
-                'طريقة الدفع',
-                'تاريخ التحصيل',
-                'الملاحظات',
-            ]);
-
-            foreach ($payments as $payment) {
-                $unit = $payment->allocations->first()?->rentCharge?->lease?->unit;
-                $property = $unit?->property;
-
-                fputcsv($handle, $this->sanitizeCsvRow([
-                    $payment->reference ?? 'REC-'.$payment->id,
-                    $payment->renter?->name ?? '—',
-                    $payment->renter?->phone ?? '—',
-                    ($property ? $property->name.' — ' : '').($unit?->name ?? '—'),
-                    number_format((float) $payment->amount, 2, '.', ''),
-                    match ($payment->payment_method) {
-                        'bank_transfer' => 'تحويل بنكي',
-                        'cash' => 'نقدي',
-                        'cheque' => 'شيك',
-                        default => 'إلكتروني / إنستاباي',
-                    },
-                    $payment->paid_at?->format('Y-m-d H:i') ?? '',
-                    $payment->notes ?? '',
-                ]));
-            }
-
-            fclose($handle);
-        }, $filename, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ]);
+            return [
+                $payment->reference ?? 'REC-'.$payment->id,
+                $payment->renter->name ?? '—',
+                $payment->renter->phone ?? '—',
+                ($property ? $property->name.' — ' : '').($unit->name ?? '—'),
+                number_format((float) $payment->amount, 2, '.', ''),
+                match ($payment->payment_method) {
+                    'bank_transfer' => 'تحويل بنكي',
+                    'cash' => 'نقدي',
+                    'cheque' => 'شيك',
+                    default => 'إلكتروني / إنستاباي',
+                },
+                $payment->paid_at->format('Y-m-d H:i'),
+                $payment->notes ?? '',
+            ];
+        }));
     }
 
     /**
@@ -451,54 +261,33 @@ class ReportService
             ->latest('expense_date')
             ->get();
 
-        $filename = 'dar-expenses-'.date('Y-m-d').'.csv';
+        return $this->streamCsv('dar-expenses-'.date('Y-m-d').'.csv', [
+            'المعرف',
+            'بند المصروف',
+            'المصدر',
+            'الحالة',
+            'المبلغ',
+            'تاريخ المصروف',
+            'العقار',
+            'الوحدة',
+            'المسؤول عن التسجيل',
+            'الملاحظات',
+        ], $expenses->map(function (Expense $expense): array {
+            $hasAmount = $expense->amount !== null && (float) $expense->amount > 0;
 
-        return response()->streamDownload(function () use ($expenses): void {
-            $handle = fopen('php://output', 'w');
-            if ($handle === false) {
-                return;
-            }
-            fwrite($handle, "\xEF\xBB\xBF");
-
-            fputcsv($handle, [
-                'المعرف',
-                'بند المصروف',
-                'المصدر',
-                'الحالة',
-                'المبلغ',
-                'تاريخ المصروف',
-                'العقار',
-                'الوحدة',
-                'المسؤول عن التسجيل',
-                'الملاحظات',
-            ]);
-
-            foreach ($expenses as $expense) {
-                $hasAmount = $expense->amount !== null && (float) $expense->amount > 0;
-                $statusText = ! $hasAmount ? 'بانتظار المبلغ' : match ($expense->status) {
-                    'ready', 'ready_to_apply' => 'جاهز',
-                    default => 'تم تسجيلها',
-                };
-
-                fputcsv($handle, $this->sanitizeCsvRow([
-                    $expense->id,
-                    $expense->title ?: $expense->category,
-                    $expense->origin === 'maintenance' ? 'مصدر: صيانة' : 'يدوي مباشر',
-                    $statusText,
-                    $hasAmount ? number_format((float) $expense->amount, 2, '.', '') : 'غير محدد',
-                    $expense->expense_date?->format('Y-m-d'),
-                    $expense->property?->name ?? 'عام للمنشأة',
-                    $expense->unit?->name ?? '—',
-                    $expense->recorder?->name ?? 'المستخدم',
-                    $expense->notes ?? '',
-                ]));
-            }
-
-            fclose($handle);
-        }, $filename, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ]);
+            return [
+                $expense->id,
+                $expense->title ?: $expense->category,
+                $expense->origin_label,
+                $this->expenseExportStatus($expense, $hasAmount),
+                $hasAmount ? number_format((float) $expense->amount, 2, '.', '') : 'غير محدد',
+                $expense->expense_date->format('Y-m-d'),
+                $expense->property->name ?? 'عام للمنشأة',
+                $expense->unit->name ?? '—',
+                $expense->recorder->name ?? 'المستخدم',
+                $expense->notes ?? '',
+            ];
+        }));
     }
 
     /**
@@ -511,48 +300,201 @@ class ReportService
             ->latest('starts_on')
             ->get();
 
-        $filename = 'dar-leases-'.date('Y-m-d').'.csv';
+        return $this->streamCsv('dar-leases-'.date('Y-m-d').'.csv', [
+            'رقم العقد',
+            'المستأجر',
+            'رقم الهاتف',
+            'الهوية الوطنية',
+            'العقار',
+            'الوحدة',
+            'تاريخ البداية',
+            'تاريخ النهاية',
+            'الإيجار الشهري',
+            'مبلغ التأمين',
+            'حالة العقد',
+        ], $leases->map(fn (Lease $lease): array => [
+            $lease->contract_number,
+            $lease->renter->name ?? '—',
+            $lease->renter->phone ?? '—',
+            $lease->renter->national_id ?? '—',
+            $lease->unit?->property->name ?? '—',
+            $lease->unit->name ?? '—',
+            $lease->starts_on->format('Y-m-d'),
+            $lease->ends_on->format('Y-m-d'),
+            number_format((float) $lease->rent_amount, 2, '.', ''),
+            number_format((float) $lease->security_deposit_amount, 2, '.', ''),
+            match ($lease->status) {
+                'active' => 'سارٍ',
+                'expired' => 'منتهي',
+                'terminated' => 'ملغي',
+                default => $lease->status,
+            },
+        ]));
+    }
 
-        return response()->streamDownload(function () use ($leases): void {
+    /**
+     * Rent payments received in the range. A property or unit filter matches a payment allocated to a
+     * charge of that location, or a payment from a renter who leases there.
+     */
+    private function totalCollected(Workspace $workspace, Carbon $startDate, Carbon $endDate, ?int $propertyId, ?int $unitId): float
+    {
+        $paymentsQuery = $workspace->payments()->whereBetween('paid_at', [$startDate, $endDate]);
+
+        if ($propertyId) {
+            $paymentsQuery->where(function ($query) use ($propertyId): void {
+                $query->whereHas('allocations.rentCharge.lease.unit', fn ($unitQuery) => $unitQuery->where('property_id', $propertyId))
+                    ->orWhereHas('renter.leases.unit', fn ($unitQuery) => $unitQuery->where('property_id', $propertyId));
+            });
+        }
+        if ($unitId) {
+            $paymentsQuery->where(function ($query) use ($unitId): void {
+                $query->whereHas('allocations.rentCharge.lease', fn ($leaseQuery) => $leaseQuery->where('unit_id', $unitId))
+                    ->orWhereHas('renter.leases', fn ($leaseQuery) => $leaseQuery->where('unit_id', $unitId));
+            });
+        }
+
+        return (float) $paymentsQuery->sum('amount');
+    }
+
+    /**
+     * @return array{security_deposits_received: float, security_deposits_refunded: float, security_deposits_retained: float, security_deposit_balance: float}
+     */
+    private function securityDepositFigures(Workspace $workspace, Carbon $startDate, Carbon $endDate, ?int $propertyId, ?int $unitId): array
+    {
+        $depositPaymentsQuery = SecurityDepositPayment::where('workspace_id', $workspace->id)
+            ->where('is_reversed', false)
+            ->whereBetween('paid_at', [$startDate, $endDate]);
+        $this->whereLeaseLocation($depositPaymentsQuery, 'lease', $propertyId, $unitId);
+
+        $depositRefundsQuery = SecurityDepositRefund::where('workspace_id', $workspace->id)
+            ->where('is_reversed', false)
+            ->whereBetween('refunded_at', [$startDate, $endDate]);
+        $this->whereLeaseLocation($depositRefundsQuery, 'lease', $propertyId, $unitId);
+
+        $depositDeductionsQuery = SecurityDepositDeduction::where('workspace_id', $workspace->id)
+            ->where('status', 'confirmed')
+            ->whereBetween('deducted_at', [$startDate, $endDate]);
+        $this->whereLeaseLocation($depositDeductionsQuery, 'lease', $propertyId, $unitId);
+
+        // Deposits currently held in custody
+        $heldLeasesQuery = Lease::where('workspace_id', $workspace->id)
+            ->whereIn('security_deposit_status', ['held', 'under_review', 'partially_refunded']);
+        if ($propertyId) {
+            $heldLeasesQuery->whereHas('unit', fn ($unitQuery) => $unitQuery->where('property_id', $propertyId));
+        }
+        if ($unitId) {
+            $heldLeasesQuery->where('unit_id', $unitId);
+        }
+
+        return [
+            'security_deposits_received' => (float) $depositPaymentsQuery->sum('amount'),
+            'security_deposits_refunded' => (float) $depositRefundsQuery->sum('amount'),
+            'security_deposits_retained' => (float) $depositDeductionsQuery->sum('amount'),
+            'security_deposit_balance' => (float) $heldLeasesQuery->sum('security_deposit_amount'),
+        ];
+    }
+
+    /**
+     * Collected rent and paid expenses for each month of the given year.
+     *
+     * @return list<array{month: int, month_name: string, collected: float, expenses: float, net: float}>
+     */
+    private function monthlyBreakdown(Workspace $workspace, int $year, ?int $propertyId, ?int $unitId, ?string $category): array
+    {
+        $monthlyBreakdown = [];
+
+        foreach (self::ARABIC_MONTH_NAMES as $month => $monthName) {
+            $monthStart = Carbon::createMidnightDate($year, $month, 1);
+            $monthEnd = $monthStart->copy()->endOfMonth();
+
+            $collectedQuery = $workspace->payments()->whereBetween('paid_at', [$monthStart, $monthEnd]);
+            $this->whereLeaseLocation($collectedQuery, 'allocations.rentCharge.lease', $propertyId, $unitId);
+            $collected = (float) $collectedQuery->sum('amount');
+
+            $spentQuery = $workspace->expenses()
+                ->whereNotNull('amount')
+                ->where('amount', '>', 0)
+                ->where(function ($query): void {
+                    $query->where('payment_status', 'paid')
+                        ->orWhereNotNull('paid_at');
+                })
+                ->whereBetween('expense_date', [$monthStart->toDateString(), $monthEnd->toDateString()]);
+            $this->whereExpenseFilters($spentQuery, $propertyId, $unitId, $category);
+            $spent = (float) $spentQuery->sum('amount');
+
+            $monthlyBreakdown[] = [
+                'month' => $month,
+                'month_name' => $monthName,
+                'collected' => $collected,
+                'expenses' => $spent,
+                'net' => $collected - $spent,
+            ];
+        }
+
+        return $monthlyBreakdown;
+    }
+
+    /**
+     * Restrict a query to a property and/or unit through the relation path that leads to a lease.
+     *
+     * @param  Builder<*>|Relation<*, *, *>  $query
+     */
+    private function whereLeaseLocation(Builder|Relation $query, string $leaseRelation, ?int $propertyId, ?int $unitId): void
+    {
+        if ($propertyId) {
+            $query->whereHas("{$leaseRelation}.unit", fn ($unitQuery) => $unitQuery->where('property_id', $propertyId));
+        }
+        if ($unitId) {
+            $query->whereHas($leaseRelation, fn ($leaseQuery) => $leaseQuery->where('unit_id', $unitId));
+        }
+    }
+
+    /**
+     * @param  Relation<Expense, Workspace, *>  $expensesQuery
+     */
+    private function whereExpenseFilters(Relation $expensesQuery, ?int $propertyId, ?int $unitId, ?string $category): void
+    {
+        if ($propertyId) {
+            $expensesQuery->where('property_id', $propertyId);
+        }
+        if ($unitId) {
+            $expensesQuery->where('unit_id', $unitId);
+        }
+        if ($category && $category !== 'all') {
+            $expensesQuery->where('category', $category);
+        }
+    }
+
+    private function expenseExportStatus(Expense $expense, bool $hasAmount): string
+    {
+        if (! $hasAmount) {
+            return ExpenseStatus::PendingAmount->label();
+        }
+
+        return match ($expense->status) {
+            'ready', 'ready_to_apply' => ExpenseStatus::Ready->label(),
+            default => ExpenseStatus::Recorded->label(),
+        };
+    }
+
+    /**
+     * Stream an Excel-compatible CSV (UTF-8 BOM) with formula-injection-safe cells.
+     *
+     * @param  array<int, string>  $header
+     * @param  iterable<array<int, mixed>>  $rows
+     */
+    private function streamCsv(string $filename, array $header, iterable $rows): StreamedResponse
+    {
+        return response()->streamDownload(function () use ($header, $rows): void {
             $handle = fopen('php://output', 'w');
             if ($handle === false) {
                 return;
             }
             fwrite($handle, "\xEF\xBB\xBF");
 
-            fputcsv($handle, [
-                'رقم العقد',
-                'المستأجر',
-                'رقم الهاتف',
-                'الهوية الوطنية',
-                'العقار',
-                'الوحدة',
-                'تاريخ البداية',
-                'تاريخ النهاية',
-                'الإيجار الشهري',
-                'مبلغ التأمين',
-                'حالة العقد',
-            ]);
-
-            foreach ($leases as $lease) {
-                fputcsv($handle, $this->sanitizeCsvRow([
-                    'C-02'.($lease->id + 4),
-                    $lease->renter?->name ?? '—',
-                    $lease->renter?->phone ?? '—',
-                    $lease->renter?->national_id ?? '—',
-                    $lease->unit?->property?->name ?? '—',
-                    $lease->unit?->name ?? '—',
-                    $lease->starts_on?->format('Y-m-d'),
-                    $lease->ends_on?->format('Y-m-d'),
-                    number_format((float) $lease->rent_amount, 2, '.', ''),
-                    number_format((float) $lease->security_deposit_amount, 2, '.', ''),
-                    match ($lease->status) {
-                        'active' => 'سارٍ',
-                        'expired' => 'منتهي',
-                        'terminated' => 'ملغي',
-                        default => $lease->status,
-                    },
-                ]));
+            fputcsv($handle, $header);
+            foreach ($rows as $row) {
+                fputcsv($handle, $this->sanitizeCsvRow($row));
             }
 
             fclose($handle);

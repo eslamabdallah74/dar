@@ -1,14 +1,10 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import {
-    ArrowUpDown,
     MessageCircle,
     CreditCard,
     CheckCircle2,
-    Calendar,
     Search,
-    MapPin,
-    Building2,
 } from 'lucide-vue-next';
 
 interface DueItem {

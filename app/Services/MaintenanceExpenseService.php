@@ -8,15 +8,20 @@ use App\Enums\ExpenseOrigin;
 use App\Enums\ExpenseStatus;
 use App\Enums\MaintenanceStatus;
 use App\Models\Expense;
+use App\Models\MaintenanceAttachment;
 use App\Models\MaintenanceRequest;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Storage\DocumentStorageService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class MaintenanceExpenseService
 {
+    public function __construct(
+        private readonly DocumentStorageService $storage
+    ) {}
+
     /**
      * Atomically create a maintenance request and its corresponding pending expense.
      * Guarantees that neither record can be orphaned if the other fails.
@@ -30,25 +35,8 @@ class MaintenanceExpenseService
         return DB::transaction(function () use ($workspace, $data, $userId) {
             $recordedBy = $userId ?? $workspace->owner_user_id ?? auth()->id();
 
-            // Validate property belongs to workspace
-            $propertyExists = $workspace->properties()->where('id', $data['property_id'])->exists();
-            if (! $propertyExists) {
-                throw new \InvalidArgumentException('العقار المحدد غير صالح أو لا ينتمي لمساحة العمل الحالية.');
-            }
+            $this->assertLocationBelongsToWorkspace($workspace, $data['property_id'], $data['unit_id'] ?? null);
 
-            // Validate unit belongs to property and workspace if specified
-            if (! empty($data['unit_id'])) {
-                $unitExists = $workspace->units()
-                    ->where('id', $data['unit_id'])
-                    ->where('property_id', $data['property_id'])
-                    ->exists();
-
-                if (! $unitExists) {
-                    throw new \InvalidArgumentException('الوحدة المحددة غير صالحة أو لا تنتمي للعقار المحدد.');
-                }
-            }
-
-            // 1. Create maintenance request
             $maintenance = $workspace->maintenanceRequests()->create([
                 'property_id' => $data['property_id'],
                 'unit_id' => $data['unit_id'] ?? null,
@@ -59,63 +47,46 @@ class MaintenanceExpenseService
                 'reported_at' => now(),
             ]);
 
-            // 2. Atomically create corresponding pending expense with null amount
-            $expense = Expense::create([
-                'workspace_id' => $workspace->id,
-                'property_id' => $maintenance->property_id,
-                'unit_id' => $maintenance->unit_id,
-                'maintenance_request_id' => $maintenance->id,
-                'category' => 'صيانة وتشغيل',
-                'title' => $maintenance->title,
-                'amount' => null, // Explicitly null initially
-                'expense_date' => now()->toDateString(),
-                'notes' => $maintenance->description,
-                'origin' => ExpenseOrigin::Maintenance->value,
-                'status' => ExpenseStatus::PendingAmount->value,
-                'payment_status' => 'unpaid',
-                'recorded_by' => $recordedBy,
-            ]);
+            $expense = $this->createPendingExpense($maintenance, $recordedBy, now()->toDateString());
 
-            // 3. Store initial attachments if provided
-            if (! empty($data['attachments']) && is_array($data['attachments'])) {
+            if (is_array($data['attachments'] ?? null)) {
                 foreach ($data['attachments'] as $file) {
                     if ($file instanceof UploadedFile) {
-                        $originalName = $file->getClientOriginalName();
-                        $extension = $file->getClientOriginalExtension() ?: 'bin';
-                        $safeName = Str::uuid()->toString().'.'.strtolower($extension);
-                        $path = $file->storeAs("maintenance/{$workspace->id}/{$maintenance->id}", $safeName, 'local');
-
-                        $maintenance->attachments()->create([
-                            'workspace_id' => $workspace->id,
-                            'file_path' => $path,
-                            'original_filename' => $originalName,
-                            'mime_type' => $file->getMimeType() ?: 'application/octet-stream',
-                            'file_size' => $file->getSize() ?: 0,
-                            'uploaded_by' => $recordedBy,
-                        ]);
+                        $this->storeAttachment($maintenance, $file, $recordedBy);
                     }
                 }
             }
 
-            // 4. Record history event
-            if (function_exists('activity')) {
-                $causer = $userId ? User::find($userId) : auth()->user();
-                activity('maintenance')
-                    ->performedOn($maintenance)
-                    ->causedBy($causer)
-                    ->withProperties([
-                        'workspace_id' => $workspace->id,
-                        'property_id' => $maintenance->property_id,
-                        'unit_id' => $maintenance->unit_id,
-                        'title' => $maintenance->title,
-                        'status' => $maintenance->status,
-                        'expense_id' => $expense->id,
-                    ])
-                    ->log('تم تسجيل طلب صيانة جديد وإنشاء بند المصروف المرتبط به');
-            }
+            activity('maintenance')
+                ->performedOn($maintenance)
+                ->causedBy($this->causer($userId))
+                ->withProperties([
+                    'workspace_id' => $workspace->id,
+                    'property_id' => $maintenance->property_id,
+                    'unit_id' => $maintenance->unit_id,
+                    'title' => $maintenance->title,
+                    'status' => $maintenance->status,
+                    'expense_id' => $expense->id,
+                ])
+                ->log('تم تسجيل طلب صيانة جديد وإنشاء بند المصروف المرتبط به');
 
             return $maintenance->load(['expense', 'attachments']);
         });
+    }
+
+    /**
+     * Store an uploaded maintenance attachment on the private disk and record it.
+     */
+    public function storeAttachment(MaintenanceRequest $maintenance, UploadedFile $file, int|string|null $uploadedBy): MaintenanceAttachment
+    {
+        return $maintenance->attachments()->create([
+            'workspace_id' => $maintenance->workspace_id,
+            'file_path' => $this->storage->storePrivate($file, "maintenance/{$maintenance->workspace_id}/{$maintenance->id}"),
+            'original_filename' => $file->getClientOriginalName(),
+            'mime_type' => $file->getMimeType() ?: 'application/octet-stream',
+            'file_size' => $file->getSize() ?: 0,
+            'uploaded_by' => $uploadedBy,
+        ]);
     }
 
     /**
@@ -129,44 +100,41 @@ class MaintenanceExpenseService
                 ->lockForUpdate()
                 ->first();
 
-            $recordedBy = $userId
-                ?? $existingExpense?->recorded_by
-                ?? $maintenance->workspace?->owner_user_id
-                ?? auth()->id();
+            if ($existingExpense === null) {
+                $recordedBy = $userId ?? $maintenance->workspace->owner_user_id ?? auth()->id();
 
-            if ($existingExpense) {
-                $updateData = [
-                    'property_id' => $maintenance->property_id,
-                    'unit_id' => $maintenance->unit_id,
-                    'title' => $maintenance->title,
-                ];
-
-                // If notes were empty or match old description, keep it synced
-                if (empty($existingExpense->notes) || $existingExpense->notes === $existingExpense->getOriginal('notes')) {
-                    $updateData['notes'] = $maintenance->description;
-                }
-
-                $existingExpense->update($updateData);
-
-                return $existingExpense->fresh();
+                return $this->createPendingExpense($maintenance, $recordedBy, $maintenance->reported_at->toDateString());
             }
 
-            return Expense::create([
-                'workspace_id' => $maintenance->workspace_id,
+            $updatedAttributes = [
                 'property_id' => $maintenance->property_id,
                 'unit_id' => $maintenance->unit_id,
-                'maintenance_request_id' => $maintenance->id,
-                'category' => 'صيانة وتشغيل',
                 'title' => $maintenance->title,
-                'amount' => null,
-                'expense_date' => $maintenance->reported_at?->toDateString() ?? now()->toDateString(),
-                'notes' => $maintenance->description,
-                'origin' => ExpenseOrigin::Maintenance->value,
-                'status' => ExpenseStatus::PendingAmount->value,
-                'payment_status' => 'unpaid',
-                'recorded_by' => $recordedBy,
-            ]);
+            ];
+
+            // Notes that are empty or still a copy of the previous description follow the description; notes the user wrote are kept.
+            if (empty($existingExpense->notes) || $existingExpense->notes === $this->descriptionBeforeLastSave($maintenance)) {
+                $updatedAttributes['notes'] = $maintenance->description;
+            }
+
+            $existingExpense->update($updatedAttributes);
+
+            return $existingExpense->refresh();
         });
+    }
+
+    /**
+     * The description the request had before its latest save; callers sync right after saving the request.
+     */
+    private function descriptionBeforeLastSave(MaintenanceRequest $maintenance): ?string
+    {
+        if (! $maintenance->wasChanged('description')) {
+            return $maintenance->description;
+        }
+
+        $previousDescription = $maintenance->getPrevious()['description'] ?? null;
+
+        return is_string($previousDescription) ? $previousDescription : null;
     }
 
     /**
@@ -178,11 +146,11 @@ class MaintenanceExpenseService
     public function transitionStatus(MaintenanceRequest $maintenance, string $newStatus, ?int $userId = null): MaintenanceRequest
     {
         return DB::transaction(function () use ($maintenance, $newStatus, $userId) {
-            $maintenance = MaintenanceRequest::where('id', $maintenance->id)
+            $lockedMaintenance = MaintenanceRequest::where('id', $maintenance->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $oldStatus = $maintenance->status;
+            $previousStatus = $lockedMaintenance->status;
 
             $targetStatus = match ($newStatus) {
                 'pending', 'open' => 'pending',
@@ -191,73 +159,29 @@ class MaintenanceExpenseService
                 default => throw new \InvalidArgumentException("حالة غير صالحة: {$newStatus}"),
             };
 
-            if ($targetStatus === 'completed') {
-                // Lock and inspect linked expense
-                $expense = Expense::where('maintenance_request_id', $maintenance->id)
-                    ->lockForUpdate()
-                    ->first();
+            match ($targetStatus) {
+                'completed' => $this->complete($lockedMaintenance),
+                'in_progress' => $this->start($lockedMaintenance),
+                'pending' => $this->reopen($lockedMaintenance),
+            };
 
-                if (! $expense || (int) $expense->workspace_id !== (int) $maintenance->workspace_id || (int) $expense->maintenance_request_id !== (int) $maintenance->id) {
-                    throw new \DomainException('بند المصروف المرتبط بطلب الصيانة مفقود أو غير مرتبط بصورة صحيحة.');
-                }
+            activity('maintenance')
+                ->performedOn($lockedMaintenance)
+                ->causedBy($this->causer($userId))
+                ->withProperties([
+                    'workspace_id' => $lockedMaintenance->workspace_id,
+                    'from_status' => $previousStatus,
+                    'to_status' => $targetStatus,
+                    'started_at' => $lockedMaintenance->started_at?->toIso8601String(),
+                    'resolved_at' => $lockedMaintenance->resolved_at?->toIso8601String(),
+                ])
+                ->log(match ($targetStatus) {
+                    'in_progress' => 'تم بدء العمل في طلب الصيانة',
+                    'completed' => 'تم إنهاء وإكمال طلب الصيانة بنجاح',
+                    default => 'تم تعديل حالة طلب الصيانة إلى قيد الانتظار',
+                });
 
-                if ($expense->amount === null || (float) $expense->amount <= 0) {
-                    throw new \DomainException('يجب تسجيل تكلفة الصيانة أولًا من صفحة المصروفات قبل إنهاء الطلب.');
-                }
-
-                // Finalize expense status to recorded, but DO NOT mark as paid
-                $expense->update([
-                    'status' => ExpenseStatus::Recorded->value,
-                ]);
-
-                $maintenance->update([
-                    'status' => 'completed',
-                    'resolved_at' => now(),
-                ]);
-            } elseif ($targetStatus === 'in_progress') {
-                $updates = ['status' => 'in_progress'];
-                if (! $maintenance->started_at) {
-                    $updates['started_at'] = now();
-                }
-                $maintenance->update($updates);
-            } else {
-                // Revert to pending
-                $maintenance->update([
-                    'status' => 'pending',
-                    'resolved_at' => null,
-                ]);
-
-                $expense = Expense::where('maintenance_request_id', $maintenance->id)->first();
-                if ($expense) {
-                    $expense->update([
-                        'status' => ($expense->amount !== null && (float) $expense->amount > 0)
-                            ? ExpenseStatus::Ready->value
-                            : ExpenseStatus::PendingAmount->value,
-                    ]);
-                }
-            }
-
-            // Log activity history
-            if (function_exists('activity')) {
-                $causer = $userId ? User::find($userId) : auth()->user();
-                activity('maintenance')
-                    ->performedOn($maintenance)
-                    ->causedBy($causer)
-                    ->withProperties([
-                        'workspace_id' => $maintenance->workspace_id,
-                        'from_status' => $oldStatus,
-                        'to_status' => $targetStatus,
-                        'started_at' => $maintenance->started_at?->toIso8601String(),
-                        'resolved_at' => $maintenance->resolved_at?->toIso8601String(),
-                    ])
-                    ->log(match ($targetStatus) {
-                        'in_progress' => 'تم بدء العمل في طلب الصيانة',
-                        'completed' => 'تم إنهاء وإكمال طلب الصيانة بنجاح',
-                        default => 'تم تعديل حالة طلب الصيانة إلى قيد الانتظار',
-                    });
-            }
-
-            return $maintenance->fresh(['expense']);
+            return $lockedMaintenance->refresh()->load('expense');
         });
     }
 
@@ -272,57 +196,171 @@ class MaintenanceExpenseService
     /**
      * Update an expense from the Expenses page.
      * Updates status based on whether an amount is entered.
+     *
+     * @param  array<string, mixed>  $data
      */
     public function updateExpense(Expense $expense, array $data): Expense
     {
         return DB::transaction(function () use ($expense, $data) {
-            $expense = Expense::where('id', $expense->id)
+            $lockedExpense = Expense::where('id', $expense->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
             // Strip protected system fields that clients must never mass-assign
             unset($data['workspace_id'], $data['payment_status'], $data['paid_at'], $data['recorded_by']);
 
-            if ($expense->origin === ExpenseOrigin::Maintenance->value || $expense->maintenance_request_id !== null) {
-                // Prevent altering property, unit, origin, or maintenance link on linked maintenance expenses
-                unset($data['property_id'], $data['unit_id'], $data['maintenance_request_id'], $data['origin']);
+            $isMaintenanceExpense = $lockedExpense->origin === ExpenseOrigin::Maintenance->value
+                || $lockedExpense->maintenance_request_id !== null;
 
-                $hasAmount = array_key_exists('amount', $data)
-                    && $data['amount'] !== null
-                    && (float) $data['amount'] > 0;
-
-                if ($hasAmount) {
-                    $linkedMaintenance = $expense->relationLoaded('maintenanceRequest')
-                        ? $expense->maintenanceRequest
-                        : $expense->maintenanceRequest()->first();
-
-                    $data['status'] = ($linkedMaintenance && $linkedMaintenance->isCompleted())
-                        ? ExpenseStatus::Recorded->value
-                        : ExpenseStatus::Ready->value;
-
-                    if ($linkedMaintenance && function_exists('activity')) {
-                        activity('maintenance')
-                            ->performedOn($linkedMaintenance)
-                            ->causedBy(auth()->user())
-                            ->withProperties([
-                                'workspace_id' => $expense->workspace_id,
-                                'expense_id' => $expense->id,
-                                'amount' => $data['amount'],
-                            ])
-                            ->log('تم تسجيل تكلفة الصيانة بمبلغ: '.number_format((float) $data['amount'], 2));
-                    }
-                } else {
-                    $data['status'] = ExpenseStatus::PendingAmount->value;
-                    $data['amount'] = null;
-                }
+            if ($isMaintenanceExpense) {
+                $data = $this->maintenanceExpenseChanges($lockedExpense, $data);
             } else {
                 // Manual expenses cannot be linked to maintenance via generic update
                 unset($data['maintenance_request_id']);
             }
 
-            $expense->update($data);
+            $lockedExpense->update($data);
 
-            return $expense->fresh();
+            return $lockedExpense->refresh();
         });
+    }
+
+    /**
+     * A maintenance expense keeps its location and link; entering a positive amount makes it ready
+     * (or recorded once the work is completed), clearing it puts it back to awaiting an amount.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function maintenanceExpenseChanges(Expense $expense, array $data): array
+    {
+        unset($data['property_id'], $data['unit_id'], $data['maintenance_request_id'], $data['origin']);
+
+        $hasAmount = array_key_exists('amount', $data)
+            && $data['amount'] !== null
+            && (float) $data['amount'] > 0;
+
+        if (! $hasAmount) {
+            return [...$data, 'status' => ExpenseStatus::PendingAmount->value, 'amount' => null];
+        }
+
+        $linkedMaintenance = $expense->relationLoaded('maintenanceRequest')
+            ? $expense->maintenanceRequest
+            : $expense->maintenanceRequest()->first();
+
+        if ($linkedMaintenance !== null) {
+            activity('maintenance')
+                ->performedOn($linkedMaintenance)
+                ->causedBy(auth()->user())
+                ->withProperties([
+                    'workspace_id' => $expense->workspace_id,
+                    'expense_id' => $expense->id,
+                    'amount' => $data['amount'],
+                ])
+                ->log('تم تسجيل تكلفة الصيانة بمبلغ: '.number_format((float) $data['amount'], 2));
+        }
+
+        return [
+            ...$data,
+            'status' => $linkedMaintenance?->isCompleted() ? ExpenseStatus::Recorded->value : ExpenseStatus::Ready->value,
+        ];
+    }
+
+    /**
+     * Completion requires the linked expense to carry a recorded cost; the expense becomes
+     * "recorded" but is deliberately not marked as paid.
+     *
+     * @throws \DomainException
+     */
+    private function complete(MaintenanceRequest $maintenance): void
+    {
+        $expense = Expense::where('maintenance_request_id', $maintenance->id)
+            ->lockForUpdate()
+            ->first();
+
+        $isLinkedCorrectly = $expense !== null
+            && (int) $expense->workspace_id === (int) $maintenance->workspace_id
+            && (int) $expense->maintenance_request_id === (int) $maintenance->id;
+
+        if (! $isLinkedCorrectly) {
+            throw new \DomainException('بند المصروف المرتبط بطلب الصيانة مفقود أو غير مرتبط بصورة صحيحة.');
+        }
+
+        if ($expense->amount === null || (float) $expense->amount <= 0) {
+            throw new \DomainException('يجب تسجيل تكلفة الصيانة أولًا من صفحة المصروفات قبل إنهاء الطلب.');
+        }
+
+        $expense->update(['status' => ExpenseStatus::Recorded->value]);
+
+        $maintenance->update([
+            'status' => 'completed',
+            'resolved_at' => now(),
+        ]);
+    }
+
+    private function start(MaintenanceRequest $maintenance): void
+    {
+        $maintenance->update([
+            'status' => 'in_progress',
+            ...($maintenance->started_at ? [] : ['started_at' => now()]),
+        ]);
+    }
+
+    private function reopen(MaintenanceRequest $maintenance): void
+    {
+        $maintenance->update([
+            'status' => 'pending',
+            'resolved_at' => null,
+        ]);
+
+        $expense = Expense::where('maintenance_request_id', $maintenance->id)->first();
+        $expense?->update([
+            'status' => ($expense->amount !== null && (float) $expense->amount > 0)
+                ? ExpenseStatus::Ready->value
+                : ExpenseStatus::PendingAmount->value,
+        ]);
+    }
+
+    private function createPendingExpense(MaintenanceRequest $maintenance, int|string|null $recordedBy, string $expenseDate): Expense
+    {
+        return Expense::create([
+            'workspace_id' => $maintenance->workspace_id,
+            'property_id' => $maintenance->property_id,
+            'unit_id' => $maintenance->unit_id,
+            'maintenance_request_id' => $maintenance->id,
+            'category' => 'صيانة وتشغيل',
+            'title' => $maintenance->title,
+            'amount' => null,
+            'expense_date' => $expenseDate,
+            'notes' => $maintenance->description,
+            'origin' => ExpenseOrigin::Maintenance->value,
+            'status' => ExpenseStatus::PendingAmount->value,
+            'payment_status' => 'unpaid',
+            'recorded_by' => $recordedBy,
+        ]);
+    }
+
+    /**
+     * @throws \InvalidArgumentException
+     */
+    private function assertLocationBelongsToWorkspace(Workspace $workspace, mixed $propertyId, mixed $unitId): void
+    {
+        if (! $workspace->properties()->where('id', $propertyId)->exists()) {
+            throw new \InvalidArgumentException('العقار المحدد غير صالح أو لا ينتمي لمساحة العمل الحالية.');
+        }
+
+        $unitBelongsToProperty = empty($unitId) || $workspace->units()
+            ->where('id', $unitId)
+            ->where('property_id', $propertyId)
+            ->exists();
+
+        if (! $unitBelongsToProperty) {
+            throw new \InvalidArgumentException('الوحدة المحددة غير صالحة أو لا تنتمي للعقار المحدد.');
+        }
+    }
+
+    private function causer(?int $userId): ?User
+    {
+        return $userId ? User::find($userId) : auth()->user();
     }
 }

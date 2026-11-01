@@ -949,7 +949,7 @@ class RentalDemoSeeder extends Seeder
                 $reference = $this->nextPaymentReference();
                 $isCashPayment = $this->nextPaymentNumber % 3 === 0;
                 $this->recordDemoPayment($charge, $leaseConfig['renter'], $leaseConfig['rent'], $reference, [
-                    'paid_at' => $chargeMonth->copy()->addDays(rand(1, 5))->setTime(10, rand(10, 50)),
+                    'paid_at' => $chargeMonth->copy()->addDays(random_int(1, 5))->setTime(10, random_int(10, 50)),
                     'payment_method' => $isCashPayment ? 'cash' : 'bank_transfer',
                     'notes' => $isCashPayment ? 'سداد نقدي في الخزينة - سند يدوي' : 'تحويل بنكي - البنك الأهلي المصري',
                 ]);
@@ -968,7 +968,7 @@ class RentalDemoSeeder extends Seeder
     {
         match ($leaseConfig['current_status']) {
             'paid' => $this->recordDemoPayment($charge, $leaseConfig['renter'], $leaseConfig['rent'], $this->nextPaymentReference(), [
-                'paid_at' => now()->startOfMonth()->addDays(rand(1, 4))->setTime(11, 30),
+                'paid_at' => now()->startOfMonth()->addDays(random_int(1, 4))->setTime(11, 30),
                 'payment_method' => 'bank_transfer',
                 'notes' => 'تحويل بنكي - سداد إيجار شهر '.now()->translatedFormat('F Y'),
             ]),
@@ -1635,7 +1635,7 @@ class RentalDemoSeeder extends Seeder
                         'causer_type' => User::class,
                         'causer_id' => $this->primaryUser->id,
                         'properties' => ['ip' => '127.0.0.1'],
-                        'created_at' => now()->subHours(rand(1, 48)),
+                        'created_at' => now()->subHours(random_int(1, 48)),
                     ]
                 );
             }

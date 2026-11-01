@@ -259,12 +259,12 @@ class LeaseController extends Controller
         abort_if($lease->workspace_id !== $workspace->id, 403, 'غير مصرح لك بتعديل هذا العقد.');
 
         $request->validate([
-            'contract_image' => ['required', 'file', 'mimes:jpeg,png,jpg,webp,pdf', 'max:10240'],
+            'contract_image' => ['required', 'file', 'mimes:jpeg,png,jpg,webp,pdf', 'max:5120'],
         ], [
             'contract_image.required' => 'يرجى اختيار ملف العقد أو لقطة الشاشة.',
             'contract_image.file' => 'يجب أن يكون مرفق العقد ملفاً صالحاً.',
             'contract_image.mimes' => 'يجب أن يكون مرفق العقد صورة (JPEG, PNG, WEBP) أو ملف PDF.',
-            'contract_image.max' => 'يجب ألا يتجاوز حجم مرفق العقد 10 ميجابايت.',
+            'contract_image.max' => 'يجب ألا يتجاوز حجم مرفق العقد 5 ميجابايت.',
         ]);
 
         if ($lease->contract_image) {

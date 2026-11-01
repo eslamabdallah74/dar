@@ -22,7 +22,7 @@ class EmailNotificationJob extends BaseJob
 
     public function uniqueId(): string
     {
-        return 'email:'.$this->recipient.':'.md5($this->mailSubject.$this->contentBody);
+        return 'email:'.$this->recipient.':'.hash('sha256', $this->mailSubject.$this->contentBody);
     }
 
     public function handle(): void

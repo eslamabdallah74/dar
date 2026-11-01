@@ -41,7 +41,7 @@ class StorePaymentRequest extends FormRequest
             'record_date' => ['nullable', 'date'],
             'reference' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string'],
-            'receipt_image' => ['nullable', 'file', 'mimes:jpeg,png,jpg,webp,pdf', 'max:10240'],
+            'receipt_image' => ['nullable', 'file', 'mimes:jpeg,png,jpg,webp,pdf', 'max:5120'],
             'rent_charge_id' => [
                 'nullable',
                 Rule::exists('rent_charges', 'id')->where(fn ($query) => $workspaceId ? $query->where('workspace_id', $workspaceId) : $query),
@@ -75,7 +75,7 @@ class StorePaymentRequest extends FormRequest
             'paid_at.date' => 'تاريخ السداد غير صالح.',
             'record_date.date' => 'تاريخ القيد والتسجيل غير صالح.',
             'receipt_image.mimes' => 'صيغة صورة إيصال التحويل غير مدعومة. الصيغ المدعومة: JPG, PNG, WEBP, PDF.',
-            'receipt_image.max' => 'حجم ملف الإيصال لا يجب أن يتجاوز 10 ميجابايت.',
+            'receipt_image.max' => 'حجم ملف الإيصال لا يجب أن يتجاوز 5 ميجابايت.',
         ];
     }
 }

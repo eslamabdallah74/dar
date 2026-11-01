@@ -207,10 +207,11 @@ const submit = () => {
 
                 <!-- اختيار المستأجر -->
                 <div>
-                    <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
+                    <label for="record_renter_id" class="block text-xs font-bold text-[#163E3E] mb-1.5">
                         المستأجر / الوحدة <span class="text-rose-500">*</span>
                     </label>
                     <select
+                        id="record_renter_id"
                         v-model="form.renter_id"
                         @change="onRenterChange"
                         required
@@ -299,11 +300,12 @@ const submit = () => {
                 <!-- المبلغ وتاريخ التحصيل وتاريخ القيد -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
+                        <label for="record_amount" class="block text-xs font-bold text-[#163E3E] mb-1.5">
                             المبلغ المقبوض <span class="text-rose-500">*</span>
                         </label>
                         <div class="relative">
                             <input
+                                id="record_amount"
                                 v-model="form.amount"
                                 type="number"
                                 step="0.01"
@@ -323,10 +325,11 @@ const submit = () => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
+                        <label for="record_paid_at" class="block text-xs font-bold text-[#163E3E] mb-1.5">
                             تاريخ التحصيل الفعلي <span class="text-rose-500">*</span>
                         </label>
                         <input
+                            id="record_paid_at"
                             v-model="form.paid_at"
                             type="date"
                             required
@@ -340,10 +343,11 @@ const submit = () => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
+                        <label for="record_record_date" class="block text-xs font-bold text-[#163E3E] mb-1.5">
                             تاريخ القيد والتسجيل
                         </label>
                         <input
+                            id="record_record_date"
                             v-model="form.record_date"
                             type="date"
                             class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
@@ -359,10 +363,11 @@ const submit = () => {
                 <!-- طريقة الدفع ورقم المرجع -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
+                        <label for="record_payment_method" class="block text-xs font-bold text-[#163E3E] mb-1.5">
                             طريقة السداد <span class="text-rose-500">*</span>
                         </label>
                         <select
+                            id="record_payment_method"
                             v-model="form.payment_method"
                             required
                             class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
@@ -380,10 +385,11 @@ const submit = () => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
+                        <label for="record_payment_reference" class="block text-xs font-bold text-[#163E3E] mb-1.5">
                             رقم المرجع / الإيصال <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري / تلقائي)</span>
                         </label>
                         <input
+                            id="record_payment_reference"
                             v-model="form.reference"
                             type="text"
                             placeholder="REC-XXXXXX"
@@ -400,7 +406,7 @@ const submit = () => {
                 <!-- صورة أو لقطة شاشة لإيصال التحويل (اختياري - NOT REQUIRED) -->
                 <div class="space-y-2 pt-2 border-t border-[#D6E0E7]/60">
                     <div class="flex items-center justify-between">
-                        <label class="block text-xs font-bold text-[#163E3E]">
+                        <label for="record_receipt_image" class="block text-xs font-bold text-[#163E3E]">
                             صورة إشعار التحويل / الإيصال
                             <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span>
                         </label>
@@ -445,10 +451,15 @@ const submit = () => {
                     <!-- زر رفع الملف إذا لم يتم اختيار ملف بعد -->
                     <div
                         v-else
+                        role="button"
+                        tabindex="0"
                         @click="fileInputRef?.click()"
+                        @keydown.enter.prevent="fileInputRef?.click()"
+                        @keydown.space.prevent="fileInputRef?.click()"
                         class="border-2 border-dashed border-[#D6E0E7] hover:border-[#163E3E] rounded-2xl p-4 text-center cursor-pointer bg-[#F8FAFC] hover:bg-[#E8F0F0]/30 transition group"
                     >
                         <input
+                            id="record_receipt_image"
                             ref="fileInputRef"
                             type="file"
                             accept="image/jpeg,image/png,image/jpg,image/webp,application/pdf"
@@ -472,10 +483,11 @@ const submit = () => {
 
                 <!-- ملاحظات -->
                 <div>
-                    <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
+                    <label for="record_notes" class="block text-xs font-bold text-[#163E3E] mb-1.5">
                         ملاحظات أو تفاصيل التحويل <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span>
                     </label>
                     <textarea
+                        id="record_notes"
                         v-model="form.notes"
                         rows="2"
                         placeholder="مثل: تحويل عبر إنستاباي أو إيداع بنكي..."

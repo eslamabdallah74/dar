@@ -157,10 +157,11 @@ const exceedsBalance = computed(() => {
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <!-- Reason / Category -->
                     <div>
-                        <label class="block text-[11px] font-bold text-[#163E3E] mb-1">
+                        <label :for="`deduction_category_${idx}`" class="block text-[11px] font-bold text-[#163E3E] mb-1">
                             سبب / نوع الخصم *
                         </label>
                         <select
+                            :id="`deduction_category_${idx}`"
                             v-model="item.category"
                             required
                             class="h-10 w-full rounded-xl border border-[#D6E0E7] bg-white px-3 text-xs text-[#163E3E] focus:border-[#163E3E] focus:ring-1 focus:ring-[#163E3E]"
@@ -178,11 +179,12 @@ const exceedsBalance = computed(() => {
 
                     <!-- Amount -->
                     <div>
-                        <label class="block text-[11px] font-bold text-[#163E3E] mb-1">
+                        <label :for="`deduction_amount_${idx}`" class="block text-[11px] font-bold text-[#163E3E] mb-1">
                             مبلغ الخصم (بالجنيه) *
                         </label>
                         <div class="relative">
                             <input
+                                :id="`deduction_amount_${idx}`"
                                 v-model="item.amount"
                                 type="number"
                                 step="0.01"
@@ -202,10 +204,11 @@ const exceedsBalance = computed(() => {
 
                     <!-- Description -->
                     <div class="sm:col-span-2">
-                        <label class="block text-[11px] font-bold text-[#163E3E] mb-1">
+                        <label :for="`deduction_description_${idx}`" class="block text-[11px] font-bold text-[#163E3E] mb-1">
                             {{ item.category === 'other' ? 'توضيح سبب الخصم (مطلوب عند اختيار أخرى) *' : 'بيان ومبرر الخصم بالتفصيل *' }}
                         </label>
                         <input
+                            :id="`deduction_description_${idx}`"
                             v-model="item.description"
                             type="text"
                             maxlength="1000"
@@ -220,10 +223,11 @@ const exceedsBalance = computed(() => {
 
                     <!-- Additional notes -->
                     <div>
-                        <label class="block text-[11px] font-semibold text-[#5B6770] mb-1">
+                        <label :for="`deduction_notes_${idx}`" class="block text-[11px] font-semibold text-[#5B6770] mb-1">
                             ملاحظات إضافية (اختياري)
                         </label>
                         <input
+                            :id="`deduction_notes_${idx}`"
                             v-model="item.notes"
                             type="text"
                             maxlength="1000"
@@ -234,11 +238,12 @@ const exceedsBalance = computed(() => {
 
                     <!-- Attachment -->
                     <div>
-                        <label class="block text-[11px] font-semibold text-[#5B6770] mb-1">
+                        <label :for="`deduction_attachment_${idx}`" class="block text-[11px] font-semibold text-[#5B6770] mb-1">
                             مرفق إثبات (صورة تلف / فاتورة إصلاح - اختياري)
                         </label>
                         <div class="flex items-center gap-2">
                             <input
+                                :id="`deduction_attachment_${idx}`"
                                 type="file"
                                 accept=".jpg,.jpeg,.png,.webp,.pdf"
                                 @change="handleFileChange(idx, $event)"

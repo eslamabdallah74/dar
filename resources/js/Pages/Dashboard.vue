@@ -163,7 +163,7 @@ const paymentInitialRentChargeId = ref<number | undefined>();
 function handleRecordPayment(dueItem?: any) {
     if (dueItem) {
         paymentInitialRentChargeId.value = dueItem.id;
-        paymentInitialAmount.value = dueItem.amount_raw || parseFloat(String(dueItem.amount || '').replace(/[^0-9.]/g, '') || '0');
+        paymentInitialAmount.value = dueItem.amount_raw || Number.parseFloat(String(dueItem.amount || '').replace(/[^0-9.]/g, '') || '0');
         const matched = props.renters?.find(r => r.name === dueItem.tenant || r.id === dueItem.renter_id);
         paymentInitialRenterId.value = matched?.id;
     } else {

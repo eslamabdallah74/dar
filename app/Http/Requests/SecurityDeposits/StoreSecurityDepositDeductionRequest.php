@@ -59,7 +59,7 @@ class StoreSecurityDepositDeductionRequest extends FormRequest
             'deductions.*.category' => ['required', 'string', 'max:50'],
             'deductions.*.description' => ['required', 'string', 'max:1000'],
             'deductions.*.notes' => ['nullable', 'string', 'max:1000'],
-            'deductions.*.attachment' => ['nullable', 'file', 'mimes:jpeg,png,jpg,pdf,webp', 'max:10240'],
+            'deductions.*.attachment' => ['nullable', 'file', 'mimes:jpeg,png,jpg,pdf,webp', 'max:5120'],
             'deductions.*.amount' => ['required', 'numeric', 'gt:0', 'max:9999999999.99'],
             'deductions.*.deducted_at' => ['nullable', 'date'],
         ];

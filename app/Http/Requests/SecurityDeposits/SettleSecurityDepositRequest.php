@@ -46,7 +46,7 @@ class SettleSecurityDepositRequest extends FormRequest
             'deductions.*.amount' => ['required_with:deductions', 'numeric', 'gt:0', 'max:9999999999.99'],
             'deductions.*.description' => ['required_with:deductions', 'string', 'max:1000'],
             'deductions.*.notes' => ['nullable', 'string', 'max:1000'],
-            'deductions.*.attachment' => ['nullable', 'file', 'mimes:jpeg,png,jpg,pdf,webp', 'max:10240'],
+            'deductions.*.attachment' => ['nullable', 'file', 'mimes:jpeg,png,jpg,pdf,webp', 'max:5120'],
             'refund_status' => ['nullable', Rule::in(SecurityDepositRefundStatus::values())],
             'refund_method' => ['required_if:refund_status,refunded', 'nullable', Rule::in(PaymentMethod::values())],
             'refund_payment_date' => ['required_if:refund_status,refunded', 'nullable', 'date'],

@@ -50,7 +50,7 @@ class StoreMaintenanceRequest extends FormRequest
             'attachments.*' => [
                 'file',
                 'mimes:jpeg,jpg,png,webp,pdf',
-                'max:10240',
+                'max:5120',
             ],
         ];
     }
@@ -73,7 +73,7 @@ class StoreMaintenanceRequest extends FormRequest
             'attachments.max' => 'الحد الأقصى لعدد المرفقات هو 10 ملفات.',
             'attachments.*.file' => 'الملف المرفق غير صالح.',
             'attachments.*.mimes' => 'نوع الملف غير مدعوم. الصيغ المسموح بها هي: JPG, JPEG, PNG, WEBP, PDF.',
-            'attachments.*.max' => 'حجم الملف يجب ألا يتجاوز 10 ميجابايت.',
+            'attachments.*.max' => 'حجم الملف يجب ألا يتجاوز 5 ميجابايت.',
         ];
     }
 }

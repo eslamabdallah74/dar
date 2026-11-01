@@ -32,7 +32,7 @@ class StoreLeaseRequest extends FormRequest
             'rent_amount' => ['required', 'numeric', 'min:1'],
             'security_deposit_amount' => ['nullable', 'numeric', 'min:0'],
             'billing_interval' => ['nullable', 'in:monthly'],
-            'contract_image' => ['nullable', 'file', 'mimes:jpeg,png,jpg,webp,pdf', 'max:10240'],
+            'contract_image' => ['nullable', 'file', 'mimes:jpeg,png,jpg,webp,pdf', 'max:5120'],
             'notes' => ['nullable', 'string'],
         ];
     }
@@ -57,7 +57,7 @@ class StoreLeaseRequest extends FormRequest
             'security_deposit_amount.min' => 'يجب ألا يكون مبلغ التأمين سالباً.',
             'contract_image.file' => 'يجب أن يكون مرفق العقد ملفاً صالحاً.',
             'contract_image.mimes' => 'يجب أن يكون مرفق العقد صورة (JPEG, PNG, WEBP) أو ملف PDF.',
-            'contract_image.max' => 'يجب ألا يتجاوز حجم مرفق العقد 10 ميجابايت.',
+            'contract_image.max' => 'يجب ألا يتجاوز حجم مرفق العقد 5 ميجابايت.',
         ];
     }
 }

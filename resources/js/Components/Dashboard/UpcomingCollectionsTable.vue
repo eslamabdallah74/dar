@@ -65,8 +65,8 @@ const filteredItems = computed(() => {
         let valA = a[sortColumn.value] ?? '';
         let valB = b[sortColumn.value] ?? '';
         if (sortColumn.value === 'amount') {
-            valA = a.amount_raw ?? parseFloat(String(a.amount).replace(/[^0-9.]/g, '') || '0');
-            valB = b.amount_raw ?? parseFloat(String(b.amount).replace(/[^0-9.]/g, '') || '0');
+            valA = a.amount_raw ?? Number.parseFloat(String(a.amount).replace(/[^0-9.]/g, '') || '0');
+            valB = b.amount_raw ?? Number.parseFloat(String(b.amount).replace(/[^0-9.]/g, '') || '0');
         }
         if (valA < valB) return sortDirection.value === 'asc' ? -1 : 1;
         if (valA > valB) return sortDirection.value === 'asc' ? 1 : -1;

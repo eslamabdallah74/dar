@@ -55,7 +55,7 @@ const collectedKpi = computed(() => props.kpis.collected || props.kpis.collectio
 });
 
 const occupancyNumber = computed(() => {
-    const raw = parseInt(String(occupancyKpi.value.value).replace(/[^0-9]/g, '') || '0', 10);
+    const raw = Number.parseInt(String(occupancyKpi.value.value).replace(/[^0-9]/g, '') || '0', 10);
     return Math.min(100, Math.max(0, raw));
 });
 </script>

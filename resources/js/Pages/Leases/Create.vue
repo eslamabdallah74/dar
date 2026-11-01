@@ -425,7 +425,7 @@ const submitNewRenter = async () => {
         return;
     }
 
-    if (newRenter.value.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newRenter.value.email.trim())) {
+    if (newRenter.value.email && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(newRenter.value.email.trim())) {
         renterErrors.value.email = 'يرجى إدخال بريد إلكتروني صالح';
         return;
     }

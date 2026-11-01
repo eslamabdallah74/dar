@@ -6,6 +6,7 @@ import StatusBadge from '@/Components/Common/StatusBadge.vue';
 import EmptyState from '@/Components/Common/EmptyState.vue';
 import ModalRecordPayment from '@/Components/Common/ModalRecordPayment.vue';
 import ModalCorrectPayment from '@/Components/Common/ModalCorrectPayment.vue';
+import ResourceTableHeading from '@/Components/Common/ResourceTableHeading.vue';
 import { Download, MessageCircle, Paperclip, Pencil, Plus, Printer, Search, X } from 'lucide-vue-next';
 
 interface ChargeItem {
@@ -469,7 +470,9 @@ const rowAction =
                     <table class="hidden w-full text-right text-sm md:table">
                         <thead class="bg-[#FBFAF6] text-xs text-[#5B6770]">
                             <tr>
-                                <th scope="col" class="px-5 py-3 font-medium">المستأجر</th>
+                                <th scope="col" class="px-5 py-3 font-medium">
+                                    <ResourceTableHeading :href="route('renters.index')">المستأجر</ResourceTableHeading>
+                                </th>
                                 <th scope="col" class="px-3 py-3 font-medium">الفترة</th>
                                 <th scope="col" class="px-3 py-3 font-medium">القيمة</th>
                                 <th scope="col" class="px-3 py-3 font-medium">المتبقي</th>
@@ -617,7 +620,9 @@ const rowAction =
                         <thead class="bg-[#FBFAF6] text-xs text-[#5B6770]">
                             <tr>
                                 <th scope="col" class="px-5 py-3 font-medium">السند</th>
-                                <th scope="col" class="px-3 py-3 font-medium">المستأجر</th>
+                                <th scope="col" class="px-3 py-3 font-medium">
+                                    <ResourceTableHeading :href="route('renters.index')">المستأجر</ResourceTableHeading>
+                                </th>
                                 <th scope="col" class="px-3 py-3 font-medium">المبلغ</th>
                                 <th scope="col" class="px-3 py-3 font-medium">يغطي</th>
                                 <th scope="col" class="px-5 py-3"><span class="sr-only">إجراءات</span></th>

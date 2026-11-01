@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import EmptyState from '@/Components/Common/EmptyState.vue';
+import ResourceTableHeading from '@/Components/Common/ResourceTableHeading.vue';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
 import {
     AlertCircle,
@@ -344,8 +345,12 @@ const handleReversePayment = async (expense: ExpenseItem) => {
                             <th class="py-3.5 px-6">التاريخ</th>
                             <th class="py-3.5 px-6">البيان والمصدر</th>
                             <th class="py-3.5 px-6">التصنيف</th>
-                            <th class="py-3.5 px-6">العقار المعني</th>
-                            <th class="py-3.5 px-6">الوحدة</th>
+                            <th class="py-3.5 px-6">
+                                <ResourceTableHeading :href="route('properties.index')">العقار المعني</ResourceTableHeading>
+                            </th>
+                            <th class="py-3.5 px-6">
+                                <ResourceTableHeading :href="route('properties.index')">الوحدة</ResourceTableHeading>
+                            </th>
                             <th class="py-3.5 px-6">المبلغ</th>
                             <th class="py-3.5 px-6">الحالة</th>
                             <th class="py-3.5 px-6">الملاحظات</th>

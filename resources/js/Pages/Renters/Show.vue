@@ -4,6 +4,7 @@ import { Link, useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
 import ModalRecordPayment from '@/Components/Common/ModalRecordPayment.vue';
+import ResourceTableHeading from '@/Components/Common/ResourceTableHeading.vue';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
 import {
     AlertCircle,
@@ -583,7 +584,9 @@ const deleteDocument = async (renterDocument: DocumentItem) => {
                     <table class="w-full text-right text-xs">
                         <thead>
                             <tr class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
-                                <th class="py-3 px-5">رقم السند</th>
+                                <th class="py-3 px-5">
+                                    <ResourceTableHeading :href="route('payments.index')">رقم السند</ResourceTableHeading>
+                                </th>
                                 <th class="py-3 px-5">تاريخ التحصيل</th>
                                 <th class="py-3 px-5">المبلغ</th>
                                 <th class="py-3 px-5">طريقة الدفع</th>
@@ -633,8 +636,12 @@ const deleteDocument = async (renterDocument: DocumentItem) => {
                         <table class="w-full text-right text-xs">
                             <thead>
                                 <tr class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
-                                    <th class="py-3 px-5">رقم العقد</th>
-                                    <th class="py-3 px-5">الوحدة</th>
+                                    <th class="py-3 px-5">
+                                        <ResourceTableHeading :href="route('leases.index')">رقم العقد</ResourceTableHeading>
+                                    </th>
+                                    <th class="py-3 px-5">
+                                        <ResourceTableHeading :href="route('properties.index')">الوحدة</ResourceTableHeading>
+                                    </th>
                                     <th class="py-3 px-5">التأمين المتفق عليه</th>
                                     <th class="py-3 px-5">المحصل الفعلي</th>
                                     <th class="py-3 px-5">الخصومات</th>

@@ -51,14 +51,11 @@ class LeaseUnitOptionsService
                 if ($rootA !== $rootB) {
                     return $rootA <=> $rootB;
                 }
-                if ($a->id === $rootA) {
-                    return -1;
-                }
-                if ($b->id === $rootB) {
-                    return 1;
-                }
 
-                return $a->id <=> $b->id;
+                $rankA = $a->id === $rootA ? 0 : 1;
+                $rankB = $b->id === $rootB ? 0 : 1;
+
+                return [$rankA, $a->id] <=> [$rankB, $b->id];
             })
             ->map(function (Unit $unit) use ($unitTree, $activeLeasesByUnitId, &$apartmentGenders): array {
                 $apartmentId = $unitTree->apartmentIdOf($unit->id);

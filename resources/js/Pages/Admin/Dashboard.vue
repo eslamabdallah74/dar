@@ -1191,10 +1191,12 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                     <div class="p-3.5 rounded-xl border border-[#D6E0E7] bg-white space-y-2">
                         <div class="flex items-center justify-between">
                             <InputLabel for="parent_unit_limit" value="الحد الأقصى لإنشاء الوحدات الرئيسية" class="font-bold text-[#163E3E]" />
-                            <label class="flex items-center gap-1.5 text-xs text-[#163E3E] font-semibold cursor-pointer">
-                                <Checkbox v-model:checked="limitsForm.is_parent_unit_unlimited" />
-                                <span>غير محدود (Unlimited)</span>
-                            </label>
+                            <div class="flex items-center gap-1.5">
+                                <Checkbox id="dashboard_is_parent_unit_unlimited" v-model:checked="limitsForm.is_parent_unit_unlimited" />
+                                <label for="dashboard_is_parent_unit_unlimited" class="text-xs text-[#163E3E] font-semibold cursor-pointer">
+                                    غير محدود (Unlimited)
+                                </label>
+                            </div>
                         </div>
                         <p class="text-[11px] text-[#5B6770]">
                             ينطبق على الشقق والمحلات الرئيسية. لا يفرض قيوداً على الأوض أو الأسِرَّة (Child Units).
@@ -1220,10 +1222,12 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                     <div class="p-3.5 rounded-xl border border-[#D6E0E7] bg-white space-y-2">
                         <div class="flex items-center justify-between">
                             <InputLabel for="active_rental_limit" value="الحد الأقصى للتأجير النشط المتزامن" class="font-bold text-[#163E3E]" />
-                            <label class="flex items-center gap-1.5 text-xs text-[#163E3E] font-semibold cursor-pointer">
-                                <Checkbox v-model:checked="limitsForm.is_active_rental_unlimited" />
-                                <span>غير محدود (Unlimited)</span>
-                            </label>
+                            <div class="flex items-center gap-1.5">
+                                <Checkbox id="dashboard_is_active_rental_unlimited" v-model:checked="limitsForm.is_active_rental_unlimited" />
+                                <label for="dashboard_is_active_rental_unlimited" class="text-xs text-[#163E3E] font-semibold cursor-pointer">
+                                    غير محدود (Unlimited)
+                                </label>
+                            </div>
                         </div>
                         <p class="text-[11px] text-[#5B6770]">
                             يحتسب بعدد العقارات الرئيسية المؤجرة فعلياً. تأجير عدة غرف بنفس الشقة يستهلك خانة تأجير واحدة فقط.

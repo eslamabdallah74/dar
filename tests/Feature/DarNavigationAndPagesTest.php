@@ -130,7 +130,7 @@ test('leases list and create page with conflict check work correctly', function 
 
 test('payments index renders and records a payment correctly', function () {
     $this->actingAs($this->user)
-        ->get('/payments')
+        ->get(route('payments.index'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Payments/Index')
@@ -139,7 +139,7 @@ test('payments index renders and records a payment correctly', function () {
         );
 
     $this->actingAs($this->user)
-        ->post('/payments', [
+        ->post(route('payments.store'), [
             'renter_id' => $this->renter->id,
             'amount' => 3200.00,
             'payment_method' => 'bank_transfer',
@@ -190,14 +190,14 @@ test('maintenance and expenses pages render and accept submissions', function ()
     ]);
 
     $this->actingAs($this->user)
-        ->get('/expenses')
+        ->get(route('expenses.index'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Expenses/Index')
         );
 
     $this->actingAs($this->user)
-        ->post('/expenses', [
+        ->post(route('expenses.store'), [
             'property_id' => $this->property->id,
             'category' => 'صيانة وتشغيل',
             'amount' => 450.00,

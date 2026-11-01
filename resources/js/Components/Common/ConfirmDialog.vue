@@ -147,6 +147,7 @@ onUnmounted(() => {
                     class="absolute inset-0 bg-[#0F2A2A]/55 backdrop-blur-[3px]"
                     aria-hidden="true"
                     @click="settle(false)"
+                    @keydown.esc="settle(false)"
                 ></div>
 
                 <Transition

@@ -206,18 +206,20 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
         // Control Actions
-        Route::get('/workspaces/{workspace}', [AdminDashboardController::class, 'showWorkspace'])->name('workspaces.show');
-        Route::put('/workspaces/{workspace}/limits', [AdminDashboardController::class, 'updateWorkspaceLimits'])->name('workspaces.limits.update');
-        Route::post('/workspaces/{workspace}/impersonate', [AdminDashboardController::class, 'impersonateWorkspace'])->name('workspaces.impersonate');
-        Route::put('/workspaces/{workspace}', [AdminDashboardController::class, 'updateWorkspace'])->name('workspaces.update');
-        Route::delete('/workspaces/{workspace}', [AdminDashboardController::class, 'destroyWorkspace'])->name('workspaces.destroy');
+        Route::prefix('workspaces/{workspace}')->name('workspaces.')->group(function () {
+            Route::get('/', [AdminDashboardController::class, 'showWorkspace'])->name('show');
+            Route::put('/', [AdminDashboardController::class, 'updateWorkspace'])->name('update');
+            Route::delete('/', [AdminDashboardController::class, 'destroyWorkspace'])->name('destroy');
+            Route::put('/limits', [AdminDashboardController::class, 'updateWorkspaceLimits'])->name('limits.update');
+            Route::post('/impersonate', [AdminDashboardController::class, 'impersonateWorkspace'])->name('impersonate');
+            Route::post('/subscription', [AdminDashboardController::class, 'updateSubscription'])->name('subscription');
+        });
 
         Route::post('/users', [AdminDashboardController::class, 'storeUser'])->name('users.store');
         Route::put('/users/{user}', [AdminDashboardController::class, 'updateUser'])->name('users.update');
         Route::patch('/users/{user}/toggle-admin', [AdminDashboardController::class, 'toggleAdmin'])->name('users.toggle-admin');
         Route::delete('/users/{user}', [AdminDashboardController::class, 'destroyUser'])->name('users.destroy');
 
-        Route::post('/workspaces/{workspace}/subscription', [AdminDashboardController::class, 'updateSubscription'])->name('workspaces.subscription');
         Route::patch('/leases/{lease}/status', [AdminDashboardController::class, 'updateLeaseStatus'])->name('leases.status');
         Route::patch('/maintenance/{maintenance}/status', [AdminDashboardController::class, 'updateMaintenanceStatus'])->name('maintenance.status');
     });

@@ -201,36 +201,27 @@ test('scenario 5: renting one room leaves sibling rooms independently available'
 });
 
 // -------------------------------------------------------------------------
-// Scenario 6: Attempting to rent a partially occupied room is rejected
+// Scenarios 6 & 7: Attempting to rent a partially occupied unit is rejected
 // -------------------------------------------------------------------------
 
-test('scenario 6: renting a room with a rented bed inside is rejected by conflict service mock', function () {
+test('scenarios 6 & 7: renting a unit with active rental on its descendant is rejected by conflict service', function (string $unitKey, int $targetId, string $descendantName): void {
+    $sampleStart = '2026-11-01';
+    $sampleEnd = '2027-05-01';
     $conflictService = $this->mock(RentalConflictService::class);
     $conflictService->shouldReceive('validateRentalAvailability')
-        ->withArgs(fn (Unit $unit) => $unit->id === 2)
+        ->withArgs(fn (Unit $unit): bool => $unit->id === $targetId)
         ->andThrow(ValidationException::withMessages([
-            'unit_id' => 'تعارض في التواريخ: الوحدة المرتبطة (Bed 1) مرتبطة بالفعل بعقد إيجار سارٍ.',
+            'unit_id' => "تعارض في التواريخ: الوحدة المرتبطة ({$descendantName}) مرتبطة بالفعل بعقد إيجار سارٍ.",
         ]));
 
-    expect(fn () => $conflictService->validateRentalAvailability($this->h['room1'], '2026-11-01', '2027-05-01'))
+    $targetUnit = $unitKey === 'room1' ? $this->h['room1'] : $this->h['apartment'];
+
+    expect(fn () => $conflictService->validateRentalAvailability($targetUnit, $sampleStart, $sampleEnd))
         ->toThrow(ValidationException::class);
-});
-
-// -------------------------------------------------------------------------
-// Scenario 7: Attempting to rent a partially occupied apartment is rejected
-// -------------------------------------------------------------------------
-
-test('scenario 7: renting an apartment with a rented room inside is rejected', function () {
-    $conflictService = $this->mock(RentalConflictService::class);
-    $conflictService->shouldReceive('validateRentalAvailability')
-        ->withArgs(fn (Unit $unit) => $unit->id === 1)
-        ->andThrow(ValidationException::withMessages([
-            'unit_id' => 'تعارض في التواريخ: الوحدة المرتبطة (Room 1) مرتبطة بالفعل بعقد إيجار سارٍ.',
-        ]));
-
-    expect(fn () => $conflictService->validateRentalAvailability($this->h['apartment'], '2026-11-01', '2027-05-01'))
-        ->toThrow(ValidationException::class);
-});
+})->with([
+    'room with occupied bed' => ['room1', 2, 'Bed 1'],
+    'apartment with occupied room' => ['apartment', 1, 'Room 1'],
+]);
 
 // -------------------------------------------------------------------------
 // Scenario 8: Attempt to rent a child of an already-rented parent is rejected

@@ -387,7 +387,7 @@ test('deposit receipt email names the leased unit', function () {
 
     (new ProcessDepositPaymentJob($payment->id))->handle(app(WhatsAppService::class));
 
-    Mail::assertSent(GenericNotificationMail::class, fn (GenericNotificationMail $mail) => str_contains($mail->mailSubject, 'شقة 101 فاخرة'));
+    Mail::assertSent(GenericNotificationMail::class, fn (GenericNotificationMail $mail) => str_contains($mail->mailSubject, $this->unit->name));
 });
 
 test('rent due WhatsApp reminder names the leased unit', function () {
@@ -403,5 +403,5 @@ test('rent due WhatsApp reminder names the leased unit', function () {
 
     app(WhatsAppService::class)->queueRentDueReminder($charge);
 
-    Queue::assertPushed(SendWhatsAppMessageJob::class, fn (SendWhatsAppMessageJob $job) => $job->parameters['unit'] === 'شقة 101 فاخرة');
+    Queue::assertPushed(SendWhatsAppMessageJob::class, fn (SendWhatsAppMessageJob $job) => $job->parameters['unit'] === $this->unit->name);
 });

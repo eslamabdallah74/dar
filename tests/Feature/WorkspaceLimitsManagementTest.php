@@ -15,6 +15,7 @@ use Database\Factories\WorkspaceFactory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
+use Tests\TestCase;
 
 beforeEach(function (): void {
     $this->user = User::factory()->create();
@@ -40,6 +41,68 @@ beforeEach(function (): void {
 
     app(CurrentWorkspace::class)->set($this->workspace);
 });
+
+/**
+ * Helper to bulk create parent units via HTTP store action.
+ *
+ * @param  TestCase  $testCase
+ */
+function createBatchParentUnitsViaHttp($testCase, User $user, Property $property, int $count, string $label): void
+{
+    for ($i = 1; $i <= $count; $i++) {
+        $testCase->actingAs($user)
+            ->post(route('properties.units.store', $property->id), [
+                'name' => "{$label} {$i}",
+                'unit_type' => 'apartment',
+                'parent_unit_id' => null,
+                'is_rentable' => true,
+            ])
+            ->assertSessionHasNoErrors();
+    }
+}
+
+/**
+ * Helper to create a subdivided apartment property structure.
+ *
+ * @return array{Property, Unit, Unit, Unit}
+ */
+function createSubdividedApartmentStructure(Workspace $workspace, string $propertyName, string $apartmentName): array
+{
+    $property = Property::create([
+        'workspace_id' => $workspace->id,
+        'name' => $propertyName,
+        'property_type' => 'apartment',
+    ]);
+
+    $apartment = Unit::create([
+        'workspace_id' => $workspace->id,
+        'property_id' => $property->id,
+        'name' => $apartmentName,
+        'unit_type' => 'apartment',
+        'parent_unit_id' => null,
+        'is_rentable' => false,
+    ]);
+
+    $room1 = Unit::create([
+        'workspace_id' => $workspace->id,
+        'property_id' => $property->id,
+        'parent_unit_id' => $apartment->id,
+        'name' => 'غرفة أ',
+        'unit_type' => 'room',
+        'is_rentable' => true,
+    ]);
+
+    $room2 = Unit::create([
+        'workspace_id' => $workspace->id,
+        'property_id' => $property->id,
+        'parent_unit_id' => $apartment->id,
+        'name' => 'غرفة ب',
+        'unit_type' => 'room',
+        'is_rentable' => true,
+    ]);
+
+    return [$property, $apartment, $room1, $room2];
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -68,7 +131,7 @@ test('scenario 2: workspace can create its first parent unit', function (): void
 
     $response = $this->actingAs($this->user)
         ->post(route('properties.units.store', $property->id), [
-            'name' => 'شقة 101',
+            'name' => 'شقة المسبار 101',
             'unit_type' => 'apartment',
             'is_rentable' => true,
         ]);
@@ -79,7 +142,7 @@ test('scenario 2: workspace can create its first parent unit', function (): void
         'workspace_id' => $this->workspace->id,
         'property_id' => $property->id,
         'parent_unit_id' => null,
-        'name' => 'شقة 101',
+        'name' => 'شقة المسبار 101',
     ]);
 
     expect(app(WorkspaceLimitService::class)->countParentUnits($this->workspace))->toBe(1);
@@ -96,7 +159,7 @@ test('scenario 3: workspace cannot create a second parent unit when limit is 1',
     Unit::create([
         'workspace_id' => $this->workspace->id,
         'property_id' => $property->id,
-        'name' => 'شقة 101',
+        'name' => 'شقة الحد 101',
         'unit_type' => 'apartment',
         'parent_unit_id' => null,
         'is_rentable' => true,
@@ -139,16 +202,7 @@ test('scenario 4 & 5: super admin increases limit to 5 and workspace can now cre
     ]);
 
     // 2. Create 5 parent units successfully
-    for ($i = 1; $i <= 5; $i++) {
-        $res = $this->actingAs($this->user)
-            ->post(route('properties.units.store', $property->id), [
-                'name' => "شقة رقم {$i}",
-                'unit_type' => 'apartment',
-                'parent_unit_id' => null,
-                'is_rentable' => true,
-            ]);
-        $res->assertSessionHasNoErrors();
-    }
+    createBatchParentUnitsViaHttp($this, $this->user, $property, 5, 'شقة رقم');
 
     expect(app(WorkspaceLimitService::class)->countParentUnits($this->workspace))->toBe(5);
 
@@ -187,14 +241,14 @@ test('scenario 6: child units do not consume creation limits', function (): void
     // Now create Room 1 inside apartment (child unit, parent_unit_id is set)
     $roomResponse = $this->actingAs($this->user)
         ->post(route('properties.units.store', $property->id), [
-            'name' => 'غرفة 1',
+            'name' => 'غرفة التقسيم 1',
             'unit_type' => 'room',
             'parent_unit_id' => $apartment->id,
             'is_rentable' => false,
         ]);
     $roomResponse->assertSessionHasNoErrors();
 
-    $room = Unit::where('name', 'غرفة 1')->firstOrFail();
+    $room = Unit::where('name', 'غرفة التقسيم 1')->firstOrFail();
 
     // Now create Bed 1 inside Room 1 (grandchild unit)
     $bedResponse = $this->actingAs($this->user)
@@ -230,16 +284,7 @@ test('scenario 7: unlimited creation limits work correctly', function (): void {
     ]);
 
     // Can create more than 5 parent units without any limit error
-    for ($i = 1; $i <= 7; $i++) {
-        $res = $this->actingAs($this->user)
-            ->post(route('properties.units.store', $property->id), [
-                'name' => "شقة غير محدودة {$i}",
-                'unit_type' => 'apartment',
-                'parent_unit_id' => null,
-                'is_rentable' => true,
-            ]);
-        $res->assertSessionHasNoErrors();
-    }
+    createBatchParentUnitsViaHttp($this, $this->user, $property, 7, 'شقة غير محدودة');
 
     expect(app(WorkspaceLimitService::class)->countParentUnits($this->workspace))->toBe(7);
 });
@@ -357,38 +402,7 @@ test('scenario 10: workspace cannot activate another parent-unit rental when act
 });
 
 test('scenario 11: multiple rentals inside the same parent property consume only one rental slot', function (): void {
-    $property = Property::create([
-        'workspace_id' => $this->workspace->id,
-        'name' => 'شقة مشتركة',
-        'property_type' => 'apartment',
-    ]);
-
-    $apartment = Unit::create([
-        'workspace_id' => $this->workspace->id,
-        'property_id' => $property->id,
-        'name' => 'شقة 201',
-        'unit_type' => 'apartment',
-        'parent_unit_id' => null,
-        'is_rentable' => false,
-    ]);
-
-    $room1 = Unit::create([
-        'workspace_id' => $this->workspace->id,
-        'property_id' => $property->id,
-        'parent_unit_id' => $apartment->id,
-        'name' => 'غرفة 1',
-        'unit_type' => 'room',
-        'is_rentable' => true,
-    ]);
-
-    $room2 = Unit::create([
-        'workspace_id' => $this->workspace->id,
-        'property_id' => $property->id,
-        'parent_unit_id' => $apartment->id,
-        'name' => 'غرفة 2',
-        'unit_type' => 'room',
-        'is_rentable' => true,
-    ]);
+    [$property, $apartment, $room1, $room2] = createSubdividedApartmentStructure($this->workspace, 'شقة مشتركة', 'شقة 201');
 
     $bed1 = Unit::create([
         'workspace_id' => $this->workspace->id,
@@ -468,38 +482,7 @@ test('scenario 12: ending all rentals inside a parent property releases its rent
 });
 
 test('scenario 13: ending one of several rentals inside a parent property does not incorrectly release its rental slot', function (): void {
-    $property = Property::create([
-        'workspace_id' => $this->workspace->id,
-        'name' => 'شقة الغرفتين',
-        'property_type' => 'apartment',
-    ]);
-
-    $apartment = Unit::create([
-        'workspace_id' => $this->workspace->id,
-        'property_id' => $property->id,
-        'name' => 'شقة 401',
-        'unit_type' => 'apartment',
-        'parent_unit_id' => null,
-        'is_rentable' => false,
-    ]);
-
-    $room1 = Unit::create([
-        'workspace_id' => $this->workspace->id,
-        'property_id' => $property->id,
-        'parent_unit_id' => $apartment->id,
-        'name' => 'غرفة أ',
-        'unit_type' => 'room',
-        'is_rentable' => true,
-    ]);
-
-    $room2 = Unit::create([
-        'workspace_id' => $this->workspace->id,
-        'property_id' => $property->id,
-        'parent_unit_id' => $apartment->id,
-        'name' => 'غرفة ب',
-        'unit_type' => 'room',
-        'is_rentable' => true,
-    ]);
+    [, , $room1, $room2] = createSubdividedApartmentStructure($this->workspace, 'شقة الغرفتين', 'شقة 401');
 
     $renter1 = Renter::create(['workspace_id' => $this->workspace->id, 'name' => 'مستأجر أ', 'phone' => '0505555551']);
     $renter2 = Renter::create(['workspace_id' => $this->workspace->id, 'name' => 'مستأجر ب', 'phone' => '0505555552']);
@@ -516,7 +499,7 @@ test('scenario 13: ending one of several rentals inside a parent property does n
         'first_due_date' => now()->toDateString(),
     ]);
 
-    $lease2 = Lease::create([
+    Lease::create([
         'workspace_id' => $this->workspace->id,
         'unit_id' => $room2->id,
         'renter_id' => $renter2->id,

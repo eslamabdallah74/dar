@@ -22,6 +22,8 @@ use Inertia\Response;
 
 class AdminDashboardController extends Controller
 {
+    private const DATE_FORMAT = 'd/m/Y';
+
     public function __construct(
         protected AdminDashboardService $adminDashboardService
     ) {}
@@ -72,7 +74,7 @@ class AdminDashboardController extends Controller
         $name = $workspace->name;
         $workspace->delete();
 
-        return back()->with('success', 'تم حذف مساحة العمل ('.$name.') بنجاح.');
+        return back()->with('success', "تم حذف مساحة العمل ({$name}) بنجاح.");
     }
 
     /**
@@ -167,7 +169,7 @@ class AdminDashboardController extends Controller
         $userName = $user->name;
         $user->delete();
 
-        return back()->with('success', 'تم حذف المستخدم ('.$userName.') بنجاح.');
+        return back()->with('success', "تم حذف المستخدم ({$userName}) بنجاح.");
     }
 
     /**
@@ -188,7 +190,7 @@ class AdminDashboardController extends Controller
                 'code' => $p->code,
                 'property_type' => $p->property_type,
                 'units_count' => $p->units_count,
-                'created_at' => $p->created_at?->format('d/m/Y'),
+                'created_at' => $p->created_at?->format(self::DATE_FORMAT),
             ]);
 
         $parentUnits = $workspace->units()
@@ -216,8 +218,8 @@ class AdminDashboardController extends Controller
                 'renter_name' => $l->renter->name ?? '—',
                 'unit_name' => $l->unit->name ?? '—',
                 'property_name' => $l->unit->property->name ?? '—',
-                'starts_on' => $l->starts_on->format('d/m/Y'),
-                'ends_on' => $l->ends_on->format('d/m/Y'),
+                'starts_on' => $l->starts_on->format(self::DATE_FORMAT),
+                'ends_on' => $l->ends_on->format(self::DATE_FORMAT),
                 'rent_amount' => (float) $l->rent_amount,
             ]);
 
@@ -270,7 +272,7 @@ class AdminDashboardController extends Controller
             'active_rental_limit' => $activeLimit,
         ]);
 
-        return back()->with('success', 'تم تحديث حدود مساحة العمل ('.$workspace->name.') بنجاح.');
+        return back()->with('success', "تم تحديث حدود مساحة العمل ({$workspace->name}) بنجاح.");
     }
 
     /**

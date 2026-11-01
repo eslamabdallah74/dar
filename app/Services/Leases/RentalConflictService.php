@@ -56,9 +56,13 @@ class RentalConflictService
         if ($conflictingLease !== null) {
             $isSelf = $conflictingLease->unit_id === $unit->id;
             $conflictingUnit = Unit::withoutGlobalScopes()->find($conflictingLease->unit_id);
-            $unitLabel = $isSelf
-                ? 'الوحدة المحددة'
-                : ($conflictingUnit ? "الوحدة المرتبطة ({$conflictingUnit->name})" : 'وحدة متداخلة هرمياً');
+            if ($isSelf) {
+                $unitLabel = 'الوحدة المحددة';
+            } elseif ($conflictingUnit !== null) {
+                $unitLabel = "الوحدة المرتبطة ({$conflictingUnit->name})";
+            } else {
+                $unitLabel = 'وحدة متداخلة هرمياً';
+            }
 
             throw ValidationException::withMessages([
                 'unit_id' => "تعارض في التواريخ: {$unitLabel} مرتبطة بالفعل بعقد إيجار سارٍ خلال الفترة المحددة ({$conflictingLease->starts_on->format('d/m/Y')} إلى {$conflictingLease->ends_on->format('d/m/Y')}).",
@@ -71,62 +75,81 @@ class RentalConflictService
      */
     public function getUnitAvailabilityStatus(Unit $unit): UnitAvailabilityStatus
     {
-        $hasDirectLease = Lease::withoutGlobalScopes()
-            ->where('unit_id', $unit->id)
+        if ($this->hasDirectActiveLease($unit->id)) {
+            return UnitAvailabilityStatus::Rented;
+        }
+
+        if ($this->hasAncestorActiveLease($unit->getAncestorIds())) {
+            return UnitAvailabilityStatus::Unavailable;
+        }
+
+        return $this->evaluateDescendantsAndRentability($unit);
+    }
+
+    private function hasDirectActiveLease(int $unitId): bool
+    {
+        return Lease::withoutGlobalScopes()
+            ->where('unit_id', $unitId)
             ->where('status', 'active')
             ->where('starts_on', '<=', today())
             ->where('ends_on', '>=', today())
             ->exists();
+    }
 
-        if ($hasDirectLease) {
-            return UnitAvailabilityStatus::Rented;
+    /**
+     * @param  array<int>  $ancestorIds
+     */
+    private function hasAncestorActiveLease(array $ancestorIds): bool
+    {
+        if ($ancestorIds === []) {
+            return false;
         }
 
-        $ancestorIds = $unit->getAncestorIds();
-        if ($ancestorIds !== []) {
-            $ancestorHasLease = Lease::withoutGlobalScopes()
-                ->whereIn('unit_id', $ancestorIds)
-                ->where('status', 'active')
-                ->where('starts_on', '<=', today())
-                ->where('ends_on', '>=', today())
-                ->exists();
+        return Lease::withoutGlobalScopes()
+            ->whereIn('unit_id', $ancestorIds)
+            ->where('status', 'active')
+            ->where('starts_on', '<=', today())
+            ->where('ends_on', '>=', today())
+            ->exists();
+    }
 
-            if ($ancestorHasLease) {
-                return UnitAvailabilityStatus::Unavailable;
-            }
-        }
-
+    private function evaluateDescendantsAndRentability(Unit $unit): UnitAvailabilityStatus
+    {
         $descendantIds = $unit->getDescendantIds();
         if ($descendantIds !== []) {
+            /** @var list<int> $intLeasedIds */
             $intLeasedIds = Lease::withoutGlobalScopes()
                 ->whereIn('unit_id', $descendantIds)
                 ->where('status', 'active')
                 ->where('starts_on', '<=', today())
                 ->where('ends_on', '>=', today())
-                ->get(['unit_id'])
-                ->map(fn (Lease $lease): int => $lease->unit_id)
+                ->pluck('unit_id')
                 ->all();
 
             if ($intLeasedIds !== []) {
-                $descendants = Unit::withoutGlobalScopes()->whereIn('id', $descendantIds)->get();
-                $tree = new UnitTree($descendants);
-                $activeMap = array_fill_keys($intLeasedIds, true);
-
-                foreach ($descendantIds as $childId) {
-                    $status = $tree->availabilityStatusOf($childId, $activeMap);
-                    if ($status === UnitAvailabilityStatus::Available) {
-                        return UnitAvailabilityStatus::PartiallyOccupied;
-                    }
-                }
-
-                return UnitAvailabilityStatus::Unavailable;
+                return $this->resolveDescendantOccupancyStatus($descendantIds, $intLeasedIds);
             }
         }
 
-        if (! $unit->is_rentable) {
-            return UnitAvailabilityStatus::Unavailable;
+        return $unit->is_rentable ? UnitAvailabilityStatus::Available : UnitAvailabilityStatus::Unavailable;
+    }
+
+    /**
+     * @param  array<int>  $descendantIds
+     * @param  array<int>  $intLeasedIds
+     */
+    private function resolveDescendantOccupancyStatus(array $descendantIds, array $intLeasedIds): UnitAvailabilityStatus
+    {
+        $descendants = Unit::withoutGlobalScopes()->whereIn('id', $descendantIds)->get();
+        $tree = new UnitTree($descendants);
+        $activeMap = array_fill_keys($intLeasedIds, true);
+
+        foreach ($descendantIds as $childId) {
+            if ($tree->availabilityStatusOf($childId, $activeMap) === UnitAvailabilityStatus::Available) {
+                return UnitAvailabilityStatus::PartiallyOccupied;
+            }
         }
 
-        return UnitAvailabilityStatus::Available;
+        return UnitAvailabilityStatus::Unavailable;
     }
 }

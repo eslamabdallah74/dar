@@ -316,10 +316,12 @@ const activeRentalPercent = computed(() => {
                     <div class="p-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] space-y-3">
                         <div class="flex items-center justify-between">
                             <InputLabel for="parent_unit_limit" value="الحد الأقصى لإنشاء الوحدات الرئيسية" class="font-bold text-[#163E3E]" />
-                            <label class="flex items-center gap-1.5 text-xs text-[#163E3E] font-semibold cursor-pointer">
-                                <Checkbox v-model:checked="limitsForm.is_parent_unit_unlimited" />
-                                <span>غير محدود (Unlimited)</span>
-                            </label>
+                            <div class="flex items-center gap-1.5">
+                                <Checkbox id="is_parent_unit_unlimited" v-model:checked="limitsForm.is_parent_unit_unlimited" />
+                                <label for="is_parent_unit_unlimited" class="text-xs text-[#163E3E] font-semibold cursor-pointer">
+                                    غير محدود (Unlimited)
+                                </label>
+                            </div>
                         </div>
                         <p class="text-[11px] text-[#5B6770]">
                             يحدد عدد الشقق أو المحلات المستقلة التي يمكن للمستخدم إنشاؤها. (الوحدات الفرعية كالأسرة والغرف غير مقيدة).
@@ -344,10 +346,12 @@ const activeRentalPercent = computed(() => {
                     <div class="p-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] space-y-3">
                         <div class="flex items-center justify-between">
                             <InputLabel for="active_rental_limit" value="الحد الأقصى للعقود التأجيرية النشطة" class="font-bold text-[#163E3E]" />
-                            <label class="flex items-center gap-1.5 text-xs text-[#163E3E] font-semibold cursor-pointer">
-                                <Checkbox v-model:checked="limitsForm.is_active_rental_unlimited" />
-                                <span>غير محدود (Unlimited)</span>
-                            </label>
+                            <div class="flex items-center gap-1.5">
+                                <Checkbox id="is_active_rental_unlimited" v-model:checked="limitsForm.is_active_rental_unlimited" />
+                                <label for="is_active_rental_unlimited" class="text-xs text-[#163E3E] font-semibold cursor-pointer">
+                                    غير محدود (Unlimited)
+                                </label>
+                            </div>
                         </div>
                         <p class="text-[11px] text-[#5B6770]">
                             يحدد كم عقاراً رئيسياً يمكن أن يكون مؤجراً في نفس الوقت. تأجير غرف متعددة في نفس الشقة يستهلك خانة واحدة.

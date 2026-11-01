@@ -110,6 +110,14 @@ final class UnitTree
             return UnitAvailabilityStatus::Unavailable;
         }
 
+        return $this->evaluateDescendantsAndRentability($unitId, $isLeased);
+    }
+
+    /**
+     * @param  \Closure(int): bool  $isLeased
+     */
+    private function evaluateDescendantsAndRentability(int $unitId, \Closure $isLeased): UnitAvailabilityStatus
+    {
         $descendantIds = $this->descendantIds($unitId);
         if (collect($descendantIds)->contains($isLeased)) {
             return $this->hasAvailableDescendant($descendantIds, $isLeased)
@@ -118,11 +126,10 @@ final class UnitTree
         }
 
         $unit = $this->unitsById[$unitId] ?? null;
-        if (! $unit || ! $unit->is_rentable) {
-            return UnitAvailabilityStatus::Unavailable;
-        }
 
-        return UnitAvailabilityStatus::Available;
+        return ($unit && $unit->is_rentable)
+            ? UnitAvailabilityStatus::Available
+            : UnitAvailabilityStatus::Unavailable;
     }
 
     /**

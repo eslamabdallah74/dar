@@ -291,16 +291,12 @@ const rowAction =
                     {{ formatMoney(stats.collected) }}
                     <span class="font-sans text-xs font-medium text-[#5B6770]">{{ currency_symbol }}</span>
                 </p>
-                <div
-                    class="mt-2 h-1.5 overflow-hidden rounded-full bg-[#EEF2F4]"
-                    role="progressbar"
+                <progress
+                    class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[#EEF2F4] accent-emerald-600"
+                    :value="collectionPercent"
+                    max="100"
                     aria-label="نسبة التحصيل"
-                    :aria-valuenow="collectionPercent"
-                    aria-valuemin="0"
-                    aria-valuemax="100"
-                >
-                    <div class="h-full rounded-full bg-emerald-600" :style="{ width: `${collectionPercent}%` }"></div>
-                </div>
+                ></progress>
                 <p class="mt-1.5 text-xs text-[#5B6770]">{{ stats.rate }}% من المستحق</p>
             </div>
 

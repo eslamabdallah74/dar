@@ -21,14 +21,14 @@ jobs:
     services:
       mysql:
         image: mysql:8.0
-        # Matches the DB_* values in phpunit.xml, so no overrides are needed.
+        # CI environment uses empty password for root; local dev uses phpunit.xml
         env:
-          MYSQL_ROOT_PASSWORD: pass@word
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
           MYSQL_DATABASE: rental_test
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -ppass@word"
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
           --health-interval=5s
           --health-timeout=5s
           --health-retries=20
@@ -36,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: '8.4'
           extensions: mbstring, intl, pdo_mysql, zip, gd, fileinfo
@@ -84,6 +84,8 @@ jobs:
         run: composer analyse -- --error-format=github
 
       - name: Tests (Pest)
+        env:
+          DB_PASSWORD: ''
         run: composer test
 
   frontend:
@@ -94,7 +96,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: '8.4'
           coverage: none

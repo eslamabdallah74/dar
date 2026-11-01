@@ -561,23 +561,23 @@ const mobileMenuOpen = ref(false);
 
                             <ul class="space-y-3.5 text-sm font-medium text-[#334155] mb-8">
                                 <li class="flex items-center gap-3">
-                                    <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
                                     <span><strong>عقار رئيسي واحد (1)</strong> (شقة، محل، عمارة)</span>
                                 </li>
                                 <li class="flex items-center gap-3">
-                                    <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
                                     <span><strong>عقد تأجير نشط واحد (1)</strong> متزامن</span>
                                 </li>
                                 <li class="flex items-center gap-3">
-                                    <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
                                     <span><strong>تقسيمات غير محدودة</strong> (غرف وأسرّة دون قيود)</span>
                                 </li>
                                 <li class="flex items-center gap-3">
-                                    <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
                                     <span>إدارة العقود والمستأجرين وسندات القبض</span>
                                 </li>
                                 <li class="flex items-center gap-3 text-[#B6C5D0]">
-                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                    <svg aria-hidden="true" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                                     <span>تذكيرات واتساب التلقائية</span>
                                 </li>
                             </ul>
@@ -611,23 +611,23 @@ const mobileMenuOpen = ref(false);
 
                             <ul class="space-y-3.5 text-sm font-medium text-[#334155] mb-8">
                                 <li class="flex items-center gap-3">
-                                    <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
                                     <span><strong>حتى 10 عقارات رئيسية</strong> مستقلة</span>
                                 </li>
                                 <li class="flex items-center gap-3">
-                                    <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
                                     <span><strong>حتى 10 عقود تأجير نشطة</strong> متزامنة</span>
                                 </li>
                                 <li class="flex items-center gap-3">
-                                    <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
                                     <span><strong>غرف وأسِرّة غير محدودة</strong> داخل العقارات</span>
                                 </li>
                                 <li class="flex items-center gap-3">
-                                    <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
                                     <span><strong>تذكيرات واتساب الآلية</strong> للمستأجرين</span>
                                 </li>
                                 <li class="flex items-center gap-3">
-                                    <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
                                     <span>إدارة فواتير الصيانة والمصروفات والتقارير</span>
                                 </li>
                             </ul>
@@ -658,23 +658,23 @@ const mobileMenuOpen = ref(false);
 
                             <ul class="space-y-3.5 text-sm font-medium text-[#334155] mb-8">
                                 <li class="flex items-center gap-3">
-                                    <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
                                     <span><strong>عقارات رئيسية غير محدودة (∞)</strong></span>
                                 </li>
                                 <li class="flex items-center gap-3">
-                                    <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
                                     <span><strong>عقود تأجير نشطة غير محدودة (∞)</strong></span>
                                 </li>
                                 <li class="flex items-center gap-3">
-                                    <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
                                     <span><strong>تقسيمات وغرف وأسِرّة غير محدودة</strong></span>
                                 </li>
                                 <li class="flex items-center gap-3">
-                                    <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
                                     <span>فصل الحسابات لكبار الملاك وتقارير مالية وضريبية</span>
                                 </li>
                                 <li class="flex items-center gap-3">
-                                    <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
                                     <span>دعم فني مخصص ذو أولوية على مدار الساعة VIP</span>
                                 </li>
                             </ul>

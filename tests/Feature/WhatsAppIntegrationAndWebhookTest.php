@@ -93,7 +93,7 @@ test('meta webhook updates message log status on delivery and read events', func
 
     $response = $this->call(
         'POST',
-        '/webhooks/whatsapp',
+        route('webhooks.whatsapp.handle'),
         [],
         [],
         [],
@@ -128,10 +128,18 @@ test('meta webhook marks a message log as failed with the reported error', funct
         'errors' => [['code' => 131026, 'title' => 'Message undeliverable']],
     ]]]]]]]], JSON_THROW_ON_ERROR);
 
-    $response = $this->call('POST', '/webhooks/whatsapp', [], [], [], [
-        'HTTP_X_HUB_SIGNATURE_256' => 'sha256='.hash_hmac('sha256', $content, 'test_meta_app_secret_abc'),
-        'CONTENT_TYPE' => 'application/json',
-    ], $content);
+    $response = $this->call(
+        'POST',
+        route('webhooks.whatsapp.handle'),
+        [],
+        [],
+        [],
+        [
+            'HTTP_X_HUB_SIGNATURE_256' => 'sha256='.hash_hmac('sha256', $content, 'test_meta_app_secret_abc'),
+            'CONTENT_TYPE' => 'application/json',
+        ],
+        $content
+    );
 
     $response->assertOk();
     $this->assertDatabaseHas('message_logs', [
@@ -148,7 +156,7 @@ test('meta webhook rejects request with invalid hmac signature', function () {
 
     $response = $this->call(
         'POST',
-        '/webhooks/whatsapp',
+        route('webhooks.whatsapp.handle'),
         [],
         [],
         [],

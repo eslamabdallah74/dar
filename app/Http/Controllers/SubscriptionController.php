@@ -9,6 +9,8 @@ use Inertia\Response;
 
 class SubscriptionController extends Controller
 {
+    private const UNLIMITED_CHILD_UNITS_FEATURE = 'تقسيمات داخلية غير محدودة (غرف وأسرّة)';
+
     public function index(Request $request): Response
     {
         $workspace = $this->resolveWorkspace($request);
@@ -29,7 +31,7 @@ class SubscriptionController extends Controller
                 'active_rental_limit' => 1,
                 'features' => [
                     'عقار رئيسي واحد (1) مع عقد تأجير نشط',
-                    'تقسيمات داخلية غير محدودة (غرف وأسرّة)',
+                    self::UNLIMITED_CHILD_UNITS_FEATURE,
                     'سندات قبض إلكترونية وعقود إيجار غير محدودة',
                     'تذكيرات WhatsApp محدودة (50 رسالة/شهر)',
                 ],
@@ -46,7 +48,7 @@ class SubscriptionController extends Controller
                 'active_rental_limit' => 10,
                 'features' => [
                     'حتى 10 عقارات رئيسية مع 10 عقود تأجير نشطة',
-                    'تقسيمات داخلية غير محدودة (غرف وأسرّة)',
+                    self::UNLIMITED_CHILD_UNITS_FEATURE,
                     'تذكيرات WhatsApp تلقائية غير محدودة',
                     'كشف تعارض العقود والحجوزات وإدارة الصيانة',
                     'دعم فني مخصص ذو أولوية',
@@ -64,7 +66,7 @@ class SubscriptionController extends Controller
                 'active_rental_limit' => 50,
                 'features' => [
                     'حتى 50 عقار رئيسي مع 50 عقد تأجير نشط',
-                    'تقسيمات داخلية غير محدودة (غرف وأسرّة)',
+                    self::UNLIMITED_CHILD_UNITS_FEATURE,
                     'كل ميزات باقة النمو وإدارة متقدمة للمحافظ',
                     'تقارير مالية ومحاسبية متقدمة مع ضريبة القيمة المضافة',
                     'ربط مباشر مع منصة إيجار (قريباً)',
@@ -82,7 +84,7 @@ class SubscriptionController extends Controller
                 'active_rental_limit' => null,
                 'features' => [
                     'عقارات رئيسية وعقود تأجير نشطة غير محدودة (∞)',
-                    'تقسيمات داخلية غير محدودة (غرف وأسرّة)',
+                    self::UNLIMITED_CHILD_UNITS_FEATURE,
                     'عقارات وملاك ومستأجرون غير محدودين',
                     'كافة التقارير المالية والتحليلات والضرائب',
                     'مدير حساب مخصص ودعم فني على مدار الساعة VIP',

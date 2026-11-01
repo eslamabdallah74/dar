@@ -1041,9 +1041,9 @@ const depositLedgerStyles: Record<DepositLedgerKind, { dot: string; amount: stri
             </div>
         </template>
 
-        <div
+        <aside
             v-if="isLeaseActive && lease.is_past_end_date"
-            role="status"
+            aria-label="تنبيه انتهاء مدة العقد"
             class="flex flex-col gap-4 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
         >
             <div class="flex items-start gap-3">
@@ -1057,7 +1057,7 @@ const depositLedgerStyles: Record<DepositLedgerKind, { dot: string; amount: stri
                 <button type="button" :class="buttonSecondary" @click="showExtendModal = true">تجديد العقد</button>
                 <button type="button" :class="buttonDanger" @click="openTerminateWorkflow">إنهاء العقد</button>
             </div>
-        </div>
+        </aside>
 
         <section aria-label="ملخص العقد" class="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-[#D6E0E7] bg-[#E6ECF0] lg:grid-cols-4">
             <div class="col-span-2 bg-white p-5 lg:col-span-1">
@@ -1070,16 +1070,12 @@ const depositLedgerStyles: Record<DepositLedgerKind, { dot: string; amount: stri
                     <span class="h-px flex-1 bg-[#D6E0E7]" aria-hidden="true"></span>
                     <span>{{ lease.ends_on }}</span>
                 </div>
-                <div
-                    class="mt-3 h-1.5 overflow-hidden rounded-full bg-[#EEF2F4]"
-                    role="progressbar"
+                <progress
+                    class="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[#EEF2F4] accent-[#163E3E]"
+                    :value="contractTimeline.elapsedPercent"
+                    max="100"
                     aria-label="المنقضي من مدة العقد"
-                    :aria-valuenow="contractTimeline.elapsedPercent"
-                    aria-valuemin="0"
-                    aria-valuemax="100"
-                >
-                    <div class="h-full rounded-full bg-[#163E3E]" :style="{ width: `${contractTimeline.elapsedPercent}%` }"></div>
-                </div>
+                ></progress>
                 <p class="mt-2 text-xs text-[#5B6770]">{{ contractTimeline.caption }}</p>
             </div>
 
@@ -1265,16 +1261,12 @@ const depositLedgerStyles: Record<DepositLedgerKind, { dot: string; amount: stri
                                 <span>استُلم {{ depositPercentReceived }}% من التأمين المتفق عليه</span>
                                 <span class="font-mono tabular-nums">متبقٍ {{ formatMoney(security_deposit.outstanding_amount) }} {{ currency_symbol }}</span>
                             </div>
-                            <div
-                                class="h-1.5 overflow-hidden rounded-full bg-[#EEF2F4]"
-                                role="progressbar"
+                            <progress
+                                class="h-1.5 w-full overflow-hidden rounded-full bg-[#EEF2F4] accent-amber-500"
+                                :value="depositPercentReceived"
+                                max="100"
                                 aria-label="نسبة تحصيل التأمين"
-                                :aria-valuenow="depositPercentReceived"
-                                aria-valuemin="0"
-                                aria-valuemax="100"
-                            >
-                                <div class="h-full rounded-full bg-amber-500" :style="{ width: `${depositPercentReceived}%` }"></div>
-                            </div>
+                            ></progress>
                         </div>
 
                         <div

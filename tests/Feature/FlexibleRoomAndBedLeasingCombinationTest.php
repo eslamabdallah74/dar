@@ -162,7 +162,7 @@ test('can rent 2 rooms as beds (4 contracts) and the 3rd room as a whole room (1
         'ends_on' => now()->addMonths(6)->toDateString(),
         'rent_amount' => 1500,
     ]);
-    expect($lease1)->toBeInstanceOf(Lease::class);
+    $this->assertModelExists($lease1);
 
     // Contract 2: Bed 2 Room 1
     $lease2 = $createLease->execute($this->workspace, [
@@ -172,7 +172,7 @@ test('can rent 2 rooms as beds (4 contracts) and the 3rd room as a whole room (1
         'ends_on' => now()->addMonths(6)->toDateString(),
         'rent_amount' => 1500,
     ]);
-    expect($lease2)->toBeInstanceOf(Lease::class);
+    $this->assertModelExists($lease2);
 
     // Contract 3: Bed 1 Room 2
     $lease3 = $createLease->execute($this->workspace, [
@@ -182,7 +182,7 @@ test('can rent 2 rooms as beds (4 contracts) and the 3rd room as a whole room (1
         'ends_on' => now()->addMonths(6)->toDateString(),
         'rent_amount' => 1600,
     ]);
-    expect($lease3)->toBeInstanceOf(Lease::class);
+    $this->assertModelExists($lease3);
 
     // Contract 4: Bed 2 Room 2
     $lease4 = $createLease->execute($this->workspace, [
@@ -192,7 +192,7 @@ test('can rent 2 rooms as beds (4 contracts) and the 3rd room as a whole room (1
         'ends_on' => now()->addMonths(6)->toDateString(),
         'rent_amount' => 1600,
     ]);
-    expect($lease4)->toBeInstanceOf(Lease::class);
+    $this->assertModelExists($lease4);
 
     // Contract 5: Room 3 rented as a WHOLE ROOM (Private Room)
     $lease5 = $createLease->execute($this->workspace, [
@@ -202,7 +202,7 @@ test('can rent 2 rooms as beds (4 contracts) and the 3rd room as a whole room (1
         'ends_on' => now()->addMonths(6)->toDateString(),
         'rent_amount' => 3500,
     ]);
-    expect($lease5)->toBeInstanceOf(Lease::class);
+    $this->assertModelExists($lease5);
 
     // Verify all 5 leases are active in the same apartment without conflict!
     $activeLeases = $this->workspace->leases()->where('status', 'active')->count();
@@ -358,6 +358,7 @@ test('property show hierarchy tree reflects room and bed occupancy status accura
     $response->assertOk();
 
     $propUnits = $response->viewData('page')['props']['units'];
+    $this->assertIsArray($propUnits);
 
     $room1Data = collect($propUnits)->firstWhere('id', $room1->id);
     $room2Data = collect($propUnits)->firstWhere('id', $room2->id);

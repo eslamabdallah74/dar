@@ -5,33 +5,25 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import {
     AlertTriangle,
     ArrowRight,
-    Building2,
     Calendar,
     Check,
     CheckCircle2,
-    Clock,
-    CreditCard,
-    DollarSign,
-    FileCheck,
-    FilePlus,
     FileText,
-    HelpCircle,
     Home,
     Info,
     Loader2,
-    ShieldAlert,
     Trash2,
     Upload,
     User,
     UserCheck,
     UserPlus,
     Users,
-    Store,
     X,
 } from 'lucide-vue-next';
 
 interface UnitOption {
     id: number;
+    parent_unit_id?: number | null;
     name: string;
     code: string | null;
     property_id: number;
@@ -314,7 +306,7 @@ const checkPhoneExistence = async () => {
 
     // Only query backend if plausible Egyptian phone number
     const egPattern = /^(?:(?:\+|00)?20|0)?1[0125][0-9]{8}$/;
-    if (!egPattern.test(rawPhone.replace(/[\s\-\(\)\.]/g, ''))) {
+    if (!egPattern.test(rawPhone.replace(/[\s\-().]/g, ''))) {
         existingRenterFound.value = null;
         checkingPhone.value = false;
         return;
@@ -426,7 +418,7 @@ const submitNewRenter = async () => {
         return;
     }
 
-    const cleanPhone = newRenter.value.phone.replace(/[\s\-\(\)\.]/g, '');
+    const cleanPhone = newRenter.value.phone.replace(/[\s\-().]/g, '');
     const egPattern = /^(?:(?:\+|00)?20|0)?1[0125][0-9]{8}$/;
     if (!egPattern.test(cleanPhone)) {
         renterErrors.value.phone = 'يرجى إدخال رقم هاتف مصري صحيح (مثال: 01012345678 أو +201012345678)';
@@ -563,7 +555,7 @@ const submitNewRenter = async () => {
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         >
                             <option v-for="u in filteredUnits" :key="u.id" :value="u.id">
-                                {{ u.type_label ? '[' + u.type_label + '] ' : '' }}{{ u.name }} {{ u.apartment_gender?.short_label ? '• ' + u.apartment_gender.short_label : '' }} ({{ u.availability_status || (u.is_occupied ? 'مشغولة حالياً' : 'شاغرة') }})
+                                {{ u.parent_unit_id ? '  ↳ ' : '' }}{{ u.type_label ? '[' + u.type_label + '] ' : '' }}{{ u.name }} {{ u.apartment_gender?.short_label ? '• ' + u.apartment_gender.short_label : '' }} ({{ u.availability_status || (u.is_occupied ? 'مشغولة حالياً' : 'شاغرة') }})
                             </option>
                         </select>
                     </div>
@@ -844,9 +836,6 @@ const submitNewRenter = async () => {
                             <p class="text-xs text-[#5B6770]">صورة أو مسح ضوئي للعقد الورقي الموقع <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري — مشفرة ومحمية)</span></p>
                         </div>
                     </div>
-                    <span class="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                        تشفير أمان AES-256
-                    </span>
                 </div>
 
                 <!-- معاينة الملف المختار -->

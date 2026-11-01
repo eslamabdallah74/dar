@@ -24,23 +24,4 @@ enum Gender: string
             self::Female => 'سكن بنات (إناث)',
         };
     }
-
-    /**
-     * @return array<int, array{value: string, label: string}>
-     */
-    public static function options(): array
-    {
-        return array_map(fn (self $gender) => [
-            'value' => $gender->value,
-            'label' => $gender->label(),
-        ], self::cases());
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    public static function values(): array
-    {
-        return array_column(self::cases(), 'value');
-    }
 }

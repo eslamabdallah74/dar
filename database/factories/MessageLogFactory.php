@@ -35,29 +35,4 @@ class MessageLogFactory extends Factory
             'deduplication_key' => fake()->unique()->uuid(),
         ];
     }
-
-    public function delivered(): static
-    {
-        return $this->state(fn () => [
-            'status' => 'delivered',
-            'sent_at' => now(),
-        ]);
-    }
-
-    public function pending(): static
-    {
-        return $this->state(fn () => [
-            'status' => 'pending',
-            'sent_at' => null,
-        ]);
-    }
-
-    public function failed(): static
-    {
-        return $this->state(fn () => [
-            'status' => 'failed',
-            'error_code' => 'undelivered',
-            'error_message' => 'تعذر التسليم لرقم الهاتف',
-        ]);
-    }
 }

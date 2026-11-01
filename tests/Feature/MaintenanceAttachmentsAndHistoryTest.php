@@ -170,13 +170,11 @@ test('user can upload valid photos and pdf attachments to an existing maintenanc
     expect($maintenance->attachments()->count())->toBe(2);
 
     $attachments = $maintenance->attachments()->get();
-    $imageAtt = $attachments->firstWhere('original_filename', 'aircon.png');
-    $pdfAtt = $attachments->firstWhere('original_filename', 'invoice.pdf');
+    $imageAtt = $attachments->firstOrFail('original_filename', 'aircon.png');
+    $pdfAtt = $attachments->firstOrFail('original_filename', 'invoice.pdf');
 
-    expect($imageAtt)->not->toBeNull()
-        ->and($imageAtt->isImage())->toBeTrue()
+    expect($imageAtt->isImage())->toBeTrue()
         ->and(Storage::disk('local')->exists($imageAtt->file_path))->toBeTrue()
-        ->and($pdfAtt)->not->toBeNull()
         ->and($pdfAtt->isPdf())->toBeTrue()
         ->and(Storage::disk('local')->exists($pdfAtt->file_path))->toBeTrue();
 
@@ -285,7 +283,9 @@ test('unauthorized user cannot preview download or delete attachments belonging 
     ]);
 
     $file = UploadedFile::fake()->image('private.jpg');
-    $path = $file->storeAs("maintenance/{$this->workspace->id}/{$maintenance->id}", 'private.jpg', 'local');
+    $directory = "maintenance/{$this->workspace->id}/{$maintenance->id}";
+    $file->storeAs($directory, 'private.jpg', 'local');
+    $path = "{$directory}/private.jpg";
 
     $attachment = $maintenance->attachments()->create([
         'workspace_id' => $this->workspace->id,
@@ -330,7 +330,9 @@ test('user can delete an attachment removing it from disk and database', functio
     ]);
 
     $file = UploadedFile::fake()->image('bulb.png');
-    $path = $file->storeAs("maintenance/{$this->workspace->id}/{$maintenance->id}", 'bulb.png', 'local');
+    $directory = "maintenance/{$this->workspace->id}/{$maintenance->id}";
+    $file->storeAs($directory, 'bulb.png', 'local');
+    $path = "{$directory}/bulb.png";
 
     $attachment = $maintenance->attachments()->create([
         'workspace_id' => $this->workspace->id,
@@ -381,7 +383,7 @@ test('user can add progress notes without overwriting description', function () 
 
     // Verify note is created
     expect($maintenance->notes()->count())->toBe(1);
-    $note = $maintenance->notes()->first();
+    $note = $maintenance->notes()->firstOrFail();
     expect($note->note)->toBe('تم شراء قطعة الغيار من المحل المعتمد بتكلفة 180 جنيه')
         ->and($note->created_by)->toBe($this->user->id);
 
@@ -408,9 +410,8 @@ test('creating maintenance request can include initial attachments atomically', 
 
     $response->assertSessionHasNoErrors();
 
-    $maintenance = MaintenanceRequest::where('title', 'تسريب ماسورة المطبخ')->first();
-    expect($maintenance)->not->toBeNull()
-        ->and($maintenance->attachments()->count())->toBe(2);
+    $maintenance = MaintenanceRequest::where('title', 'تسريب ماسورة المطبخ')->firstOrFail();
+    expect($maintenance->attachments()->count())->toBe(2);
 
     foreach ($maintenance->attachments as $attachment) {
         expect(Storage::disk('local')->exists($attachment->file_path))->toBeTrue();

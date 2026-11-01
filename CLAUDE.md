@@ -180,3 +180,40 @@ Vue components must have a single root element.
 - IMPORTANT: Activate `inertia-vue-development` when working with Inertia Vue client-side patterns.
 
 </laravel-boost-guidelines>
+
+# Code Quality Gate
+
+This section lives outside the `<laravel-boost-guidelines>` block so `php artisan boost:update` keeps it. Keep it identical in `AGENTS.md` and `CLAUDE.md`.
+
+CI (`.github/workflows/quality.yml`) runs the same checks on every push to `main` and every pull request; a change is not done until they pass locally:
+
+```bash
+composer quality      # Pint check, Rector dead-code check, PHPStan, Pest
+npm run lint:check    # frontend changes: ESLint errors, including unused imports and variables
+npm run typecheck     # frontend changes: vue-tsc
+```
+
+Single checks: `composer format:check` (fix: `composer format`), `composer refactor:check` (fix: `composer refactor`), `composer analyse`, `composer test`.
+
+## What is enforced
+
+- PHPStan level 9 with Larastan over `app/`, `bootstrap/app.php`, `config/`, `database/`, `routes/` and `tests/`, plus phpstan-strict-rules, deprecation rules, the Pest plugin, `shipmonk/dead-code-detector` (unused methods, properties, constants and enum cases, including public ones) and cognitive complexity (at most 15 per method and 80 per class).
+- Rector's dead-code set: unused variable assignments, unused private methods and parameters, dead branches.
+- Laravel Pint formatting (it also removes unused imports) and the Pest suite.
+- Frontend: ESLint errors (`@typescript-eslint/no-unused-vars` is an error) and `vue-tsc`.
+
+## Rules for every change
+
+- Name variables, methods and classes after what they mean in the business (`$outstandingBalance`, `$leaseToBill`, `lockPayableChargesForRenter()`), not `$data`, `$result`, `$c` or `$x`.
+- Leave no unused variables, imports, parameters, methods, classes or dead branches. Before deleting, check the framework entry points the analyzers cannot see: routes, policies, the service container, scheduled jobs and commands, Eloquent accessors and scopes, model trait boot methods, Blade and Inertia props.
+- Keep each method to one purpose. Split long methods by intent (validate, calculate, persist, present), not into one-line forwarders, and avoid layers (interfaces, repositories, factories) that add no behavior.
+- Reuse instead of copying: the domain services (`FinancialObligationService`, `SecurityDepositService`, `MaintenanceExpenseService`, ...), enum values and labels in `app/Enums`, model accessors and helpers (`Lease::contract_number`, `Lease::hasSecurityDeposit()`, `Workspace::currencySymbol()`), `DocumentStorageService` for every file, and `App\Support\UnitTree` for in-memory unit hierarchies. Do not copy label maps, money calculations or queries into controllers.
+- Declare precise types: parameter and return types, generics (relations as `@return BelongsTo<Unit, $this>`, `Collection<int, Lease>`), array shapes. Fix the type rather than silencing the analyzer with a cast, an inline `@var` or an `assert()`.
+- Larastan types model attributes from the migrations, but unsaved or unrefreshed models still hold raw input (strings, `null`). Keep `(int)`, `(float)` and `(bool)` casts on model attributes and do not trust "always true/false" reports about database-defaulted columns without checking.
+- Follow Laravel conventions: `env()` only inside `config/`, Form Requests for validation, thin controllers that delegate to services and actions, `$this->authenticatedUser($request)` for the signed-in user, `instanceof` checks (or `ResolvesRouteLease`) for route parameters.
+- Do not change business behavior (calculations, authorization, financial rules, API and Inertia props, database semantics) without approval. Every bug fix and behavior change comes with a test; behavior-preserving refactors of untested code get a characterization test first.
+
+## Suppressions and the baseline
+
+- No `@phpstan-ignore*` comments. A new `ignoreErrors` entry in `phpstan.neon` must be narrowed by identifier, message and path and carry a comment explaining why the analyzer is wrong; the existing entries document theirs.
+- `phpstan-baseline.neon` only holds level-9 findings that existed before the gate (`mixed` values at request and payload boundaries). It may only shrink: never add entries to it. After fixing a baselined error, run `composer analyse:baseline` and commit the smaller file. New and modified code must be clean at level 9.

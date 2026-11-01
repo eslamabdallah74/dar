@@ -13,8 +13,8 @@ enum SecurityDepositRefundStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Pending => 'معلق (لم يُصرف بعد)',
-            self::Refunded => 'تم الصرف للمستأجر',
+            self::Pending => 'لم يُرد بعد',
+            self::Refunded => 'تم الرد',
             self::NotApplicable => 'لا ينطبق',
         };
     }

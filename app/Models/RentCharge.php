@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToWorkspace;
+use Database\Factories\RentChargeFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class RentCharge extends Model
 {
+    /** @use HasFactory<RentChargeFactory> */
     use BelongsToWorkspace, HasFactory;
 
     protected $fillable = [
@@ -32,21 +34,25 @@ class RentCharge extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<Lease, $this>
+     */
     public function lease(): BelongsTo
     {
         return $this->belongsTo(Lease::class);
     }
 
+    /**
+     * @return HasMany<PaymentAllocation, $this>
+     */
     public function allocations(): HasMany
     {
         return $this->hasMany(PaymentAllocation::class);
     }
 
-    public function paymentAllocations(): HasMany
-    {
-        return $this->allocations();
-    }
-
+    /**
+     * @return HasMany<MessageLog, $this>
+     */
     public function messageLogs(): HasMany
     {
         return $this->hasMany(MessageLog::class);
@@ -58,11 +64,16 @@ class RentCharge extends Model
             return (float) $this->allocations->sum('amount');
         }
 
-        if ($this->relationLoaded('paymentAllocations')) {
-            return (float) $this->paymentAllocations->sum('amount');
-        }
-
         return (float) $this->allocations()->sum('amount');
+    }
+
+    /**
+     * Arabic month and year of the billed period, e.g. "أكتوبر 2026".
+     */
+    public function getPeriodNameAttribute(): string
+    {
+        // settings() is Carbon's typed equivalent of locale(); it applies the locale to this instance only.
+        return $this->period_start->settings(['locale' => 'ar'])->translatedFormat('F Y');
     }
 
     public function getOutstandingBalanceAttribute(): float
@@ -108,11 +119,19 @@ class RentCharge extends Model
         };
     }
 
+    /**
+     * @param  Builder<RentCharge>  $query
+     * @return Builder<RentCharge>
+     */
     public function scopeUnpaid(Builder $query): Builder
     {
         return $query->whereRaw('amount > (SELECT COALESCE(SUM(amount), 0) FROM payment_allocations WHERE payment_allocations.rent_charge_id = rent_charges.id)');
     }
 
+    /**
+     * @param  Builder<RentCharge>  $query
+     * @return Builder<RentCharge>
+     */
     public function scopeOverdue(Builder $query): Builder
     {
         return $query->unpaid()->where('due_date', '<', today());

@@ -282,10 +282,10 @@ test('5. it correctly allocates multi-period payment across two eligible rent pe
     // Only 1 cash payment receipt was created (no double counting)
     $payments = Payment::where('reference', 'REC-MULTI-4000')->get();
     expect($payments)->toHaveCount(1)
-        ->and((float) $payments->first()->amount)->toBe(4000.00);
+        ->and((float) $payments->firstOrFail()->amount)->toBe(4000.00);
 
     // Two distinct allocations linked to that receipt
-    $allocations = PaymentAllocation::where('payment_id', $payments->first()->id)->get();
+    $allocations = PaymentAllocation::where('payment_id', $payments->firstOrFail()->id)->get();
     expect($allocations)->toHaveCount(2);
 });
 
@@ -373,7 +373,7 @@ test('8. it supports independent payment date and record date', function () {
 
     $payment = Payment::where('reference', 'REC-DATES-01')->firstOrFail();
     expect($payment->paid_at->toDateString())->toBe($pastPaymentDate)
-        ->and($payment->created_at->toDateString())->toBe($recordDate);
+        ->and($payment->created_at?->toDateString())->toBe($recordDate);
 });
 
 test('9. it blocks permanent deletion of payment records', function () {
@@ -447,13 +447,22 @@ test('10. it allows financial corrections with mandatory reason, recalculates ba
     $activity = Activity::where('subject_type', Payment::class)
         ->where('subject_id', $payment->id)
         ->latest('id')
-        ->first();
+        ->firstOrFail();
 
-    expect($activity)->not->toBeNull()
-        ->and($activity->properties['event'])->toBe('payment_corrected')
-        ->and($activity->properties['reason'])->toContain('تصحيح خطأ إدخال')
-        ->and((float) $activity->properties['previous']['amount'])->toBe(3000.00)
-        ->and((float) $activity->properties['updated']['amount'])->toBe(2000.00);
+    expect($activity->getProperty('event'))->toBe('payment_corrected')
+        ->and($activity->getProperty('reason'))->toContain('تصحيح خطأ إدخال')
+        ->and((float) $activity->getProperty('previous')['amount'])->toBe(3000.00)
+        ->and((float) $activity->getProperty('updated')['amount'])->toBe(2000.00);
+
+    expect($activity->getProperty('previous'))
+        ->toMatchArray(['payment_method' => 'cash', 'reference' => 'REC-CORRECT-ME'])
+        ->and($activity->getProperty('previous')['allocations'])->toHaveCount(1)
+        ->and($activity->getProperty('previous')['allocations'][0])->toMatchArray(['rent_charge_id' => $charge->id, 'amount' => 3000]);
+
+    expect($activity->getProperty('updated'))
+        ->toMatchArray(['payment_method' => 'bank_transfer', 'reference' => 'REC-CORRECTED'])
+        ->and($activity->getProperty('updated')['allocations'])->toHaveCount(1)
+        ->and($activity->getProperty('updated')['allocations'][0])->toMatchArray(['rent_charge_id' => $charge->id, 'amount' => 2000]);
 });
 
 test('11. it handles contract termination with future advance rent allocations', function () {
@@ -632,4 +641,91 @@ test('14. it accurately distinguishes cash collections from rent revenue and adv
         ->and((float) $stats['total_billed'])->toBe(3000.00)
         // Advance allocated to future periods beyond month: 1,000 EGP
         ->and((float) $stats['total_advance'])->toBe(1000.00);
+});
+
+test('correcting a payment after termination does not recreate the future charges released by the termination', function () {
+    RentCharge::create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $this->lease->id,
+        'period_start' => now()->startOfMonth()->toDateString(),
+        'period_end' => now()->endOfMonth()->toDateString(),
+        'due_date' => now()->startOfMonth()->toDateString(),
+        'amount' => 3000.00,
+    ]);
+    $this->actingAs($this->user)->post(route('payments.store'), [
+        'renter_id' => $this->renter->id,
+        'amount' => 3000.00,
+        'paid_at' => now()->toDateString(),
+        'payment_method' => 'cash',
+        'reference' => 'REC-BEFORE-TERMINATION',
+    ]);
+    $this->actingAs($this->user)->post(route('leases.terminate', $this->lease->id), [
+        'settlement_type' => 'no_refund',
+        'retention_reason' => 'إنهاء مبكر بموافقة الطرفين',
+    ]);
+    $payment = Payment::where('reference', 'REC-BEFORE-TERMINATION')->firstOrFail();
+
+    $this->actingAs($this->user)->put(route('payments.update', $payment->id), [
+        'amount' => 3000.00,
+        'paid_at' => now()->toDateString(),
+        'payment_method' => 'bank_transfer',
+        'reference' => 'REC-BEFORE-TERMINATION',
+        'reason' => 'تصحيح طريقة السداد بعد إنهاء العقد',
+    ])->assertSessionHasNoErrors();
+
+    $this->assertDatabaseMissing('rent_charges', [
+        'lease_id' => $this->lease->id,
+        'period_start' => now()->addMonth()->startOfMonth()->toDateString(),
+    ]);
+});
+
+test('correcting a payment can cover the charges of every active lease of the renter', function () {
+    RentCharge::create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $this->lease->id,
+        'period_start' => now()->startOfMonth()->toDateString(),
+        'period_end' => now()->endOfMonth()->toDateString(),
+        'due_date' => now()->startOfMonth()->toDateString(),
+        'amount' => 3000.00,
+    ]);
+    $this->actingAs($this->user)->post(route('payments.store'), [
+        'renter_id' => $this->renter->id,
+        'amount' => 3000.00,
+        'paid_at' => now()->toDateString(),
+        'payment_method' => 'cash',
+        'reference' => 'REC-TWO-LEASES',
+    ]);
+    $shop = Unit::create([
+        'workspace_id' => $this->workspace->id,
+        'property_id' => $this->property->id,
+        'name' => 'محل 1',
+        'code' => 'SHP-1',
+        'unit_type' => 'shop',
+        'is_rentable' => true,
+    ]);
+    $shopLease = Lease::create([
+        'workspace_id' => $this->workspace->id,
+        'unit_id' => $shop->id,
+        'renter_id' => $this->renter->id,
+        'starts_on' => now()->startOfMonth(),
+        'ends_on' => now()->addMonths(11)->endOfMonth(),
+        'rent_amount' => 2000.00,
+        'billing_interval' => 'monthly',
+        'billing_anchor_day' => 1,
+        'first_due_date' => now()->startOfMonth(),
+        'status' => 'active',
+    ]);
+    $payment = Payment::where('reference', 'REC-TWO-LEASES')->firstOrFail();
+
+    $this->actingAs($this->user)->put(route('payments.update', $payment->id), [
+        'amount' => 10000.00,
+        'paid_at' => now()->toDateString(),
+        'payment_method' => 'cash',
+        'reference' => 'REC-TWO-LEASES',
+        'reason' => 'الدفعة شملت إيجار الشهر الحالي والقادم للشقة والمحل',
+    ])->assertSessionHasNoErrors();
+
+    $shopCharges = RentCharge::where('lease_id', $shopLease->id)->get();
+    expect($shopCharges)->toHaveCount(2)
+        ->and($shopCharges->sum(fn (RentCharge $charge) => $charge->outstanding_balance))->toBe(0.0);
 });

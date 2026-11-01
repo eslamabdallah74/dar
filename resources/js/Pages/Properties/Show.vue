@@ -7,15 +7,12 @@ import UnitDrawer from '@/Components/Common/UnitDrawer.vue';
 import ModalRecordPayment from '@/Components/Common/ModalRecordPayment.vue';
 import UnitHierarchyTree, { type UnitItem } from '@/Components/Properties/UnitHierarchyTree.vue';
 import ModalUnitForm from '@/Components/Properties/ModalUnitForm.vue';
+import ResourceTableHeading from '@/Components/Common/ResourceTableHeading.vue';
 import {
     ArrowRight,
     Building2,
-    Check,
-    CreditCard,
-    DollarSign,
     DoorClosed,
     FileText,
-    Grid,
     Home,
     Bed,
     Layers,
@@ -23,7 +20,6 @@ import {
     Plus,
     Search,
     Store,
-    Tag,
     User,
     Wrench,
     X,
@@ -31,13 +27,8 @@ import {
     Minimize2,
     AlertTriangle,
     MapPin,
-    Phone,
     ShieldCheck,
     Receipt,
-    Sparkles,
-    Droplets,
-    Zap,
-    ArrowUpDown,
 } from 'lucide-vue-next';
 
 const props = withDefaults(
@@ -715,7 +706,9 @@ const filteredUnits = computed(() => {
                             <th class="py-3.5 px-6">اسم الوحدة</th>
                             <th class="py-3.5 px-6">النوع الهرمي</th>
                             <th class="py-3.5 px-6">المسار الهرمي التابع له</th>
-                            <th class="py-3.5 px-6">المستأجر الحالي</th>
+                            <th class="py-3.5 px-6">
+                                <ResourceTableHeading :href="route('renters.index')">المستأجر الحالي</ResourceTableHeading>
+                            </th>
                             <th class="py-3.5 px-6">القيمة الشهرية</th>
                             <th class="py-3.5 px-6">الحالة</th>
                             <th class="py-3.5 px-6 text-start sm:text-left">الإجراءات</th>

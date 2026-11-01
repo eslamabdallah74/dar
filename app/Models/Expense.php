@@ -2,14 +2,17 @@
 
 namespace App\Models;
 
+use App\Enums\ExpenseOrigin;
+use App\Enums\ExpenseStatus;
 use App\Models\Concerns\BelongsToWorkspace;
-use Illuminate\Database\Eloquent\Builder;
+use Database\Factories\ExpenseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Expense extends Model
 {
+    /** @use HasFactory<ExpenseFactory> */
     use BelongsToWorkspace, HasFactory;
 
     protected $fillable = [
@@ -41,14 +44,7 @@ class Expense extends Model
     protected static function booted(): void
     {
         static::creating(function (Expense $expense) {
-            if (empty($expense->recorded_by)) {
-                $expense->recorded_by = auth()->id() ?? $expense->workspace?->owner_user_id;
-            }
-
-            if (($expense->origin === 'manual' || empty($expense->origin)) && empty($expense->payment_status)) {
-                $expense->payment_status = 'paid';
-                $expense->paid_at ??= now();
-            }
+            $expense->applyCreationDefaults();
         });
 
         static::deleting(function (Expense $expense) {
@@ -68,97 +64,68 @@ class Expense extends Model
         });
     }
 
+    /**
+     * The recorder defaults to the signed-in user (or the workspace owner), and a manual expense
+     * without a payment status is recorded as already paid.
+     */
+    private function applyCreationDefaults(): void
+    {
+        if (empty($this->recorded_by)) {
+            $recorderId = auth()->user()->id ?? $this->workspace?->owner_user_id;
+            if ($recorderId !== null) {
+                $this->recorded_by = $recorderId;
+            }
+        }
+
+        if (($this->origin === 'manual' || empty($this->origin)) && empty($this->payment_status)) {
+            $this->payment_status = 'paid';
+            $this->paid_at ??= now();
+        }
+    }
+
+    /**
+     * @return BelongsTo<Property, $this>
+     */
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);
     }
 
+    /**
+     * @return BelongsTo<Unit, $this>
+     */
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class);
     }
 
+    /**
+     * @return BelongsTo<MaintenanceRequest, $this>
+     */
     public function maintenanceRequest(): BelongsTo
     {
         return $this->belongsTo(MaintenanceRequest::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function recordedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by');
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function recorder(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by');
     }
 
-    /**
-     * Scope for recorded expenses with valid amounts (financially active).
-     */
-    public function scopeRecorded(Builder $query): Builder
-    {
-        return $query->whereNotNull('amount')->where('amount', '>', 0);
-    }
-
-    /**
-     * Alias for recorded expenses (financially active).
-     */
-    public function scopeApplied(Builder $query): Builder
-    {
-        return $this->scopeRecorded($query);
-    }
-
-    /**
-     * Scope for pending expenses awaiting amount.
-     */
-    public function scopePending(Builder $query): Builder
-    {
-        return $query->where(function (Builder $q) {
-            $q->whereNull('amount')
-                ->orWhere('amount', '<=', 0)
-                ->orWhere('status', 'pending_amount');
-        });
-    }
-
-    /**
-     * Scope by origin.
-     */
-    public function scopeOrigin(Builder $query, string $origin): Builder
-    {
-        return $query->where('origin', $origin);
-    }
-
-    /**
-     * Scope for paid expenses.
-     */
-    public function scopePaid(Builder $query): Builder
-    {
-        return $query->where(function (Builder $q) {
-            $q->where('payment_status', 'paid')
-                ->orWhereNotNull('paid_at');
-        });
-    }
-
-    /**
-     * Scope for unpaid expenses.
-     */
-    public function scopeUnpaid(Builder $query): Builder
-    {
-        return $query->where(function (Builder $q) {
-            $q->where('payment_status', '!=', 'paid')
-                ->orWhereNull('payment_status');
-        })->whereNull('paid_at');
-    }
-
     public function isPaid(): bool
     {
         return $this->payment_status === 'paid' || $this->paid_at !== null;
-    }
-
-    public function isUnpaid(): bool
-    {
-        return ! $this->isPaid();
     }
 
     public function isRecorded(): bool
@@ -168,21 +135,11 @@ class Expense extends Model
             && (float) $this->amount > 0;
     }
 
-    public function isApplied(): bool
-    {
-        return $this->isRecorded();
-    }
-
     public function isReady(): bool
     {
         return in_array($this->status, ['ready', 'ready_to_apply'], true)
             && $this->amount !== null
             && (float) $this->amount > 0;
-    }
-
-    public function isReadyToApply(): bool
-    {
-        return $this->isReady();
     }
 
     public function isPendingAmount(): bool
@@ -192,21 +149,15 @@ class Expense extends Model
             || (float) $this->amount <= 0;
     }
 
-    public function isMaintenance(): bool
-    {
-        return $this->origin === 'maintenance';
-    }
-
     public function getStatusLabelAttribute(): string
     {
-        if ($this->isPendingAmount()) {
-            return 'بانتظار المبلغ';
-        }
+        $status = $this->isPendingAmount() ? ExpenseStatus::PendingAmount : ExpenseStatus::fromLoose($this->status);
 
-        return match ($this->status) {
-            'ready', 'ready_to_apply' => 'جاهز',
-            'recorded', 'applied' => 'تم تسجيلها',
-            default => 'تم تسجيلها',
-        };
+        return $status->label();
+    }
+
+    public function getOriginLabelAttribute(): string
+    {
+        return (ExpenseOrigin::tryFrom((string) $this->origin) ?? ExpenseOrigin::Manual)->label();
     }
 }

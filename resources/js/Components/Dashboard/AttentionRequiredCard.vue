@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { AlertTriangle, ChevronLeft, Clock, MessageCircle, Wrench, CheckCircle, ArrowLeft } from 'lucide-vue-next';
+import { AlertTriangle, ChevronLeft, Clock, Wrench, CheckCircle, ArrowLeft } from 'lucide-vue-next';
 
 interface AttentionItem {
     id: number;

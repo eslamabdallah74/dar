@@ -20,6 +20,8 @@ return new class extends Migration
             $table->string('address', 500)->nullable();
             $table->string('timezone', 50)->default('Africa/Cairo');
             $table->string('status', 50)->default('active');
+            $table->unsignedInteger('parent_unit_limit')->nullable()->default(1)->comment('NULL = unlimited');
+            $table->unsignedInteger('active_rental_limit')->nullable()->default(1)->comment('NULL = unlimited');
             $table->tinyInteger('rent_reminder_days_before')->unsigned()->default(2);
             $table->boolean('auto_whatsapp_reminders')->default(true);
             $table->boolean('auto_instant_receipts')->default(true);

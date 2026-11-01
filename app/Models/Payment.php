@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToWorkspace;
+use Database\Factories\PaymentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,6 +13,7 @@ use Spatie\Activitylog\Models\Activity;
 
 class Payment extends Model
 {
+    /** @use HasFactory<PaymentFactory> */
     use BelongsToWorkspace, HasFactory;
 
     protected $fillable = [
@@ -46,21 +48,33 @@ class Payment extends Model
         });
     }
 
+    /**
+     * @return BelongsTo<Renter, $this>
+     */
     public function renter(): BelongsTo
     {
         return $this->belongsTo(Renter::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function recordedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by');
     }
 
+    /**
+     * @return HasMany<PaymentAllocation, $this>
+     */
     public function allocations(): HasMany
     {
         return $this->hasMany(PaymentAllocation::class);
     }
 
+    /**
+     * @return MorphMany<Activity, $this>
+     */
     public function auditLogs(): MorphMany
     {
         return $this->morphMany(Activity::class, 'subject')->latest();
@@ -68,7 +82,7 @@ class Payment extends Model
 
     public function getLeaseAttribute(): ?Lease
     {
-        return $this->allocations->first()?->rentCharge?->lease
+        return $this->allocations->first()?->rentCharge->lease
             ?? $this->renter?->leases()->where('status', 'active')->first()
             ?? $this->renter?->leases()->latest()->first();
     }

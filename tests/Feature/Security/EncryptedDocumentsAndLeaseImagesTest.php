@@ -103,10 +103,11 @@ test('renter ID card images are encrypted on disk and decrypted when served to a
         'id_card_back' => $back,
     ]);
 
-    $renter = Renter::withoutGlobalScopes()->where('phone', '01099887766')->first();
-    expect($renter)->not->toBeNull();
+    $renter = Renter::withoutGlobalScopes()->where('phone', '01099887766')->firstOrFail();
 
     // Verify files exist in private local disk
+    $this->assertNotNull($renter->id_card_front);
+    $this->assertNotNull($renter->id_card_back);
     Storage::disk('local')->assertExists($renter->id_card_front);
     Storage::disk('local')->assertExists($renter->id_card_back);
 
@@ -115,8 +116,9 @@ test('renter ID card images are encrypted on disk and decrypted when served to a
     expect(EncryptedFileService::isEncrypted($renter->id_card_back))->toBeTrue();
 
     $rawDiskBytes = Storage::disk('local')->get($renter->id_card_front);
+    $this->assertNotNull($rawDiskBytes);
     // Ciphertext contains serialized base64-encoded IV and MAC envelope
-    expect(json_decode(base64_decode($rawDiskBytes), true))->toHaveKeys(['iv', 'value', 'mac'])
+    expect(base64_decode($rawDiskBytes, true))->json()->toHaveKeys(['iv', 'value', 'mac'])
         ->and(Crypt::decrypt($rawDiskBytes))->toBe($front->getContent());
 
     // Verify serving through authorized route decrypts the stream to the client
@@ -141,9 +143,8 @@ test('lease creation allows uploading optional contract image which is encrypted
 
     $response->assertRedirect(route('leases.index'));
 
-    $lease = Lease::where('unit_id', $this->unit->id)->first();
-    expect($lease)->not->toBeNull()
-        ->and($lease->contract_image)->not->toBeNull();
+    $lease = Lease::where('unit_id', $this->unit->id)->firstOrFail();
+    $this->assertNotNull($lease->contract_image);
 
     // Verify file is stored in local storage and is encrypted
     Storage::disk('local')->assertExists($lease->contract_image);
@@ -201,7 +202,7 @@ test('authorized user can upload or replace contract image on existing lease', f
     $response->assertRedirect();
 
     $lease->refresh();
-    expect($lease->contract_image)->not->toBeNull();
+    $this->assertNotNull($lease->contract_image);
     Storage::disk('local')->assertExists($lease->contract_image);
     expect(EncryptedFileService::isEncrypted($lease->contract_image))->toBeTrue();
 

@@ -9,6 +9,7 @@ use App\Models\Renter;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
@@ -64,20 +65,18 @@ test('generate rent charges command creates charges for active leases and is ide
     $currentDate = now()->addMonth()->format('Y-m-15');
 
     // First execution: should generate 1 charge
-    $this->artisan('dar:generate-rent-charges', ['--date' => $currentDate, '--workspace' => $this->workspace->id])
-        ->assertSuccessful();
+    expect(Artisan::call('dar:generate-rent-charges', ['--date' => $currentDate, '--workspace' => $this->workspace->id]))->toBe(0);
 
     expect(RentCharge::where('lease_id', $this->lease->id)->count())->toBe(1);
 
-    $charge = RentCharge::where('lease_id', $this->lease->id)->first();
+    $charge = RentCharge::where('lease_id', $this->lease->id)->firstOrFail();
     expect($charge->amount)->toEqual(5000)
         ->and($charge->is_fully_paid)->toBeFalse()
         ->and($charge->status)->toBe('pending')
         ->and($charge->workspace_id)->toBe($this->workspace->id);
 
     // Second execution on same date: idempotency test (must not create duplicate charge)
-    $this->artisan('dar:generate-rent-charges', ['--date' => $currentDate, '--workspace' => $this->workspace->id])
-        ->assertSuccessful();
+    expect(Artisan::call('dar:generate-rent-charges', ['--date' => $currentDate, '--workspace' => $this->workspace->id]))->toBe(0);
 
     expect(RentCharge::where('lease_id', $this->lease->id)->count())->toBe(1);
 });
@@ -85,8 +84,7 @@ test('generate rent charges command creates charges for active leases and is ide
 test('generate rent charges ignores inactive or terminated leases', function () {
     $this->lease->update(['status' => 'terminated']);
 
-    $this->artisan('dar:generate-rent-charges', ['--date' => now()->toDateString(), '--workspace' => $this->workspace->id])
-        ->assertSuccessful();
+    expect(Artisan::call('dar:generate-rent-charges', ['--date' => now()->toDateString(), '--workspace' => $this->workspace->id]))->toBe(0);
 
     expect(RentCharge::where('lease_id', $this->lease->id)->count())->toBe(0);
 });
@@ -104,8 +102,7 @@ test('send rent reminders dispatches jobs for upcoming due charges and respects 
         'amount' => 5000,
     ]);
 
-    $this->artisan('dar:send-rent-reminders')
-        ->assertSuccessful();
+    expect(Artisan::call('dar:send-rent-reminders'))->toBe(0);
 
     Queue::assertPushed(SendWhatsAppMessageJob::class, 1);
 
@@ -123,8 +120,7 @@ test('send rent reminders dispatches jobs for upcoming due charges and respects 
     ]);
 
     // Running again: deduplication must prevent double reminder on the same date
-    $this->artisan('dar:send-rent-reminders')
-        ->assertSuccessful();
+    expect(Artisan::call('dar:send-rent-reminders'))->toBe(0);
 
     Queue::assertPushed(SendWhatsAppMessageJob::class, 1); // Still 1, not 2
 });
@@ -143,8 +139,7 @@ test('send rent reminders respects renter whatsapp opt-out', function () {
         'amount' => 5000,
     ]);
 
-    $this->artisan('dar:send-rent-reminders')
-        ->assertSuccessful();
+    expect(Artisan::call('dar:send-rent-reminders'))->toBe(0);
 
     Queue::assertNothingPushed();
 });
@@ -163,8 +158,7 @@ test('send rent reminders respects workspace auto_whatsapp_reminders setting', f
         'amount' => 5000,
     ]);
 
-    $this->artisan('dar:send-rent-reminders')
-        ->assertSuccessful();
+    expect(Artisan::call('dar:send-rent-reminders'))->toBe(0);
 
     Queue::assertNothingPushed();
 });
@@ -181,8 +175,7 @@ test('check overdue command scans past due unpaid charges and notifies renter', 
         'amount' => 5000,
     ]);
 
-    $this->artisan('dar:check-overdue')
-        ->assertSuccessful();
+    expect(Artisan::call('dar:check-overdue'))->toBe(0);
 
     $charge->refresh();
     expect($charge->is_overdue)->toBeTrue()
@@ -195,9 +188,8 @@ test('check expirations command identifies leases near expiration', function () 
         'ends_on' => now()->addDays(30)->toDateString(),
     ]);
 
-    $this->artisan('dar:check-expirations')
-        ->assertSuccessful();
+    expect(Artisan::call('dar:check-expirations'))->toBe(0);
 
     // Verify lease remains intact and monitored
-    expect($this->lease->fresh()->status)->toBe('active');
+    expect($this->lease->refresh()->status)->toBe('active');
 });

@@ -31,10 +31,11 @@ class OnlinePaymentController extends Controller
             'amount' => ['nullable', 'numeric', 'min:1'],
         ]);
 
-        /** @var RentCharge $charge */
         $charge = $workspace->rentCharges()
             ->with(['lease.renter', 'lease.unit'])
-            ->findOrFail($validated['rent_charge_id']);
+            ->findOrFail((int) $validated['rent_charge_id']);
+        $lease = $charge->lease;
+        abort_if($lease === null, 404);
 
         $payableAmount = ! empty($validated['amount'])
             ? (float) $validated['amount']
@@ -50,12 +51,12 @@ class OnlinePaymentController extends Controller
             $session = $gateway->createCheckoutSession([
                 'amount' => $payableAmount,
                 'currency' => $workspace->currency ?? 'SAR',
-                'description' => "سداد إيجار وحدة {$charge->lease->unit->name} للمستأجر {$charge->lease->renter->name}",
+                'description' => 'سداد إيجار وحدة '.($lease->unit->name ?? 'الوحدة').' للمستأجر '.($lease->renter->name ?? 'المستأجر'),
                 'callback_url' => route('online-payments.callback'),
                 'metadata' => [
                     'workspace_id' => $workspace->id,
                     'rent_charge_id' => $charge->id,
-                    'renter_id' => $charge->lease->renter_id,
+                    'renter_id' => $lease->renter_id,
                     'lease_id' => $charge->lease_id,
                     'payable_amount' => $payableAmount,
                 ],
@@ -115,47 +116,85 @@ class OnlinePaymentController extends Controller
         }
 
         $metadata = $event['metadata'];
-        $workspaceId = $metadata['workspace_id'] ?? null;
-        $chargeId = $metadata['rent_charge_id'] ?? null;
-        $renterId = $metadata['renter_id'] ?? null;
+        $workspaceId = $this->metadataId($metadata, 'workspace_id');
+        $chargeId = $this->metadataId($metadata, 'rent_charge_id');
+        $renterId = $this->metadataId($metadata, 'renter_id');
 
-        if (! $workspaceId || ! $chargeId || ! $renterId) {
+        if ($workspaceId === null || $chargeId === null || $renterId === null) {
             Log::warning('Payment webhook missing required metadata', ['metadata' => $metadata]);
 
             return response()->json(['error' => 'Missing metadata'], 422);
         }
 
-        // Idempotency check: prevent duplicate payment recording for the same external reference
-        $existingPayment = Payment::where('reference', $event['payment_id'])->first();
-        if ($existingPayment) {
-            return response()->json(['status' => 'already_processed']);
+        $outcome = DB::transaction(fn (): string => $this->recordGatewayPayment($workspaceId, $chargeId, $renterId, $event));
+
+        if ($outcome === 'metadata_mismatch') {
+            Log::warning('Payment webhook metadata does not match the rent charge owner', ['metadata' => $metadata]);
+
+            return response()->json(['error' => 'Metadata does not match the rent charge'], 422);
         }
 
-        DB::transaction(function () use ($workspaceId, $chargeId, $renterId, $event) {
-            $workspace = Workspace::findOrFail($workspaceId);
+        return response()->json(['status' => $outcome]);
+    }
 
-            /** @var RentCharge $charge */
-            $charge = RentCharge::lockForUpdate()->findOrFail($chargeId);
+    /**
+     * A positive integer id from the gateway metadata, or null when it is missing or malformed.
+     *
+     * @param  array<mixed>  $metadata
+     */
+    private function metadataId(array $metadata, string $key): ?int
+    {
+        $id = filter_var($metadata[$key] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
 
-            $payment = Payment::create([
-                'workspace_id' => $workspaceId,
-                'renter_id' => $renterId,
-                'recorded_by' => $workspace->owner_user_id,
-                'amount' => $event['amount'],
-                'payment_method' => 'other',
-                'paid_at' => now(),
-                'reference' => $event['payment_id'],
-                'notes' => 'سداد إلكتروني مؤكد عبر بوابة الدفع',
-            ]);
+        return $id === false ? null : $id;
+    }
 
-            PaymentAllocation::create([
-                'workspace_id' => $workspaceId,
-                'payment_id' => $payment->id,
-                'rent_charge_id' => $charge->id,
-                'amount' => min($event['amount'], $charge->outstanding_balance),
-            ]);
-        });
+    /**
+     * Record the paid gateway event once. Must run inside a database transaction.
+     *
+     * The rent charge is locked before anything else is read: a concurrent delivery of the same event
+     * blocks on that lock and, once the first delivery commits, finds its payment and records nothing.
+     *
+     * @param  array{event_type: string, payment_id: string, status: string, amount: float, currency: string, metadata: array<mixed>}  $event
+     * @return 'success'|'already_processed'|'metadata_mismatch'
+     */
+    private function recordGatewayPayment(int $workspaceId, int $chargeId, int $renterId, array $event): string
+    {
+        $charge = RentCharge::withoutGlobalScopes()->lockForUpdate()->find($chargeId);
 
-        return response()->json(['status' => 'success']);
+        if ($charge === null || $charge->workspace_id !== $workspaceId || $charge->lease?->renter_id !== $renterId) {
+            return 'metadata_mismatch';
+        }
+
+        $alreadyRecorded = Payment::withoutGlobalScopes()
+            ->where('workspace_id', $workspaceId)
+            ->where('reference', $event['payment_id'])
+            ->exists();
+
+        if ($alreadyRecorded) {
+            return 'already_processed';
+        }
+
+        $workspace = Workspace::findOrFail($workspaceId);
+
+        $payment = Payment::create([
+            'workspace_id' => $workspaceId,
+            'renter_id' => $renterId,
+            'recorded_by' => $workspace->owner_user_id,
+            'amount' => $event['amount'],
+            'payment_method' => 'other',
+            'paid_at' => now(),
+            'reference' => $event['payment_id'],
+            'notes' => 'سداد إلكتروني مؤكد عبر بوابة الدفع',
+        ]);
+
+        PaymentAllocation::create([
+            'workspace_id' => $workspaceId,
+            'payment_id' => $payment->id,
+            'rent_charge_id' => $charge->id,
+            'amount' => min($event['amount'], $charge->outstanding_balance),
+        ]);
+
+        return 'success';
     }
 }

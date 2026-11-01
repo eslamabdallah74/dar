@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PrimaryKpiRow from '@/Components/Dashboard/PrimaryKpiRow.vue';
 import OperationalKpiRow from '@/Components/Dashboard/OperationalKpiRow.vue';
@@ -15,22 +15,13 @@ import InputLabel from '@/Components/InputLabel.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import DangerButton from '@/Components/DangerButton.vue';
 import Checkbox from '@/Components/Checkbox.vue';
 
 import {
-    Activity,
-    AlertCircle,
-    AlertTriangle,
-    ArrowUpRight,
     Building2,
-    Calendar,
-    CheckCircle2,
-    Coins,
     CreditCard,
-    DollarSign,
     Edit3,
-    ExternalLink,
+    Eye,
     FileText,
     Home,
     Layers,
@@ -39,17 +30,15 @@ import {
     MessageSquare,
     Plus,
     RefreshCw,
-    Search,
     Shield,
-    ShieldAlert,
     ShieldCheck,
     Sliders,
-    Sparkles,
     Trash2,
     Users,
     Wrench,
     X,
 } from 'lucide-vue-next';
+import { useConfirmDialog } from '@/composables/useConfirmDialog';
 
 interface Props {
     adminUser: {
@@ -163,11 +152,19 @@ const showCreateUserModal = ref(false);
 const showEditUserModal = ref(false);
 const showEditWorkspaceModal = ref(false);
 const showSubscriptionModal = ref(false);
+const showLimitsModal = ref(false);
 
 const selectedUser = ref<any>(null);
 const selectedWorkspace = ref<any>(null);
 
 // Forms
+const limitsForm = useForm({
+    workspace_id: 0,
+    parent_unit_limit: 1 as number | string,
+    active_rental_limit: 1 as number | string,
+    is_parent_unit_unlimited: false,
+    is_active_rental_unlimited: false,
+});
 const createUserForm = useForm({
     name: '',
     email: '',
@@ -238,8 +235,18 @@ function toggleAdminRole(userId: number) {
     router.patch(route('admin.users.toggle-admin', userId));
 }
 
-function deleteUser(userId: number, name: string) {
-    if (confirm(`هل أنت متأكد من حذف المستخدم (${name})؟`)) {
+const confirmDialog = useConfirmDialog();
+
+async function deleteUser(userId: number, name: string) {
+    const confirmed = await confirmDialog.confirm({
+        tone: 'danger',
+        title: 'حذف هذا المستخدم؟',
+        message: 'يُحذف حساب المستخدم ولن يتمكن من تسجيل الدخول مرة أخرى.',
+        details: [{ label: 'المستخدم', value: name }],
+        confirmLabel: 'حذف المستخدم',
+    });
+
+    if (confirmed) {
         router.delete(route('admin.users.destroy', userId));
     }
 }
@@ -261,8 +268,16 @@ function submitEditWorkspace() {
     });
 }
 
-function deleteWorkspace(wsId: number, name: string) {
-    if (confirm(`تحذير: هل أنت متأكد تمامًا من حذف مساحة العمل (${name}) وكافة بياناتها؟`)) {
+async function deleteWorkspace(wsId: number, name: string) {
+    const confirmed = await confirmDialog.confirm({
+        tone: 'danger',
+        title: 'حذف مساحة العمل؟',
+        message: 'تُحذف مساحة العمل نهائياً ولا يمكن التراجع عن ذلك.',
+        details: [{ label: 'مساحة العمل', value: name }],
+        confirmLabel: 'حذف مساحة العمل',
+    });
+
+    if (confirmed) {
         router.delete(route('admin.workspaces.destroy', wsId));
     }
 }
@@ -274,6 +289,24 @@ function openChangePlan(ws: any) {
     subscriptionForm.plan_id = currentPlan ? currentPlan.id : 1;
     subscriptionForm.status = ws.subscription_status || 'active';
     showSubscriptionModal.value = true;
+}
+
+function openEditLimits(ws: any) {
+    selectedWorkspace.value = ws;
+    limitsForm.workspace_id = ws.id;
+    limitsForm.is_parent_unit_unlimited = ws.parent_unit_limit === null;
+    limitsForm.parent_unit_limit = ws.parent_unit_limit !== null ? ws.parent_unit_limit : 1;
+    limitsForm.is_active_rental_unlimited = ws.active_rental_limit === null;
+    limitsForm.active_rental_limit = ws.active_rental_limit !== null ? ws.active_rental_limit : 1;
+    showLimitsModal.value = true;
+}
+
+function submitLimits() {
+    limitsForm.put(route('admin.workspaces.limits.update', limitsForm.workspace_id), {
+        onSuccess: () => {
+            showLimitsModal.value = false;
+        },
+    });
 }
 
 function submitSubscription() {
@@ -469,9 +502,10 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                             <tr>
                                 <th class="p-3.5">مساحة العمل</th>
                                 <th class="p-3.5">المالك المسجل</th>
+                                <th class="p-3.5 text-center">حد الوحدات الرئيسية</th>
+                                <th class="p-3.5 text-center">حد التأجير النشط</th>
                                 <th class="p-3.5 text-center">العقارات</th>
-                                <th class="p-3.5 text-center">الوحدات</th>
-                                <th class="p-3.5 text-center">العقود</th>
+                                <th class="p-3.5 text-center">الوحدات الكلية</th>
                                 <th class="p-3.5">الباقة الحالية</th>
                                 <th class="p-3.5">الحالة</th>
                                 <th class="p-3.5">تاريخ الإنشاء</th>
@@ -492,20 +526,56 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                     <div class="font-semibold text-[#163E3E]">{{ ws.owner_name }}</div>
                                     <div class="text-[11px] text-[#5B6770]">{{ ws.owner_email }}</div>
                                 </td>
+                                <td class="p-3.5 text-center">
+                                    <div class="inline-flex items-center gap-1 font-bold">
+                                        <span class="text-[#163E3E]">{{ ws.created_parent_units_count }}</span>
+                                        <span class="text-[#5B6770]">/</span>
+                                        <span :class="ws.parent_unit_limit === null ? 'text-emerald-700' : 'text-[#163E3E]'">
+                                            {{ ws.parent_unit_limit === null ? 'غير محدود ∞' : ws.parent_unit_limit }}
+                                        </span>
+                                    </div>
+                                    <div class="text-[10px] text-[#5B6770]">منشأة / مسموح</div>
+                                </td>
+                                <td class="p-3.5 text-center">
+                                    <div class="inline-flex items-center gap-1 font-bold">
+                                        <span class="text-[#163E3E]">{{ ws.active_rented_parent_units_count }}</span>
+                                        <span class="text-[#5B6770]">/</span>
+                                        <span :class="ws.active_rental_limit === null ? 'text-emerald-700' : 'text-[#163E3E]'">
+                                            {{ ws.active_rental_limit === null ? 'غير محدود ∞' : ws.active_rental_limit }}
+                                        </span>
+                                    </div>
+                                    <div class="text-[10px] text-[#5B6770]">مؤجرة / مسموح</div>
+                                </td>
                                 <td class="p-3.5 text-center font-bold">{{ ws.properties_count }}</td>
                                 <td class="p-3.5 text-center font-bold">{{ ws.units_count }}</td>
-                                <td class="p-3.5 text-center font-bold">{{ ws.leases_count }}</td>
                                 <td class="p-3.5">
                                     <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#E8F0F0] text-[#163E3E]">
                                         {{ ws.plan_name }}
                                     </span>
                                 </td>
                                 <td class="p-3.5">
-                                    <StatusBadge :status="ws.subscription_status" />
+                                    <StatusBadge :status="ws.subscription_status || ws.status" />
                                 </td>
                                 <td class="p-3.5 text-[#5B6770]">{{ ws.created_at }}</td>
                                 <td class="p-3.5">
                                     <div class="flex items-center justify-center gap-1.5">
+                                        <Link
+                                            :href="route('admin.workspaces.show', ws.id)"
+                                            class="px-2.5 py-1.5 rounded-lg bg-[#E8F0F0] text-[#163E3E] hover:bg-[#D4EAEF] font-bold transition flex items-center gap-1 cursor-pointer"
+                                            title="عرض تفاصيل مساحة العمل"
+                                        >
+                                            <Eye class="w-3.5 h-3.5" />
+                                            <span>تفاصيل</span>
+                                        </Link>
+                                        <button
+                                            @click="openEditLimits(ws)"
+                                            type="button"
+                                            class="px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-800 hover:bg-amber-100 font-bold transition flex items-center gap-1 cursor-pointer"
+                                            title="تعديل حدود الإنشاء والتأجير"
+                                        >
+                                            <Sliders class="w-3.5 h-3.5" />
+                                            <span>الحدود</span>
+                                        </button>
                                         <button
                                             @click="impersonate(ws.id)"
                                             type="button"
@@ -518,11 +588,10 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                         <button
                                             @click="openChangePlan(ws)"
                                             type="button"
-                                            class="px-2.5 py-1.5 rounded-lg bg-[#E8F0F0] text-[#163E3E] hover:bg-[#D4EAEF] font-bold transition flex items-center gap-1 cursor-pointer"
+                                            class="p-1.5 rounded-lg text-[#5B6770] hover:text-[#163E3E] hover:bg-[#E8F0F0] transition cursor-pointer"
                                             title="ترقية / تغيير الباقة"
                                         >
-                                            <Layers class="w-3.5 h-3.5" />
-                                            <span>الباقة</span>
+                                            <Layers class="w-4 h-4" />
                                         </button>
                                         <button
                                             @click="openEditWorkspace(ws)"
@@ -544,7 +613,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                 </td>
                             </tr>
                             <tr v-if="filteredWorkspaces.length === 0">
-                                <td colspan="9" class="p-8 text-center text-[#5B6770]">لا توجد مساحات عمل مطابقة لبحثك.</td>
+                                <td colspan="10" class="p-8 text-center text-[#5B6770]">لا توجد مساحات عمل مطابقة لبحثك.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -1094,6 +1163,95 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                     <div class="flex items-center justify-end gap-2 pt-3 border-t border-[#D6E0E7]">
                         <SecondaryButton @click="showSubscriptionModal = false" type="button">إلغاء</SecondaryButton>
                         <PrimaryButton :disabled="subscriptionForm.processing">تحديث الاشتراك</PrimaryButton>
+                    </div>
+                </form>
+            </div>
+        </Modal>
+
+        <!-- مودال إدارة وتعديل الحدود المستقلة لمساحة العمل -->
+        <Modal :show="showLimitsModal" @close="showLimitsModal = false" max-width="md">
+            <div class="p-6 text-right" dir="rtl">
+                <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
+                    <h3 class="text-base font-bold text-[#163E3E]">إدارة حدود مساحة العمل المستقلة</h3>
+                    <button @click="showLimitsModal = false" type="button" class="text-[#5B6770] hover:text-[#163E3E] p-1">
+                        <X class="w-5 h-5" />
+                    </button>
+                </div>
+
+                <form @submit.prevent="submitLimits" class="mt-4 space-y-4">
+                    <div>
+                        <InputLabel value="مساحة العمل" />
+                        <div class="p-3 rounded-xl bg-[#F8FAFC] border border-[#D6E0E7] font-bold text-[#163E3E] text-sm flex items-center justify-between">
+                            <span>{{ selectedWorkspace?.name }}</span>
+                            <span class="text-xs text-[#5B6770]">{{ selectedWorkspace?.owner_name }}</span>
+                        </div>
+                    </div>
+
+                    <!-- حد إنشاء الوحدات الرئيسية -->
+                    <div class="p-3.5 rounded-xl border border-[#D6E0E7] bg-white space-y-2">
+                        <div class="flex items-center justify-between">
+                            <InputLabel for="parent_unit_limit" value="الحد الأقصى لإنشاء الوحدات الرئيسية" class="font-bold text-[#163E3E]" />
+                            <div class="flex items-center gap-1.5">
+                                <Checkbox id="dashboard_is_parent_unit_unlimited" v-model:checked="limitsForm.is_parent_unit_unlimited" />
+                                <label for="dashboard_is_parent_unit_unlimited" class="text-xs text-[#163E3E] font-semibold cursor-pointer">
+                                    غير محدود (Unlimited)
+                                </label>
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-[#5B6770]">
+                            ينطبق على الشقق والمحلات الرئيسية. لا يفرض قيوداً على الأوض أو الأسِرَّة (Child Units).
+                            (المنشأ حالياً: {{ selectedWorkspace?.created_parent_units_count ?? 0 }})
+                        </p>
+                        <div v-if="!limitsForm.is_parent_unit_unlimited">
+                            <TextInput
+                                id="parent_unit_limit"
+                                type="number"
+                                min="0"
+                                v-model="limitsForm.parent_unit_limit"
+                                class="w-full h-10 px-3"
+                                required
+                            />
+                        </div>
+                        <div v-else class="text-xs font-bold text-emerald-700 bg-emerald-50 p-2 rounded-lg text-center">
+                            تم تفعيل السعة غير المحدودة لإنشاء الوحدات الرئيسية (∞)
+                        </div>
+                        <InputError :message="limitsForm.errors.parent_unit_limit" />
+                    </div>
+
+                    <!-- حد العقود التأجيرية النشطة -->
+                    <div class="p-3.5 rounded-xl border border-[#D6E0E7] bg-white space-y-2">
+                        <div class="flex items-center justify-between">
+                            <InputLabel for="active_rental_limit" value="الحد الأقصى للتأجير النشط المتزامن" class="font-bold text-[#163E3E]" />
+                            <div class="flex items-center gap-1.5">
+                                <Checkbox id="dashboard_is_active_rental_unlimited" v-model:checked="limitsForm.is_active_rental_unlimited" />
+                                <label for="dashboard_is_active_rental_unlimited" class="text-xs text-[#163E3E] font-semibold cursor-pointer">
+                                    غير محدود (Unlimited)
+                                </label>
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-[#5B6770]">
+                            يحتسب بعدد العقارات الرئيسية المؤجرة فعلياً. تأجير عدة غرف بنفس الشقة يستهلك خانة تأجير واحدة فقط.
+                            (المشغول حالياً: {{ selectedWorkspace?.active_rented_parent_units_count ?? 0 }})
+                        </p>
+                        <div v-if="!limitsForm.is_active_rental_unlimited">
+                            <TextInput
+                                id="active_rental_limit"
+                                type="number"
+                                min="0"
+                                v-model="limitsForm.active_rental_limit"
+                                class="w-full h-10 px-3"
+                                required
+                            />
+                        </div>
+                        <div v-else class="text-xs font-bold text-emerald-700 bg-emerald-50 p-2 rounded-lg text-center">
+                            تم تفعيل السعة غير المحدودة للعقود التأجيرية المتزامنة (∞)
+                        </div>
+                        <InputError :message="limitsForm.errors.active_rental_limit" />
+                    </div>
+
+                    <div class="flex items-center justify-end gap-2 pt-3 border-t border-[#D6E0E7]">
+                        <SecondaryButton @click="showLimitsModal = false" type="button">إلغاء</SecondaryButton>
+                        <PrimaryButton :disabled="limitsForm.processing">حفظ الحدود المحدثة</PrimaryButton>
                     </div>
                 </form>
             </div>

@@ -32,14 +32,4 @@ class SecurityDepositPaymentFactory extends Factory
             'reversed_by' => null,
         ];
     }
-
-    public function reversed(): static
-    {
-        return $this->state(fn () => [
-            'is_reversed' => true,
-            'reversal_reason' => 'سداد بالخطأ',
-            'reversed_at' => now(),
-            'reversed_by' => User::factory(),
-        ]);
-    }
 }

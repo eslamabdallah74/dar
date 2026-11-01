@@ -36,7 +36,7 @@ class ProcessDepositDeductionJob extends BaseJob
         $renter = $lease?->renter;
 
         if ($renter && ! empty($renter->email)) {
-            $unitNumber = $lease->unit?->unit_number ?? 'الوحدة';
+            $unitNumber = $lease->unit->name ?? 'الوحدة';
             $amount = number_format((float) $deduction->amount, 2);
             $categoryName = match ($deduction->category) {
                 'furniture_damage' => 'أضرار بالأثاث أو المعدات',
@@ -49,7 +49,7 @@ class ProcessDepositDeductionJob extends BaseJob
                 recipient: $renter->email,
                 mailSubject: "إشعار اعتماد خصم من مبلغ التأمين - وحدة {$unitNumber}",
                 contentBody: "عزيزي المستأجر {$renter->name}،\n\nنود إحاطتكم بأنه تم تسجيل خصم مبرر من مبلغ التأمين للوحدة ({$unitNumber}).\n\n- تصنيف الخصم: {$categoryName}\n- المبلغ المخصوم: {$amount} ج.م\n- البيان والسبب: {$deduction->description}\n\nيمكنكم مراجعة تفاصيل التقرير عبر حسابكم.\n\nشكراً لتعاونكم."
-            ))->onQueue(QueueName::Notifications->value);
+            ));
         }
 
         Log::info("[ProcessDepositDeductionJob] Dispatched deduction notification for deduction #{$deduction->id}");

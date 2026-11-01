@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
-import { Home, CheckCircle2, AlertCircle, Wrench, ArrowLeft } from 'lucide-vue-next';
+import { ArrowLeft } from 'lucide-vue-next';
 
 interface OccupancyData {
     total: number;

@@ -28,31 +28,4 @@ class MaintenanceRequestFactory extends Factory
             'resolved_at' => null,
         ];
     }
-
-    public function open(): static
-    {
-        return $this->state(fn () => [
-            'status' => 'open',
-            'reported_at' => now()->subDay(),
-            'resolved_at' => null,
-        ]);
-    }
-
-    public function inProgress(): static
-    {
-        return $this->state(fn () => [
-            'status' => 'in_progress',
-            'reported_at' => now()->subDays(3),
-            'resolved_at' => null,
-        ]);
-    }
-
-    public function closed(): static
-    {
-        return $this->state(fn () => [
-            'status' => 'closed',
-            'reported_at' => now()->subDays(10),
-            'resolved_at' => now()->subDays(8),
-        ]);
-    }
 }

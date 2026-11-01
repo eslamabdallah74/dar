@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToWorkspace;
+use Database\Factories\PaymentAllocationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PaymentAllocation extends Model
 {
+    /** @use HasFactory<PaymentAllocationFactory> */
     use BelongsToWorkspace, HasFactory;
 
     protected $fillable = [
@@ -25,11 +27,17 @@ class PaymentAllocation extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<Payment, $this>
+     */
     public function payment(): BelongsTo
     {
         return $this->belongsTo(Payment::class);
     }
 
+    /**
+     * @return BelongsTo<RentCharge, $this>
+     */
     public function rentCharge(): BelongsTo
     {
         return $this->belongsTo(RentCharge::class);

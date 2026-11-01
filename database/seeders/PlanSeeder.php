@@ -15,6 +15,8 @@ class PlanSeeder extends Seeder
                 'slug' => 'starter',
                 'monthly_price' => 0.00,
                 'unit_limit' => 5,
+                'parent_unit_limit' => 1,
+                'active_rental_limit' => 1,
                 'is_active' => true,
             ],
             [
@@ -22,6 +24,8 @@ class PlanSeeder extends Seeder
                 'slug' => 'growth',
                 'monthly_price' => 199.00,
                 'unit_limit' => 25,
+                'parent_unit_limit' => 10,
+                'active_rental_limit' => 10,
                 'is_active' => true,
             ],
             [
@@ -29,6 +33,8 @@ class PlanSeeder extends Seeder
                 'slug' => 'pro',
                 'monthly_price' => 499.00,
                 'unit_limit' => 100,
+                'parent_unit_limit' => 50,
+                'active_rental_limit' => 50,
                 'is_active' => true,
             ],
             [
@@ -36,6 +42,8 @@ class PlanSeeder extends Seeder
                 'slug' => 'enterprise',
                 'monthly_price' => 999.00,
                 'unit_limit' => null,
+                'parent_unit_limit' => null,
+                'active_rental_limit' => null,
                 'is_active' => true,
             ],
         ];

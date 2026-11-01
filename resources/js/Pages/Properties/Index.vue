@@ -2,16 +2,12 @@
 import { ref, computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import StatusBadge from '@/Components/Common/StatusBadge.vue';
 import EmptyState from '@/Components/Common/EmptyState.vue';
 import {
     Building2,
-    Coins,
-    Home,
     MapPin,
     Plus,
     Search,
-    TrendingUp,
     User,
     Users,
 } from 'lucide-vue-next';

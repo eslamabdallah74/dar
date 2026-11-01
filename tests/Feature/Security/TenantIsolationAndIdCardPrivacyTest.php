@@ -87,10 +87,11 @@ test('tenant ID card files are stored on private local disk and cannot be access
         'id_card_back' => $back,
     ]);
 
-    $renter = Renter::withoutGlobalScopes()->where('phone', '01050111223')->first();
-    expect($renter)->not->toBeNull();
+    $renter = Renter::withoutGlobalScopes()->where('phone', '01050111223')->firstOrFail();
 
     // Verify stored on private 'local' disk
+    $this->assertNotNull($renter->id_card_front);
+    $this->assertNotNull($renter->id_card_back);
     Storage::disk('local')->assertExists($renter->id_card_front);
     Storage::disk('local')->assertExists($renter->id_card_back);
 
@@ -116,7 +117,7 @@ test('a user from Workspace B cannot access or view ID card files of a renter in
         'id_card_front' => $front,
     ]);
 
-    $renter = Renter::withoutGlobalScopes()->where('phone', '01055998877')->first();
+    $renter = Renter::withoutGlobalScopes()->where('phone', '01055998877')->firstOrFail();
 
     // Switch context to User B in Workspace B
     app(CurrentWorkspace::class)->set($this->workspaceB);
@@ -139,7 +140,7 @@ test('authorized workspace owner can successfully view the stored tenant ID card
         'id_card_front' => $front,
     ]);
 
-    $renter = Renter::withoutGlobalScopes()->where('phone', '01053123456')->first();
+    $renter = Renter::withoutGlobalScopes()->where('phone', '01053123456')->firstOrFail();
 
     $response = $this->actingAs($this->userA)
         ->get(route('renters.id-card', [$renter->id, 'front']));

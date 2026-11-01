@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Payments;
 
+use App\Enums\PaymentMethod;
 use App\Models\RentCharge;
 use App\Support\CurrentWorkspace;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -35,7 +36,7 @@ class StorePaymentRequest extends FormRequest
                 Rule::exists('renters', 'id')->where(fn ($query) => $workspaceId ? $query->where('workspace_id', $workspaceId) : $query),
             ],
             'amount' => ['required', 'numeric', 'min:0.5', 'max:100000000'],
-            'payment_method' => ['required', 'in:cash,bank_transfer,cheque,other'],
+            'payment_method' => ['required', Rule::in(PaymentMethod::values())],
             'paid_at' => ['nullable', 'date'],
             'record_date' => ['nullable', 'date'],
             'reference' => ['nullable', 'string', 'max:100'],
@@ -45,8 +46,8 @@ class StorePaymentRequest extends FormRequest
                 'nullable',
                 Rule::exists('rent_charges', 'id')->where(fn ($query) => $workspaceId ? $query->where('workspace_id', $workspaceId) : $query),
                 function (string $attribute, mixed $value, \Closure $fail) {
-                    if (! empty($value) && $this->filled('renter_id')) {
-                        $charge = RentCharge::withoutGlobalScopes()->with('lease')->find($value);
+                    if (is_numeric($value) && $this->filled('renter_id')) {
+                        $charge = RentCharge::withoutGlobalScopes()->with('lease')->find((int) $value);
                         if ($charge && (int) $charge->lease?->renter_id !== (int) $this->input('renter_id')) {
                             $fail('بند الاستحقاق المحدد لا ينتمي إلى عقود المستأجر المختار.');
                         }

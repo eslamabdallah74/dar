@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { CreditCard, FileText, Wrench, Activity, Clock } from 'lucide-vue-next';
+import { CreditCard, FileText, Wrench, Activity } from 'lucide-vue-next';
 
 interface ActivityItem {
     id: string;

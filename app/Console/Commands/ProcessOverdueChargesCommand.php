@@ -58,34 +58,7 @@ class ProcessOverdueChargesCommand extends Command
                 ->get();
 
             foreach ($overdueCharges as $charge) {
-                if ($charge->outstanding_balance <= 0) {
-                    $totalSkipped++;
-
-                    continue;
-                }
-
-                $renter = $charge->lease?->renter;
-                if (! $renter || empty($renter->phone)) {
-                    $totalSkipped++;
-
-                    continue;
-                }
-
-                if ($renter->whatsapp_opted_out_at !== null) {
-                    $totalSkipped++;
-
-                    continue;
-                }
-
-                $dueDateStr = $charge->due_date?->toDateString() ?? 'N/A';
-                $dedupKey = "overdue_notice_{$charge->id}_{$dueDateStr}";
-
-                $alreadySent = $workspace->messageLogs()
-                    ->where('deduplication_key', $dedupKey)
-                    ->whereIn('status', ['sent', 'delivered', 'pending'])
-                    ->exists();
-
-                if ($alreadySent) {
+                if (! $this->shouldNotify($workspace, $charge)) {
                     $totalSkipped++;
 
                     continue;
@@ -107,5 +80,24 @@ class ProcessOverdueChargesCommand extends Command
         Log::info('[ProcessOverdueChargesCommand] '.$summary);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * An overdue notice goes out for an unpaid charge to a renter with a phone who has not opted out,
+     * unless one was already queued or sent for this due date.
+     */
+    private function shouldNotify(Workspace $workspace, RentCharge $charge): bool
+    {
+        $renter = $charge->lease?->renter;
+
+        $isEligible = $charge->outstanding_balance > 0
+            && $renter !== null
+            && ! empty($renter->phone)
+            && $renter->whatsapp_opted_out_at === null;
+
+        return $isEligible && ! $workspace->messageLogs()
+            ->where('deduplication_key', "overdue_notice_{$charge->id}_{$charge->due_date->toDateString()}")
+            ->whereIn('status', ['sent', 'delivered', 'pending'])
+            ->exists();
     }
 }

@@ -26,49 +26,4 @@ class UnitFactory extends Factory
             'is_rentable' => true,
         ];
     }
-
-    public function apartment(): static
-    {
-        return $this->state(fn () => [
-            'unit_type' => 'apartment',
-        ]);
-    }
-
-    public function room(): static
-    {
-        return $this->state(fn () => [
-            'unit_type' => 'room',
-        ]);
-    }
-
-    public function bed(): static
-    {
-        return $this->state(fn () => [
-            'unit_type' => 'bed',
-        ]);
-    }
-
-    public function shop(): static
-    {
-        return $this->state(fn () => [
-            'unit_type' => 'shop',
-            'code' => 'SHP-'.fake()->unique()->numerify('###'),
-            'name' => 'محل '.fake()->numerify('###'),
-            'is_rentable' => true,
-        ]);
-    }
-
-    public function rentable(): static
-    {
-        return $this->state(fn () => [
-            'is_rentable' => true,
-        ]);
-    }
-
-    public function notRentable(): static
-    {
-        return $this->state(fn () => [
-            'is_rentable' => false,
-        ]);
-    }
 }

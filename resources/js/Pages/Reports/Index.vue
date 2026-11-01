@@ -1,33 +1,24 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { router, Link } from '@inertiajs/vue3';
+import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import ResourceTableHeading from '@/Components/Common/ResourceTableHeading.vue';
 import {
-    AlertCircle,
     ArrowDownRight,
     ArrowUpRight,
     BarChart3,
-    Building2,
-    Calendar,
     CheckCircle2,
     Clock,
     Coins,
-    CreditCard,
-    DollarSign,
     Download,
-    ExternalLink,
     FileSpreadsheet,
     FileText,
     Filter,
-    HelpCircle,
-    Home,
-    Layers,
     Receipt,
     RefreshCw,
     Shield,
     TrendingDown,
     TrendingUp,
-    Wallet,
 } from 'lucide-vue-next';
 
 interface Stats {
@@ -469,8 +460,12 @@ const formatCurrency = (amount: number | null | undefined): string => {
                             <thead class="border-b border-[#D6E0E7] bg-[#F8FAFC] text-xs font-bold text-[#5B6770]">
                                 <tr>
                                     <th class="py-3 px-4">الشهر</th>
-                                    <th class="py-3 px-4 text-emerald-800">المحصل الفعلي (داخل)</th>
-                                    <th class="py-3 px-4 text-rose-800">المصروفات المعتمدة (خارج)</th>
+                                    <th class="py-3 px-4 text-emerald-800">
+                                        <ResourceTableHeading :href="route('payments.index')">المحصل الفعلي (داخل)</ResourceTableHeading>
+                                    </th>
+                                    <th class="py-3 px-4 text-rose-800">
+                                        <ResourceTableHeading :href="route('expenses.index')">المصروفات المعتمدة (خارج)</ResourceTableHeading>
+                                    </th>
                                     <th class="py-3 px-4">صافي السيولة النقدية</th>
                                 </tr>
                             </thead>

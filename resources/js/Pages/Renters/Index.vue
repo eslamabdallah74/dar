@@ -4,22 +4,18 @@ import { Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
 import EmptyState from '@/Components/Common/EmptyState.vue';
+import ResourceTableHeading from '@/Components/Common/ResourceTableHeading.vue';
 import ModalRecordPayment from '@/Components/Common/ModalRecordPayment.vue';
 import {
     AlertTriangle,
     Check,
     CreditCard,
-    DollarSign,
-    FileText,
-    Image as ImageIcon,
     MessageCircle,
-    Plus,
     Search,
     Trash2,
     Upload,
     User,
     UserPlus,
-    Users,
     X,
 } from 'lucide-vue-next';
 
@@ -314,7 +310,9 @@ const submitRenter = () => {
                             <th class="py-3.5 px-6">المستأجر</th>
                             <th class="py-3.5 px-6">الجنس</th>
                             <th class="py-3.5 px-6">رقم الهوية / الإقامة</th>
-                            <th class="py-3.5 px-6">الوحدة المستأجرة</th>
+                            <th class="py-3.5 px-6">
+                                <ResourceTableHeading :href="route('properties.index')">الوحدة المستأجرة</ResourceTableHeading>
+                            </th>
                             <th class="py-3.5 px-6">القيمة الشهرية</th>
                             <th class="py-3.5 px-6">حالة السداد</th>
                             <th class="py-3.5 px-6">WhatsApp</th>

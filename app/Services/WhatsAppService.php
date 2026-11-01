@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Contracts\WhatsAppGatewayInterface;
-use App\Enums\QueueName;
 use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\Lease;
 use App\Models\MessageLog;
@@ -23,6 +22,8 @@ class WhatsAppService
     /**
      * Send a template message synchronously or through the worker.
      * Enforces strict idempotency via deduplication_key.
+     *
+     * @param  array<string, mixed>  $parameters  Template variables, see WhatsAppGatewayInterface::sendTemplate()
      */
     public function send(
         int $workspaceId,
@@ -118,7 +119,7 @@ class WhatsAppService
                 'link' => url("/payments/{$payment->id}"),
             ],
             deduplicationKey: $deduplicationKey
-        ))->onQueue(QueueName::Messaging->value);
+        ));
     }
 
     /**
@@ -148,7 +149,7 @@ class WhatsAppService
             ],
             deduplicationKey: $deduplicationKey,
             leaseId: $lease->id
-        ))->onQueue(QueueName::Messaging->value);
+        ));
     }
 
     /**
@@ -163,7 +164,7 @@ class WhatsAppService
             return;
         }
 
-        $dueDateStr = $charge->due_date?->format('Y-m-d') ?? 'N/A';
+        $dueDateStr = $charge->due_date->format('Y-m-d');
         $deduplicationKey = "rent_due_{$charge->id}_{$dueDateStr}";
 
         dispatch(new SendWhatsAppMessageJob(
@@ -173,14 +174,14 @@ class WhatsAppService
             templateName: 'rent_due_reminder_ar',
             parameters: [
                 'renter_name' => $renter->name,
-                'unit' => $lease->unit?->unit_number ?? 'الوحدة',
+                'unit' => $lease->unit->name ?? 'الوحدة',
                 'amount' => number_format($charge->outstanding_balance, 2),
                 'due_date' => $dueDateStr,
             ],
             deduplicationKey: $deduplicationKey,
             leaseId: $lease->id,
             rentChargeId: $charge->id
-        ))->onQueue(QueueName::Messaging->value);
+        ));
     }
 
     /**
@@ -195,7 +196,7 @@ class WhatsAppService
             return;
         }
 
-        $dueDateStr = $charge->due_date?->format('Y-m-d') ?? 'N/A';
+        $dueDateStr = $charge->due_date->format('Y-m-d');
         $deduplicationKey = "overdue_notice_{$charge->id}_{$dueDateStr}";
 
         dispatch(new SendWhatsAppMessageJob(
@@ -205,14 +206,14 @@ class WhatsAppService
             templateName: 'overdue_notice_ar',
             parameters: [
                 'renter_name' => $renter->name,
-                'unit' => $lease->unit?->unit_number ?? 'الوحدة',
+                'unit' => $lease->unit->name ?? 'الوحدة',
                 'due_date' => $dueDateStr,
                 'amount' => number_format($charge->outstanding_balance, 2),
             ],
             deduplicationKey: $deduplicationKey,
             leaseId: $lease->id,
             rentChargeId: $charge->id
-        ))->onQueue(QueueName::Messaging->value);
+        ));
     }
 
     /**
@@ -225,7 +226,7 @@ class WhatsAppService
             return;
         }
 
-        $endDateStr = $lease->ends_on?->format('Y-m-d') ?? 'N/A';
+        $endDateStr = $lease->ends_on->format('Y-m-d');
         $deduplicationKey = "lease_renewal_{$lease->id}_{$daysRemaining}d";
 
         dispatch(new SendWhatsAppMessageJob(
@@ -235,11 +236,11 @@ class WhatsAppService
             templateName: 'contract_renewal_ar',
             parameters: [
                 'renter_name' => $renter->name,
-                'unit' => $lease->unit?->unit_number ?? 'الوحدة',
+                'unit' => $lease->unit->name ?? 'الوحدة',
                 'end_date' => $endDateStr,
             ],
             deduplicationKey: $deduplicationKey,
             leaseId: $lease->id
-        ))->onQueue(QueueName::Messaging->value);
+        ));
     }
 }

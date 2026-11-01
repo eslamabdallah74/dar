@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Payments;
 
+use App\Enums\PaymentMethod;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdatePaymentRequest extends FormRequest
 {
@@ -26,7 +28,7 @@ class UpdatePaymentRequest extends FormRequest
     {
         return [
             'amount' => ['required', 'numeric', 'min:0.5', 'max:100000000'],
-            'payment_method' => ['required', 'in:cash,bank_transfer,cheque,other'],
+            'payment_method' => ['required', Rule::in(PaymentMethod::values())],
             'paid_at' => ['required', 'date'],
             'record_date' => ['nullable', 'date'],
             'reference' => ['nullable', 'string', 'max:100'],

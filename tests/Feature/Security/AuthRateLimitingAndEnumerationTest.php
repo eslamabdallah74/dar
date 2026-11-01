@@ -14,6 +14,7 @@ test('password reset link does not leak user existence for unknown emails', func
     ]);
     $existingResponse->assertSessionHasNoErrors();
     $existingResponse->assertSessionHas('status', __('passwords.sent'));
+    $existingStatus = session('status');
 
     // Non-existent email request
     $unknownResponse = $this->post(route('password.email'), [
@@ -21,10 +22,10 @@ test('password reset link does not leak user existence for unknown emails', func
     ]);
     $unknownResponse->assertSessionHasNoErrors();
     $unknownResponse->assertSessionHas('status', __('passwords.sent'));
+    $unknownStatus = session('status');
 
     // Both responses return identical success status, preventing user enumeration
-    expect($existingResponse->getSession()->get('status'))
-        ->toEqual($unknownResponse->getSession()->get('status'));
+    expect($existingStatus)->toEqual($unknownStatus);
 });
 
 test('forgot password endpoint enforces rate limiting after 5 requests per minute', function () {
@@ -86,7 +87,7 @@ test('admin login endpoint enforces rate limiting after 5 failed attempts', func
         'email' => 'admin-bruteforce@example.com',
         'password' => 'badpass5',
     ]);
-    expect(in_array($throttledResponse->status(), [302, 429]))->toBeTrue();
+    expect(in_array($throttledResponse->status(), [302, 429], true))->toBeTrue();
     if ($throttledResponse->status() === 302) {
         $throttledResponse->assertSessionHasErrors('email');
     }

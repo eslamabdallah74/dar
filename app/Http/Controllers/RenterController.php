@@ -6,6 +6,10 @@ use App\Http\Requests\Renters\StoreRenterDocumentRequest;
 use App\Http\Requests\Renters\StoreRenterRequest;
 use App\Http\Requests\Renters\UpdateRenterRequest;
 use App\Http\Resources\RenterResource;
+use App\Models\Lease;
+use App\Models\MessageLog;
+use App\Models\Payment;
+use App\Models\RentCharge;
 use App\Models\Renter;
 use App\Models\RenterDocument;
 use App\Rules\EgyptianPhoneNumber;
@@ -14,7 +18,6 @@ use App\Services\Storage\DocumentStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -64,64 +67,8 @@ class RenterController extends Controller
         ]);
 
         $activeLease = $renter->leases->firstWhere('status', 'active') ?? $renter->leases->first();
-
-        $charges = collect();
-        if ($activeLease) {
-            $charges = $activeLease->rentCharges->map(function ($charge) {
-                $allocated = (float) $charge->allocations->sum('amount');
-                $outstanding = max(0, (float) $charge->amount - $allocated);
-                $isPaid = $outstanding <= 0;
-                $isOverdue = ! $isPaid && $charge->due_date < today();
-
-                return [
-                    'id' => $charge->id,
-                    'period' => $charge->period_start?->format('m/Y'),
-                    'period_start' => $charge->period_start?->format('d/m/Y'),
-                    'period_end' => $charge->period_end?->format('d/m/Y'),
-                    'due_date' => $charge->due_date?->format('d/m/Y'),
-                    'amount' => (float) $charge->amount,
-                    'paid_amount' => $allocated,
-                    'outstanding_balance' => $outstanding,
-                    'status' => $isPaid ? 'paid' : ($isOverdue ? 'overdue' : 'pending'),
-                    'status_label' => $isPaid ? 'مسدد بالكامل' : ($isOverdue ? 'متأخر' : 'مستحق قريباً'),
-                ];
-            });
-        }
-
-        $paymentsList = $renter->payments->map(fn ($p) => [
-            'id' => $p->id,
-            'reference' => $p->reference ?? 'REC-'.$p->id,
-            'amount' => (float) $p->amount,
-            'paid_at' => $p->paid_at?->format('d/m/Y H:i') ?? $p->created_at?->format('d/m/Y'),
-            'payment_method' => match ($p->payment_method) {
-                'bank_transfer' => 'تحويل بنكي',
-                'cash' => 'نقدي',
-                'cheque' => 'شيك',
-                default => 'إنستاباي / فيزا / إلكتروني',
-            },
-            'notes' => $p->notes,
-            'has_receipt' => ! empty($p->receipt_path),
-            'receipt_url' => ! empty($p->receipt_path) ? route('payments.attachment', $p) : null,
-        ]);
-
-        $messageLogsList = $renter->messageLogs->map(fn ($m) => [
-            'id' => $m->id,
-            'template' => match ($m->template_name) {
-                'rent_due_reminder_ar' => 'تذكير استحقاق الإيجار',
-                'payment_receipt_instant_ar' => 'إشعار استلام دفعة وسند قبض',
-                default => 'إشعار عام',
-            },
-            'status' => $m->status,
-            'status_label' => match ($m->status) {
-                'delivered' => 'تم التسليم',
-                'sent' => 'تم الإرسال',
-                'pending' => 'معلق',
-                'failed' => 'فشل الإرسال',
-                default => $m->status,
-            },
-            'sent_at' => $m->sent_at?->format('d/m/Y H:i') ?? '—',
-            'phone' => $m->recipient_phone,
-        ]);
+        $ledger = $activeLease ? $this->ledgerRows($activeLease) : [];
+        $payments = $this->paymentRows($renter);
 
         return Inertia::render('Renters/Show', [
             'renter' => [
@@ -139,90 +86,16 @@ class RenterController extends Controller
                 'notes' => $renter->notes,
                 'created_at' => $renter->created_at?->format('d/m/Y'),
             ],
-            'active_lease' => $activeLease ? [
-                'id' => $activeLease->id,
-                'contract_number' => 'C-02'.($activeLease->id + 4),
-                'unit_name' => $activeLease->unit?->name,
-                'unit_code' => $activeLease->unit?->code,
-                'unit_type' => $activeLease->unit?->unit_type,
-                'unit_type_label' => match ($activeLease->unit?->unit_type) {
-                    'apartment' => 'شقة',
-                    'room' => 'غرفة',
-                    'bed' => 'سرير',
-                    'shop' => 'محل',
-                    default => 'وحدة',
-                },
-                'property_name' => $activeLease->unit?->property?->name,
-                'apartment_gender' => $activeLease->unit?->getApartmentGenderInfo(),
-                'starts_on' => $activeLease->starts_on?->format('d/m/Y'),
-                'ends_on' => $activeLease->ends_on?->format('d/m/Y'),
-                'rent_amount' => (float) $activeLease->rent_amount,
-                'billing_interval' => 'شهري',
-                'deposit_amount' => (float) $activeLease->security_deposit_amount,
-                'deposit_received' => (float) $activeLease->total_deposit_received,
-                'deposit_status' => $activeLease->security_deposit_status,
-                'deposit_status_label' => match ($activeLease->security_deposit_status) {
-                    'not_required' => 'غير مطلوب',
-                    'due' => 'مستحق السداد',
-                    'partially_received' => 'مدفوع جزئياً',
-                    'held' => 'محتجز قيد العقد',
-                    'under_review' => 'قيد التسوية',
-                    'settled' => 'تمت التسوية',
-                    default => $activeLease->security_deposit_status,
-                },
-                'status' => $activeLease->status,
-            ] : null,
-            'security_deposits' => $renter->leases->map(fn ($l) => [
-                'lease_id' => $l->id,
-                'contract_number' => 'C-02'.($l->id + 4),
-                'unit_name' => $l->unit?->name,
-                'unit_type' => $l->unit?->unit_type,
-                'unit_type_label' => match ($l->unit?->unit_type) {
-                    'apartment' => 'شقة',
-                    'room' => 'غرفة',
-                    'bed' => 'سرير',
-                    'shop' => 'محل',
-                    default => 'وحدة',
-                },
-                'agreed_amount' => (float) $l->security_deposit_amount,
-                'total_received' => (float) $l->total_deposit_received,
-                'total_deductions' => (float) $l->total_deposit_deductions,
-                'total_refunded' => (float) $l->total_deposit_refunded,
-                'refundable_balance' => (float) $l->refundable_deposit_balance,
-                'status' => $l->security_deposit_status,
-                'status_label' => match ($l->security_deposit_status) {
-                    'not_required' => 'غير مطلوب',
-                    'due' => 'مستحق السداد',
-                    'partially_received' => 'مدفوع جزئياً',
-                    'held' => 'محتجز قيد العقد',
-                    'under_review' => 'قيد فحص الوحدة والتسوية',
-                    'settled' => 'تمت التسوية',
-                    default => $l->security_deposit_status,
-                },
-            ])->filter(fn ($d) => $d['agreed_amount'] > 0 || $d['total_received'] > 0)->values(),
-            'ledger' => $charges,
-            'payments' => $paymentsList,
-            'whatsapp_logs' => $messageLogsList,
-            'documents' => $renter->documents->map(fn ($doc) => [
-                'id' => $doc->id,
-                'title' => $doc->title ?: ($doc->original_filename ?: 'مستند'),
-                'original_filename' => $doc->original_filename ?? 'document',
-                'document_type' => $doc->document_type,
-                'document_type_label' => match ($doc->document_type) {
-                    'national_id' => 'بطاقة هوية وطنية',
-                    'passport' => 'جواز سفر',
-                    'employment_letter' => 'خطاب تعريف بالعمل / الراتب',
-                    'other' => 'عقد / مستند آخر',
-                    default => $doc->document_type,
-                },
-                'file_size' => $doc->file_size ? round($doc->file_size / 1024, 1).' كيلوبايت' : null,
-                'created_at' => $doc->created_at?->format('d/m/Y H:i') ?? '',
-                'download_url' => route('renters.documents.download', [$renter->id, $doc->id]),
-            ]),
+            'active_lease' => $activeLease ? $this->activeLeaseSummary($activeLease) : null,
+            'security_deposits' => $this->securityDepositRows($renter),
+            'ledger' => $ledger,
+            'payments' => $payments,
+            'whatsapp_logs' => $this->messageLogRows($renter),
+            'documents' => $this->documentRows($renter),
             'summary' => [
-                'total_billed' => (float) $charges->sum('amount'),
-                'total_paid' => (float) $paymentsList->sum('amount'),
-                'total_outstanding' => (float) $charges->sum('outstanding_balance'),
+                'total_billed' => (float) array_sum(array_column($ledger, 'amount')),
+                'total_paid' => (float) array_sum(array_column($payments, 'amount')),
+                'total_outstanding' => (float) array_sum(array_column($ledger, 'outstanding_balance')),
             ],
         ]);
     }
@@ -284,7 +157,7 @@ class RenterController extends Controller
         ]);
     }
 
-    public function store(StoreRenterRequest $request): RedirectResponse|JsonResponse
+    public function store(StoreRenterRequest $request, DocumentStorageService $storage): RedirectResponse|JsonResponse
     {
         $workspace = $this->resolveWorkspace($request);
         $validated = $request->validated();
@@ -304,19 +177,13 @@ class RenterController extends Controller
 
         if ($request->hasFile('id_card_front')) {
             $file = $request->file('id_card_front');
-            $extension = $file->getClientOriginalExtension() ?: 'jpg';
-            $filename = Str::random(40).'.'.strtolower($extension);
-            $path = "ids/{$renter->id}/{$filename}";
-            EncryptedFileService::put($file, $path, 'local');
+            $path = $storage->storeEncrypted($file, "ids/{$renter->id}");
             $updates['id_card_front'] = $path;
         }
 
         if ($request->hasFile('id_card_back')) {
             $file = $request->file('id_card_back');
-            $extension = $file->getClientOriginalExtension() ?: 'jpg';
-            $filename = Str::random(40).'.'.strtolower($extension);
-            $path = "ids/{$renter->id}/{$filename}";
-            EncryptedFileService::put($file, $path, 'local');
+            $path = $storage->storeEncrypted($file, "ids/{$renter->id}");
             $updates['id_card_back'] = $path;
         }
 
@@ -355,14 +222,11 @@ class RenterController extends Controller
 
         if ($request->hasFile('id_card_front')) {
             if ($renter->id_card_front) {
-                EncryptedFileService::delete($renter->id_card_front, 'local');
+                EncryptedFileService::delete($renter->id_card_front, $storage->getPrivateDisk());
                 $storage->delete($renter->id_card_front, 'public');
             }
             $file = $request->file('id_card_front');
-            $extension = $file->getClientOriginalExtension() ?: 'jpg';
-            $filename = Str::random(40).'.'.strtolower($extension);
-            $path = "ids/{$renter->id}/{$filename}";
-            EncryptedFileService::put($file, $path, 'local');
+            $path = $storage->storeEncrypted($file, "ids/{$renter->id}");
             $validated['id_card_front'] = $path;
         } else {
             unset($validated['id_card_front']);
@@ -370,14 +234,11 @@ class RenterController extends Controller
 
         if ($request->hasFile('id_card_back')) {
             if ($renter->id_card_back) {
-                EncryptedFileService::delete($renter->id_card_back, 'local');
+                EncryptedFileService::delete($renter->id_card_back, $storage->getPrivateDisk());
                 $storage->delete($renter->id_card_back, 'public');
             }
             $file = $request->file('id_card_back');
-            $extension = $file->getClientOriginalExtension() ?: 'jpg';
-            $filename = Str::random(40).'.'.strtolower($extension);
-            $path = "ids/{$renter->id}/{$filename}";
-            EncryptedFileService::put($file, $path, 'local');
+            $path = $storage->storeEncrypted($file, "ids/{$renter->id}");
             $validated['id_card_back'] = $path;
         } else {
             unset($validated['id_card_back']);
@@ -411,7 +272,7 @@ class RenterController extends Controller
             'original_filename' => $originalName,
             'storage_path' => $path,
             'file_size' => $fileSize,
-            'uploaded_by' => $request->user()->id,
+            'uploaded_by' => $this->authenticatedUser($request)->id,
         ]);
 
         return back()->with('success', 'تم رفع المستند بنجاح وحفظه في التخزين الآمن');
@@ -447,8 +308,8 @@ class RenterController extends Controller
             abort(404, 'لم يتم إرفاق صورة بطاقة الهوية.');
         }
 
-        if ($storage->exists($path, 'local')) {
-            return EncryptedFileService::response($path, 'local', "renter-{$renter->id}-id-{$side}");
+        if ($storage->exists($path, $storage->getPrivateDisk())) {
+            return EncryptedFileService::response($path, $storage->getPrivateDisk(), "renter-{$renter->id}-id-{$side}");
         }
 
         if ($storage->exists($path, 'public')) {
@@ -473,5 +334,177 @@ class RenterController extends Controller
         $document->delete();
 
         return back()->with('success', 'تم حذف المستند بنجاح من النظام والتخزين');
+    }
+
+    /**
+     * The rent ledger of a lease as shown on the renter page.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function ledgerRows(Lease $lease): array
+    {
+        return $lease->rentCharges->map(function (RentCharge $charge): array {
+            $allocated = (float) $charge->allocations->sum('amount');
+            $outstanding = max(0, (float) $charge->amount - $allocated);
+            $isPaid = $outstanding <= 0;
+            $isOverdue = ! $isPaid && $charge->due_date < today();
+
+            return [
+                'id' => $charge->id,
+                'period' => $charge->period_start->format('m/Y'),
+                'period_start' => $charge->period_start->format('d/m/Y'),
+                'period_end' => $charge->period_end->format('d/m/Y'),
+                'due_date' => $charge->due_date->format('d/m/Y'),
+                'amount' => (float) $charge->amount,
+                'paid_amount' => $allocated,
+                'outstanding_balance' => $outstanding,
+                'status' => $isPaid ? 'paid' : ($isOverdue ? 'overdue' : 'pending'),
+                'status_label' => $isPaid ? 'مسدد بالكامل' : ($isOverdue ? 'متأخر' : 'مستحق قريباً'),
+            ];
+        })->values()->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function paymentRows(Renter $renter): array
+    {
+        return $renter->payments->map(fn (Payment $payment): array => [
+            'id' => $payment->id,
+            'reference' => $payment->reference ?? 'REC-'.$payment->id,
+            'amount' => (float) $payment->amount,
+            'paid_at' => $payment->paid_at->format('d/m/Y H:i'),
+            'payment_method' => match ($payment->payment_method) {
+                'bank_transfer' => 'تحويل بنكي',
+                'cash' => 'نقدي',
+                'cheque' => 'شيك',
+                default => 'إنستاباي / فيزا / إلكتروني',
+            },
+            'notes' => $payment->notes,
+            'has_receipt' => ! empty($payment->receipt_path),
+            'receipt_url' => ! empty($payment->receipt_path) ? route('payments.attachment', $payment) : null,
+        ])->values()->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function messageLogRows(Renter $renter): array
+    {
+        return $renter->messageLogs->map(fn (MessageLog $messageLog): array => [
+            'id' => $messageLog->id,
+            'template' => match ($messageLog->template_name) {
+                'rent_due_reminder_ar' => 'تذكير استحقاق الإيجار',
+                'payment_receipt_instant_ar' => 'إشعار استلام دفعة وسند قبض',
+                default => 'إشعار عام',
+            },
+            'status' => $messageLog->status,
+            'status_label' => match ($messageLog->status) {
+                'delivered' => 'تم التسليم',
+                'sent' => 'تم الإرسال',
+                'pending' => 'معلق',
+                'failed' => 'فشل الإرسال',
+                default => $messageLog->status,
+            },
+            'sent_at' => $messageLog->sent_at?->format('d/m/Y H:i') ?? '—',
+            'phone' => $messageLog->recipient_phone,
+        ])->values()->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function activeLeaseSummary(Lease $lease): array
+    {
+        return [
+            'id' => $lease->id,
+            'contract_number' => $lease->contract_number,
+            'unit_name' => $lease->unit?->name,
+            'unit_code' => $lease->unit?->code,
+            'unit_type' => $lease->unit?->unit_type,
+            'unit_type_label' => $this->unitTypeLabel($lease->unit?->unit_type),
+            'property_name' => $lease->unit?->property?->name,
+            'apartment_gender' => $lease->unit?->getApartmentGenderInfo(),
+            'starts_on' => $lease->starts_on->format('d/m/Y'),
+            'ends_on' => $lease->ends_on->format('d/m/Y'),
+            'rent_amount' => (float) $lease->rent_amount,
+            'billing_interval' => 'شهري',
+            'deposit_amount' => (float) $lease->security_deposit_amount,
+            'deposit_received' => $lease->total_deposit_received,
+            'deposit_status' => $lease->security_deposit_status,
+            'deposit_status_label' => match ($lease->security_deposit_status) {
+                'not_required' => 'غير مطلوب',
+                'due' => 'مستحق السداد',
+                'partially_received' => 'مدفوع جزئياً',
+                'held' => 'محتجز قيد العقد',
+                'under_review' => 'قيد التسوية',
+                'settled' => 'تمت التسوية',
+            },
+            'status' => $lease->status,
+        ];
+    }
+
+    /**
+     * Deposit position of every lease of the renter that involves a deposit.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function securityDepositRows(Renter $renter): array
+    {
+        return $renter->leases->map(fn (Lease $lease): array => [
+            'lease_id' => $lease->id,
+            'contract_number' => $lease->contract_number,
+            'unit_name' => $lease->unit?->name,
+            'unit_type' => $lease->unit?->unit_type,
+            'unit_type_label' => $this->unitTypeLabel($lease->unit?->unit_type),
+            'agreed_amount' => (float) $lease->security_deposit_amount,
+            'total_received' => $lease->total_deposit_received,
+            'total_deductions' => $lease->total_deposit_deductions,
+            'total_refunded' => $lease->total_deposit_refunded,
+            'refundable_balance' => $lease->refundable_deposit_balance,
+            'status' => $lease->security_deposit_status,
+            'status_label' => match ($lease->security_deposit_status) {
+                'not_required' => 'غير مطلوب',
+                'due' => 'مستحق السداد',
+                'partially_received' => 'مدفوع جزئياً',
+                'held' => 'محتجز قيد العقد',
+                'under_review' => 'قيد فحص الوحدة والتسوية',
+                'settled' => 'تمت التسوية',
+            },
+        ])->filter(fn (array $deposit) => $deposit['agreed_amount'] > 0 || $deposit['total_received'] > 0)->values()->all();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function documentRows(Renter $renter): array
+    {
+        return $renter->documents->map(fn (RenterDocument $document): array => [
+            'id' => $document->id,
+            'title' => $document->title ?: ($document->original_filename ?: 'مستند'),
+            'original_filename' => $document->original_filename ?? 'document',
+            'document_type' => $document->document_type,
+            'document_type_label' => match ($document->document_type) {
+                'national_id' => 'بطاقة هوية وطنية',
+                'passport' => 'جواز سفر',
+                'employment_letter' => 'خطاب تعريف بالعمل / الراتب',
+                'other' => 'عقد / مستند آخر',
+                default => $document->document_type,
+            },
+            'file_size' => $document->file_size ? round($document->file_size / 1024, 1).' كيلوبايت' : null,
+            'created_at' => $document->created_at?->format('d/m/Y H:i') ?? '',
+            'download_url' => route('renters.documents.download', [$renter->id, $document->id]),
+        ])->values()->all();
+    }
+
+    private function unitTypeLabel(?string $unitType): string
+    {
+        return match ($unitType) {
+            'apartment' => 'شقة',
+            'room' => 'غرفة',
+            'bed' => 'سرير',
+            'shop' => 'محل',
+            default => 'وحدة',
+        };
     }
 }

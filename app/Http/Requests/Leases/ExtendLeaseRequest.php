@@ -30,14 +30,10 @@ class ExtendLeaseRequest extends FormRequest
     public function rules(): array
     {
         $lease = $this->route('lease');
-        $currentEndsOn = $lease instanceof Lease ? $lease->ends_on?->toDateString() : null;
+        $currentEndsOn = $lease instanceof Lease ? $lease->ends_on->toDateString() : null;
 
         return [
-            'ends_on' => array_values(array_filter([
-                'required',
-                'date',
-                $currentEndsOn ? "after:{$currentEndsOn}" : null,
-            ])),
+            'ends_on' => $currentEndsOn !== null ? ['required', 'date', "after:{$currentEndsOn}"] : ['required', 'date'],
             'rent_amount' => ['nullable', 'numeric', 'min:1'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];

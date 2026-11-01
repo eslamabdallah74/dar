@@ -1,22 +1,15 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useForm } from '@inertiajs/vue3';
+import { Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
+import ResourceTableHeading from '@/Components/Common/ResourceTableHeading.vue';
 import {
-    Bell,
-    Check,
     CheckCheck,
-    CheckCircle2,
     Clock,
-    Copy,
     MessageCircle,
     MessageSquare,
-    Phone,
     Send,
-    Settings,
-    ShieldCheck,
-    Smartphone,
     X,
     Zap,
 } from 'lucide-vue-next';
@@ -223,7 +216,9 @@ const sendTestMessage = () => {
                     <table class="w-full text-right text-sm">
                         <thead>
                             <tr class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] text-xs font-bold">
-                                <th class="py-3.5 px-6">المستأجر المستلم</th>
+                                <th class="py-3.5 px-6">
+                                    <ResourceTableHeading :href="route('renters.index')">المستأجر المستلم</ResourceTableHeading>
+                                </th>
                                 <th class="py-3.5 px-6">رقم الجوال</th>
                                 <th class="py-3.5 px-6">القالب المستخدم</th>
                                 <th class="py-3.5 px-6">وقت الجدولة</th>
@@ -234,7 +229,12 @@ const sendTestMessage = () => {
                         <tbody class="divide-y divide-[#D6E0E7]">
                             <tr v-for="log in logs" :key="log.id" class="hover:bg-[#F8F4EA] transition">
                                 <td class="py-4 px-6 font-bold text-[#163E3E]">
-                                    {{ log.renter_name }}
+                                    <Link
+                                        :href="route('renters.show', log.renter_id)"
+                                        class="rounded-sm hover:text-[#36594F] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#52766C]"
+                                    >
+                                        {{ log.renter_name }}
+                                    </Link>
                                 </td>
                                 <td class="py-4 px-6 font-mono text-xs text-[#5B6770]" dir="ltr">
                                     {{ log.recipient_phone }}

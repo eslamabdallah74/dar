@@ -22,18 +22,4 @@ class PropertyFactory extends Factory
             'address' => fake()->address(),
         ];
     }
-
-    public function building(): static
-    {
-        return $this->state(fn () => [
-            'property_type' => 'building',
-        ]);
-    }
-
-    public function villa(): static
-    {
-        return $this->state(fn () => [
-            'property_type' => 'villa',
-        ]);
-    }
 }

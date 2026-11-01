@@ -27,22 +27,4 @@ class WorkspaceSubscriptionFactory extends Factory
             'provider_reference' => 'SUB-'.fake()->numerify('#####'),
         ];
     }
-
-    public function active(): static
-    {
-        return $this->state(fn () => [
-            'status' => 'active',
-            'starts_at' => now()->subMonth(),
-            'ends_at' => now()->addYear(),
-        ]);
-    }
-
-    public function expired(): static
-    {
-        return $this->state(fn () => [
-            'status' => 'expired',
-            'starts_at' => now()->subYear(),
-            'ends_at' => now()->subDay(),
-        ]);
-    }
 }

@@ -4,14 +4,20 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\SecurityDeposits;
 
+use App\Enums\PaymentMethod;
+use App\Enums\SecurityDepositRefundStatus;
+use App\Http\Requests\Concerns\ResolvesRouteLease;
 use App\Models\Lease;
 use App\Support\CurrentWorkspace;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class SettleSecurityDepositRequest extends FormRequest
 {
+    use ResolvesRouteLease;
+
     public function authorize(): bool
     {
         $lease = $this->route('lease');
@@ -41,8 +47,8 @@ class SettleSecurityDepositRequest extends FormRequest
             'deductions.*.description' => ['required_with:deductions', 'string', 'max:1000'],
             'deductions.*.notes' => ['nullable', 'string', 'max:1000'],
             'deductions.*.attachment' => ['nullable', 'file', 'mimes:jpeg,png,jpg,pdf,webp', 'max:10240'],
-            'refund_status' => ['nullable', 'in:pending,refunded,not_applicable'],
-            'refund_method' => ['required_if:refund_status,refunded', 'nullable', 'in:cash,bank_transfer,cheque,other'],
+            'refund_status' => ['nullable', Rule::in(SecurityDepositRefundStatus::values())],
+            'refund_method' => ['required_if:refund_status,refunded', 'nullable', Rule::in(PaymentMethod::values())],
             'refund_payment_date' => ['required_if:refund_status,refunded', 'nullable', 'date'],
             'refund_reference' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:2000'],
@@ -52,8 +58,7 @@ class SettleSecurityDepositRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $v) {
-            /** @var Lease|null $lease */
-            $lease = $this->route('lease');
+            $lease = $this->routeLease();
             if (! $lease) {
                 return;
             }
@@ -67,7 +72,7 @@ class SettleSecurityDepositRequest extends FormRequest
             $totalReceived = (float) $lease->total_deposit_received;
             $previouslyRefunded = (float) $lease->total_deposit_refunded;
 
-            $submittedDeductions = $this->input('deductions', []);
+            $submittedDeductions = $this->array('deductions');
             $submittedIds = collect($submittedDeductions)->pluck('id')->filter()->all();
 
             $otherExistingDeductionsTotal = (float) $lease->securityDepositDeductions()

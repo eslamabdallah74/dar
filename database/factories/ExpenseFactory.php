@@ -29,18 +29,4 @@ class ExpenseFactory extends Factory
             'notes' => fake()->sentence(),
         ];
     }
-
-    public function maintenance(): static
-    {
-        return $this->state(fn () => [
-            'category' => 'maintenance',
-        ]);
-    }
-
-    public function operating(): static
-    {
-        return $this->state(fn () => [
-            'category' => fake()->randomElement(['كهرباء ومياه', 'نظافة وخدمات', 'أمن وحراسة', 'إدارية']),
-        ]);
-    }
 }

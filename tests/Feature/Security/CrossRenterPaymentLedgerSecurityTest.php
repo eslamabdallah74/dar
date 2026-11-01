@@ -143,8 +143,8 @@ test('RecordPaymentAction never allocates payment of Renter A to a charge belong
     expect($allocationsForB)->toBe(0);
 
     // Charge A (Renter A's charge) should be settled instead via auto-allocation
-    expect($this->chargeB->fresh()->paid_amount)->toEqual(0);
-    expect($this->chargeA->fresh()->paid_amount)->toEqual(3000);
+    expect($this->chargeB->refresh()->paid_amount)->toEqual(0);
+    expect($this->chargeA->refresh()->paid_amount)->toEqual(3000);
 });
 
 test('cannot submit a payment for a renter belonging to another workspace', function () {

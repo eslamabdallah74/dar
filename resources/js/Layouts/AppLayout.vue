@@ -6,8 +6,9 @@ import AppNavbar from '@/Components/Layout/AppNavbar.vue';
 import AppFooter from '@/Components/Layout/AppFooter.vue';
 import ModalNewAction from '@/Components/Common/ModalNewAction.vue';
 import ModalRecordPayment from '@/Components/Common/ModalRecordPayment.vue';
+import ConfirmDialog from '@/Components/Common/ConfirmDialog.vue';
 import GlobalToast from '@/Components/Common/GlobalToast.vue';
-import { CheckCircle2, AlertCircle, AlertOctagon, X } from 'lucide-vue-next';
+import { AlertOctagon, X } from 'lucide-vue-next';
 
 const props = withDefaults(
     defineProps<{
@@ -38,11 +39,9 @@ const page = usePage();
 const mobileOpen = ref(false);
 const newActionOpen = ref(false);
 const recordPaymentOpen = ref(false);
-const showFlash = ref(true);
 
 const user = computed(() => (page.props.auth as any)?.user ?? { name: 'أحمد حسن', email: 'test@example.com', role: 'مالك المنشأة' });
 const quickRenters = computed(() => (page.props as any)?.quickRenters ?? []);
-const flash = computed(() => (page.props.flash as any) ?? {});
 const pageErrors = computed(() => {
     const errs = (page.props.errors as any) || {};
     return Object.keys(errs).length > 0 ? errs : null;
@@ -57,15 +56,6 @@ watch(
         }
     },
     { deep: true, immediate: true }
-);
-
-watch(
-    () => [flash.value.success, flash.value.error],
-    ([newSuccess, newError]) => {
-        if (newSuccess || newError) {
-            showFlash.value = true;
-        }
-    }
 );
 
 const openRecordPaymentModal = () => {
@@ -155,37 +145,8 @@ function handleNewAction() {
                 </div>
             </div>
 
-            <!-- تنبيهات الفلاش (Flash Notifications) متناسقة مع العرض الموحد -->
-            <div v-if="(flash.success || flash.error) && showFlash" class="max-w-[1440px] w-full mx-auto px-4 sm:px-8 pt-4">
-                <div
-                    v-if="flash.success"
-                    class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-semibold flex items-center justify-between shadow-xs animate-in fade-in"
-                >
-                    <div class="flex items-center gap-2.5">
-                        <CheckCircle2 class="w-5 h-5 text-emerald-600 shrink-0" />
-                        <span>{{ flash.success }}</span>
-                    </div>
-                    <button @click="showFlash = false" type="button" class="text-emerald-700 hover:text-emerald-950 p-1 cursor-pointer">
-                        <X class="w-4 h-4" />
-                    </button>
-                </div>
-
-                <div
-                    v-if="flash.error"
-                    class="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-sm font-semibold flex items-center justify-between shadow-xs animate-in fade-in"
-                >
-                    <div class="flex items-center gap-2.5">
-                        <AlertCircle class="w-5 h-5 text-rose-600 shrink-0" />
-                        <span>{{ flash.error }}</span>
-                    </div>
-                    <button @click="showFlash = false" type="button" class="text-rose-700 hover:text-rose-950 p-1 cursor-pointer">
-                        <X class="w-4 h-4" />
-                    </button>
-                </div>
-            </div>
-
             <!-- محتوى الصفحة المعروضة (Page Slot) -->
-            <main class="flex-1 px-4 sm:px-8 py-6 sm:py-8 max-w-[1440px] w-full mx-auto space-y-8">
+            <main class="flex-1 px-4 sm:px-8 py-6 sm:py-8 max-w-[1440px] w-full mx-auto flex flex-col gap-8">
                 <!-- رأس الصفحة الاختياري إن وُجد (Page Header) -->
                 <div v-if="headerTitle" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
                     <div>
@@ -211,7 +172,7 @@ function handleNewAction() {
                 <slot />
 
                 <!-- التذييل الموحد (App Footer) متناسق مع العرض الكامل للصفحة -->
-                <AppFooter />
+                <AppFooter class="mt-auto" />
             </main>
         </div>
 
@@ -233,5 +194,6 @@ function handleNewAction() {
 
         <!-- نظام الإشعارات والتنبيهات الشامل (Global Toast Center) -->
         <GlobalToast />
+        <ConfirmDialog />
     </div>
 </template>

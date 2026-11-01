@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
+use App\Enums\UnitAvailabilityStatus;
 use App\Models\Concerns\BelongsToWorkspace;
+use App\Services\Leases\RentalConflictService;
 use App\Services\UnitHierarchyService;
+use Database\Factories\UnitFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 
 class Unit extends Model
 {
+    /** @use HasFactory<UnitFactory> */
     use BelongsToWorkspace, HasFactory;
 
     protected $fillable = [
@@ -33,26 +37,41 @@ class Unit extends Model
         ];
     }
 
+    /**
+     * @return BelongsTo<Property, $this>
+     */
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);
     }
 
+    /**
+     * @return BelongsTo<Unit, $this>
+     */
     public function parentUnit(): BelongsTo
     {
         return $this->belongsTo(Unit::class, 'parent_unit_id');
     }
 
+    /**
+     * @return HasMany<Unit, $this>
+     */
     public function childUnits(): HasMany
     {
         return $this->hasMany(Unit::class, 'parent_unit_id');
     }
 
+    /**
+     * @return HasMany<Lease, $this>
+     */
     public function leases(): HasMany
     {
         return $this->hasMany(Lease::class);
     }
 
+    /**
+     * @return HasOne<Lease, $this>
+     */
     public function currentLease(): HasOne
     {
         return $this->hasOne(Lease::class)
@@ -66,11 +85,34 @@ class Unit extends Model
         return $this->currentLease !== null;
     }
 
+    /**
+     * Get the dynamic availability status of this unit across the hierarchy.
+     */
+    public function getAvailabilityStatus(): UnitAvailabilityStatus
+    {
+        return app(RentalConflictService::class)->getUnitAvailabilityStatus($this);
+    }
+
+    /**
+     * Check if this unit can currently be rented independently.
+     */
+    public function isEligibleForRental(): bool
+    {
+        return (bool) $this->is_rentable
+            && $this->getAvailabilityStatus() === UnitAvailabilityStatus::Available;
+    }
+
+    /**
+     * @return HasMany<MaintenanceRequest, $this>
+     */
     public function maintenanceRequests(): HasMany
     {
         return $this->hasMany(MaintenanceRequest::class);
     }
 
+    /**
+     * @return HasMany<Expense, $this>
+     */
     public function expenses(): HasMany
     {
         return $this->hasMany(Expense::class);
@@ -183,12 +225,63 @@ class Unit extends Model
     }
 
     /**
+     * Scope a query to only include parent units (top-level units with no parent).
+     *
+     * @param  Builder<Unit>  $query
+     * @return Builder<Unit>
+     */
+    public function scopeParentUnits(Builder $query): Builder
+    {
+        return $query->whereNull('parent_unit_id');
+    }
+
+    /**
+     * Find the root parent unit in the hierarchy for this unit (topmost unit with parent_unit_id = null).
+     */
+    public function getRootParentUnit(): Unit
+    {
+        if ($this->parent_unit_id === null) {
+            return $this;
+        }
+
+        $current = $this;
+        while ($current->parent_unit_id !== null) {
+            $parent = $current->relationLoaded('parentUnit')
+                ? $current->parentUnit
+                : $current->parentUnit()->first();
+
+            if (! $parent) {
+                break;
+            }
+
+            $current = $parent;
+        }
+
+        return $current;
+    }
+
+    /**
+     * Get the ID of the root parent unit in the hierarchy.
+     */
+    public function getRootParentUnitId(): int
+    {
+        if ($this->parent_unit_id === null) {
+            return (int) $this->id;
+        }
+
+        return (int) $this->getRootParentUnit()->id;
+    }
+
+    /**
      * Billable units query:
      * A unit counts as billable when:
      * 1. is_rentable = true
      * 2. It has no rentable descendants at any depth.
      *
      * Vacant units still count; properties never count as billable units.
+     *
+     * @param  Builder<Unit>  $query
+     * @return Builder<Unit>
      */
     public function scopeBillableLeaves(Builder $query): Builder
     {

@@ -137,3 +137,16 @@ test('first-time empty workspace shows onboarding state', function () {
         ->where('kpis.units.value', '0')
     );
 });
+
+test('dashboard labels recent properties by their property type', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['owner_user_id' => $user->id]);
+    $workspace->members()->create(['user_id' => $user->id, 'role' => 'owner']);
+    Property::create(['workspace_id' => $workspace->id, 'name' => 'عمارة الندى', 'property_type' => 'building']);
+
+    $response = $this->actingAs($user)->get('/dashboard');
+
+    $response->assertOk()->assertInertia(fn (Assert $page) => $page
+        ->where('recent_properties.0.property_type_label', 'عمارة سكنية')
+    );
+});

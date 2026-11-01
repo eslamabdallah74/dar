@@ -1,14 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import ResourceTableHeading from '@/Components/Common/ResourceTableHeading.vue';
 import {
-    ArrowUpDown,
     MessageCircle,
     CreditCard,
     CheckCircle2,
-    Calendar,
     Search,
-    MapPin,
-    Building2,
 } from 'lucide-vue-next';
 
 interface DueItem {
@@ -148,10 +145,10 @@ const filteredItems = computed(() => {
                     <thead>
                         <tr class="border-b border-[#E8EFF4] text-[11px] font-bold text-[#5B6770]">
                             <th class="pb-3 pr-2 cursor-pointer hover:text-[#163E3E] transition select-none" @click="toggleSort('tenant')">
-                                <span class="inline-flex items-center gap-1">المستأجر ↕</span>
+                                <ResourceTableHeading :href="route('renters.index')" @click.stop>المستأجر</ResourceTableHeading>
                             </th>
                             <th class="pb-3 cursor-pointer hover:text-[#163E3E] transition select-none" @click="toggleSort('unit')">
-                                <span class="inline-flex items-center gap-1">العقار والوحدة ↕</span>
+                                <ResourceTableHeading :href="route('properties.index')" @click.stop>العقار والوحدة</ResourceTableHeading>
                             </th>
                             <th class="pb-3 cursor-pointer hover:text-[#163E3E] transition select-none" @click="toggleSort('due_date')">
                                 <span class="inline-flex items-center gap-1">تاريخ الاستحقاق ↕</span>

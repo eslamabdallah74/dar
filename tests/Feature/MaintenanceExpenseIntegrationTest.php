@@ -92,9 +92,8 @@ test('1. creating maintenance request automatically creates linked pending expen
         ->and($maintenance->isPending())->toBeTrue();
 
     // Verify corresponding expense record created immediately
-    $expense = Expense::where('maintenance_request_id', $maintenance->id)->first();
-    expect($expense)->not->toBeNull()
-        ->and($expense->origin)->toBe('maintenance')
+    $expense = Expense::where('maintenance_request_id', $maintenance->id)->firstOrFail();
+    expect($expense->origin)->toBe('maintenance')
         ->and($expense->status)->toBe('pending_amount')
         ->and($expense->amount)->toBeNull()
         ->and($expense->property_id)->toBe($this->property->id)
@@ -424,11 +423,11 @@ test('8. common-area maintenance without unit is allowed and creates linked expe
         ->where('title', 'إصلاح إنارة مدخل العقار والمصعد')
         ->firstOrFail();
 
+    $expense = $maintenance->expense()->firstOrFail();
     expect($maintenance->unit_id)->toBeNull()
-        ->and($maintenance->expense)->not->toBeNull()
-        ->and($maintenance->expense->unit_id)->toBeNull()
-        ->and($maintenance->expense->amount)->toBeNull()
-        ->and($maintenance->expense->payment_status)->toBe('unpaid');
+        ->and($expense->unit_id)->toBeNull()
+        ->and($expense->amount)->toBeNull()
+        ->and($expense->payment_status)->toBe('unpaid');
 });
 
 test('9. unit not belonging to the selected property is rejected with 422 validation error', function () {
@@ -523,10 +522,9 @@ test('11. transition to in_progress sets started_at timestamp and logs activity'
         $activity = Activity::where('subject_type', MaintenanceRequest::class)
             ->where('subject_id', $maintenance->id)
             ->latest('id')
-            ->first();
+            ->firstOrFail();
 
-        expect($activity)->not->toBeNull()
-            ->and($activity->properties['to_status'])->toBe('in_progress');
+        expect($activity->getProperty('to_status'))->toBe('in_progress');
     }
 });
 
@@ -715,3 +713,41 @@ test('16. atomic creation rolls back maintenance request if expense creation fai
     expect(MaintenanceRequest::count())->toBe($initialMaintenanceCount)
         ->and(Expense::count())->toBe($initialExpenseCount);
 });
+
+test('editing a maintenance request keeps expense notes the user wrote and syncs notes still copied from the description', function (string $expenseNotes, string $expectedNotes) {
+    $maintenance = MaintenanceRequest::create([
+        'workspace_id' => $this->workspace->id,
+        'property_id' => $this->property->id,
+        'unit_id' => $this->unit->id,
+        'title' => 'تسريب مياه المطبخ',
+        'description' => 'تسريب أسفل الحوض',
+        'status' => 'in_progress',
+        'reported_at' => now(),
+    ]);
+    $expense = Expense::create([
+        'workspace_id' => $this->workspace->id,
+        'property_id' => $this->property->id,
+        'unit_id' => $this->unit->id,
+        'maintenance_request_id' => $maintenance->id,
+        'category' => 'صيانة وتشغيل',
+        'title' => $maintenance->title,
+        'amount' => 400.00,
+        'expense_date' => now()->toDateString(),
+        'origin' => 'maintenance',
+        'status' => 'ready',
+        'recorded_by' => $this->user->id,
+        'notes' => $expenseNotes,
+    ]);
+
+    $this->actingAs($this->user)->put(route('maintenance.update', $maintenance->id), [
+        'property_id' => $this->property->id,
+        'unit_id' => $this->unit->id,
+        'title' => 'تسريب مياه المطبخ والحمام',
+        'description' => 'تسريب أسفل الحوض وخلف الغسالة',
+    ])->assertSessionHasNoErrors();
+
+    expect($expense->refresh()->notes)->toBe($expectedNotes);
+})->with([
+    'notes written by the user' => ['فاتورة السباك رقم 551', 'فاتورة السباك رقم 551'],
+    'notes copied from the old description' => ['تسريب أسفل الحوض', 'تسريب أسفل الحوض وخلف الغسالة'],
+]);

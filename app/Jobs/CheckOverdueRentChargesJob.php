@@ -52,15 +52,15 @@ class CheckOverdueRentChargesJob extends BaseJob
 
             // If renter has an email address, dispatch email notification
             if (! empty($renter->email)) {
-                $unitNumber = $lease->unit?->unit_number ?? 'الوحدة';
+                $unitNumber = $lease->unit->name ?? 'الوحدة';
                 $amount = number_format($charge->outstanding_balance, 2);
-                $dueDate = $charge->due_date?->format('d/m/Y') ?? '';
+                $dueDate = $charge->due_date->format('d/m/Y');
 
                 dispatch(new EmailNotificationJob(
                     recipient: $renter->email,
                     mailSubject: "إشعار استحقاق متأخرات إيجار - وحدة {$unitNumber}",
                     contentBody: "عزيزي المستأجر {$renter->name}،\n\nنود إحاطتكم بوجود متأخرات إيجارية مستحقة بقيمة {$amount} ج.م للوحدة ({$unitNumber}) التي كان موعد استحقاقها في {$dueDate}.\n\nيرجى المبادرة بالسداد تجنباً للإجراءات النظامية.\n\nشكراً لتعاونكم."
-                ))->onQueue(QueueName::Notifications->value);
+                ));
             }
 
             $notifiedCount++;

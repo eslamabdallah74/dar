@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Expenses;
 
+use App\Models\Expense;
 use App\Support\CurrentWorkspace;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -22,7 +23,8 @@ class UpdateExpenseRequest extends FormRequest
     public function rules(): array
     {
         $workspaceId = app(CurrentWorkspace::class)->id();
-        $propertyId = $this->input('property_id') ?? $this->route('expense')?->property_id;
+        $expense = $this->route('expense');
+        $propertyId = $this->input('property_id') ?? ($expense instanceof Expense ? $expense->property_id : null);
 
         return [
             'property_id' => [

@@ -42,7 +42,7 @@ class RenterResource extends JsonResource
                 'unit_name' => $activeLease->unit?->name,
                 'property_name' => $activeLease->unit?->property?->name,
                 'rent_amount' => (float) $activeLease->rent_amount,
-                'ends_on' => $activeLease->ends_on?->format('d/m/Y'),
+                'ends_on' => $activeLease->ends_on->format('d/m/Y'),
             ] : null,
             'status' => $hasOverdue ? 'overdue' : ($activeLease ? 'regular' : 'inactive'),
             'status_label' => $hasOverdue ? 'متأخر في السداد' : ($activeLease ? 'منتظم' : 'بدون عقد نشط'),

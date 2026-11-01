@@ -24,7 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             SetCurrentWorkspace::class,
         ]);
 
-        $middleware->validateCsrfTokens(except: [
+        $middleware->preventRequestForgery(except: [
             'webhooks/*',
         ]);
 
@@ -45,7 +45,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
             // For Inertia GET visits that result in 403, 404, 500, or 503 outside local/testing
             if (! app()->environment(['local', 'testing'])
-                && in_array($response->getStatusCode(), [403, 404, 500, 503])
+                && in_array($response->getStatusCode(), [403, 404, 500, 503], true)
                 && $request->header('X-Inertia')
             ) {
                 return Inertia::render('Error', [

@@ -15,7 +15,6 @@ class GenericNotificationMail extends Mailable
     public function __construct(
         public string $mailSubject,
         public string $contentBody,
-        public array $details = []
     ) {}
 
     public function envelope(): Envelope

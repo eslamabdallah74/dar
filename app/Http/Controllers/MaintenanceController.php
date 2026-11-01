@@ -9,17 +9,18 @@ use App\Http\Requests\Maintenance\UpdateMaintenanceRequest;
 use App\Http\Requests\Maintenance\UpdateMaintenanceStatusRequest;
 use App\Http\Resources\MaintenanceRequestResource;
 use App\Jobs\NotifyMaintenanceRequestCreatedJob;
+use App\Models\Expense;
 use App\Models\MaintenanceAttachment;
 use App\Models\MaintenanceRequest;
 use App\Models\Property;
 use App\Models\Unit;
+use App\Models\User;
 use App\Services\MaintenanceExpenseService;
 use App\Services\Storage\DocumentStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -82,7 +83,7 @@ class MaintenanceController extends Controller
         $maintenanceRequest = $expenseService->createMaintenanceWithExpense(
             $workspace,
             $validated,
-            $request->user()->id
+            $this->authenticatedUser($request)->id
         );
 
         dispatch(new NotifyMaintenanceRequestCreatedJob($maintenanceRequest->id));
@@ -103,18 +104,16 @@ class MaintenanceController extends Controller
             $maintenance->update($request->validated());
 
             // Sync linked expense details without overwriting user-entered amount or payment status
-            $expenseService->syncFromMaintenance($maintenance, $request->user()->id);
+            $expenseService->syncFromMaintenance($maintenance, $this->authenticatedUser($request)->id);
 
-            if (function_exists('activity')) {
-                activity('maintenance')
-                    ->performedOn($maintenance)
-                    ->causedBy($request->user())
-                    ->withProperties([
-                        'workspace_id' => $maintenance->workspace_id,
-                        'changes' => $request->validated(),
-                    ])
-                    ->log('تم تحديث بيانات طلب الصيانة ومزامنة بند المصروف');
-            }
+            activity('maintenance')
+                ->performedOn($maintenance)
+                ->causedBy($request->user())
+                ->withProperties([
+                    'workspace_id' => $maintenance->workspace_id,
+                    'changes' => $request->validated(),
+                ])
+                ->log('تم تحديث بيانات طلب الصيانة ومزامنة بند المصروف');
         });
 
         return back()->with('success', 'تم تحديث بيانات طلب الصيانة ومزامنة بند المصروف بنجاح');
@@ -133,7 +132,7 @@ class MaintenanceController extends Controller
         $newStatus = $validated['status'];
 
         try {
-            $expenseService->transitionStatus($maintenance, $newStatus, $request->user()->id);
+            $expenseService->transitionStatus($maintenance, $newStatus, $this->authenticatedUser($request)->id);
         } catch (\DomainException $e) {
             return back()->withErrors([
                 'status' => $e->getMessage(),
@@ -159,7 +158,6 @@ class MaintenanceController extends Controller
 
         $expense = $maintenance->expense;
         $hasAmount = $expense !== null && $expense->amount !== null && (float) $expense->amount > 0;
-        $isPaid = $expense !== null && $expense->isPaid();
 
         $data = [
             'id' => $maintenance->id,
@@ -181,58 +179,35 @@ class MaintenanceController extends Controller
             'is_completed' => $maintenance->isCompleted(),
             'can_be_completed' => $hasAmount,
             'property_id' => $maintenance->property_id,
-            'property_name' => $maintenance->property?->name ?? 'عقار عام',
+            'property_name' => $maintenance->property->name ?? 'عقار عام',
             'unit_id' => $maintenance->unit_id,
-            'unit_name' => $maintenance->unit?->name ?? 'الأماكن المشتركة',
+            'unit_name' => $maintenance->unit->name ?? 'الأماكن المشتركة',
             'is_common_area' => $maintenance->unit_id === null,
-            'renter_name' => $maintenance->reportedByRenter?->name ?? 'إدارة العقار',
-            'reported_at' => $maintenance->reported_at?->format('d/m/Y H:i'),
-            'raw_reported_at' => $maintenance->reported_at?->toIso8601String(),
+            'renter_name' => $maintenance->reportedByRenter->name ?? 'إدارة العقار',
+            'reported_at' => $maintenance->reported_at->format('d/m/Y H:i'),
+            'raw_reported_at' => $maintenance->reported_at->toIso8601String(),
             'started_at' => $maintenance->started_at?->format('d/m/Y H:i'),
             'raw_started_at' => $maintenance->started_at?->toIso8601String(),
             'resolved_at' => $maintenance->resolved_at?->format('d/m/Y H:i'),
             'raw_resolved_at' => $maintenance->resolved_at?->toIso8601String(),
             'created_at' => $maintenance->created_at?->format('d/m/Y H:i'),
             'updated_at' => $maintenance->updated_at?->format('d/m/Y H:i'),
-            'expense' => $expense ? [
-                'id' => $expense->id,
-                'amount' => $expense->amount !== null ? (float) $expense->amount : null,
-                'has_amount' => $hasAmount,
-                'status' => $expense->status,
-                'payment_status' => $expense->payment_status ?? 'unpaid',
-                'is_paid' => $isPaid,
-                'paid_at' => $expense->paid_at?->format('d/m/Y'),
-                'status_label' => ! $hasAmount
-                    ? 'بانتظار تسجيل التكلفة'
-                    : ($isPaid ? 'تم دفع المصروف' : 'التكلفة مسجلة — غير مدفوعة'),
-                'is_pending_amount' => $expense->isPendingAmount(),
-                'is_ready' => $expense->isReady(),
-                'is_recorded' => $expense->isRecorded(),
-            ] : null,
-            'attachments' => $maintenance->attachments->map(fn ($att) => [
-                'id' => $att->id,
-                'original_filename' => $att->original_filename,
-                'file_size' => $att->file_size,
-                'formatted_size' => $att->formatted_size,
-                'mime_type' => $att->mime_type,
-                'is_image' => $att->isImage(),
-                'is_pdf' => $att->isPdf(),
-                'preview_url' => route('maintenance.attachments.preview', [$maintenance->id, $att->id]),
-                'download_url' => route('maintenance.attachments.download', [$maintenance->id, $att->id]),
-                'uploaded_by_name' => $att->uploader?->name ?? 'غير محدد',
-                'created_at' => $att->created_at?->format('d/m/Y H:i'),
-            ])->values()->all(),
+            'expense' => $expense ? $this->expenseSummary($expense, $hasAmount) : null,
+            'attachments' => $maintenance->attachments
+                ->map(fn (MaintenanceAttachment $attachment) => $this->attachmentRow($maintenance, $attachment, $attachment->uploader->name ?? 'غير محدد'))
+                ->values()
+                ->all(),
             'notes' => $maintenance->notes->map(fn ($n) => [
                 'id' => $n->id,
                 'note' => $n->note,
-                'created_by_name' => $n->creator?->name ?? 'مستخدم',
+                'created_by_name' => $n->creator->name ?? 'مستخدم',
                 'created_at' => $n->created_at?->format('d/m/Y H:i'),
                 'raw_created_at' => $n->created_at?->toIso8601String(),
             ])->values()->all(),
             'activities' => $maintenance->activities()->with('causer')->latest('id')->get()->map(fn ($act) => [
                 'id' => $act->id,
                 'description' => $act->description,
-                'causer_name' => $act->causer?->name ?? 'النظام',
+                'causer_name' => $act->causer instanceof User ? $act->causer->name : 'النظام',
                 'properties' => $act->properties,
                 'created_at' => $act->created_at?->format('d/m/Y H:i'),
                 'raw_created_at' => $act->created_at?->toIso8601String(),
@@ -248,7 +223,8 @@ class MaintenanceController extends Controller
 
     public function storeAttachments(
         StoreMaintenanceAttachmentRequest $request,
-        MaintenanceRequest $maintenance
+        MaintenanceRequest $maintenance,
+        MaintenanceExpenseService $expenseService
     ): JsonResponse|RedirectResponse {
         $workspace = $this->resolveWorkspace($request);
         abort_if($maintenance->workspace_id !== $workspace->id, 403, 'غير مصرح لك بإدارة مرفقات طلب الصيانة هذا.');
@@ -256,47 +232,22 @@ class MaintenanceController extends Controller
         $files = $request->file('files', []);
         $uploaded = [];
 
-        DB::transaction(function () use ($files, $maintenance, $workspace, $request, &$uploaded) {
+        DB::transaction(function () use ($files, $maintenance, $workspace, $request, $expenseService, &$uploaded) {
             foreach ($files as $file) {
                 $originalName = $file->getClientOriginalName();
-                $extension = $file->getClientOriginalExtension() ?: 'bin';
-                $safeName = Str::uuid()->toString().'.'.strtolower($extension);
-                $path = $file->storeAs("maintenance/{$workspace->id}/{$maintenance->id}", $safeName, 'local');
+                $attachment = $expenseService->storeAttachment($maintenance, $file, $this->authenticatedUser($request)->id);
 
-                $attachment = $maintenance->attachments()->create([
-                    'workspace_id' => $workspace->id,
-                    'file_path' => $path,
-                    'original_filename' => $originalName,
-                    'mime_type' => $file->getMimeType() ?: 'application/octet-stream',
-                    'file_size' => $file->getSize() ?: 0,
-                    'uploaded_by' => $request->user()->id,
-                ]);
+                activity('maintenance')
+                    ->performedOn($maintenance)
+                    ->causedBy($request->user())
+                    ->withProperties([
+                        'workspace_id' => $workspace->id,
+                        'attachment_id' => $attachment->id,
+                        'filename' => $originalName,
+                    ])
+                    ->log('تم رفع مرفق جديد: '.$originalName);
 
-                if (function_exists('activity')) {
-                    activity('maintenance')
-                        ->performedOn($maintenance)
-                        ->causedBy($request->user())
-                        ->withProperties([
-                            'workspace_id' => $workspace->id,
-                            'attachment_id' => $attachment->id,
-                            'filename' => $originalName,
-                        ])
-                        ->log('تم رفع مرفق جديد: '.$originalName);
-                }
-
-                $uploaded[] = [
-                    'id' => $attachment->id,
-                    'original_filename' => $attachment->original_filename,
-                    'file_size' => $attachment->file_size,
-                    'formatted_size' => $attachment->formatted_size,
-                    'mime_type' => $attachment->mime_type,
-                    'is_image' => $attachment->isImage(),
-                    'is_pdf' => $attachment->isPdf(),
-                    'preview_url' => route('maintenance.attachments.preview', [$maintenance->id, $attachment->id]),
-                    'download_url' => route('maintenance.attachments.download', [$maintenance->id, $attachment->id]),
-                    'uploaded_by_name' => $request->user()->name,
-                    'created_at' => $attachment->created_at?->format('d/m/Y H:i'),
-                ];
+                $uploaded[] = $this->attachmentRow($maintenance, $attachment, $this->authenticatedUser($request)->name);
             }
         });
 
@@ -366,16 +317,14 @@ class MaintenanceController extends Controller
         $filename = $attachment->original_filename;
         $attachment->delete();
 
-        if (function_exists('activity')) {
-            activity('maintenance')
-                ->performedOn($maintenance)
-                ->causedBy($request->user())
-                ->withProperties([
-                    'workspace_id' => $workspace->id,
-                    'filename' => $filename,
-                ])
-                ->log('تم حذف المرفق: '.$filename);
-        }
+        activity('maintenance')
+            ->performedOn($maintenance)
+            ->causedBy($request->user())
+            ->withProperties([
+                'workspace_id' => $workspace->id,
+                'filename' => $filename,
+            ])
+            ->log('تم حذف المرفق: '.$filename);
 
         if ($request->wantsJson()) {
             return response()->json(['message' => 'تم حذف المرفق بنجاح']);
@@ -394,19 +343,17 @@ class MaintenanceController extends Controller
         $note = $maintenance->notes()->create([
             'workspace_id' => $workspace->id,
             'note' => $request->validated('note'),
-            'created_by' => $request->user()->id,
+            'created_by' => $this->authenticatedUser($request)->id,
         ]);
 
-        if (function_exists('activity')) {
-            activity('maintenance')
-                ->performedOn($maintenance)
-                ->causedBy($request->user())
-                ->withProperties([
-                    'workspace_id' => $workspace->id,
-                    'note_id' => $note->id,
-                ])
-                ->log('تمت إضافة ملاحظة تقدم جديدة');
-        }
+        activity('maintenance')
+            ->performedOn($maintenance)
+            ->causedBy($request->user())
+            ->withProperties([
+                'workspace_id' => $workspace->id,
+                'note_id' => $note->id,
+            ])
+            ->log('تمت إضافة ملاحظة تقدم جديدة');
 
         if ($request->wantsJson()) {
             return response()->json([
@@ -414,7 +361,7 @@ class MaintenanceController extends Controller
                 'note' => [
                     'id' => $note->id,
                     'note' => $note->note,
-                    'created_by_name' => $request->user()->name,
+                    'created_by_name' => $this->authenticatedUser($request)->name,
                     'created_at' => $note->created_at?->format('d/m/Y H:i'),
                     'raw_created_at' => $note->created_at?->toIso8601String(),
                 ],
@@ -422,5 +369,49 @@ class MaintenanceController extends Controller
         }
 
         return back()->with('success', 'تمت إضافة الملاحظة بنجاح');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function expenseSummary(Expense $expense, bool $hasAmount): array
+    {
+        $isPaid = $expense->isPaid();
+
+        return [
+            'id' => $expense->id,
+            'amount' => $expense->amount !== null ? (float) $expense->amount : null,
+            'has_amount' => $hasAmount,
+            'status' => $expense->status,
+            'payment_status' => $expense->payment_status ?? 'unpaid',
+            'is_paid' => $isPaid,
+            'paid_at' => $expense->paid_at?->format('d/m/Y'),
+            'status_label' => ! $hasAmount
+                ? 'بانتظار تسجيل التكلفة'
+                : ($isPaid ? 'تم دفع المصروف' : 'التكلفة مسجلة — غير مدفوعة'),
+            'is_pending_amount' => $expense->isPendingAmount(),
+            'is_ready' => $expense->isReady(),
+            'is_recorded' => $expense->isRecorded(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function attachmentRow(MaintenanceRequest $maintenance, MaintenanceAttachment $attachment, string $uploaderName): array
+    {
+        return [
+            'id' => $attachment->id,
+            'original_filename' => $attachment->original_filename,
+            'file_size' => $attachment->file_size,
+            'formatted_size' => $attachment->formatted_size,
+            'mime_type' => $attachment->mime_type,
+            'is_image' => $attachment->isImage(),
+            'is_pdf' => $attachment->isPdf(),
+            'preview_url' => route('maintenance.attachments.preview', [$maintenance->id, $attachment->id]),
+            'download_url' => route('maintenance.attachments.download', [$maintenance->id, $attachment->id]),
+            'uploaded_by_name' => $uploaderName,
+            'created_at' => $attachment->created_at?->format('d/m/Y H:i'),
+        ];
     }
 }

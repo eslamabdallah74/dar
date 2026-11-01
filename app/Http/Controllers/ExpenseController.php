@@ -57,6 +57,7 @@ class ExpenseController extends Controller
                 'categories' => $byCategory,
             ],
             'currency' => $workspace->currency ?? 'EGP',
+            'currency_symbol' => $workspace->currencySymbol(),
         ]);
     }
 
@@ -66,7 +67,7 @@ class ExpenseController extends Controller
 
         $workspace->expenses()->create([
             ...$request->validated(),
-            'recorded_by' => $request->user()->id,
+            'recorded_by' => $this->authenticatedUser($request)->id,
             'origin' => 'manual',
             'status' => 'recorded',
         ]);
@@ -105,20 +106,18 @@ class ExpenseController extends Controller
                 'paid_at' => now(),
             ]);
 
-            if (function_exists('activity')) {
-                $maintenance = $expense->maintenanceRequest()->first();
-                if ($maintenance) {
-                    activity('maintenance')
-                        ->performedOn($maintenance)
-                        ->causedBy($request->user())
-                        ->withProperties([
-                            'workspace_id' => $workspace->id,
-                            'expense_id' => $expense->id,
-                            'amount' => $expense->amount,
-                            'paid_at' => $expense->paid_at?->toIso8601String(),
-                        ])
-                        ->log('تم تسجيل سداد تكلفة الصيانة بمبلغ: '.number_format((float) $expense->amount, 2));
-                }
+            $maintenance = $expense->maintenanceRequest()->first();
+            if ($maintenance) {
+                activity('maintenance')
+                    ->performedOn($maintenance)
+                    ->causedBy($request->user())
+                    ->withProperties([
+                        'workspace_id' => $workspace->id,
+                        'expense_id' => $expense->id,
+                        'amount' => $expense->amount,
+                        'paid_at' => $expense->paid_at?->toIso8601String(),
+                    ])
+                    ->log('تم تسجيل سداد تكلفة الصيانة بمبلغ: '.number_format((float) $expense->amount, 2));
             }
         });
 
@@ -142,18 +141,16 @@ class ExpenseController extends Controller
                 'paid_at' => null,
             ]);
 
-            if (function_exists('activity')) {
-                $maintenance = $expense->maintenanceRequest()->first();
-                if ($maintenance) {
-                    activity('maintenance')
-                        ->performedOn($maintenance)
-                        ->causedBy($request->user())
-                        ->withProperties([
-                            'workspace_id' => $workspace->id,
-                            'expense_id' => $expense->id,
-                        ])
-                        ->log('تم إلغاء تسجيل سداد المصروف وإعادته كغير مدفوع');
-                }
+            $maintenance = $expense->maintenanceRequest()->first();
+            if ($maintenance) {
+                activity('maintenance')
+                    ->performedOn($maintenance)
+                    ->causedBy($request->user())
+                    ->withProperties([
+                        'workspace_id' => $workspace->id,
+                        'expense_id' => $expense->id,
+                    ])
+                    ->log('تم إلغاء تسجيل سداد المصروف وإعادته كغير مدفوع');
             }
         });
 

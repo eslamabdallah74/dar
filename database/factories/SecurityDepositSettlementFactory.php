@@ -32,12 +32,4 @@ class SecurityDepositSettlementFactory extends Factory
             'notes' => null,
         ];
     }
-
-    public function settled(): static
-    {
-        return $this->state(fn () => [
-            'status' => 'settled',
-            'settled_at' => now(),
-        ]);
-    }
 }

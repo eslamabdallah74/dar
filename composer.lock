@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "9cc69f07c8bc8297746803247a26bed3",
+    "content-hash": "dfb3d313e9141eea876bac8a5a990449",
     "packages": [
         {
             "name": "brick/math",
@@ -6958,6 +6958,47 @@
             "time": "2026-03-17T11:56:53+00:00"
         },
         {
+            "name": "iamcal/sql-parser",
+            "version": "v0.7",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/iamcal/SQLParser.git",
+                "reference": "610392f38de49a44dab08dc1659960a29874c4b8"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/iamcal/SQLParser/zipball/610392f38de49a44dab08dc1659960a29874c4b8",
+                "reference": "610392f38de49a44dab08dc1659960a29874c4b8",
+                "shasum": ""
+            },
+            "require-dev": {
+                "php-coveralls/php-coveralls": "^1.0",
+                "phpunit/phpunit": "^5|^6|^7|^8|^9"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "iamcal\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Cal Henderson",
+                    "email": "cal@iamcal.com"
+                }
+            ],
+            "description": "MySQL schema parser",
+            "support": {
+                "issues": "https://github.com/iamcal/SQLParser/issues",
+                "source": "https://github.com/iamcal/SQLParser/tree/v0.7"
+            },
+            "time": "2026-01-28T22:20:33+00:00"
+        },
+        {
             "name": "jean85/pretty-package-versions",
             "version": "2.1.1",
             "source": {
@@ -7016,6 +7057,95 @@
                 "source": "https://github.com/Jean85/pretty-package-versions/tree/2.1.1"
             },
             "time": "2025-03-19T14:43:43+00:00"
+        },
+        {
+            "name": "larastan/larastan",
+            "version": "v3.13.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/larastan/larastan.git",
+                "reference": "0de9aec250ab498f97171b43cd1192ce11a8c8fc"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/larastan/larastan/zipball/0de9aec250ab498f97171b43cd1192ce11a8c8fc",
+                "reference": "0de9aec250ab498f97171b43cd1192ce11a8c8fc",
+                "shasum": ""
+            },
+            "require": {
+                "iamcal/sql-parser": "^0.7.0",
+                "illuminate/console": "^11.44.2 || ^12.4.1 || ^13",
+                "illuminate/container": "^11.44.2 || ^12.4.1 || ^13",
+                "illuminate/contracts": "^11.44.2 || ^12.4.1 || ^13",
+                "illuminate/database": "^11.44.2 || ^12.4.1 || ^13",
+                "illuminate/http": "^11.44.2 || ^12.4.1 || ^13",
+                "illuminate/pipeline": "^11.44.2 || ^12.4.1 || ^13",
+                "illuminate/support": "^11.44.2 || ^12.4.1 || ^13",
+                "php": "^8.2",
+                "phpstan/phpstan": "^2.3.0"
+            },
+            "require-dev": {
+                "doctrine/coding-standard": "^14",
+                "laravel/framework": "^11.44.2 || ^12.7.2 || ^13",
+                "mockery/mockery": "^1.6.12",
+                "nikic/php-parser": "^5.4",
+                "orchestra/canvas": "^v9.2.2 || ^10.0.1 || ^11",
+                "orchestra/testbench-core": "^9.12.0 || ^10.1 || ^11",
+                "phpstan/phpstan-deprecation-rules": "^2.0.1",
+                "phpunit/phpunit": "^10.5.35 || ^11.5.15 || ^12.5.8 || ^13.3.0"
+            },
+            "suggest": {
+                "orchestra/testbench": "Using Larastan for analysing a package needs Testbench",
+                "phpmyadmin/sql-parser": "Install to enable Larastan's optional phpMyAdmin-based SQL parser automatically"
+            },
+            "type": "phpstan-extension",
+            "extra": {
+                "phpstan": {
+                    "includes": [
+                        "extension.neon"
+                    ]
+                },
+                "branch-alias": {
+                    "dev-master": "3.0-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Larastan\\Larastan\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Can Vural",
+                    "email": "can9119@gmail.com"
+                }
+            ],
+            "description": "Larastan - Discover bugs in your code without running it. A phpstan/phpstan extension for Laravel",
+            "keywords": [
+                "PHPStan",
+                "code analyse",
+                "code analysis",
+                "larastan",
+                "laravel",
+                "package",
+                "php",
+                "static analysis"
+            ],
+            "support": {
+                "issues": "https://github.com/larastan/larastan/issues",
+                "source": "https://github.com/larastan/larastan/tree/v3.13.2"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/canvural",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-10-23T21:03:09+00:00"
         },
         {
             "name": "laravel/agent-detector",
@@ -8238,6 +8368,97 @@
             "time": "2026-08-10T11:01:27+00:00"
         },
         {
+            "name": "pestphp/pest-plugin-phpstan",
+            "version": "v5.2.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/pestphp/pest-plugin-phpstan.git",
+                "reference": "19afd92402be203788b73eba9fdb5f5185f66a25"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/pestphp/pest-plugin-phpstan/zipball/19afd92402be203788b73eba9fdb5f5185f66a25",
+                "reference": "19afd92402be203788b73eba9fdb5f5185f66a25",
+                "shasum": ""
+            },
+            "require": {
+                "pestphp/pest": "^5.0.0",
+                "php": "^8.4",
+                "phpstan/phpstan": "^2.2.5"
+            },
+            "conflict": {
+                "pestphp/pest": "<5.0.0"
+            },
+            "require-dev": {
+                "laravel/pao": "^1.1.2",
+                "laravel/pint": "^1.29.3",
+                "pestphp/pest-plugin-rector": "^5.0",
+                "phpstan/extension-installer": "^1.4.3",
+                "phpstan/phpstan-strict-rules": "^2.0.12",
+                "rector/rector": "^2.5.7"
+            },
+            "type": "phpstan-extension",
+            "extra": {
+                "phpstan": {
+                    "includes": [
+                        "extension.neon"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Pest\\PHPStan\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Punyapal Shah",
+                    "email": "mrpunyapal@gmail.com"
+                },
+                {
+                    "name": "Nuno Maduro",
+                    "email": "enunomaduro@gmail.com"
+                }
+            ],
+            "description": "PHPStan plugin for Pest",
+            "keywords": [
+                "PHPStan",
+                "framework",
+                "pest",
+                "php",
+                "plugin",
+                "test",
+                "testing",
+                "unit"
+            ],
+            "support": {
+                "source": "https://github.com/pestphp/pest-plugin-phpstan/tree/v5.2.2"
+            },
+            "funding": [
+                {
+                    "url": "https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=66BYDWAT92N6L",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/mrpunyapal",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nunomaduro",
+                    "type": "github"
+                },
+                {
+                    "url": "https://www.patreon.com/nunomaduro",
+                    "type": "patreon"
+                }
+            ],
+            "time": "2026-10-02T16:21:04+00:00"
+        },
+        {
             "name": "pestphp/pest-plugin-profanity",
             "version": "v5.0.1",
             "source": {
@@ -8642,6 +8863,173 @@
                 "source": "https://github.com/phpstan/phpdoc-parser/tree/2.3.6"
             },
             "time": "2026-09-27T20:07:45+00:00"
+        },
+        {
+            "name": "phpstan/phpstan",
+            "version": "2.3.2",
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/phpstan/phpstan/zipball/18bc23a0682f08591529377d271b5c4dfe9ed1dd",
+                "reference": "18bc23a0682f08591529377d271b5c4dfe9ed1dd",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.4|^8.0"
+            },
+            "conflict": {
+                "phpstan/phpstan-shim": "*"
+            },
+            "bin": [
+                "phpstan",
+                "phpstan.phar"
+            ],
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "bootstrap.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Ondřej Mirtes"
+                },
+                {
+                    "name": "Markus Staab"
+                },
+                {
+                    "name": "Vincent Langlet"
+                }
+            ],
+            "description": "PHPStan - PHP Static Analysis Tool",
+            "keywords": [
+                "dev",
+                "static analysis"
+            ],
+            "support": {
+                "docs": "https://phpstan.org/user-guide/getting-started",
+                "forum": "https://github.com/phpstan/phpstan/discussions",
+                "issues": "https://github.com/phpstan/phpstan/issues",
+                "security": "https://github.com/phpstan/phpstan/security/policy",
+                "source": "https://github.com/phpstan/phpstan-src"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/ondrejmirtes",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/phpstan",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-10-24T11:36:00+00:00"
+        },
+        {
+            "name": "phpstan/phpstan-deprecation-rules",
+            "version": "2.0.5",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/phpstan/phpstan-deprecation-rules.git",
+                "reference": "67bedd65c24bc72840afc45aed48b1059dd44bec"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/phpstan/phpstan-deprecation-rules/zipball/67bedd65c24bc72840afc45aed48b1059dd44bec",
+                "reference": "67bedd65c24bc72840afc45aed48b1059dd44bec",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.4 || ^8.0",
+                "phpstan/phpstan": "^2.1.39"
+            },
+            "require-dev": {
+                "php-parallel-lint/php-parallel-lint": "^1.2",
+                "phpstan/phpstan-phpunit": "^2.0",
+                "phpunit/phpunit": "^9.6",
+                "shipmonk/name-collision-detector": "^2.1"
+            },
+            "type": "phpstan-extension",
+            "extra": {
+                "phpstan": {
+                    "includes": [
+                        "rules.neon"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "PHPStan\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "PHPStan rules for detecting usage of deprecated classes, methods, properties, constants and traits.",
+            "keywords": [
+                "static analysis"
+            ],
+            "support": {
+                "issues": "https://github.com/phpstan/phpstan-deprecation-rules/issues",
+                "source": "https://github.com/phpstan/phpstan-deprecation-rules/tree/2.0.5"
+            },
+            "time": "2026-07-22T06:50:43+00:00"
+        },
+        {
+            "name": "phpstan/phpstan-strict-rules",
+            "version": "2.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/phpstan/phpstan-strict-rules.git",
+                "reference": "24ec51589f896f048d0d36de373d993b5cf71786"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/phpstan/phpstan-strict-rules/zipball/24ec51589f896f048d0d36de373d993b5cf71786",
+                "reference": "24ec51589f896f048d0d36de373d993b5cf71786",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.4 || ^8.0",
+                "phpstan/phpstan": "^2.3"
+            },
+            "require-dev": {
+                "php-parallel-lint/php-parallel-lint": "^1.2",
+                "phpstan/phpstan-deprecation-rules": "^2.0",
+                "phpstan/phpstan-phpunit": "^2.0",
+                "phpunit/phpunit": "^9.6",
+                "shipmonk/name-collision-detector": "^2.1"
+            },
+            "type": "phpstan-extension",
+            "extra": {
+                "phpstan": {
+                    "includes": [
+                        "rules.neon"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "PHPStan\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Extra strict and opinionated rules for PHPStan",
+            "keywords": [
+                "static analysis"
+            ],
+            "support": {
+                "issues": "https://github.com/phpstan/phpstan-strict-rules/issues",
+                "source": "https://github.com/phpstan/phpstan-strict-rules/tree/2.1.0"
+            },
+            "time": "2026-10-01T21:30:37+00:00"
         },
         {
             "name": "phpunit/php-code-coverage",
@@ -9117,6 +9505,63 @@
                 }
             ],
             "time": "2026-10-16T05:56:47+00:00"
+        },
+        {
+            "name": "rector/rector",
+            "version": "2.7.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/rectorphp/rector.git",
+                "reference": "4d6a39b7fff302cac0ce90cd959a53c2f6a32776"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/rectorphp/rector/zipball/4d6a39b7fff302cac0ce90cd959a53c2f6a32776",
+                "reference": "4d6a39b7fff302cac0ce90cd959a53c2f6a32776",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.4|^8.0",
+                "phpstan/phpstan": "^2.3.0"
+            },
+            "conflict": {
+                "rector/rector-doctrine": "*",
+                "rector/rector-downgrade-php": "*",
+                "rector/rector-phpunit": "*",
+                "rector/rector-symfony": "*"
+            },
+            "bin": [
+                "bin/rector"
+            ],
+            "type": "library",
+            "autoload": {
+                "files": [
+                    "bootstrap.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Instant Upgrade and Automated Refactoring of any PHP code",
+            "homepage": "https://getrector.com/",
+            "keywords": [
+                "automation",
+                "dev",
+                "migration",
+                "refactoring"
+            ],
+            "support": {
+                "issues": "https://github.com/rectorphp/rector/issues",
+                "source": "https://github.com/rectorphp/rector/tree/2.7.0"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/tomasvotruba",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-10-06T08:46:45+00:00"
         },
         {
             "name": "sebastian/cli-parser",
@@ -10225,6 +10670,95 @@
             "time": "2026-10-04T05:51:14+00:00"
         },
         {
+            "name": "shipmonk/dead-code-detector",
+            "version": "1.4.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/shipmonk-rnd/dead-code-detector.git",
+                "reference": "431c13453eeb1790e15c8674ad4d6318218849bc"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/shipmonk-rnd/dead-code-detector/zipball/431c13453eeb1790e15c8674ad4d6318218849bc",
+                "reference": "431c13453eeb1790e15c8674ad4d6318218849bc",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.1",
+                "phpstan/phpstan": "^2.1.41"
+            },
+            "require-dev": {
+                "behat/behat": "^3.14",
+                "composer-runtime-api": "^2.0",
+                "composer/semver": "^3.4",
+                "doctrine/orm": "^2.19 || ^3.0",
+                "editorconfig-checker/editorconfig-checker": "^10.7.0",
+                "ergebnis/composer-normalize": "^2.48.1",
+                "laravel/framework": "^10.0 || ^11.0 || ^12.0",
+                "nette/application": "^3.1",
+                "nette/component-model": "^3.0",
+                "nette/neon": "^3.4",
+                "nette/tester": "^2.4",
+                "nette/utils": "^3.0 || ^4.0",
+                "nikic/php-parser": "^5.4.0",
+                "phpat/phpat": "^0.12",
+                "phpbench/phpbench": "^1.2",
+                "phpstan/phpstan-phpunit": "^2.0.16",
+                "phpstan/phpstan-strict-rules": "^2.0.10",
+                "phpstan/phpstan-symfony": "^2.0.15",
+                "phpunit/phpcov": "^9.0.2",
+                "phpunit/phpunit": "^10.5.46",
+                "shipmonk/coding-standard": "^0.3.0",
+                "shipmonk/composer-dependency-analyser": "^1.8.4",
+                "shipmonk/coverage-guard": "^1.1.0",
+                "shipmonk/name-collision-detector": "^2.1.1",
+                "shipmonk/phpstan-dev": "^0.1.6",
+                "shipmonk/phpstan-rules": "^4.3.6",
+                "symfony/contracts": "^2.5 || ^3.0 || ^4.0",
+                "symfony/dependency-injection": "^5.4 || ^6.0 || ^7.0 || ^8.0",
+                "symfony/doctrine-bridge": "^5.4 || ^6.0 || ^7.0 || ^8.0",
+                "symfony/event-dispatcher": "^5.4 || ^6.0 || ^7.0 || ^8.0",
+                "symfony/form": "^5.4 || ^6.0 || ^7.0 || ^8.0",
+                "symfony/framework-bundle": "^5.4 || ^6.0 || ^7.0 || ^8.0",
+                "symfony/http-kernel": "^5.4 || ^6.0 || ^7.0 || ^8.0",
+                "symfony/routing": "^5.4 || ^6.0 || ^7.0 || ^8.0",
+                "symfony/scheduler": "^6.3 || ^7.0 || ^8.0",
+                "symfony/ux-live-component": "^2.34",
+                "symfony/ux-twig-component": "^2.34",
+                "symfony/validator": "^5.4 || ^6.0 || ^7.0 || ^8.0",
+                "twig/twig": "^3.0"
+            },
+            "type": "phpstan-extension",
+            "extra": {
+                "phpstan": {
+                    "includes": [
+                        "rules.neon"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "ShipMonk\\PHPStan\\DeadCode\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Dead code detector to find unused PHP code via PHPStan extension. Can automatically remove dead PHP code. Supports libraries like Symfony, Doctrine, PHPUnit etc. Detects dead cycles. Can detect dead code that is tested.",
+            "keywords": [
+                "PHPStan",
+                "dead code",
+                "static analysis",
+                "unused code"
+            ],
+            "support": {
+                "issues": "https://github.com/shipmonk-rnd/dead-code-detector/issues",
+                "source": "https://github.com/shipmonk-rnd/dead-code-detector/tree/1.4.2"
+            },
+            "time": "2026-09-18T07:50:08+00:00"
+        },
+        {
             "name": "staabm/side-effects-detector",
             "version": "1.0.5",
             "source": {
@@ -10460,6 +10994,72 @@
                 }
             ],
             "time": "2025-12-08T11:19:18+00:00"
+        },
+        {
+            "name": "tomasvotruba/cognitive-complexity",
+            "version": "1.3.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/TomasVotruba/cognitive-complexity.git",
+                "reference": "3315ff25b2011ef1065277521744eba28769af09"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/TomasVotruba/cognitive-complexity/zipball/3315ff25b2011ef1065277521744eba28769af09",
+                "reference": "3315ff25b2011ef1065277521744eba28769af09",
+                "shasum": ""
+            },
+            "require": {
+                "nikic/php-parser": "^5.3",
+                "php": ">=7.4",
+                "phpstan/phpstan": "^2.0"
+            },
+            "require-dev": {
+                "php-parallel-lint/php-parallel-lint": "^1.4",
+                "phpstan/extension-installer": "^1.4",
+                "phpstan/phpstan-deprecation-rules": "^2.0",
+                "phpunit/phpunit": "^13.3",
+                "rector/jack": "^1.1",
+                "rector/rector": "^2.6",
+                "symplify/easy-coding-standard": "^13.3",
+                "symplify/phpstan-rules": "^14.17",
+                "tomasvotruba/type-coverage": "^2.3",
+                "tomasvotruba/unused-public": "^2.2",
+                "tracy/tracy": "^2.12"
+            },
+            "type": "phpstan-extension",
+            "extra": {
+                "phpstan": {
+                    "includes": [
+                        "config/extension.neon"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "TomasVotruba\\CognitiveComplexity\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "PHPStan rules to measure cognitive complexity of your classes and methods",
+            "support": {
+                "issues": "https://github.com/TomasVotruba/cognitive-complexity/issues",
+                "source": "https://github.com/TomasVotruba/cognitive-complexity/tree/1.3.0"
+            },
+            "funding": [
+                {
+                    "url": "https://www.paypal.me/rectorphp",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/tomasvotruba",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-09-29T20:40:25+00:00"
         },
         {
             "name": "webmozart/assert",

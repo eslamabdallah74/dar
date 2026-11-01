@@ -23,7 +23,7 @@ class WhatsAppController extends Controller
                 return [
                     'id' => $log->id,
                     'renter_id' => $log->renter_id,
-                    'renter_name' => $log->renter?->name ?? 'مستأجر',
+                    'renter_name' => $log->renter->name ?? 'مستأجر',
                     'recipient_phone' => $log->recipient_phone,
                     'template_name' => match ($log->template_name) {
                         'rent_due_reminder_ar' => 'تذكير موعد استحقاق الإيجار',
@@ -40,7 +40,7 @@ class WhatsAppController extends Controller
                         'failed' => 'فشل الإرسال',
                         default => $log->status,
                     },
-                    'scheduled_at' => $log->scheduled_at?->format('d/m/Y H:i'),
+                    'scheduled_at' => $log->scheduled_at->format('d/m/Y H:i'),
                     'sent_at' => $log->sent_at?->format('d/m/Y H:i') ?? '—',
                 ];
             });
@@ -110,7 +110,7 @@ class WhatsAppController extends Controller
             'template_id' => 'required|string',
         ]);
 
-        $renter = $workspace->renters()->findOrFail($validated['renter_id']);
+        $renter = $workspace->renters()->findOrFail((int) $validated['renter_id']);
 
         $log = $whatsAppService->send(
             workspaceId: $workspace->id,
@@ -126,7 +126,7 @@ class WhatsAppController extends Controller
             deduplicationKey: 'manual_test_'.time().'_'.$renter->id
         );
 
-        if ($log && in_array($log->status, ['sent', 'delivered'])) {
+        if ($log && in_array($log->status, ['sent', 'delivered'], true)) {
             return back()->with('success', 'تم إرسال رسالة WhatsApp بنجاح عبر بوابة Meta Cloud API');
         }
 

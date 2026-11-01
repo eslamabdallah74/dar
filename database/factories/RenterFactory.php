@@ -29,30 +29,4 @@ class RenterFactory extends Factory
             'notes' => fake()->sentence(),
         ];
     }
-
-    public function optedIn(): static
-    {
-        return $this->state(fn () => [
-            'whatsapp_opt_in_at' => now()->subMonths(1),
-            'whatsapp_opted_out_at' => null,
-        ]);
-    }
-
-    public function optedOut(): static
-    {
-        return $this->state(fn () => [
-            'whatsapp_opt_in_at' => now()->subMonths(3),
-            'whatsapp_opted_out_at' => now()->subDay(),
-        ]);
-    }
-
-    public function male(): static
-    {
-        return $this->state(fn () => ['gender' => 'male']);
-    }
-
-    public function female(): static
-    {
-        return $this->state(fn () => ['gender' => 'female']);
-    }
 }

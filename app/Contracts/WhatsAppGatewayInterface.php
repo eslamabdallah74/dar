@@ -9,15 +9,6 @@ namespace App\Contracts;
 interface WhatsAppGatewayInterface
 {
     /**
-     * Send a raw or direct text message to a recipient.
-     *
-     * @param  string  $toPhone  International format (e.g. +201012345678)
-     * @param  string  $message  Body text
-     * @return array{success: bool, provider_message_id: ?string, status: string, error_message: ?string}
-     */
-    public function sendText(string $toPhone, string $message): array;
-
-    /**
      * Send an official pre-approved WhatsApp template message.
      *
      * @param  string  $toPhone  International format

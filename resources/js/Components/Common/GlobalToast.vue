@@ -8,7 +8,6 @@ import {
     CheckCircle2,
     Info,
     X,
-    ChevronLeft,
 } from 'lucide-vue-next';
 
 const toastManager = useToast();

@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\MaintenanceStatus;
 use App\Models\Concerns\BelongsToWorkspace;
+use Database\Factories\MaintenanceRequestFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,6 +15,7 @@ use Spatie\Activitylog\Models\Activity;
 
 class MaintenanceRequest extends Model
 {
+    /** @use HasFactory<MaintenanceRequestFactory> */
     use BelongsToWorkspace, HasFactory;
 
     protected $fillable = [
@@ -56,36 +59,57 @@ class MaintenanceRequest extends Model
         });
     }
 
+    /**
+     * @return BelongsTo<Property, $this>
+     */
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);
     }
 
+    /**
+     * @return BelongsTo<Unit, $this>
+     */
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class);
     }
 
+    /**
+     * @return BelongsTo<Renter, $this>
+     */
     public function reportedByRenter(): BelongsTo
     {
         return $this->belongsTo(Renter::class, 'reported_by_renter_id');
     }
 
+    /**
+     * @return HasOne<Expense, $this>
+     */
     public function expense(): HasOne
     {
         return $this->hasOne(Expense::class);
     }
 
+    /**
+     * @return HasMany<Expense, $this>
+     */
     public function expenses(): HasMany
     {
         return $this->hasMany(Expense::class);
     }
 
+    /**
+     * @return HasMany<MaintenanceAttachment, $this>
+     */
     public function attachments(): HasMany
     {
         return $this->hasMany(MaintenanceAttachment::class);
     }
 
+    /**
+     * @return HasMany<MaintenanceNote, $this>
+     */
     public function notes(): HasMany
     {
         return $this->hasMany(MaintenanceNote::class)->latest('id');
@@ -111,6 +135,9 @@ class MaintenanceRequest extends Model
         return $this->unit_id === null;
     }
 
+    /**
+     * @return MorphMany<Activity, $this>
+     */
     public function activities(): MorphMany
     {
         return $this->morphMany(Activity::class, 'subject');
@@ -154,9 +181,9 @@ class MaintenanceRequest extends Model
     public function getStatusLabelAttribute(): string
     {
         return match ($this->status) {
-            'pending', 'open' => 'قيد الانتظار',
-            'in_progress' => 'قيد التنفيذ',
-            'completed', 'closed' => 'مكتمل',
+            'pending', 'open' => MaintenanceStatus::Pending->label(),
+            'in_progress' => MaintenanceStatus::InProgress->label(),
+            'completed', 'closed' => MaintenanceStatus::Completed->label(),
             default => $this->status,
         };
     }

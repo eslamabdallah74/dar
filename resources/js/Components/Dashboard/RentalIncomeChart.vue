@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { ArrowUpRight, TrendingUp, Calendar, AlertCircle } from 'lucide-vue-next';
+import { ArrowUpRight, TrendingUp } from 'lucide-vue-next';
 
 interface IncomeHistoryItem {
     month: string;

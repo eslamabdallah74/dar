@@ -19,7 +19,7 @@ class DashboardController extends Controller
 
     public function __invoke(Request $request): Response
     {
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
         $workspace = app(CurrentWorkspace::class)->get()
             ?? $user->ownedWorkspaces()->first()
             ?? $user->workspaces()->first();

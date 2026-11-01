@@ -37,16 +37,16 @@ class ProcessDepositRefundJob extends BaseJob
         $renter = $lease?->renter;
 
         if ($renter && ! empty($renter->email)) {
-            $unitNumber = $lease->unit?->unit_number ?? 'الوحدة';
+            $unitNumber = $lease->unit->name ?? 'الوحدة';
             $amount = number_format((float) $refund->amount, 2);
             $refNumber = $refund->reference ?? "REF-{$refund->id}";
-            $refundDate = $refund->refunded_at?->format('d/m/Y') ?? now()->format('d/m/Y');
+            $refundDate = $refund->refunded_at->format('d/m/Y');
 
             dispatch(new EmailNotificationJob(
                 recipient: $renter->email,
                 mailSubject: "إشعار استرداد مبلغ تأمين - عقد وحدة {$unitNumber}",
                 contentBody: "عزيزي المستأجر {$renter->name}،\n\nنود إعلامكم بأنه تم إصدار سند استرداد مبلغ التأمين بقيمة {$amount} ج.م للوحدة ({$unitNumber}).\nرقم المعاملة: {$refNumber}\nتاريخ الاسترداد: {$refundDate}\nطريقة الصرف: {$refund->payment_method}\n\nنتمنى لكم دوام التوفيق."
-            ))->onQueue(QueueName::Notifications->value);
+            ));
         }
 
         Log::info("[ProcessDepositRefundJob] Processed refund notifications for refund #{$refund->id}");

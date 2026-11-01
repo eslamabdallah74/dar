@@ -10,6 +10,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $slug
+ * @property int|null $parent_unit_limit
+ * @property int|null $active_rental_limit
+ * @property-read int|null $parent_units_count
+ */
 class Workspace extends Model
 {
     /** @use HasFactory<WorkspaceFactory> */
@@ -26,6 +34,8 @@ class Workspace extends Model
         'address',
         'timezone',
         'status',
+        'parent_unit_limit',
+        'active_rental_limit',
         'rent_reminder_days_before',
         'auto_whatsapp_reminders',
         'auto_instant_receipts',
@@ -36,12 +46,38 @@ class Workspace extends Model
     protected function casts(): array
     {
         return [
+            'parent_unit_limit' => 'integer',
+            'active_rental_limit' => 'integer',
             'rent_reminder_days_before' => 'integer',
             'overdue_warning_days_after' => 'integer',
             'auto_whatsapp_reminders' => 'boolean',
             'auto_instant_receipts' => 'boolean',
             'weekly_summary_report' => 'boolean',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (Workspace $workspace): void {
+            if (! array_key_exists('parent_unit_limit', $workspace->getAttributes())) {
+                $defaultParent = config('rental.default_limits.parent_unit_limit', 1);
+                $workspace->parent_unit_limit = is_numeric($defaultParent) ? (int) $defaultParent : 1;
+            }
+            if (! array_key_exists('active_rental_limit', $workspace->getAttributes())) {
+                $defaultActive = config('rental.default_limits.active_rental_limit', 1);
+                $workspace->active_rental_limit = is_numeric($defaultActive) ? (int) $defaultActive : 1;
+            }
+        });
+    }
+
+    public function isParentUnitLimitUnlimited(): bool
+    {
+        return $this->parent_unit_limit === null;
+    }
+
+    public function isActiveRentalLimitUnlimited(): bool
+    {
+        return $this->active_rental_limit === null;
     }
 
     /**

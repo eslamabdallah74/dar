@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\UnitAvailabilityStatus;
 use App\Models\Concerns\BelongsToWorkspace;
+use App\Services\Leases\RentalConflictService;
 use App\Services\UnitHierarchyService;
 use Database\Factories\UnitFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -81,6 +83,23 @@ class Unit extends Model
     public function getIsOccupiedAttribute(): bool
     {
         return $this->currentLease !== null;
+    }
+
+    /**
+     * Get the dynamic availability status of this unit across the hierarchy.
+     */
+    public function getAvailabilityStatus(): UnitAvailabilityStatus
+    {
+        return app(RentalConflictService::class)->getUnitAvailabilityStatus($this);
+    }
+
+    /**
+     * Check if this unit can currently be rented independently.
+     */
+    public function isEligibleForRental(): bool
+    {
+        return (bool) $this->is_rentable
+            && $this->getAvailabilityStatus() === UnitAvailabilityStatus::Available;
     }
 
     /**
@@ -203,6 +222,54 @@ class Unit extends Model
             $this->getAncestorIds(),
             $this->getDescendantIds()
         )));
+    }
+
+    /**
+     * Scope a query to only include parent units (top-level units with no parent).
+     *
+     * @param  Builder<Unit>  $query
+     * @return Builder<Unit>
+     */
+    public function scopeParentUnits(Builder $query): Builder
+    {
+        return $query->whereNull('parent_unit_id');
+    }
+
+    /**
+     * Find the root parent unit in the hierarchy for this unit (topmost unit with parent_unit_id = null).
+     */
+    public function getRootParentUnit(): Unit
+    {
+        if ($this->parent_unit_id === null) {
+            return $this;
+        }
+
+        $current = $this;
+        while ($current->parent_unit_id !== null) {
+            $parent = $current->relationLoaded('parentUnit')
+                ? $current->parentUnit
+                : $current->parentUnit()->first();
+
+            if (! $parent) {
+                break;
+            }
+
+            $current = $parent;
+        }
+
+        return $current;
+    }
+
+    /**
+     * Get the ID of the root parent unit in the hierarchy.
+     */
+    public function getRootParentUnitId(): int
+    {
+        if ($this->parent_unit_id === null) {
+            return (int) $this->id;
+        }
+
+        return (int) $this->getRootParentUnit()->id;
     }
 
     /**

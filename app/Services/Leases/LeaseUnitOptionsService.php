@@ -45,6 +45,21 @@ class LeaseUnitOptionsService
 
         return $units
             ->filter(fn (Unit $unit) => (bool) $unit->is_rentable)
+            ->sort(function (Unit $a, Unit $b): int {
+                $rootA = $a->parent_unit_id ?? $a->id;
+                $rootB = $b->parent_unit_id ?? $b->id;
+                if ($rootA !== $rootB) {
+                    return $rootA <=> $rootB;
+                }
+                if ($a->id === $rootA) {
+                    return -1;
+                }
+                if ($b->id === $rootB) {
+                    return 1;
+                }
+
+                return $a->id <=> $b->id;
+            })
             ->map(function (Unit $unit) use ($unitTree, $activeLeasesByUnitId, &$apartmentGenders): array {
                 $apartmentId = $unitTree->apartmentIdOf($unit->id);
                 if ($apartmentId !== null) {
@@ -104,6 +119,7 @@ class LeaseUnitOptionsService
 
         return [
             'id' => $unit->id,
+            'parent_unit_id' => $unit->parent_unit_id,
             'name' => ($unit->code ? $unit->code.' • ' : '').$unit->name,
             'code' => $unit->code,
             'property_id' => $unit->property_id,
@@ -111,8 +127,8 @@ class LeaseUnitOptionsService
             'is_occupied' => $leaseStatus['direct'] || $leaseStatus['ancestor'] || $leaseStatus['descendant'],
             'availability_status' => match (true) {
                 $leaseStatus['direct'] => 'مشغولة حالياً',
-                $leaseStatus['descendant'] => 'بها أسرّة مؤجرة',
-                $leaseStatus['ancestor'] => 'الغرفة مؤجرة بالكامل',
+                $leaseStatus['descendant'] => $unit->unit_type === 'apartment' ? 'بها غرف/أسرّة مؤجرة' : 'بها أسرّة مؤجرة',
+                $leaseStatus['ancestor'] => $unit->unit_type === 'bed' ? 'الغرفة مؤجرة بالكامل' : 'الوحدة الرئيسية مؤجرة بالكامل',
                 default => 'شاغرة',
             },
             'unit_type' => $unit->unit_type,

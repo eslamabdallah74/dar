@@ -19,6 +19,8 @@ class PlanFactory extends Factory
             'slug' => fake()->unique()->slug(),
             'monthly_price' => 199.00,
             'unit_limit' => 25,
+            'parent_unit_limit' => 25,
+            'active_rental_limit' => 25,
             'is_active' => true,
         ];
     }

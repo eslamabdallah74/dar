@@ -61,21 +61,21 @@ const mobileMenuOpen = ref(false);
                                 "name": "الباقة المجانية",
                                 "price": "0",
                                 "priceCurrency": "EGP",
-                                "description": "إدارة حتى 5 وحدات سكنية مجاناً مدى الحياة"
+                                "description": "إدارة عقار رئيسي واحد مع عقد تأجير نشط وتقسيمات داخلية غير محدودة (غرف وأسرّة) مجاناً مدى الحياة"
                             },
                             {
                                 "@type": "Offer",
                                 "name": "باقة النمو",
-                                "price": "299",
+                                "price": "249",
                                 "priceCurrency": "EGP",
-                                "description": "إدارة حتى 25 وحدة سكنية مع تذكيرات واتساب وتوثيق العقود"
+                                "description": "إدارة حتى 10 عقارات رئيسية مع 10 عقود تأجير نشطة وتقسيمات داخلية غير محدودة مع تذكيرات واتساب"
                             },
                             {
                                 "@type": "Offer",
-                                "name": "باقة المحترفين",
-                                "price": "799",
+                                "name": "إدارة الأملاك (الشركات)",
+                                "price": "599",
                                 "priceCurrency": "EGP",
-                                "description": "إدارة حتى 100 وحدة سكنية مع تخصيص كامل ودعم متقدم"
+                                "description": "عقارات رئيسية وعقود تأجير نشطة غير محدودة مع تقسيمات داخلية غير محدودة ودعم متقدم"
                             }
                         ]
                     },
@@ -88,7 +88,7 @@ const mobileMenuOpen = ref(false);
                                 "name": "هل يمكنني استخدام Nook Mate مجانًا؟",
                                 "acceptedAnswer": {
                                     "@type": "Answer",
-                                    "text": "نعم، يمكنك استخدام الباقة المجانية لإدارة حتى 5 وحدات دون الحاجة إلى بطاقة دفع."
+                                    "text": "نعم، يمكنك استخدام الباقة المجانية لإدارة عقار رئيسي واحد (شقة، محل، عمارة) مع عقد تأجير نشط واحد، مع إمكانية إضافة عدد غير محدود من الغرف والأسِرّة الداخلية دون الحاجة إلى بطاقة دفع."
                                 }
                             },
                             {
@@ -552,7 +552,7 @@ const mobileMenuOpen = ref(false);
                                 <h3 class="text-xl font-bold text-[#163E3E]">الباقة المجانية</h3>
                                 <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#F8F4EA] text-[#163E3E]">للبدء</span>
                             </div>
-                            <p class="text-sm text-[#5B6770] mb-6">مثالية لصغار الملاك الراغبين في إدارة أملاكهم دون تكلفة.</p>
+                            <p class="text-sm text-[#5B6770] mb-6">مثالية للبدء وإدارة عقارك الأول بكل سهولة دون تكلفة.</p>
                             
                             <div class="flex items-baseline gap-1 mb-8">
                                 <span class="text-4xl font-extrabold text-[#163E3E]">0</span>
@@ -562,15 +562,19 @@ const mobileMenuOpen = ref(false);
                             <ul class="space-y-3.5 text-sm font-medium text-[#334155] mb-8">
                                 <li class="flex items-center gap-3">
                                     <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                                    <span><strong>حتى 5 وحدات تأجيرية</strong> مجانًا للأبد</span>
+                                    <span><strong>عقار رئيسي واحد (1)</strong> (شقة، محل، عمارة)</span>
                                 </li>
                                 <li class="flex items-center gap-3">
                                     <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                                    <span>إدارة العقود والمستأجرين</span>
+                                    <span><strong>عقد تأجير نشط واحد (1)</strong> متزامن</span>
                                 </li>
                                 <li class="flex items-center gap-3">
                                     <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                                    <span>سجل مدفوعات ومستحقات</span>
+                                    <span><strong>تقسيمات غير محدودة</strong> (غرف وأسرّة دون قيود)</span>
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <span>إدارة العقود والمستأجرين وسندات القبض</span>
                                 </li>
                                 <li class="flex items-center gap-3 text-[#B6C5D0]">
                                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -595,10 +599,10 @@ const mobileMenuOpen = ref(false);
                         </div>
                         <div>
                             <div class="flex items-center justify-between mb-4 mt-1">
-                                <h3 class="text-xl font-bold text-[#163E3E]">باقة الملاك</h3>
+                                <h3 class="text-xl font-bold text-[#163E3E]">باقة الملاك (النمو)</h3>
                                 <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#FEF7E6] text-[#163E3E]">شاملة</span>
                             </div>
-                            <p class="text-sm text-[#5B6770] mb-6">للملاك وأصحاب العمارات الساعين لأتمتة كاملة للتحصيل.</p>
+                            <p class="text-sm text-[#5B6770] mb-6">للملاك وأصحاب العقارات الساعين للتوسع وأتمتة كاملة للتحصيل.</p>
                             
                             <div class="flex items-baseline gap-1 mb-8">
                                 <span class="text-4xl font-extrabold text-[#163E3E]">249</span>
@@ -608,7 +612,15 @@ const mobileMenuOpen = ref(false);
                             <ul class="space-y-3.5 text-sm font-medium text-[#334155] mb-8">
                                 <li class="flex items-center gap-3">
                                     <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                                    <span><strong>عدد وحدات غير محدود</strong></span>
+                                    <span><strong>حتى 10 عقارات رئيسية</strong> مستقلة</span>
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <span><strong>حتى 10 عقود تأجير نشطة</strong> متزامنة</span>
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <span><strong>غرف وأسِرّة غير محدودة</strong> داخل العقارات</span>
                                 </li>
                                 <li class="flex items-center gap-3">
                                     <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
@@ -616,11 +628,7 @@ const mobileMenuOpen = ref(false);
                                 </li>
                                 <li class="flex items-center gap-3">
                                     <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                                    <span>تصدير كشوفات الحساب والتقارير</span>
-                                </li>
-                                <li class="flex items-center gap-3">
-                                    <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                                    <span>إدارة فواتير الصيانة والمصروفات</span>
+                                    <span>إدارة فواتير الصيانة والمصروفات والتقارير</span>
                                 </li>
                             </ul>
                         </div>
@@ -638,7 +646,7 @@ const mobileMenuOpen = ref(false);
                     <div class="bg-white rounded-3xl p-8 border border-[#E2DDD2] flex flex-col justify-between hover:shadow-md transition">
                         <div>
                             <div class="flex items-center justify-between mb-4">
-                                <h3 class="text-xl font-bold text-[#163E3E]">إدارة الأملاك</h3>
+                                <h3 class="text-xl font-bold text-[#163E3E]">إدارة الأملاك (الشركات)</h3>
                                 <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#F8F4EA] text-[#163E3E]">للشركات</span>
                             </div>
                             <p class="text-sm text-[#5B6770] mb-6">لشركات إدارة العقارات والسكن المشترك ذي الحجم الكبير.</p>
@@ -651,19 +659,23 @@ const mobileMenuOpen = ref(false);
                             <ul class="space-y-3.5 text-sm font-medium text-[#334155] mb-8">
                                 <li class="flex items-center gap-3">
                                     <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                                    <span>كل مميزات باقة الملاك</span>
+                                    <span><strong>عقارات رئيسية غير محدودة (∞)</strong></span>
                                 </li>
                                 <li class="flex items-center gap-3">
                                     <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                                    <span>فصل الحسابات لكبار الملاك</span>
+                                    <span><strong>عقود تأجير نشطة غير محدودة (∞)</strong></span>
                                 </li>
                                 <li class="flex items-center gap-3">
                                     <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                                    <span>إدارة شاملة لجميع عقاراتك وأملاكك</span>
+                                    <span><strong>تقسيمات وغرف وأسِرّة غير محدودة</strong></span>
                                 </li>
                                 <li class="flex items-center gap-3">
                                     <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                                    <span>دعم فني مخصص عبر واتساب والهاتف</span>
+                                    <span>فصل الحسابات لكبار الملاك وتقارير مالية وضريبية</span>
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <svg class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <span>دعم فني مخصص ذو أولوية على مدار الساعة VIP</span>
                                 </li>
                             </ul>
                         </div>
@@ -712,7 +724,7 @@ const mobileMenuOpen = ref(false);
                             </span>
                         </button>
                         <div v-show="activeFaq === 0" class="px-5 pb-5 pt-1 text-sm text-[#5B6770] leading-relaxed border-t border-[#E2DDD2]/60 bg-[#F8F4EA]/50">
-                            نعم، يمكنك استخدام الباقة المجانية لإدارة حتى 5 وحدات دون الحاجة إلى بطاقة دفع.
+                            نعم، يمكنك استخدام الباقة المجانية لإدارة عقار رئيسي واحد (شقة، محل، عمارة) مع عقد تأجير نشط واحد، وإضافة عدد غير محدود من الغرف والأسِرّة الداخلية دون الحاجة إلى بطاقة دفع.
                         </div>
                     </div>
 
@@ -797,7 +809,7 @@ const mobileMenuOpen = ref(false);
                         :href="route('register')"
                         class="w-full sm:w-auto px-8 py-4 rounded-xl bg-[#F7C33D] text-[#163E3E] font-black text-base hover:bg-[#e5b12a] shadow-lg transition"
                     >
-                        ابدأ مجانًا حتى 5 وحدات
+                        ابدأ مجانًا بعقارك الأول
                     </Link>
                     <a
                         href="mailto:contact@nookmate.com"

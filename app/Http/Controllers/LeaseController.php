@@ -13,13 +13,13 @@ use App\Models\Unit;
 use App\Services\EncryptedFileService;
 use App\Services\Leases\LeaseDetailsService;
 use App\Services\Leases\LeaseUnitOptionsService;
+use App\Services\Leases\RentalConflictService;
 use App\Services\SecurityDepositService;
 use App\Services\Storage\DocumentStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -92,7 +92,7 @@ class LeaseController extends Controller
         ]);
     }
 
-    public function checkConflict(Request $request): JsonResponse
+    public function checkConflict(Request $request, RentalConflictService $conflictService): JsonResponse
     {
         $workspace = $this->resolveWorkspace($request);
 
@@ -102,23 +102,15 @@ class LeaseController extends Controller
             'ends_on' => 'required|date|after:starts_on',
         ]);
 
-        $unitId = (int) $request->unit_id;
-        $startsOn = $request->starts_on;
-        $endsOn = $request->ends_on;
+        $unitId = (int) $request->input('unit_id');
+        $startsOn = $request->string('starts_on')->toString();
+        $endsOn = $request->string('ends_on')->toString();
 
         $unit = Unit::withoutGlobalScopes()
             ->where('workspace_id', $workspace->id)
             ->findOrFail($unitId);
 
-        $hierarchyIds = $unit->getHierarchyUnitIds();
-
-        $conflictingLease = $workspace->leases()
-            ->whereIn('unit_id', $hierarchyIds)
-            ->whereIn('status', ['active', 'draft'])
-            ->where('starts_on', '<=', $endsOn)
-            ->where('ends_on', '>=', $startsOn)
-            ->with(['renter', 'unit.property'])
-            ->first();
+        $conflictingLease = $conflictService->findConflictingLease($unit, $startsOn, $endsOn);
 
         if ($conflictingLease) {
             $isSelf = $conflictingLease->unit_id === $unit->id;
@@ -174,7 +166,7 @@ class LeaseController extends Controller
         return Inertia::render('Leases/Show', $leaseDetails->build($lease, $workspace));
     }
 
-    public function extend(ExtendLeaseRequest $request, Lease $lease): RedirectResponse
+    public function extend(ExtendLeaseRequest $request, Lease $lease, RentalConflictService $conflictService): RedirectResponse
     {
         $workspace = $this->resolveWorkspace($request);
         abort_if($lease->workspace_id !== $workspace->id, 403);
@@ -184,26 +176,19 @@ class LeaseController extends Controller
         }
 
         $validated = $request->validated();
+        $endsOn = $request->string('ends_on')->toString();
 
-        DB::transaction(function () use ($workspace, $lease, $validated) {
+        DB::transaction(function () use ($lease, $validated, $endsOn, $conflictService) {
             $lockedLease = Lease::withoutGlobalScopes()->where('id', $lease->id)->lockForUpdate()->firstOrFail();
             $unit = $lockedLease->unit;
 
             if ($unit) {
-                $hierarchyIds = $unit->getHierarchyUnitIds();
-                $conflictingLease = $workspace->leases()
-                    ->whereIn('unit_id', $hierarchyIds)
-                    ->where('id', '!=', $lockedLease->id)
-                    ->whereIn('status', ['active', 'draft'])
-                    ->where('starts_on', '<=', $validated['ends_on'])
-                    ->where('ends_on', '>=', $lockedLease->starts_on)
-                    ->first();
-
-                if ($conflictingLease) {
-                    throw ValidationException::withMessages([
-                        'ends_on' => "تعارض في التواريخ: الوحدة مرتبطة بالفعل بعقد آخر في الفترة المحددة ({$conflictingLease->starts_on->format('d/m/Y')} إلى {$conflictingLease->ends_on->format('d/m/Y')}).",
-                    ]);
-                }
+                $conflictService->validateRentalAvailability(
+                    $unit,
+                    $lockedLease->starts_on->toDateString(),
+                    $endsOn,
+                    $lockedLease->id
+                );
             }
 
             $updates = [

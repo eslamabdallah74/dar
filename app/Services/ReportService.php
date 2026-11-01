@@ -28,25 +28,42 @@ class ReportService
     /**
      * Generate an aggregated analytics summary report for a workspace or platform-wide.
      *
-     * @return array<string, mixed>
+     * @return array{
+     *     type: string,
+     *     workspace_id: int|null,
+     *     generated_at: string,
+     *     metrics: array{
+     *         total_properties: int,
+     *         total_units: int,
+     *         occupied_units: int,
+     *         occupancy_rate_percent: float,
+     *         active_leases: int,
+     *         total_security_deposits_held: float
+     *     }
+     * }
      */
     public function generate(string $type = 'occupancy', ?int $workspaceId = null): array
     {
         $propertiesQuery = Property::withoutGlobalScopes();
-        $unitsQuery = Unit::withoutGlobalScopes();
         $leasesQuery = Lease::withoutGlobalScopes()->where('status', 'active');
         $chargesQuery = RentCharge::withoutGlobalScopes();
 
         if ($workspaceId) {
             $propertiesQuery->where('workspace_id', $workspaceId);
-            $unitsQuery->where('workspace_id', $workspaceId);
             $leasesQuery->where('workspace_id', $workspaceId);
             $chargesQuery->where('workspace_id', $workspaceId);
         }
 
         $totalProperties = $propertiesQuery->count();
-        $totalUnits = $unitsQuery->count();
-        $occupiedUnits = (clone $unitsQuery)->whereHas('leases', fn ($query) => $query->where('status', 'active'))->count();
+
+        // Count only billable leaf units to avoid double-counting parent and child units.
+        $billableLeavesQuery = Unit::withoutGlobalScopes()->billableLeaves();
+        if ($workspaceId) {
+            $billableLeavesQuery->where('workspace_id', $workspaceId);
+        }
+
+        $totalUnits = $billableLeavesQuery->count();
+        $occupiedUnits = (clone $billableLeavesQuery)->whereHas('leases', fn ($query) => $query->where('status', 'active')->where('starts_on', '<=', today()))->count();
         $occupancyRate = $totalUnits > 0 ? round(($occupiedUnits / $totalUnits) * 100, 1) : 0.0;
         $activeLeases = $leasesQuery->count();
 

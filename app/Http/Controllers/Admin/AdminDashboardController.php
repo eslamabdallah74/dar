@@ -9,10 +9,12 @@ use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Dashboard\AdminDashboardService;
+use App\Services\Limits\WorkspaceLimitService;
 use App\Services\MaintenanceExpenseService;
 use App\Support\CurrentWorkspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -169,6 +171,109 @@ class AdminDashboardController extends Controller
     }
 
     /**
+     * Display a single workspace details page in the admin panel.
+     */
+    public function showWorkspace(Workspace $workspace, WorkspaceLimitService $limitService): Response
+    {
+        $workspace->load(['owner', 'activeSubscription.plan']);
+        $usageSummary = $limitService->getWorkspaceUsageSummary($workspace);
+
+        $properties = $workspace->properties()
+            ->withCount('units')
+            ->latest()
+            ->get()
+            ->map(fn ($p): array => [
+                'id' => $p->id,
+                'name' => $p->name,
+                'code' => $p->code,
+                'property_type' => $p->property_type,
+                'units_count' => $p->units_count,
+                'created_at' => $p->created_at?->format('d/m/Y'),
+            ]);
+
+        $parentUnits = $workspace->units()
+            ->whereNull('parent_unit_id')
+            ->with(['property:id,name', 'leases' => fn ($q) => $q->where('status', 'active')->with('renter:id,name')])
+            ->get()
+            ->map(fn ($u): array => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'code' => $u->code,
+                'unit_type' => $u->unit_type,
+                'property_name' => $u->property->name ?? '—',
+                'is_rentable' => (bool) $u->is_rentable,
+                'active_leases_count' => $u->leases->count(),
+            ]);
+
+        $activeLeases = $workspace->leases()
+            ->where('status', 'active')
+            ->with(['renter:id,name,phone', 'unit:id,name,property_id', 'unit.property:id,name'])
+            ->latest()
+            ->get()
+            ->map(fn ($l): array => [
+                'id' => $l->id,
+                'contract_number' => $l->contract_number,
+                'renter_name' => $l->renter->name ?? '—',
+                'unit_name' => $l->unit->name ?? '—',
+                'property_name' => $l->unit->property->name ?? '—',
+                'starts_on' => $l->starts_on->format('d/m/Y'),
+                'ends_on' => $l->ends_on->format('d/m/Y'),
+                'rent_amount' => (float) $l->rent_amount,
+            ]);
+
+        return Inertia::render('Admin/Workspaces/Show', [
+            'workspace' => [
+                'id' => $workspace->id,
+                'name' => $workspace->name,
+                'slug' => $workspace->slug,
+                'currency' => $workspace->currency,
+                'timezone' => $workspace->timezone,
+                'status' => $workspace->status,
+                'owner_name' => $workspace->owner->name ?? 'غير محدد',
+                'owner_email' => $workspace->owner->email ?? '—',
+                'plan_name' => $workspace->activeSubscription?->plan->name ?? 'بدون اشتراك',
+                'plan_slug' => $workspace->activeSubscription?->plan->slug ?? 'starter',
+                'created_at' => $workspace->created_at?->format('d/m/Y H:i'),
+                'parent_unit_limit' => $workspace->parent_unit_limit,
+                'active_rental_limit' => $workspace->active_rental_limit,
+            ],
+            'usage_summary' => $usageSummary,
+            'properties' => $properties,
+            'parent_units' => $parentUnits,
+            'active_leases' => $activeLeases,
+            'plans' => Plan::where('is_active', true)->get(['id', 'name', 'slug', 'parent_unit_limit', 'active_rental_limit', 'monthly_price']),
+        ]);
+    }
+
+    /**
+     * Update workspace independent limits from admin panel.
+     */
+    public function updateWorkspaceLimits(Request $request, Workspace $workspace): RedirectResponse
+    {
+        $validated = $request->validate([
+            'parent_unit_limit' => ['nullable', 'integer', 'min:0'],
+            'active_rental_limit' => ['nullable', 'integer', 'min:0'],
+            'is_parent_unit_unlimited' => ['nullable', 'boolean'],
+            'is_active_rental_unlimited' => ['nullable', 'boolean'],
+        ]);
+
+        $parentLimit = ! empty($validated['is_parent_unit_unlimited'])
+            ? null
+            : ($validated['parent_unit_limit'] ?? null);
+
+        $activeLimit = ! empty($validated['is_active_rental_unlimited'])
+            ? null
+            : ($validated['active_rental_limit'] ?? null);
+
+        $workspace->update([
+            'parent_unit_limit' => $parentLimit,
+            'active_rental_limit' => $activeLimit,
+        ]);
+
+        return back()->with('success', 'تم تحديث حدود مساحة العمل ('.$workspace->name.') بنجاح.');
+    }
+
+    /**
      * Update workspace subscription plan.
      */
     public function updateSubscription(Request $request, Workspace $workspace): RedirectResponse
@@ -198,19 +303,36 @@ class AdminDashboardController extends Controller
             ]);
         }
 
+        // Apply plan's default limits to the workspace when changing plan
+        $workspace->update([
+            'parent_unit_limit' => $plan->parent_unit_limit ?? $plan->unit_limit,
+            'active_rental_limit' => $plan->active_rental_limit ?? $plan->unit_limit,
+        ]);
+
         return back()->with('success', 'تم تحديث اشتراك مساحة العمل ('.$workspace->name.') إلى '.$plan->name.' بنجاح.');
     }
 
     /**
      * Update lease status.
      */
-    public function updateLeaseStatus(Request $request, Lease $lease): RedirectResponse
+    public function updateLeaseStatus(Request $request, Lease $lease, WorkspaceLimitService $limitService): RedirectResponse
     {
         $validated = $request->validate([
             'status' => ['required', 'string', Rule::in(['active', 'draft', 'terminated', 'expired'])],
         ]);
 
-        $lease->update($validated);
+        if ($validated['status'] === 'active' && $lease->status !== 'active') {
+            DB::transaction(function () use ($lease, $validated, $limitService): void {
+                $workspace = Workspace::where('id', $lease->workspace_id)->lockForUpdate()->firstOrFail();
+                $unit = $lease->unit;
+                if ($unit) {
+                    $limitService->validateCanActivateRental($workspace, $unit);
+                }
+                $lease->update($validated);
+            });
+        } else {
+            $lease->update($validated);
+        }
 
         return back()->with('success', 'تم تحديث حالة العقد رقم '.$lease->contract_number.' بنجاح.');
     }

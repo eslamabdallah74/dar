@@ -146,7 +146,7 @@ function handleNewAction() {
             </div>
 
             <!-- محتوى الصفحة المعروضة (Page Slot) -->
-            <main class="flex-1 px-4 sm:px-8 py-6 sm:py-8 max-w-[1440px] w-full mx-auto space-y-8">
+            <main class="flex-1 px-4 sm:px-8 py-6 sm:py-8 max-w-[1440px] w-full mx-auto flex flex-col gap-8">
                 <!-- رأس الصفحة الاختياري إن وُجد (Page Header) -->
                 <div v-if="headerTitle" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
                     <div>
@@ -172,7 +172,7 @@ function handleNewAction() {
                 <slot />
 
                 <!-- التذييل الموحد (App Footer) متناسق مع العرض الكامل للصفحة -->
-                <AppFooter />
+                <AppFooter class="mt-auto" />
             </main>
         </div>
 

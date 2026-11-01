@@ -30,6 +30,30 @@ class WorkspaceSubscription extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::created(function (WorkspaceSubscription $subscription): void {
+            $subscription->syncLimitsToWorkspace();
+        });
+    }
+
+    public function syncLimitsToWorkspace(): void
+    {
+        if ($this->status !== 'active') {
+            return;
+        }
+
+        $plan = $this->plan;
+        if (! $plan) {
+            return;
+        }
+
+        $this->workspace?->update([
+            'parent_unit_limit' => $plan->parent_unit_limit ?? $plan->unit_limit,
+            'active_rental_limit' => $plan->active_rental_limit ?? $plan->unit_limit,
+        ]);
+    }
+
     /**
      * @return BelongsTo<Workspace, $this>
      */

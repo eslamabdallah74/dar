@@ -17,11 +17,16 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceSubscription;
+use App\Services\Limits\WorkspaceLimitService;
 use Carbon\Carbon;
 use Spatie\Activitylog\Models\Activity;
 
 class AdminDashboardService
 {
+    public function __construct(
+        protected WorkspaceLimitService $limitService
+    ) {}
+
     /**
      * Build the central administration dashboard dataset.
      *
@@ -186,7 +191,13 @@ class AdminDashboardService
 
         // 7. Full Datasets for Control Tabs
         $workspaces = Workspace::with(['owner', 'activeSubscription.plan'])
-            ->withCount(['properties', 'units', 'leases', 'renters'])
+            ->withCount([
+                'properties',
+                'units',
+                'units as parent_units_count' => fn ($query) => $query->whereNull('parent_unit_id'),
+                'leases',
+                'renters',
+            ])
             ->latest()
             ->get()
             ->map(fn (Workspace $w): array => [
@@ -195,12 +206,17 @@ class AdminDashboardService
                 'slug' => $w->slug,
                 'currency' => $w->currency,
                 'timezone' => $w->timezone,
+                'status' => $w->status,
                 'owner_name' => $w->owner->name ?? 'غير محدد',
                 'owner_email' => $w->owner->email ?? '—',
                 'properties_count' => $w->properties_count,
                 'units_count' => $w->units_count,
                 'leases_count' => $w->leases_count,
                 'renters_count' => $w->renters_count,
+                'parent_unit_limit' => $w->parent_unit_limit,
+                'active_rental_limit' => $w->active_rental_limit,
+                'created_parent_units_count' => (int) ($w->parent_units_count ?? 0),
+                'active_rented_parent_units_count' => $this->limitService->countOccupiedParentRentalSlots($w),
                 'plan_name' => $w->activeSubscription?->plan->name ?? 'بدون اشتراك',
                 'plan_slug' => $w->activeSubscription?->plan->slug ?? 'starter',
                 'subscription_status' => $w->activeSubscription->status ?? 'inactive',

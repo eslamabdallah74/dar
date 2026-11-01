@@ -82,14 +82,12 @@ class PropertyUnitGeneratorService
 
         $apartmentCode = $property->code ?: 'APT-01';
 
-        if ($rentalMode === 'whole') {
-            return collect([
-                $this->createUnit($property, 'apartment', null, $apartmentCode, $property->name, isRentable: true),
-            ]);
-        }
+        // Apartment is always rentable as a whole, even if subdivided into rooms or beds
+        $apartment = $this->createUnit($property, 'apartment', null, $apartmentCode, $property->name, isRentable: true);
 
-        // Room or bed rental: the apartment is only a container.
-        $apartment = $this->createUnit($property, 'apartment', null, $apartmentCode, $property->name, isRentable: false);
+        if ($rentalMode === 'whole') {
+            return collect([$apartment]);
+        }
 
         return collect([$apartment])->concat(
             $this->createRooms($property, $apartment, $roomsCount, $rentalMode === 'beds' ? $bedsPerRoom : 0, null)
@@ -139,7 +137,7 @@ class PropertyUnitGeneratorService
                     null,
                     "APT-{$apartmentNumber}",
                     "شقة {$apartmentNumber}",
-                    isRentable: $rentalMode === 'whole'
+                    isRentable: true
                 );
                 $units->push($apartment);
 
@@ -203,7 +201,7 @@ class PropertyUnitGeneratorService
             ]);
         }
 
-        $villa = $this->createUnit($property, 'apartment', null, $villaCode, $property->name, isRentable: false);
+        $villa = $this->createUnit($property, 'apartment', null, $villaCode, $property->name, isRentable: true);
         $units = collect([$villa]);
 
         for ($roomNumber = 1; $roomNumber <= $roomsCount; $roomNumber++) {
@@ -247,13 +245,6 @@ class PropertyUnitGeneratorService
 
         $sortedUnits = $this->sortUnitsForInsertion($customUnits);
 
-        $tempIdsWithChildren = [];
-        foreach ($sortedUnits as $customUnit) {
-            if (! empty($customUnit['parent_temp_id'])) {
-                $tempIdsWithChildren[(string) $customUnit['parent_temp_id']] = true;
-            }
-        }
-
         $realIdByTempId = [];
         $createdUnits = collect();
 
@@ -262,11 +253,7 @@ class PropertyUnitGeneratorService
             $parentTempId = $this->parentTempId($customUnit);
             $unitType = $customUnit['unit_type'] ?? 'apartment';
 
-            // An apartment with rooms is a container, not directly rentable; a room stays rentable
-            // as a whole whether or not it has beds.
-            $isRentable = $unitType === 'apartment' && isset($tempIdsWithChildren[$tempId])
-                ? false
-                : (bool) ($customUnit['is_rentable'] ?? true);
+            $isRentable = (bool) ($customUnit['is_rentable'] ?? true);
 
             $unit = $this->createUnit(
                 $property,

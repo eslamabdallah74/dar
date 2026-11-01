@@ -669,7 +669,7 @@ parameters:
 		-
 			message: '#^Cannot cast mixed to string\.$#'
 			identifier: cast.string
-			count: 4
+			count: 3
 			path: app/Services/PropertyUnitGeneratorService.php
 
 		-
@@ -983,21 +983,3 @@ parameters:
 			identifier: method.nonObject
 			count: 3
 			path: tests/Feature/MaintenanceExpenseIntegrationTest.php
-
-		-
-			message: '#^Cannot access offset ''occupancy_rate_percent'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: tests/Feature/QueueJobsTest.php
-
-		-
-			message: '#^Cannot access offset ''total_properties'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: tests/Feature/QueueJobsTest.php
-
-		-
-			message: '#^Cannot access offset ''total_units'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: tests/Feature/QueueJobsTest.php

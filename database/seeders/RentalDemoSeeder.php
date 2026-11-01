@@ -200,6 +200,11 @@ class RentalDemoSeeder extends Seeder
                     'provider_reference' => 'SUB-DAR-ENTERPRISE-UNLIMITED-2026',
                 ]
             );
+
+            $this->workspace->update([
+                'parent_unit_limit' => $this->enterprisePlan->parent_unit_limit,
+                'active_rental_limit' => $this->enterprisePlan->active_rental_limit,
+            ]);
         }
 
         if ($this->proPlan) {
@@ -213,6 +218,11 @@ class RentalDemoSeeder extends Seeder
                     'provider_reference' => 'SUB-DAR-PRO-2026',
                 ]
             );
+
+            $this->secondaryWorkspace->update([
+                'parent_unit_limit' => $this->proPlan->parent_unit_limit,
+                'active_rental_limit' => $this->proPlan->active_rental_limit,
+            ]);
         }
     }
 

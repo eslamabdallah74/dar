@@ -14,6 +14,8 @@ return new class extends Migration
             $table->string('slug', 100)->unique();
             $table->decimal('monthly_price', 12, 2);
             $table->unsignedInteger('unit_limit')->nullable()->comment('NULL = unlimited');
+            $table->unsignedInteger('parent_unit_limit')->nullable()->comment('NULL = unlimited');
+            $table->unsignedInteger('active_rental_limit')->nullable()->comment('NULL = unlimited');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });

@@ -18,6 +18,8 @@ interface PlanItem {
     price: number;
     period: string;
     units_limit: number | null;
+    parent_unit_limit?: number | null;
+    active_rental_limit?: number | null;
     features: string[];
     is_current: boolean;
 }
@@ -36,6 +38,8 @@ defineProps<{
         name: string;
         units_used: number;
         units_limit: number | null;
+        parent_unit_limit?: number | null;
+        active_rental_limit?: number | null;
         renewal_date: string | null;
         payment_card: string;
     };
@@ -88,29 +92,33 @@ const handleUpgradeClick = (plan: PlanItem) => {
                 </div>
             </div>
 
-            <!-- شريط استهلاك الوحدات التأجيرية -->
+            <!-- شريط استهلاك العقارات والوحدات الرئيسية -->
             <div class="space-y-2">
                 <div class="flex items-center justify-between text-xs">
-                    <span class="font-bold text-[#163E3E]">سعة الوحدات التأجيرية المستخدمة</span>
+                    <span class="font-bold text-[#163E3E]">سعة العقارات والوحدات الرئيسية</span>
                     <span class="font-mono font-bold text-[#163E3E]">
-                        <template v-if="current_plan.units_limit !== null && current_plan.units_limit !== undefined">
-                            {{ current_plan.units_used }} من أصل {{ current_plan.units_limit }} وحدة مسجلة
+                        <template v-if="current_plan.parent_unit_limit !== null && current_plan.parent_unit_limit !== undefined">
+                            {{ current_plan.units_used }} من أصل {{ current_plan.parent_unit_limit }} عقار رئيسي
+                        </template>
+                        <template v-else-if="current_plan.units_limit !== null && current_plan.units_limit !== undefined">
+                            {{ current_plan.units_used }} من أصل {{ current_plan.units_limit }} عقار رئيسي
                         </template>
                         <template v-else>
-                            {{ current_plan.units_used }} وحدة مسجلة (سعة غير محدودة ∞)
+                            {{ current_plan.units_used }} عقار رئيسي (سعة غير محدودة ∞)
                         </template>
                     </span>
                 </div>
                 <div class="w-full h-3 bg-slate-200/60 rounded-full overflow-hidden">
                     <div
                         class="h-full bg-[#163E3E] rounded-full transition-all duration-500"
-                        :style="{ width: current_plan.units_limit ? `${Math.round((current_plan.units_used / current_plan.units_limit) * 100)}%` : '100%' }"
+                        :style="{ width: (current_plan.parent_unit_limit ?? current_plan.units_limit) ? `${Math.min(100, Math.round((current_plan.units_used / (current_plan.parent_unit_limit ?? current_plan.units_limit ?? 1)) * 100))}%` : '100%' }"
                     ></div>
                 </div>
                 <div class="flex items-center justify-between text-[11px] text-[#5B6770]">
-                    <span v-if="current_plan.units_limit">باقة تتيح حتى {{ current_plan.units_limit }} وحدة مع رسائل WhatsApp مجانية</span>
-                    <span v-else>باقة الشركات اللامحدودة تتيح وحدات تأجيرية غير محدودة وجميع ميزات النظام</span>
-                    <span v-if="current_plan.units_limit">{{ Math.round((current_plan.units_used / current_plan.units_limit) * 100) }}% مستخدمة</span>
+                    <span v-if="current_plan.parent_unit_limit">تتيح حتى {{ current_plan.parent_unit_limit }} عقار رئيسي مع تقسيمات داخلية غير محدودة (غرف وأسرّة)</span>
+                    <span v-else-if="current_plan.units_limit">تتيح حتى {{ current_plan.units_limit }} عقار رئيسي مع تقسيمات داخلية غير محدودة</span>
+                    <span v-else>سعة غير محدودة للعقارات الرئيسية وعقود التأجير النشطة</span>
+                    <span v-if="current_plan.parent_unit_limit ?? current_plan.units_limit">{{ Math.round((current_plan.units_used / (current_plan.parent_unit_limit ?? current_plan.units_limit ?? 1)) * 100) }}% مستخدمة</span>
                     <span v-else>غير محدود ∞</span>
                 </div>
             </div>
@@ -236,7 +244,7 @@ const handleUpgradeClick = (plan: PlanItem) => {
                 </div>
                 <h3 class="text-lg font-bold text-[#163E3E]">الترقية إلى {{ selectedPlanToUpgrade.name }}</h3>
                 <p class="text-xs text-[#5B6770] leading-relaxed">
-                    سيتم تفعيل سعة {{ selectedPlanToUpgrade.units_limit ? (selectedPlanToUpgrade.units_limit + ' وحدة تأجيرية') : 'وحدات تأجيرية غير محدودة' }} فوراً واحتساب فارق السعر على بطاقتك الائتمانية.
+                    سيتم تفعيل سعة {{ selectedPlanToUpgrade.parent_unit_limit ? (selectedPlanToUpgrade.parent_unit_limit + ' عقار رئيسي') : (selectedPlanToUpgrade.units_limit ? selectedPlanToUpgrade.units_limit + ' عقار رئيسي' : 'سعة غير محدودة') }} مع تقسيمات داخلية غير محدودة فوراً واحتساب فارق السعر على بطاقتك الائتمانية.
                 </p>
                 <div class="p-4 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] font-mono text-lg font-bold text-[#163E3E]">
                     {{ selectedPlanToUpgrade.price }} ج.م / شهرياً

@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Validator;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
-    $this->workspace = Workspace::factory()->create([
+    $this->workspace = Workspace::factory()->unlimited()->create([
         'owner_user_id' => $this->user->id,
     ]);
     $this->workspace->members()->create([

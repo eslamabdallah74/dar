@@ -23,6 +23,7 @@ import {
 
 interface UnitOption {
     id: number;
+    parent_unit_id?: number | null;
     name: string;
     code: string | null;
     property_id: number;
@@ -554,7 +555,7 @@ const submitNewRenter = async () => {
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         >
                             <option v-for="u in filteredUnits" :key="u.id" :value="u.id">
-                                {{ u.type_label ? '[' + u.type_label + '] ' : '' }}{{ u.name }} {{ u.apartment_gender?.short_label ? '• ' + u.apartment_gender.short_label : '' }} ({{ u.availability_status || (u.is_occupied ? 'مشغولة حالياً' : 'شاغرة') }})
+                                {{ u.parent_unit_id ? '  ↳ ' : '' }}{{ u.type_label ? '[' + u.type_label + '] ' : '' }}{{ u.name }} {{ u.apartment_gender?.short_label ? '• ' + u.apartment_gender.short_label : '' }} ({{ u.availability_status || (u.is_occupied ? 'مشغولة حالياً' : 'شاغرة') }})
                             </option>
                         </select>
                     </div>

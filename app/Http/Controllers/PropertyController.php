@@ -8,9 +8,10 @@ use App\Http\Requests\Properties\StoreUnitRequest;
 use App\Http\Requests\Properties\UpdatePropertyRequest;
 use App\Http\Requests\Properties\UpdateUnitRequest;
 use App\Http\Resources\PropertyResource;
-use App\Models\Plan;
 use App\Models\Property;
 use App\Models\Unit;
+use App\Models\Workspace;
+use App\Services\Limits\WorkspaceLimitService;
 use App\Services\Properties\PropertyUnitBoardService;
 use App\Services\PropertyUnitGeneratorService;
 use App\Services\Storage\DocumentStorageService;
@@ -175,7 +176,8 @@ class PropertyController extends Controller
     public function store(
         StorePropertyRequest $request,
         PropertyUnitGeneratorService $generatorService,
-        DocumentStorageService $storage
+        DocumentStorageService $storage,
+        WorkspaceLimitService $limitService
     ): RedirectResponse {
         $workspace = $this->resolveWorkspace($request);
         $validated = $request->validated();
@@ -190,7 +192,9 @@ class PropertyController extends Controller
             $address = $this->composeAddress($validated);
         }
 
-        $property = DB::transaction(function () use ($workspace, $validated, $coverImagePath, $address, $generatorService) {
+        $property = DB::transaction(function () use ($workspace, $validated, $coverImagePath, $address, $generatorService, $limitService) {
+            $lockedWorkspace = Workspace::where('id', $workspace->id)->lockForUpdate()->firstOrFail();
+
             $property = $workspace->properties()->create([
                 'name' => $validated['name'],
                 'code' => $validated['code'] ?? null,
@@ -225,6 +229,9 @@ class PropertyController extends Controller
                 $validated['generation_config'] ?? null,
                 $validated['units'] ?? null
             );
+
+            // Validate parent unit creation limit after units for this property are created
+            $limitService->validateCanCreateParentUnits($lockedWorkspace, 0);
 
             return $property;
         });
@@ -270,7 +277,7 @@ class PropertyController extends Controller
         return redirect()->route('properties.show', $property->id)->with('success', 'تم تحديث بيانات العقار بنجاح');
     }
 
-    public function storeUnit(StoreUnitRequest $request, Property $property): RedirectResponse
+    public function storeUnit(StoreUnitRequest $request, Property $property, WorkspaceLimitService $limitService): RedirectResponse
     {
         $workspace = $this->resolveWorkspace($request);
 
@@ -288,14 +295,12 @@ class PropertyController extends Controller
             workspace: $workspace,
         );
 
-        DB::transaction(function () use ($workspace, $property, $validated, $isRentable, $parentUnitId) {
-            $subscription = $workspace->activeSubscription()->with('plan')->first();
-            $unitLimit = $subscription?->plan?->unit_limit;
+        DB::transaction(function () use ($workspace, $property, $validated, $isRentable, $parentUnitId, $limitService) {
+            $lockedWorkspace = Workspace::where('id', $workspace->id)->lockForUpdate()->firstOrFail();
 
-            if ($subscription === null) {
-                // Default to free starter plan limit (5 units) if no subscription exists
-                $starterPlan = Plan::where('slug', 'starter')->first();
-                $unitLimit = $starterPlan->unit_limit ?? 5;
+            // Only top-level parent units (parent_unit_id is null) consume parent creation limits.
+            if ($parentUnitId === null) {
+                $limitService->validateCanCreateParentUnits($lockedWorkspace, 1);
             }
 
             $property->units()->create([
@@ -306,21 +311,12 @@ class PropertyController extends Controller
                 'unit_type' => $validated['unit_type'],
                 'is_rentable' => $isRentable,
             ]);
-
-            if ($unitLimit !== null) {
-                $projectedBillable = Unit::billableCountForWorkspace($workspace->id);
-                if ($projectedBillable > $unitLimit) {
-                    throw ValidationException::withMessages([
-                        'unit_limit' => "لا يمكن إضافة الوحدة: لقد تجاوزت الحد الأقصى للوحدات المؤجرة المسموح به في باقة اشتراكك ({$unitLimit} وحدة). يرجى ترقية باقة الاشتراك.",
-                    ]);
-                }
-            }
         });
 
         return back()->with('success', 'تمت إضافة الوحدة بنجاح');
     }
 
-    public function updateUnit(UpdateUnitRequest $request, Property $property, Unit $unit): RedirectResponse
+    public function updateUnit(UpdateUnitRequest $request, Property $property, Unit $unit, WorkspaceLimitService $limitService): RedirectResponse
     {
         $workspace = $this->resolveWorkspace($request);
 
@@ -340,13 +336,12 @@ class PropertyController extends Controller
             existingUnit: $unit,
         );
 
-        DB::transaction(function () use ($workspace, $unit, $validated, $isRentable, $parentUnitId) {
-            $subscription = $workspace->activeSubscription()->with('plan')->first();
-            $unitLimit = $subscription?->plan?->unit_limit;
+        DB::transaction(function () use ($workspace, $unit, $validated, $isRentable, $parentUnitId, $limitService) {
+            $lockedWorkspace = Workspace::where('id', $workspace->id)->lockForUpdate()->firstOrFail();
 
-            if ($subscription === null) {
-                $starterPlan = Plan::where('slug', 'starter')->first();
-                $unitLimit = $starterPlan->unit_limit ?? 5;
+            // If a child unit is being converted to a top-level parent unit
+            if ($unit->parent_unit_id !== null && $parentUnitId === null) {
+                $limitService->validateCanCreateParentUnits($lockedWorkspace, 1);
             }
 
             $unit->update([
@@ -356,15 +351,6 @@ class PropertyController extends Controller
                 'unit_type' => $validated['unit_type'],
                 'is_rentable' => $isRentable,
             ]);
-
-            if ($unitLimit !== null) {
-                $projectedBillable = Unit::billableCountForWorkspace($workspace->id);
-                if ($projectedBillable > $unitLimit) {
-                    throw ValidationException::withMessages([
-                        'unit_limit' => "لا يمكن تعديل الوحدة: التعديل يتجاوز الحد الأقصى للوحدات المؤجرة المسموح به في باقة اشتراكك ({$unitLimit} وحدة).",
-                    ]);
-                }
-            }
         });
 
         return back()->with('success', 'تم تعديل بيانات الوحدة بنجاح');

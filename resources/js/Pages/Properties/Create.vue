@@ -241,7 +241,7 @@ function generateUnitsForApartment() {
             name: baseName,
             code: baseCode,
             unit_type: 'apartment',
-            is_rentable: false,
+            is_rentable: true,
             floor_name: `${floorLabel} (رئيسية)`,
         });
 
@@ -402,7 +402,7 @@ function generateUnitsForVilla() {
         name: baseName,
         code: baseCode,
         unit_type: 'apartment',
-        is_rentable: false,
+        is_rentable: true,
         floor_name: 'المبنى الرئيسي للفيلا',
     });
 

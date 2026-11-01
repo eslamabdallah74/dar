@@ -25,10 +25,12 @@ class SubscriptionController extends Controller
                 'price' => 0,
                 'period' => 'شهرياً',
                 'units_limit' => 5,
+                'parent_unit_limit' => 1,
+                'active_rental_limit' => 1,
                 'features' => [
-                    'إدارة حتى 5 وحدات تأجيرية',
-                    'سندات قبض إلكترونية غير محدودة',
-                    'عقود إيجار غير محدودة',
+                    'عقار رئيسي واحد (1) مع عقد تأجير نشط',
+                    'تقسيمات داخلية غير محدودة (غرف وأسرّة)',
+                    'سندات قبض إلكترونية وعقود إيجار غير محدودة',
                     'تذكيرات WhatsApp محدودة (50 رسالة/شهر)',
                 ],
                 'is_current' => $currentPlan?->slug === 'starter' || ($currentPlan === null),
@@ -40,11 +42,13 @@ class SubscriptionController extends Controller
                 'price' => 199,
                 'period' => 'شهرياً',
                 'units_limit' => 25,
+                'parent_unit_limit' => 10,
+                'active_rental_limit' => 10,
                 'features' => [
-                    'إدارة حتى 25 وحدة تأجيرية',
+                    'حتى 10 عقارات رئيسية مع 10 عقود تأجير نشطة',
+                    'تقسيمات داخلية غير محدودة (غرف وأسرّة)',
                     'تذكيرات WhatsApp تلقائية غير محدودة',
-                    'كشف تعارض العقود والحجوزات',
-                    'إدارة الصيانة والمصروفات التشغيلية',
+                    'كشف تعارض العقود والحجوزات وإدارة الصيانة',
                     'دعم فني مخصص ذو أولوية',
                 ],
                 'is_current' => $currentPlan?->slug === 'growth',
@@ -56,10 +60,12 @@ class SubscriptionController extends Controller
                 'price' => 499,
                 'period' => 'شهرياً',
                 'units_limit' => 100,
+                'parent_unit_limit' => 50,
+                'active_rental_limit' => 50,
                 'features' => [
-                    'إدارة حتى 100 وحدة تأجيرية',
-                    'كل ميزات باقة النمو',
-                    'إدارة متقدمة لجميع العقارات والأملاك',
+                    'حتى 50 عقار رئيسي مع 50 عقد تأجير نشط',
+                    'تقسيمات داخلية غير محدودة (غرف وأسرّة)',
+                    'كل ميزات باقة النمو وإدارة متقدمة للمحافظ',
                     'تقارير مالية ومحاسبية متقدمة مع ضريبة القيمة المضافة',
                     'ربط مباشر مع منصة إيجار (قريباً)',
                 ],
@@ -72,13 +78,13 @@ class SubscriptionController extends Controller
                 'price' => 999,
                 'period' => 'شهرياً',
                 'units_limit' => null,
+                'parent_unit_limit' => null,
+                'active_rental_limit' => null,
                 'features' => [
-                    'وحدات تأجيرية غير محدودة (سعة كاملة)',
+                    'عقارات رئيسية وعقود تأجير نشطة غير محدودة (∞)',
+                    'تقسيمات داخلية غير محدودة (غرف وأسرّة)',
                     'عقارات وملاك ومستأجرون غير محدودين',
-                    'تذكيرات WhatsApp ورسائل تلقائية غير محدودة',
                     'كافة التقارير المالية والتحليلات والضرائب',
-                    'سندات قبض وعقود إلكترونية غير محدودة',
-                    'إدارة الصيانة والمصروفات بالكامل',
                     'مدير حساب مخصص ودعم فني على مدار الساعة VIP',
                 ],
                 'is_current' => $currentPlan?->slug === 'enterprise',
@@ -86,13 +92,16 @@ class SubscriptionController extends Controller
         ];
 
         $planName = $currentPlan->name ?? 'باقة الانطلاق (Starter)';
-        $unitLimit = $activeSubscription ? $currentPlan?->unit_limit : 5;
+        $unitLimit = $activeSubscription ? $currentPlan?->unit_limit : ($workspace->parent_unit_limit ?? 5);
+        $parentUnitsCount = Unit::withoutGlobalScopes()->where('workspace_id', $workspace->id)->whereNull('parent_unit_id')->count();
 
         return Inertia::render('Subscription/Index', [
             'current_plan' => [
                 'name' => $planName,
-                'units_used' => $totalBillableUnits,
+                'units_used' => $parentUnitsCount ?: $totalBillableUnits,
                 'units_limit' => $unitLimit,
+                'parent_unit_limit' => $workspace->parent_unit_limit,
+                'active_rental_limit' => $workspace->active_rental_limit,
                 'renewal_date' => $activeSubscription?->ends_at?->format('d/m/Y'),
                 'payment_card' => $activeSubscription ? '•••• 4242 (مدى / بطاقة بنكية)' : 'غير محدد',
             ],

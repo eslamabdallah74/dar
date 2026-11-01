@@ -206,6 +206,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
         // Control Actions
+        Route::get('/workspaces/{workspace}', [AdminDashboardController::class, 'showWorkspace'])->name('workspaces.show');
+        Route::put('/workspaces/{workspace}/limits', [AdminDashboardController::class, 'updateWorkspaceLimits'])->name('workspaces.limits.update');
         Route::post('/workspaces/{workspace}/impersonate', [AdminDashboardController::class, 'impersonateWorkspace'])->name('workspaces.impersonate');
         Route::put('/workspaces/{workspace}', [AdminDashboardController::class, 'updateWorkspace'])->name('workspaces.update');
         Route::delete('/workspaces/{workspace}', [AdminDashboardController::class, 'destroyWorkspace'])->name('workspaces.destroy');

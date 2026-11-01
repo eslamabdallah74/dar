@@ -182,7 +182,7 @@ test('creating an apartment in rooms rental mode generates 1 parent apartment an
 
     $parentApt = $units->where('unit_type', 'apartment')->firstOrFail();
     expect($parentApt->parent_unit_id)->toBeNull()
-        ->and((bool) $parentApt->is_rentable)->toBeFalse(); // Parent is not directly rentable
+        ->and((bool) $parentApt->is_rentable)->toBeTrue(); // Parent remains rentable for flexible whole-apartment leasing
 
     $rooms = $units->where('unit_type', 'room');
     expect($rooms)->toHaveCount(3);
@@ -215,7 +215,7 @@ test('creating an apartment in beds rental mode generates apartment -> rooms -> 
 
     $parentApt = $units->where('unit_type', 'apartment')->firstOrFail();
     expect($parentApt->parent_unit_id)->toBeNull()
-        ->and((bool) $parentApt->is_rentable)->toBeFalse();
+        ->and((bool) $parentApt->is_rentable)->toBeTrue(); // Parent remains rentable for flexible whole-apartment leasing
 
     $rooms = $units->where('unit_type', 'room');
     expect($rooms)->toHaveCount(2);

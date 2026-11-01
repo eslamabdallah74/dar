@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Enums\UnitAvailabilityStatus;
 use App\Models\Unit;
 
 /**
@@ -90,5 +91,78 @@ final class UnitTree
         }
 
         return null;
+    }
+
+    /**
+     * Determine the dynamic availability status of a unit based on active rentals across the hierarchy.
+     *
+     * @param  array<int|string, mixed>  $activeLeasesByUnitId  Map of unitId => active lease(s)
+     */
+    public function availabilityStatusOf(int $unitId, array $activeLeasesByUnitId): UnitAvailabilityStatus
+    {
+        $isLeased = fn (int $id): bool => isset($activeLeasesByUnitId[$id]);
+
+        if ($isLeased($unitId)) {
+            return UnitAvailabilityStatus::Rented;
+        }
+
+        if (collect($this->ancestorIds($unitId))->contains($isLeased)) {
+            return UnitAvailabilityStatus::Unavailable;
+        }
+
+        $descendantIds = $this->descendantIds($unitId);
+        if (collect($descendantIds)->contains($isLeased)) {
+            return $this->hasAvailableDescendant($descendantIds, $isLeased)
+                ? UnitAvailabilityStatus::PartiallyOccupied
+                : UnitAvailabilityStatus::Unavailable;
+        }
+
+        $unit = $this->unitsById[$unitId] ?? null;
+        if (! $unit || ! $unit->is_rentable) {
+            return UnitAvailabilityStatus::Unavailable;
+        }
+
+        return UnitAvailabilityStatus::Available;
+    }
+
+    /**
+     * @param  list<int>  $descendantIds
+     * @param  \Closure(int): bool  $isLeased
+     */
+    private function hasAvailableDescendant(array $descendantIds, \Closure $isLeased): bool
+    {
+        foreach ($descendantIds as $candidateId) {
+            $candidate = $this->unitsById[$candidateId] ?? null;
+            if ($candidate && $candidate->is_rentable && ! $isLeased($candidateId)) {
+                $ancestorsBlocked = collect($this->ancestorIds($candidateId))->contains($isLeased);
+                $descendantsBlocked = collect($this->descendantIds($candidateId))->contains($isLeased);
+
+                if (! $ancestorsBlocked && ! $descendantsBlocked) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if a unit is a parent with at least one child.
+     */
+    public function isParent(int $unitId): bool
+    {
+        return ! empty($this->childIdsByUnitId[$unitId]);
+    }
+
+    /**
+     * Check if a unit or any of its ancestors has an active lease.
+     *
+     * @param  array<int|string, mixed>  $activeLeasesByUnitId
+     */
+    public function isUnitOrAncestorLeased(int $unitId, array $activeLeasesByUnitId): bool
+    {
+        $isLeased = fn (int $id): bool => isset($activeLeasesByUnitId[$id]);
+
+        return $isLeased($unitId) || collect($this->ancestorIds($unitId))->contains($isLeased);
     }
 }

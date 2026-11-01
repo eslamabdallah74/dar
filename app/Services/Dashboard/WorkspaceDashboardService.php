@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Services\Dashboard;
 
 use App\Enums\PropertyType;
+use App\Enums\UnitAvailabilityStatus;
 use App\Models\Lease;
 use App\Models\RentCharge;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\UnitTree;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -33,12 +35,25 @@ class WorkspaceDashboardService
         $totalProperties = $workspace->properties()->count();
         $totalBillableUnits = Unit::billableCountForWorkspace($workspace->id);
 
-        $occupiedUnits = $workspace->units()
-            ->billableLeaves()
-            ->whereHas('leases', function ($query): void {
-                $query->where('status', 'active')
-                    ->where('starts_on', '<=', today());
-            })
+        $allUnits = $workspace->units()->get();
+        $unitTree = new UnitTree($allUnits);
+
+        $activeLeasesByUnitId = Lease::query()
+            ->where('workspace_id', $workspace->id)
+            ->where('status', 'active')
+            ->where('starts_on', '<=', today())
+            ->where('ends_on', '>=', today())
+            ->get()
+            ->groupBy('unit_id')
+            ->all();
+
+        $billableLeaves = $workspace->units()->billableLeaves()->get();
+        $occupiedUnits = $billableLeaves
+            ->filter(fn (Unit $u): bool => $unitTree->isUnitOrAncestorLeased($u->id, $activeLeasesByUnitId))
+            ->count();
+
+        $partiallyOccupiedCount = $allUnits
+            ->filter(fn (Unit $u): bool => $unitTree->isParent($u->id) && $unitTree->availabilityStatusOf($u->id, $activeLeasesByUnitId) === UnitAvailabilityStatus::PartiallyOccupied)
             ->count();
 
         $vacantUnits = max(0, $totalBillableUnits - $occupiedUnits);
@@ -118,7 +133,7 @@ class WorkspaceDashboardService
         );
 
         // 7. Recent properties
-        $recentProperties = $this->buildRecentProperties($workspace);
+        $recentProperties = $this->buildRecentProperties($workspace, $unitTree, $activeLeasesByUnitId);
 
         // 8. Recent activities
         $recentActivities = $this->buildRecentActivities($workspace, $currencySymbol);
@@ -249,6 +264,7 @@ class WorkspaceDashboardService
                 'total' => $totalBillableUnits,
                 'occupied' => $occupiedUnits,
                 'vacant' => $vacantUnits,
+                'partially_occupied' => $partiallyOccupiedCount,
                 'maintenance' => $openMaintenanceCount,
                 'occupancy_rate' => $occupancyRate,
             ],
@@ -488,19 +504,20 @@ class WorkspaceDashboardService
     }
 
     /**
+     * @param  array<int|string, mixed>  $activeLeasesByUnitId
      * @return array<int, array<string, mixed>>
      */
-    private function buildRecentProperties(Workspace $workspace): array
+    private function buildRecentProperties(Workspace $workspace, UnitTree $unitTree, array $activeLeasesByUnitId): array
     {
         return $workspace->properties()
             ->withCount(['units' => fn ($query) => $query->billableLeaves()])
-            ->with(['units' => fn ($query) => $query->billableLeaves()->with('currentLease')])
+            ->with(['units' => fn ($query) => $query->billableLeaves()])
             ->latest()
             ->take(4)
             ->get()
-            ->map(function ($property): array {
+            ->map(function ($property) use ($unitTree, $activeLeasesByUnitId): array {
                 $unitsCount = $property->units_count;
-                $occupiedCount = $property->units->filter(fn ($u): bool => $u->currentLease !== null)->count();
+                $occupiedCount = $property->units->filter(fn (Unit $u): bool => $unitTree->isUnitOrAncestorLeased($u->id, $activeLeasesByUnitId))->count();
                 $rate = $unitsCount > 0 ? (int) round(($occupiedCount / $unitsCount) * 100) : 0;
 
                 return [

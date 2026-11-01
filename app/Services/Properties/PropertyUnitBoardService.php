@@ -74,7 +74,11 @@ class PropertyUnitBoardService
     private function occupancyRelations(): array
     {
         return [
-            'leases' => fn ($leaseQuery) => $leaseQuery->where('status', 'active')->with('renter'),
+            'leases' => fn ($leaseQuery) => $leaseQuery
+                ->where('status', 'active')
+                ->where('starts_on', '<=', today())
+                ->where('ends_on', '>=', today())
+                ->with('renter'),
             'maintenanceRequests' => fn ($maintenanceQuery) => $maintenanceQuery->whereIn('status', ['open', 'in_progress']),
         ];
     }

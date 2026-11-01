@@ -402,7 +402,7 @@ test('scenario 10: workspace cannot activate another parent-unit rental when act
 });
 
 test('scenario 11: multiple rentals inside the same parent property consume only one rental slot', function (): void {
-    [$property, $apartment, $room1, $room2] = createSubdividedApartmentStructure($this->workspace, 'شقة مشتركة', 'شقة 201');
+    [$property, , $room1, $room2] = createSubdividedApartmentStructure($this->workspace, 'شقة مشتركة', 'شقة 201');
 
     $bed1 = Unit::create([
         'workspace_id' => $this->workspace->id,

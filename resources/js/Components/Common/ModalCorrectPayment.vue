@@ -154,11 +154,12 @@ const submit = () => {
                 <!-- المبلغ وتاريخ التحصيل وتاريخ القيد -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1">
+                        <label for="correct_amount" class="block text-xs font-bold text-[#163E3E] mb-1">
                             المبلغ المعدل <span class="text-rose-500">*</span>
                         </label>
                         <div class="relative">
                             <input
+                                id="correct_amount"
                                 v-model="form.amount"
                                 type="number"
                                 step="0.01"
@@ -178,10 +179,11 @@ const submit = () => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1">
+                        <label for="correct_paid_at" class="block text-xs font-bold text-[#163E3E] mb-1">
                             تاريخ التحصيل الفعلي <span class="text-rose-500">*</span>
                         </label>
                         <input
+                            id="correct_paid_at"
                             v-model="form.paid_at"
                             type="date"
                             required
@@ -195,10 +197,11 @@ const submit = () => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1">
+                        <label for="correct_record_date" class="block text-xs font-bold text-[#163E3E] mb-1">
                             تاريخ القيد والتسجيل
                         </label>
                         <input
+                            id="correct_record_date"
                             v-model="form.record_date"
                             type="date"
                             class="w-full h-10 px-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
@@ -214,10 +217,11 @@ const submit = () => {
                 <!-- طريقة الدفع ورقم المرجع -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1">
+                        <label for="correct_payment_method" class="block text-xs font-bold text-[#163E3E] mb-1">
                             طريقة السداد <span class="text-rose-500">*</span>
                         </label>
                         <select
+                            id="correct_payment_method"
                             v-model="form.payment_method"
                             required
                             class="w-full h-10 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
@@ -235,10 +239,11 @@ const submit = () => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1">
+                        <label for="correct_reference" class="block text-xs font-bold text-[#163E3E] mb-1">
                             رقم المرجع / الإيصال
                         </label>
                         <input
+                            id="correct_reference"
                             v-model="form.reference"
                             type="text"
                             class="w-full h-10 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] font-mono focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
@@ -253,10 +258,11 @@ const submit = () => {
 
                 <!-- سبب التعديل والتصحيح (إلزامي للرقابة المالية) -->
                 <div>
-                    <label class="block text-xs font-bold text-[#163E3E] mb-1">
+                    <label for="correct_reason" class="block text-xs font-bold text-[#163E3E] mb-1">
                         سبب التعديل والتصحيح المالي <span class="text-rose-500">* (إلزامي للتوثيق الرقابي)</span>
                     </label>
                     <textarea
+                        id="correct_reason"
                         v-model="form.reason"
                         rows="2"
                         required
@@ -272,10 +278,11 @@ const submit = () => {
 
                 <!-- ملاحظات السند -->
                 <div>
-                    <label class="block text-xs font-bold text-[#163E3E] mb-1">
+                    <label for="correct_notes" class="block text-xs font-bold text-[#163E3E] mb-1">
                         ملاحظات السند العامة <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span>
                     </label>
                     <input
+                        id="correct_notes"
                         v-model="form.notes"
                         type="text"
                         placeholder="أي ملاحظات إضافية على السند..."

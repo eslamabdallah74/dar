@@ -234,6 +234,7 @@ onUnmounted(() => {
                             v-if="notifications.overdue_count > 0"
                             :href="route('payments.index')"
                             @click="notificationsDropdownOpen = false"
+                            @keydown.enter="notificationsDropdownOpen = false"
                             class="p-2.5 rounded-xl bg-rose-50/70 hover:bg-rose-100/70 border border-rose-200/80 flex items-start gap-2.5 transition group"
                         >
                             <ShieldAlert class="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
@@ -247,6 +248,7 @@ onUnmounted(() => {
                             v-if="notifications.expiring_count > 0"
                             :href="route('leases.index')"
                             @click="notificationsDropdownOpen = false"
+                            @keydown.enter="notificationsDropdownOpen = false"
                             class="p-2.5 rounded-xl bg-amber-50/70 hover:bg-amber-100/70 border border-amber-200/80 flex items-start gap-2.5 transition group"
                         >
                             <Clock class="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
@@ -260,6 +262,7 @@ onUnmounted(() => {
                             v-if="notifications.maintenance_count > 0"
                             :href="route('maintenance.index')"
                             @click="notificationsDropdownOpen = false"
+                            @keydown.enter="notificationsDropdownOpen = false"
                             class="p-2.5 rounded-xl bg-sky-50/70 hover:bg-sky-100/70 border border-sky-200/80 flex items-start gap-2.5 transition group"
                         >
                             <Wrench class="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
@@ -314,6 +317,7 @@ onUnmounted(() => {
                             v-if="!adminMode"
                             :href="route('profile.edit')"
                             @click="userDropdownOpen = false"
+                            @keydown.enter="userDropdownOpen = false"
                             class="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-[#163E3E] hover:bg-[#F8F4EA] transition"
                         >
                             <UserIcon class="w-4 h-4 text-[#5B6770]" />
@@ -324,6 +328,7 @@ onUnmounted(() => {
                             v-if="!adminMode && (user as any)?.is_admin"
                             :href="route('admin.dashboard')"
                             @click="userDropdownOpen = false"
+                            @keydown.enter="userDropdownOpen = false"
                             class="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-[#163E3E] font-bold hover:bg-[#F8F4EA] transition"
                         >
                             <ShieldCheck class="w-4 h-4 text-[#F7C33D]" />
@@ -334,6 +339,7 @@ onUnmounted(() => {
                             v-if="adminMode"
                             :href="route('dashboard')"
                             @click="userDropdownOpen = false"
+                            @keydown.enter="userDropdownOpen = false"
                             class="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-emerald-700 hover:bg-emerald-50 transition"
                         >
                             <ExternalLink class="w-4 h-4" />

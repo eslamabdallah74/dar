@@ -97,6 +97,9 @@ function createMockLease(int $id, int $unitId, string $status = 'active'): Lease
     ]);
 }
 
+const SAMPLE_LEASE_START = '2026-11-01';
+const SAMPLE_LEASE_END = '2027-05-01';
+
 beforeEach(function () {
     $this->h = createApartmentHierarchyFixture();
 });
@@ -205,8 +208,6 @@ test('scenario 5: renting one room leaves sibling rooms independently available'
 // -------------------------------------------------------------------------
 
 test('scenarios 6 & 7: renting a unit with active rental on its descendant is rejected by conflict service', function (string $unitKey, int $targetId, string $descendantName): void {
-    $sampleStart = '2026-11-01';
-    $sampleEnd = '2027-05-01';
     $conflictService = $this->mock(RentalConflictService::class);
     $conflictService->shouldReceive('validateRentalAvailability')
         ->withArgs(fn (Unit $unit): bool => $unit->id === $targetId)
@@ -216,7 +217,7 @@ test('scenarios 6 & 7: renting a unit with active rental on its descendant is re
 
     $targetUnit = $unitKey === 'room1' ? $this->h['room1'] : $this->h['apartment'];
 
-    expect(fn () => $conflictService->validateRentalAvailability($targetUnit, $sampleStart, $sampleEnd))
+    expect(fn () => $conflictService->validateRentalAvailability($targetUnit, SAMPLE_LEASE_START, SAMPLE_LEASE_END))
         ->toThrow(ValidationException::class);
 })->with([
     'room with occupied bed' => ['room1', 2, 'Bed 1'],
@@ -342,7 +343,7 @@ test('scenario 14: conflict validation rejects lease creation when conflict serv
 
     // We expect the validation to reject before persisting
     expect(function () use ($conflictService) {
-        $conflictService->validateRentalAvailability($this->h['bed1'], '2026-11-01', '2027-05-01');
+        $conflictService->validateRentalAvailability($this->h['bed1'], SAMPLE_LEASE_START, SAMPLE_LEASE_END);
     })->toThrow(ValidationException::class);
 });
 
@@ -451,7 +452,7 @@ test('scenario 18: checkConflict endpoint returns JSON without database access',
         ->andReturn($conflictLease);
 
     // Verify mock returns the conflicting lease accurately
-    $result = $conflictService->findConflictingLease($this->h['room1'], '2026-11-01', '2027-05-01');
+    $result = $conflictService->findConflictingLease($this->h['room1'], SAMPLE_LEASE_START, SAMPLE_LEASE_END);
     expect($result)->not->toBeNull()
         ->and($result?->id)->toBe(99);
 });

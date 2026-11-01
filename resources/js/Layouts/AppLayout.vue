@@ -42,9 +42,10 @@ const recordPaymentOpen = ref(false);
 
 const user = computed(() => (page.props.auth as any)?.user ?? { name: 'أحمد حسن', email: 'test@example.com', role: 'مالك المنشأة' });
 const quickRenters = computed(() => (page.props as any)?.quickRenters ?? []);
-const pageErrors = computed(() => {
+const uniquePageErrors = computed<string[]>(() => {
     const errs = (page.props.errors as any) || {};
-    return Object.keys(errs).length > 0 ? errs : null;
+    const values = Object.values(errs).filter((msg): msg is string => Boolean(msg) && typeof msg === 'string');
+    return Array.from(new Set(values));
 });
 const showErrors = ref(true);
 
@@ -110,7 +111,7 @@ function handleNewAction() {
             />
 
             <!-- تنبيه الأخطاء الصادرة من النظام والتحقق الرقابي (Validation & System Errors) -->
-            <div v-if="pageErrors && showErrors" class="max-w-[1440px] w-full mx-auto px-4 sm:px-8 pt-4">
+            <div v-if="uniquePageErrors.length > 0 && showErrors" class="max-w-[1440px] w-full mx-auto px-4 sm:px-8 pt-4">
                 <div
                     class="p-4 sm:p-5 rounded-2xl bg-[#FEF2F2] border-2 border-rose-400 text-rose-950 shadow-lg flex items-start justify-between gap-3.5 border-r-8 border-r-rose-600"
                     style="background-color: #FEF2F2;"
@@ -127,7 +128,7 @@ function handleNewAction() {
                                 تعذر إتمام العملية لوجود ملاحظات رقابية / بيانات غير مكتملة:
                             </h4>
                             <ul class="space-y-1.5 text-xs sm:text-sm text-rose-900 font-semibold">
-                                <li v-for="(errMsg, errField) in pageErrors" :key="errField" class="flex items-start gap-2 leading-relaxed">
+                                <li v-for="errMsg in uniquePageErrors" :key="errMsg" class="flex items-start gap-2 leading-relaxed">
                                     <span class="text-rose-600 font-bold shrink-0">•</span>
                                     <span>{{ errMsg }}</span>
                                 </li>

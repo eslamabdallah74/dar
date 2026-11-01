@@ -57,8 +57,6 @@ class WorkspaceLimitService
 
         throw ValidationException::withMessages([
             'parent_unit_limit' => $message,
-            'unit_limit' => $message,
-            'property_type' => $message,
         ]);
     }
 
@@ -156,7 +154,6 @@ class WorkspaceLimitService
 
         throw ValidationException::withMessages([
             'active_rental_limit' => $message,
-            'unit_id' => $message,
         ]);
     }
 

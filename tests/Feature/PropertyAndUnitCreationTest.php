@@ -461,7 +461,8 @@ test('vacant rentable units count toward the subscription limit', function () {
 });
 
 test('subscription limit is enforced when a new billable unit would exceed it', function () {
-    // Set plan limit to 2
+    // Set workspace limit to 2
+    $this->workspace->update(['parent_unit_limit' => 2]);
     $this->plan->update(['unit_limit' => 2]);
 
     $property = Property::create([
@@ -494,7 +495,7 @@ test('subscription limit is enforced when a new billable unit would exceed it', 
             'is_rentable' => true,
         ]);
 
-    $response->assertSessionHasErrors(['unit_limit']);
+    $response->assertSessionHasErrors(['parent_unit_limit']);
 
     // Ensure 3rd unit was NOT persisted
     $this->assertDatabaseMissing('units', [

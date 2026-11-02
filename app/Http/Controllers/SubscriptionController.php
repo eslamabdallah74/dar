@@ -86,107 +86,65 @@ class SubscriptionController extends Controller
             ? $workspace->requestedPlan?->slug
             : null;
 
-        $planDefinitions = [
-            'trial' => [
-                'fallback_id' => 1,
-                'name' => 'باقة التجربة (Trial)',
-                'badge' => 'تجربة مجانية',
-                'price' => 0,
-                'units' => 1,
-                'features' => [
-                    'عقار رئيسي واحد (1) مع عقد تأجير نشط',
-                    self::UNLIMITED_CHILD_UNITS_FEATURE,
-                    'سندات قبض إلكترونية وعقود إيجار غير محدودة',
-                    'تجربة مجانية لكافة أدوات المنصة',
-                ],
-            ],
-            'starter' => [
-                'fallback_id' => 2,
-                'name' => 'باقة البداية (Starter)',
-                'badge' => 'اقتصادية',
-                'price' => 99,
-                'units' => 3,
-                'features' => [
-                    'حتى 3 عقارات رئيسية مع 3 عقود تأجير نشطة',
-                    self::UNLIMITED_CHILD_UNITS_FEATURE,
-                    'سندات قبض إلكترونية وعقود إيجار غير محدودة',
-                    'تذكيرات WhatsApp تلقائية للمستأجرين',
-                ],
-            ],
-            'growth' => [
-                'fallback_id' => 3,
-                'name' => 'باقة النمو (Growth)',
-                'badge' => 'الأكثر طلباً',
-                'price' => 199,
-                'units' => 10,
-                'features' => [
-                    'من 4 حتى 10 عقارات رئيسية مع 10 عقود تأجير نشطة',
-                    self::UNLIMITED_CHILD_UNITS_FEATURE,
-                    'تذكيرات WhatsApp تلقائية غير محدودة',
-                    'كشف تعارض العقود والحجوزات وإدارة الصيانة',
-                    'دعم فني سريع',
-                ],
-            ],
-            'pro' => [
-                'fallback_id' => 4,
-                'name' => 'باقة المحترفين (Pro)',
-                'badge' => 'للمحترفين',
-                'price' => 399,
-                'units' => 25,
-                'features' => [
-                    'من 11 حتى 25 عقار رئيسي مع 25 عقد تأجير نشط',
-                    self::UNLIMITED_CHILD_UNITS_FEATURE,
-                    'كل ميزات باقة النمو وإدارة متقدمة للمحافظ',
-                    'تقارير مالية ومحاسبية متقدمة مع ضريبة القيمة المضافة',
-                    'دعم فني مخصص ذو أولوية',
-                ],
-            ],
-            'business' => [
-                'fallback_id' => 5,
-                'name' => 'باقة الأعمال (Business)',
-                'badge' => 'للشركات الناشئة',
-                'price' => 699,
-                'units' => 50,
-                'features' => [
-                    'من 26 حتى 50 عقار رئيسي مع 50 عقد تأجير نشط',
-                    self::UNLIMITED_CHILD_UNITS_FEATURE,
-                    'تقارير الضرائب والتحليلات المالية المتقدمة',
-                    'سجلات صيانة ومصروفات مفصلة ومتعددة',
-                    'دعم فني VIP مباشر',
-                ],
-            ],
-            'enterprise' => [
-                'fallback_id' => 6,
-                'name' => 'باقة الشركات اللامحدودة (Enterprise)',
-                'badge' => 'سعر مخصص (> 50 وحدة)',
-                'price' => 0,
-                'units' => null,
-                'features' => [
-                    'أكثر من 50 عقار رئيسي وعقود تأجير نشطة (سعة غير محدودة ∞)',
-                    self::UNLIMITED_CHILD_UNITS_FEATURE,
-                    'عقارات وملاك ومستأجرون غير محدودين',
-                    'تخصيص متكامل وتقارير خاصة للشركات',
-                    'مدير حساب مخصص ودعم فني على مدار الساعة VIP',
-                ],
-            ],
+        $planCatalog = [
+            'trial' => [1, 'باقة التجربة (Trial)', 'تجربة مجانية', 0, 1, [
+                'عقار رئيسي واحد (1) مع عقد تأجير نشط',
+                self::UNLIMITED_CHILD_UNITS_FEATURE,
+                'سندات قبض إلكترونية وعقود إيجار غير محدودة',
+                'تجربة مجانية لكافة أدوات المنصة',
+            ]],
+            'starter' => [2, 'باقة البداية (Starter)', 'اقتصادية', 99, 3, [
+                'حتى 3 عقارات رئيسية مع 3 عقود تأجير نشطة',
+                self::UNLIMITED_CHILD_UNITS_FEATURE,
+                'سندات قبض إلكترونية وعقود إيجار غير محدودة',
+                'تذكيرات WhatsApp تلقائية للمستأجرين',
+            ]],
+            'growth' => [3, 'باقة النمو (Growth)', 'الأكثر طلباً', 199, 10, [
+                'من 4 حتى 10 عقارات رئيسية مع 10 عقود تأجير نشطة',
+                self::UNLIMITED_CHILD_UNITS_FEATURE,
+                'تذكيرات WhatsApp تلقائية غير محدودة',
+                'كشف تعارض العقود والحجوزات وإدارة الصيانة',
+                'دعم فني سريع',
+            ]],
+            'pro' => [4, 'باقة المحترفين (Pro)', 'للمحترفين', 399, 25, [
+                'من 11 حتى 25 عقار رئيسي مع 25 عقد تأجير نشط',
+                self::UNLIMITED_CHILD_UNITS_FEATURE,
+                'كل ميزات باقة النمو وإدارة متقدمة للمحافظ',
+                'تقارير مالية ومحاسبية متقدمة مع ضريبة القيمة المضافة',
+                'دعم فني مخصص ذو أولوية',
+            ]],
+            'business' => [5, 'باقة الأعمال (Business)', 'للشركات الناشئة', 699, 50, [
+                'من 26 حتى 50 عقار رئيسي مع 50 عقد تأجير نشط',
+                self::UNLIMITED_CHILD_UNITS_FEATURE,
+                'تقارير الضرائب والتحليلات المالية المتقدمة',
+                'سجلات صيانة ومصروفات مفصلة ومتعددة',
+                'دعم فني VIP مباشر',
+            ]],
+            'enterprise' => [6, 'باقة الشركات اللامحدودة (Enterprise)', 'سعر مخصص (> 50 وحدة)', 0, null, [
+                'أكثر من 50 عقار رئيسي وعقود تأجير نشطة (سعة غير محدودة ∞)',
+                self::UNLIMITED_CHILD_UNITS_FEATURE,
+                'عقارات وملاك ومستأجرون غير محدودين',
+                'تخصيص متكامل وتقارير خاصة للشركات',
+                'مدير حساب مخصص ودعم فني على مدار الساعة VIP',
+            ]],
         ];
 
         $plans = [];
-        foreach ($planDefinitions as $slug => $definition) {
+        foreach ($planCatalog as $slug => [$fallbackId, $name, $badge, $price, $units, $features]) {
             $planModel = $dbPlans->get($slug);
-            $planId = $planModel instanceof Plan ? $planModel->id : $definition['fallback_id'];
+            $planId = $planModel instanceof Plan ? $planModel->id : $fallbackId;
 
             $plans[] = [
                 'id' => $planId,
                 'slug' => $slug,
-                'name' => $definition['name'],
-                'badge' => $definition['badge'],
-                'price' => $definition['price'],
+                'name' => $name,
+                'badge' => $badge,
+                'price' => $price,
                 'period' => 'شهرياً',
-                'units_limit' => $definition['units'],
-                'parent_unit_limit' => $definition['units'],
-                'active_rental_limit' => $definition['units'],
-                'features' => $definition['features'],
+                'units_limit' => $units,
+                'parent_unit_limit' => $units,
+                'active_rental_limit' => $units,
+                'features' => $features,
                 'is_current' => $currentPlan?->slug === $slug || ($currentPlan === null && $slug === 'trial'),
                 'is_requested' => $requestedSlug === $slug,
             ];

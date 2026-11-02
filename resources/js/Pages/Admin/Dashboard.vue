@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { Link, router, useForm } from '@inertiajs/vue3';
+import { ref, computed, watch } from 'vue';
+import { Link, router, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PrimaryKpiRow from '@/Components/Dashboard/PrimaryKpiRow.vue';
 import OperationalKpiRow from '@/Components/Dashboard/OperationalKpiRow.vue';
@@ -83,9 +83,35 @@ interface Props {
 
 const props = defineProps<Props>();
 
+const validTabs = ['overview', 'workspaces', 'users', 'properties', 'leases', 'payments', 'maintenance', 'subscriptions', 'logs'] as const;
+type ValidTab = typeof validTabs[number];
+
+const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+const initialTabParam = urlParams?.get('tab') as string;
+const initialTab: ValidTab = initialTabParam === 'financials' ? 'payments' : (validTabs.includes(initialTabParam as any) ? (initialTabParam as ValidTab) : 'overview');
+
 // Current selected tab for data control
-const currentTab = ref<'overview' | 'workspaces' | 'users' | 'properties' | 'leases' | 'payments' | 'maintenance' | 'subscriptions' | 'logs'>('overview');
+const currentTab = ref<ValidTab>(initialTab);
 const searchQuery = ref('');
+
+const page = usePage();
+watch(
+    () => page.url,
+    (newUrl) => {
+        try {
+            const params = new URL(newUrl, window.location.origin).searchParams;
+            const tabParam = params.get('tab');
+            if (tabParam) {
+                const targetTab = tabParam === 'financials' ? 'payments' : tabParam;
+                if (validTabs.includes(targetTab as any)) {
+                    currentTab.value = targetTab as ValidTab;
+                }
+            }
+        } catch {
+            // ignore
+        }
+    }
+);
 
 // Tabs metadata
 const controlTabs = [
@@ -187,6 +213,7 @@ const editWorkspaceForm = useForm({
     name: '',
     currency: 'EGP',
     timezone: 'Africa/Cairo',
+    ai_assistant_enabled: false,
 });
 
 const subscriptionForm = useForm({
@@ -259,6 +286,7 @@ function openEditWorkspace(ws: any) {
     editWorkspaceForm.name = ws.name;
     editWorkspaceForm.currency = ws.currency || 'EGP';
     editWorkspaceForm.timezone = ws.timezone || 'Africa/Cairo';
+    editWorkspaceForm.ai_assistant_enabled = Boolean(ws.ai_assistant_enabled);
     showEditWorkspaceModal.value = true;
 }
 
@@ -546,6 +574,14 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                             <Building2 class="w-4 h-4" />
                                         </div>
                                         <span>{{ ws.name }}</span>
+                                        <span
+                                            v-if="ws.ai_assistant_enabled"
+                                            class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                            title="المساعد الذكي مفعّل"
+                                        >
+                                            <Sparkles class="w-3 h-3 text-emerald-600" />
+                                            AI
+                                        </span>
                                     </div>
                                 </td>
                                 <td class="p-3.5">
@@ -1157,6 +1193,20 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                             <option value="Asia/Dubai">دبي (Asia/Dubai)</option>
                         </select>
                         <InputError :message="editWorkspaceForm.errors.timezone" class="mt-1" />
+                    </div>
+
+                    <div>
+                        <label for="ws_ai_assistant_enabled" class="flex items-center gap-3 p-3 rounded-xl bg-[#F8FAFC] border border-[#D6E0E7] cursor-pointer hover:bg-slate-100 transition">
+                            <Checkbox
+                                id="ws_ai_assistant_enabled"
+                                v-model:checked="editWorkspaceForm.ai_assistant_enabled"
+                                aria-label="تفعيل المساعد الذكي لمساحة العمل"
+                            />
+                            <div>
+                                <span class="text-xs font-bold text-[#163E3E] block">تفعيل المساعد الذكي (AI Assistant)</span>
+                                <span class="text-[11px] text-[#5B6770] block">إتاحة استعلام الذكاء الاصطناعي التفاعلي لأعضاء هذه المساحة</span>
+                            </div>
+                        </label>
                     </div>
 
                     <div class="flex items-center justify-end gap-2 pt-3 border-t border-[#D6E0E7]">

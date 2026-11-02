@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AiConfigurationController;
+use App\Http\Controllers\AiAssistantController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\LeaseController;
@@ -186,6 +188,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
 
+    // 12 / المساعد الذكي
+    Route::get('/ai', [AiAssistantController::class, 'index'])->name('ai.index');
+    Route::get('/ai/status', [AiAssistantController::class, 'status'])->name('ai.status');
+    Route::post('/ai/ask', [AiAssistantController::class, 'ask'])->middleware('throttle:ai-ask')->name('ai.ask');
+    Route::put('/ai/setting', [AiAssistantController::class, 'updateSetting'])->name('ai.setting.update');
+
     // Profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -212,6 +220,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::put('/', [AdminDashboardController::class, 'updateWorkspace'])->name('update');
             Route::delete('/', [AdminDashboardController::class, 'destroyWorkspace'])->name('destroy');
             Route::put('/limits', [AdminDashboardController::class, 'updateWorkspaceLimits'])->name('limits.update');
+            Route::patch('/ai-assistant', [AdminDashboardController::class, 'toggleAiAssistant'])->name('ai.toggle');
             Route::post('/impersonate', [AdminDashboardController::class, 'impersonateWorkspace'])->name('impersonate');
             Route::post('/subscription', [AdminDashboardController::class, 'updateSubscription'])->name('subscription');
             Route::post('/plan-requests/approve', [AdminDashboardController::class, 'approvePlanRequest'])->name('plan-requests.approve');
@@ -225,6 +234,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::patch('/leases/{lease}/status', [AdminDashboardController::class, 'updateLeaseStatus'])->name('leases.status');
         Route::patch('/maintenance/{maintenance}/status', [AdminDashboardController::class, 'updateMaintenanceStatus'])->name('maintenance.status');
+
+        // Central AI Configuration
+        Route::get('/ai-configuration', [AiConfigurationController::class, 'show'])->name('ai-configuration.show');
+        Route::put('/ai-configuration', [AiConfigurationController::class, 'update'])->name('ai-configuration.update');
+        Route::delete('/ai-configuration', [AiConfigurationController::class, 'destroy'])->name('ai-configuration.destroy');
     });
 });
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import {
     BarChart3,
@@ -14,6 +14,7 @@ import {
     MessageSquare,
     Settings,
     Shield,
+    Sparkles,
     ExternalLink,
     User,
     Users,
@@ -66,17 +67,41 @@ const defaultAdminNavLinks: NavItem[] = [
     { key: 'users', name: 'المستخدمون', icon: Users },
     { key: 'properties', name: 'العقارات والوحدات', icon: Home },
     { key: 'leases', name: 'العقود والمستأجرين', icon: FileText },
-    { key: 'financials', name: 'المالية والمدفوعات', icon: Coins },
+    { key: 'payments', name: 'المالية والمدفوعات', icon: Coins },
     { key: 'maintenance', name: 'طلبات الصيانة', icon: Wrench },
     { key: 'subscriptions', name: 'الباقات والاشتراكات', icon: Layers },
     { key: 'logs', name: 'رسائل واتساب والسجلات', icon: MessageSquare },
+    { key: 'ai-configuration', name: 'المساعد الذكي', icon: Sparkles, routeName: 'admin.ai-configuration.show' },
 ];
+
+const page = usePage();
+const aiAvailable = computed(() => Boolean((page.props.ai as any)?.available));
+
+const computedTenantNavLinks = computed<NavItem[]>(() => {
+    const links = [...defaultTenantNavLinks];
+    if (aiAvailable.value) {
+        const settingsIndex = links.findIndex((l) => l.key === 'settings');
+        const aiItem: NavItem = {
+            key: 'ai',
+            name: 'المساعد الذكي',
+            icon: Sparkles,
+            routeName: 'ai.index',
+            badge: 'AI',
+        };
+        if (settingsIndex !== -1) {
+            links.splice(settingsIndex, 0, aiItem);
+        } else {
+            links.push(aiItem);
+        }
+    }
+    return links;
+});
 
 const navLinks = computed(() => {
     if (props.customNavLinks && props.customNavLinks.length > 0) {
         return props.customNavLinks;
     }
-    return props.adminMode ? defaultAdminNavLinks : defaultTenantNavLinks;
+    return props.adminMode ? defaultAdminNavLinks : computedTenantNavLinks.value;
 });
 
 const isLinkActive = (linkKey: string, routeName?: string) => {
@@ -88,13 +113,41 @@ const isLinkActive = (linkKey: string, routeName?: string) => {
             // @ts-ignore
             return route().current(routeName) || route().current(routeName.replace('.index', '') + '.*');
         } catch {
-            return linkKey === 'dashboard';
+            return false;
         }
     }
-    return linkKey === 'overview';
+    if (props.adminMode) {
+        try {
+            // @ts-ignore
+            if (typeof route === 'function' && route().current('admin.dashboard')) {
+                const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+                const tab = urlParams?.get('tab') || 'overview';
+                return tab === linkKey;
+            }
+        } catch {
+            // ignore
+        }
+    }
+    return false;
 };
 
 function handleNavClick(link: NavItem) {
+    if (props.adminMode) {
+        emit('selectTab', link.key);
+        emit('closeMobile');
+
+        try {
+            // @ts-ignore
+            const isOnAdminDashboard = typeof route === 'function' && route().current('admin.dashboard');
+            if (!isOnAdminDashboard) {
+                router.visit(route('admin.dashboard', { tab: link.key }));
+            }
+        } catch {
+            router.visit(route('admin.dashboard', { tab: link.key }));
+        }
+        return;
+    }
+
     emit('selectTab', link.key);
     emit('closeMobile');
 }

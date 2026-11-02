@@ -28,8 +28,8 @@ const steps = [
         title: 'سجّل بيانات المستأجرين',
         desc: 'أدخل أسماء المستأجرين وأرقام هواتفهم لإرسال تذكيرات الإيجار التلقائية عبر واتساب.',
         icon: Users,
-        actionLabel: 'إضافة مستأجر',
-        routeName: 'renters.create',
+        actionLabel: 'إدارة المستأجرين',
+        routeName: 'renters.index',
     },
     {
         num: 4,

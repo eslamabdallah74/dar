@@ -21,6 +21,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $plan_request_status
  * @property Carbon|null $plan_requested_at
  * @property string|null $plan_request_notes
+ * @property bool $ai_assistant_enabled
  * @property-read int|null $parent_units_count
  */
 class Workspace extends Model
@@ -50,6 +51,7 @@ class Workspace extends Model
         'auto_instant_receipts',
         'overdue_warning_days_after',
         'weekly_summary_report',
+        'ai_assistant_enabled',
     ];
 
     protected function casts(): array
@@ -64,6 +66,7 @@ class Workspace extends Model
             'auto_whatsapp_reminders' => 'boolean',
             'auto_instant_receipts' => 'boolean',
             'weekly_summary_report' => 'boolean',
+            'ai_assistant_enabled' => 'boolean',
         ];
     }
 

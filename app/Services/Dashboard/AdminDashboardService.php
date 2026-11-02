@@ -211,6 +211,7 @@ class AdminDashboardService
                 'currency' => $w->currency,
                 'timezone' => $w->timezone,
                 'status' => $w->status,
+                'ai_assistant_enabled' => (bool) $w->ai_assistant_enabled,
                 'owner_name' => $w->owner->name ?? 'غير محدد',
                 'owner_email' => $w->owner->email ?? '—',
                 'properties_count' => $w->properties_count,

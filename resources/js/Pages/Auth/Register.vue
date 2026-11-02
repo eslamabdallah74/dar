@@ -102,12 +102,13 @@ const submit = () => {
         <form @submit.prevent="submit" class="space-y-2 sm:space-y-4">
             <!-- اختيار أو تغيير الباقة المطلوبة -->
             <div v-if="plans && plans.length > 0">
-                <InputLabel for="plan" value="الباقة التي ترغب بها" />
+                <label for="plan" class="block text-xs font-semibold text-zinc-300 mb-1.5">الباقة التي ترغب بها</label>
                 <select
                     id="plan"
                     v-model="form.plan"
                     class="block w-full mt-1 h-10 px-3 rounded-xl border border-zinc-700 bg-zinc-900/90 text-white text-xs font-semibold focus:border-emerald-500 focus:ring-emerald-500"
                     dir="rtl"
+                    aria-label="الباقة التي ترغب بها"
                 >
                     <option v-for="pl in plans" :key="pl.id" :value="pl.slug">
                         {{ pl.name }} — {{ pl.monthly_price == 0 ? (pl.slug === 'trial' ? '0 ج.م (تجربة)' : 'تسعير مخصص') : `${pl.monthly_price} ج.م/شهرياً` }}

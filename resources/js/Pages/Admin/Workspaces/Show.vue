@@ -607,13 +607,14 @@ const activeRentalPercent = computed(() => {
 
                 <form @submit.prevent="submitDenyPlanRequest" class="space-y-4">
                     <div>
-                        <InputLabel for="deny_reason" value="سبب الرفض (اختياري)" />
+                        <label for="deny_reason" class="block text-xs font-semibold text-[#163E3E] mb-1.5">سبب الرفض (اختياري)</label>
                         <textarea
                             id="deny_reason"
                             v-model="denyForm.reason"
                             rows="3"
                             class="w-full mt-1.5 p-3 rounded-xl border border-[#D6E0E7] text-xs text-[#163E3E]"
                             placeholder="مثال: يرجى تسوية المبالغ السابقة أولاً، أو اختيار باقة تتناسب مع عدد العقارات الحالي..."
+                            aria-label="سبب الرفض (اختياري)"
                         ></textarea>
                     </div>
 

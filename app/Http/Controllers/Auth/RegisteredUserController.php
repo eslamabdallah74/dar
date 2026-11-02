@@ -29,7 +29,10 @@ class RegisteredUserController extends Controller
         $selectedPlan = $planSlug !== '' ? Plan::where('slug', $planSlug)->where('is_active', true)->first() : null;
         $plans = Plan::where('is_active', true)->orderBy('id')->get(['id', 'name', 'slug', 'monthly_price', 'parent_unit_limit', 'active_rental_limit']);
 
-        $initialPlanSlug = $selectedPlan !== null ? $selectedPlan->slug : ($planSlug !== '' ? $planSlug : null);
+        $initialPlanSlug = $selectedPlan?->slug;
+        if ($initialPlanSlug === null && $planSlug !== '') {
+            $initialPlanSlug = $planSlug;
+        }
 
         return Inertia::render('Auth/Register', [
             'initialPlanSlug' => $initialPlanSlug,

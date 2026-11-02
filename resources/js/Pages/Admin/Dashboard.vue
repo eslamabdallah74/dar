@@ -412,6 +412,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                         v-model="searchQuery"
                         type="text"
                         placeholder="فلترة الجداول..."
+                        aria-label="فلترة الجداول"
                         class="h-9 px-3 rounded-lg border border-[#D6E0E7] bg-white text-xs text-[#163E3E] focus:ring-1 focus:ring-[#163E3E] focus:border-[#163E3E] text-right"
                     />
                 </div>
@@ -840,6 +841,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                     <select
                                         :value="l.status"
                                         @change="updateLeaseStatus(l.id, ($event.target as HTMLSelectElement).value)"
+                                        aria-label="تحديث حالة العقد"
                                         class="h-7 px-2 rounded-lg border border-[#D6E0E7] bg-white text-[11px] font-semibold text-[#163E3E] cursor-pointer"
                                     >
                                         <option value="active">نشط (Active)</option>
@@ -934,6 +936,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                     <select
                                         :value="mr.status"
                                         @change="updateMaintenanceStatus(mr.id, ($event.target as HTMLSelectElement).value)"
+                                        aria-label="تحديث حالة طلب الصيانة"
                                         class="h-7 px-2 rounded-lg border border-[#D6E0E7] bg-white text-[11px] font-semibold text-[#163E3E] cursor-pointer"
                                     >
                                         <option value="open">مفتوح (Open)</option>
@@ -1126,10 +1129,11 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                     </div>
 
                     <div>
-                        <InputLabel for="ws_currency" value="العملة الرسمية" />
+                        <label for="ws_currency" class="block text-xs font-semibold text-[#163E3E] mb-1.5">العملة الرسمية</label>
                         <select
                             id="ws_currency"
                             v-model="editWorkspaceForm.currency"
+                            aria-label="العملة الرسمية"
                             class="w-full mt-1 h-10 px-3 rounded-xl border border-[#D6E0E7] bg-white text-sm"
                         >
                             <option value="EGP">جنيه مصري (EGP)</option>
@@ -1141,10 +1145,11 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                     </div>
 
                     <div>
-                        <InputLabel for="ws_timezone" value="المنطقة الزمنية" />
+                        <label for="ws_timezone" class="block text-xs font-semibold text-[#163E3E] mb-1.5">المنطقة الزمنية</label>
                         <select
                             id="ws_timezone"
                             v-model="editWorkspaceForm.timezone"
+                            aria-label="المنطقة الزمنية"
                             class="w-full mt-1 h-10 px-3 rounded-xl border border-[#D6E0E7] bg-white text-sm"
                         >
                             <option value="Africa/Cairo">القاهرة (Africa/Cairo)</option>
@@ -1192,10 +1197,11 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                     </div>
 
                     <div>
-                        <InputLabel for="sub_plan" value="اختر الباقة المطلوبة" />
+                        <label for="sub_plan" class="block text-xs font-semibold text-[#163E3E] mb-1.5">اختر الباقة المطلوبة</label>
                         <select
                             id="sub_plan"
                             v-model="subscriptionForm.plan_id"
+                            aria-label="اختر الباقة المطلوبة"
                             class="w-full mt-1 h-10 px-3 rounded-xl border border-[#D6E0E7] bg-white text-sm"
                         >
                             <option
@@ -1212,10 +1218,11 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                     </div>
 
                     <div>
-                        <InputLabel for="sub_status" value="حالة الاشتراك" />
+                        <label for="sub_status" class="block text-xs font-semibold text-[#163E3E] mb-1.5">حالة الاشتراك</label>
                         <select
                             id="sub_status"
                             v-model="subscriptionForm.status"
+                            aria-label="حالة الاشتراك"
                             class="w-full mt-1 h-10 px-3 rounded-xl border border-[#D6E0E7] bg-white text-sm"
                         >
                             <option value="active">نشط ومفعل (Active)</option>

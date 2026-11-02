@@ -14,7 +14,6 @@ import WhatsAppSummaryCard from '@/Components/Dashboard/WhatsAppSummaryCard.vue'
 import EmptyWorkspaceOnboarding from '@/Components/Dashboard/EmptyWorkspaceOnboarding.vue';
 import ModalRecordPayment from '@/Components/Common/ModalRecordPayment.vue';
 import Modal from '@/Components/Modal.vue';
-import InputLabel from '@/Components/InputLabel.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
@@ -538,11 +537,12 @@ function submitPlanChangeRequest() {
 
                 <form @submit.prevent="submitPlanChangeRequest" class="space-y-4 pt-1">
                     <div>
-                        <InputLabel for="dashboard_plan_id" value="اختر الباقة المطلوبة" />
+                        <label for="dashboard_plan_id" class="block text-xs font-semibold text-[#163E3E] mb-1.5">اختر الباقة المطلوبة</label>
                         <select
                             id="dashboard_plan_id"
                             v-model="planChangeForm.plan_id"
                             class="w-full mt-1.5 h-11 px-3 rounded-xl border border-[#D6E0E7] bg-white text-xs font-bold text-[#163E3E]"
+                            aria-label="اختر الباقة المطلوبة"
                             required
                         >
                             <option
@@ -558,13 +558,14 @@ function submitPlanChangeRequest() {
                     </div>
 
                     <div>
-                        <InputLabel for="dashboard_plan_notes" value="ملاحظات للإدارة (اختياري)" />
+                        <label for="dashboard_plan_notes" class="block text-xs font-semibold text-[#163E3E] mb-1.5">ملاحظات للإدارة (اختياري)</label>
                         <textarea
                             id="dashboard_plan_notes"
                             v-model="planChangeForm.notes"
                             rows="2"
                             class="w-full mt-1 p-2.5 rounded-xl border border-[#D6E0E7] text-xs text-[#163E3E]"
                             placeholder="أي تفاصيل أو متطلبات ترغب بتوضيحها للإدارة..."
+                            aria-label="ملاحظات للإدارة (اختياري)"
                         ></textarea>
                     </div>
 

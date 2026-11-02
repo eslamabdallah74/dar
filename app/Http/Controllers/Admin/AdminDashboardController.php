@@ -272,13 +272,15 @@ class AdminDashboardController extends Controller
             'is_active_rental_unlimited' => ['nullable', 'boolean'],
         ]);
 
-        $parentLimit = ! empty($validated['is_parent_unit_unlimited'])
-            ? null
-            : (isset($validated['parent_unit_limit']) ? (int) $validated['parent_unit_limit'] : null);
+        $parentLimit = null;
+        if (empty($validated['is_parent_unit_unlimited']) && isset($validated['parent_unit_limit'])) {
+            $parentLimit = (int) $validated['parent_unit_limit'];
+        }
 
-        $activeLimit = ! empty($validated['is_active_rental_unlimited'])
-            ? null
-            : (isset($validated['active_rental_limit']) ? (int) $validated['active_rental_limit'] : null);
+        $activeLimit = null;
+        if (empty($validated['is_active_rental_unlimited']) && isset($validated['active_rental_limit'])) {
+            $activeLimit = (int) $validated['active_rental_limit'];
+        }
 
         $limitService->validateLimitsNotBelowUsage($workspace, $parentLimit, $activeLimit);
 

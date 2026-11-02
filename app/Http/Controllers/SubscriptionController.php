@@ -82,65 +82,43 @@ class SubscriptionController extends Controller
     private function buildPlans(Workspace $workspace, ?Plan $currentPlan): array
     {
         $dbPlans = Plan::where('is_active', true)->get()->keyBy('slug');
-        $resolvePlanId = function (string $slug, int $fallback) use ($dbPlans): int {
-            $plan = $dbPlans->get($slug);
-
-            return $plan instanceof Plan ? $plan->id : $fallback;
-        };
-
         $requestedSlug = $workspace->plan_request_status === 'pending'
             ? $workspace->requestedPlan?->slug
             : null;
 
-        return [
-            [
-                'id' => $resolvePlanId('trial', 1),
-                'slug' => 'trial',
+        $planDefinitions = [
+            'trial' => [
+                'fallback_id' => 1,
                 'name' => 'باقة التجربة (Trial)',
                 'badge' => 'تجربة مجانية',
                 'price' => 0,
-                'period' => 'شهرياً',
-                'units_limit' => 1,
-                'parent_unit_limit' => 1,
-                'active_rental_limit' => 1,
+                'units' => 1,
                 'features' => [
                     'عقار رئيسي واحد (1) مع عقد تأجير نشط',
                     self::UNLIMITED_CHILD_UNITS_FEATURE,
                     'سندات قبض إلكترونية وعقود إيجار غير محدودة',
                     'تجربة مجانية لكافة أدوات المنصة',
                 ],
-                'is_current' => $currentPlan?->slug === 'trial' || ($currentPlan === null),
-                'is_requested' => $requestedSlug === 'trial',
             ],
-            [
-                'id' => $resolvePlanId('starter', 2),
-                'slug' => 'starter',
+            'starter' => [
+                'fallback_id' => 2,
                 'name' => 'باقة البداية (Starter)',
                 'badge' => 'اقتصادية',
                 'price' => 99,
-                'period' => 'شهرياً',
-                'units_limit' => 3,
-                'parent_unit_limit' => 3,
-                'active_rental_limit' => 3,
+                'units' => 3,
                 'features' => [
                     'حتى 3 عقارات رئيسية مع 3 عقود تأجير نشطة',
                     self::UNLIMITED_CHILD_UNITS_FEATURE,
                     'سندات قبض إلكترونية وعقود إيجار غير محدودة',
                     'تذكيرات WhatsApp تلقائية للمستأجرين',
                 ],
-                'is_current' => $currentPlan?->slug === 'starter',
-                'is_requested' => $requestedSlug === 'starter',
             ],
-            [
-                'id' => $resolvePlanId('growth', 3),
-                'slug' => 'growth',
+            'growth' => [
+                'fallback_id' => 3,
                 'name' => 'باقة النمو (Growth)',
                 'badge' => 'الأكثر طلباً',
                 'price' => 199,
-                'period' => 'شهرياً',
-                'units_limit' => 10,
-                'parent_unit_limit' => 10,
-                'active_rental_limit' => 10,
+                'units' => 10,
                 'features' => [
                     'من 4 حتى 10 عقارات رئيسية مع 10 عقود تأجير نشطة',
                     self::UNLIMITED_CHILD_UNITS_FEATURE,
@@ -148,19 +126,13 @@ class SubscriptionController extends Controller
                     'كشف تعارض العقود والحجوزات وإدارة الصيانة',
                     'دعم فني سريع',
                 ],
-                'is_current' => $currentPlan?->slug === 'growth',
-                'is_requested' => $requestedSlug === 'growth',
             ],
-            [
-                'id' => $resolvePlanId('pro', 4),
-                'slug' => 'pro',
+            'pro' => [
+                'fallback_id' => 4,
                 'name' => 'باقة المحترفين (Pro)',
                 'badge' => 'للمحترفين',
                 'price' => 399,
-                'period' => 'شهرياً',
-                'units_limit' => 25,
-                'parent_unit_limit' => 25,
-                'active_rental_limit' => 25,
+                'units' => 25,
                 'features' => [
                     'من 11 حتى 25 عقار رئيسي مع 25 عقد تأجير نشط',
                     self::UNLIMITED_CHILD_UNITS_FEATURE,
@@ -168,19 +140,13 @@ class SubscriptionController extends Controller
                     'تقارير مالية ومحاسبية متقدمة مع ضريبة القيمة المضافة',
                     'دعم فني مخصص ذو أولوية',
                 ],
-                'is_current' => $currentPlan?->slug === 'pro',
-                'is_requested' => $requestedSlug === 'pro',
             ],
-            [
-                'id' => $resolvePlanId('business', 5),
-                'slug' => 'business',
+            'business' => [
+                'fallback_id' => 5,
                 'name' => 'باقة الأعمال (Business)',
                 'badge' => 'للشركات الناشئة',
                 'price' => 699,
-                'period' => 'شهرياً',
-                'units_limit' => 50,
-                'parent_unit_limit' => 50,
-                'active_rental_limit' => 50,
+                'units' => 50,
                 'features' => [
                     'من 26 حتى 50 عقار رئيسي مع 50 عقد تأجير نشط',
                     self::UNLIMITED_CHILD_UNITS_FEATURE,
@@ -188,19 +154,13 @@ class SubscriptionController extends Controller
                     'سجلات صيانة ومصروفات مفصلة ومتعددة',
                     'دعم فني VIP مباشر',
                 ],
-                'is_current' => $currentPlan?->slug === 'business',
-                'is_requested' => $requestedSlug === 'business',
             ],
-            [
-                'id' => $resolvePlanId('enterprise', 6),
-                'slug' => 'enterprise',
+            'enterprise' => [
+                'fallback_id' => 6,
                 'name' => 'باقة الشركات اللامحدودة (Enterprise)',
                 'badge' => 'سعر مخصص (> 50 وحدة)',
                 'price' => 0,
-                'period' => 'شهرياً',
-                'units_limit' => null,
-                'parent_unit_limit' => null,
-                'active_rental_limit' => null,
+                'units' => null,
                 'features' => [
                     'أكثر من 50 عقار رئيسي وعقود تأجير نشطة (سعة غير محدودة ∞)',
                     self::UNLIMITED_CHILD_UNITS_FEATURE,
@@ -208,10 +168,31 @@ class SubscriptionController extends Controller
                     'تخصيص متكامل وتقارير خاصة للشركات',
                     'مدير حساب مخصص ودعم فني على مدار الساعة VIP',
                 ],
-                'is_current' => $currentPlan?->slug === 'enterprise',
-                'is_requested' => $requestedSlug === 'enterprise',
             ],
         ];
+
+        $plans = [];
+        foreach ($planDefinitions as $slug => $definition) {
+            $planModel = $dbPlans->get($slug);
+            $planId = $planModel instanceof Plan ? $planModel->id : $definition['fallback_id'];
+
+            $plans[] = [
+                'id' => $planId,
+                'slug' => $slug,
+                'name' => $definition['name'],
+                'badge' => $definition['badge'],
+                'price' => $definition['price'],
+                'period' => 'شهرياً',
+                'units_limit' => $definition['units'],
+                'parent_unit_limit' => $definition['units'],
+                'active_rental_limit' => $definition['units'],
+                'features' => $definition['features'],
+                'is_current' => $currentPlan?->slug === $slug || ($currentPlan === null && $slug === 'trial'),
+                'is_requested' => $requestedSlug === $slug,
+            ];
+        }
+
+        return $plans;
     }
 
     /**

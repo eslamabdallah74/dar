@@ -3,7 +3,6 @@ import { ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
-import InputLabel from '@/Components/InputLabel.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
@@ -359,13 +358,14 @@ const submitPlanRequest = () => {
                 </div>
 
                 <div class="text-right">
-                    <InputLabel for="req_notes" value="ملاحظات إضافية للإدارة (اختياري)" />
+                    <label for="req_notes" class="block text-xs font-semibold text-[#163E3E] mb-1.5">ملاحظات إضافية للإدارة (اختياري)</label>
                     <textarea
                         id="req_notes"
                         v-model="requestForm.notes"
                         rows="2"
                         class="w-full mt-1 p-2.5 rounded-xl border border-[#D6E0E7] text-xs text-[#163E3E]"
                         placeholder="أي تفاصيل خاصة ترغب بتوضيحها للإدارة..."
+                        aria-label="ملاحظات إضافية للإدارة (اختياري)"
                     ></textarea>
                     <InputError :message="requestForm.errors.notes" class="mt-1" />
                 </div>

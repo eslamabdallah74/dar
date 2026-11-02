@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { router, Link } from '@inertiajs/vue3';
+import { router, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PrimaryKpiRow from '@/Components/Dashboard/PrimaryKpiRow.vue';
 import RentalIncomeChart from '@/Components/Dashboard/RentalIncomeChart.vue';
@@ -13,11 +13,18 @@ import QuickActionsBar from '@/Components/Dashboard/QuickActionsBar.vue';
 import WhatsAppSummaryCard from '@/Components/Dashboard/WhatsAppSummaryCard.vue';
 import EmptyWorkspaceOnboarding from '@/Components/Dashboard/EmptyWorkspaceOnboarding.vue';
 import ModalRecordPayment from '@/Components/Common/ModalRecordPayment.vue';
+import Modal from '@/Components/Modal.vue';
+import InputError from '@/Components/InputError.vue';
+import PrimaryButton from '@/Components/PrimaryButton.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
 import {
     Plus,
-    CreditCard,
+    Coins,
     Shield,
     AlertCircle,
+    Crown,
+    Sparkles,
+    Clock,
 } from 'lucide-vue-next';
 
 interface Props {
@@ -33,10 +40,29 @@ interface Props {
         currency_symbol?: string;
         currency_label?: string;
         plan_name: string;
+        plan_slug?: string;
         units_used: number;
         units_limit: number | null;
         usage_percentage?: number;
+        requested_plan?: {
+            id: number;
+            name: string;
+            slug: string;
+            monthly_price: number;
+            parent_unit_limit: number | null;
+        } | null;
+        plan_request_status?: string | null;
+        plan_requested_at?: string | null;
+        plan_request_notes?: string | null;
     };
+    available_plans?: Array<{
+        id: number;
+        name: string;
+        slug: string;
+        monthly_price: number | string;
+        parent_unit_limit: number | null;
+        active_rental_limit: number | null;
+    }>;
     is_empty_workspace?: boolean;
     header: {
         greeting: string;
@@ -207,15 +233,35 @@ function handleAttentionAction(item: any) {
         router.visit(route('dashboard'));
     }
 }
+
+const showPlanChangeModal = ref(false);
+const planChangeForm = useForm({
+    plan_id: 0,
+    notes: '',
+});
+
+function openPlanChangeModal() {
+    if (props.available_plans && props.available_plans.length > 0) {
+        planChangeForm.plan_id = props.workspace.requested_plan?.id || props.available_plans[0].id;
+    }
+    planChangeForm.notes = '';
+    showPlanChangeModal.value = true;
+}
+
+function submitPlanChangeRequest() {
+    planChangeForm.post(route('subscription.request'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showPlanChangeModal.value = false;
+        },
+    });
+}
 </script>
 
 <template>
     <AppLayout
         title="الرئيسية — Nook Mate لإدارة العقارات"
         active-tab="dashboard"
-        :plan-name="workspace?.plan_name"
-        :units-used="workspace?.units_used"
-        :units-limit="workspace?.units_limit"
     >
         <!-- قسم الترحيب الرئيسي (Welcome Hero Section) -->
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[#E8EFF4]">
@@ -246,7 +292,7 @@ function handleAttentionAction(item: any) {
                             type="button"
                             class="h-11 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F8FAFC] text-[#163E3E] text-sm font-semibold transition shadow-2xs flex items-center justify-center gap-2"
                         >
-                            <CreditCard class="h-4 w-4 text-[#163E3E]" />
+                            <Coins class="h-4 w-4 text-[#163E3E]" />
                             <span>تسجيل دفعة</span>
                         </button>
                     </div>
@@ -257,6 +303,56 @@ function handleAttentionAction(item: any) {
                     @record-payment="handleRecordPayment()"
                     @add-property="addProperty"
                 />
+
+                <!-- بطاقة باقة المنشأة الحالية وطلب التغيير -->
+                <div class="rounded-2xl border border-[#D6E0E7] bg-white p-4 sm:p-5 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4" dir="rtl">
+                    <div class="flex items-start sm:items-center gap-3.5">
+                        <div class="w-11 h-11 rounded-2xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center shrink-0">
+                            <Crown class="w-6 h-6" />
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="text-xs font-bold text-[#5B6770]">باقتك الحالية:</span>
+                                <h3 class="text-sm font-extrabold text-[#163E3E]">{{ workspace?.plan_name }}</h3>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E8F0F0] text-[#163E3E]">
+                                    {{ workspace?.units_limit ? `سعة حتى ${workspace.units_limit} عقارات رئيسية` : 'سعة غير محدودة' }}
+                                </span>
+                            </div>
+
+                            <!-- حالة طلب التغيير المعلق إن وُجد -->
+                            <div v-if="workspace?.plan_request_status === 'pending' && workspace?.requested_plan" class="flex items-center gap-1.5 text-xs text-amber-800 font-semibold pt-0.5">
+                                <Clock class="w-4 h-4 text-amber-600 shrink-0" />
+                                <span>
+                                    طلبك لتغيير الباقة إلى <strong class="font-bold text-amber-950">{{ workspace.requested_plan.name }}</strong> قيد مراجعة واعتماد الإدارة
+                                </span>
+                            </div>
+                            <div v-else-if="workspace?.plan_request_status === 'rejected' && workspace?.requested_plan" class="flex items-center gap-1.5 text-xs text-rose-700 font-semibold pt-0.5">
+                                <AlertCircle class="w-4 h-4 text-rose-600 shrink-0" />
+                                <span>تم رفض طلب الترقية الأخير إلى {{ workspace.requested_plan.name }}. يمكنك اختيار باقة أخرى.</span>
+                            </div>
+                            <div v-else class="text-[11px] text-[#5B6770]">
+                                مستخدم حالياً {{ workspace?.units_used ?? 0 }} من أصل {{ workspace?.units_limit ?? '∞' }} وحدة رئيسية.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
+                        <button
+                            type="button"
+                            @click="openPlanChangeModal"
+                            class="h-9 px-4 rounded-xl border border-[#163E3E] text-[#163E3E] hover:bg-[#163E3E] hover:text-white text-xs font-bold transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                        >
+                            <Sparkles class="w-3.5 h-3.5" />
+                            <span>طلب تغيير الباقة</span>
+                        </button>
+                        <Link
+                            :href="route('subscription.index')"
+                            class="h-9 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] hover:bg-[#E8EFF4] text-[#5B6770] hover:text-[#163E3E] text-xs font-semibold transition flex items-center"
+                        >
+                            صفحة الباقات
+                        </Link>
+                    </div>
+                </div>
 
                 <!-- حالة مساحة العمل الجديدة والفارغة (First-time empty workspace) -->
                 <EmptyWorkspaceOnboarding
@@ -423,5 +519,64 @@ function handleAttentionAction(item: any) {
             :initial-rent-charge-id="paymentInitialRentChargeId"
             @close="recordPaymentOpen = false"
         />
+
+        <!-- مودال طلب تغيير الباقة من لوحة التحكم -->
+        <Modal :show="showPlanChangeModal" @close="showPlanChangeModal = false" max-width="md">
+            <div class="p-6 text-right space-y-4" dir="rtl">
+                <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
+                    <div class="flex items-center gap-2">
+                        <Crown class="w-5 h-5 text-[#163E3E]" />
+                        <h3 class="text-base font-bold text-[#163E3E]">طلب تغيير باقة المنشأة</h3>
+                    </div>
+                    <button @click="showPlanChangeModal = false" type="button" class="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+                </div>
+
+                <p class="text-xs text-[#5B6770] leading-relaxed">
+                    باقتك الحالية هي <strong>{{ workspace?.plan_name }}</strong>. اختر الباقة الجديدة التي ترغب بالانتقال إليها وسيقوم مدير النظام بمراجعة واعتماد طلبك:
+                </p>
+
+                <form @submit.prevent="submitPlanChangeRequest" class="space-y-4 pt-1">
+                    <div>
+                        <label for="dashboard_plan_id" class="block text-xs font-semibold text-[#163E3E] mb-1.5">اختر الباقة المطلوبة</label>
+                        <select
+                            id="dashboard_plan_id"
+                            v-model="planChangeForm.plan_id"
+                            class="w-full mt-1.5 h-11 px-3 rounded-xl border border-[#D6E0E7] bg-white text-xs font-bold text-[#163E3E]"
+                            aria-label="اختر الباقة المطلوبة"
+                            required
+                        >
+                            <option
+                                v-for="plan in available_plans"
+                                :key="plan.id"
+                                :value="plan.id"
+                            >
+                                {{ plan.name }} — {{ plan.monthly_price == 0 ? (plan.slug === 'trial' ? 'مجاناً' : 'تسعير مخصص') : `${plan.monthly_price} ج.م/شهرياً` }}
+                                {{ plan.parent_unit_limit ? `(حتى ${plan.parent_unit_limit} عقارات)` : '(سعة غير محدودة)' }}
+                            </option>
+                        </select>
+                        <InputError :message="planChangeForm.errors.plan_id" class="mt-1" />
+                    </div>
+
+                    <div>
+                        <label for="dashboard_plan_notes" class="block text-xs font-semibold text-[#163E3E] mb-1.5">ملاحظات للإدارة (اختياري)</label>
+                        <textarea
+                            id="dashboard_plan_notes"
+                            v-model="planChangeForm.notes"
+                            rows="2"
+                            class="w-full mt-1 p-2.5 rounded-xl border border-[#D6E0E7] text-xs text-[#163E3E]"
+                            placeholder="أي تفاصيل أو متطلبات ترغب بتوضيحها للإدارة..."
+                            aria-label="ملاحظات للإدارة (اختياري)"
+                        ></textarea>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-[#D6E0E7]">
+                        <SecondaryButton @click="showPlanChangeModal = false" type="button">إلغاء</SecondaryButton>
+                        <PrimaryButton :disabled="planChangeForm.processing" class="!px-5 !py-2.5 !text-xs !bg-[#163E3E] !text-white hover:!bg-[#102F2F]">
+                            {{ planChangeForm.processing ? 'جاري الإرسال...' : 'إرسال طلب التغيير' }}
+                        </PrimaryButton>
+                    </div>
+                </form>
+            </div>
+        </Modal>
     </AppLayout>
 </template>

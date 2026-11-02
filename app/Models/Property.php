@@ -4,13 +4,13 @@ namespace App\Models;
 
 use App\Enums\PropertyType;
 use App\Models\Concerns\BelongsToWorkspace;
+use App\Services\Storage\DocumentStorageService;
 use App\Services\UnitHierarchyService;
 use Database\Factories\PropertyFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
 
 class Property extends Model
 {
@@ -62,14 +62,14 @@ class Property extends Model
     ];
 
     /**
-     * Get the full URL for the cover image.
+     * Get the web-accessible URL for the cover image.
      *
      * @return Attribute<string|null, never>
      */
     protected function coverImageUrl(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->cover_image ? Storage::disk('public')->url($this->cover_image) : null,
+            get: fn () => $this->cover_image ? app(DocumentStorageService::class)->publicUrl($this->cover_image) : null,
         );
     }
 

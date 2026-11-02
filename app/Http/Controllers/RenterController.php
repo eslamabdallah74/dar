@@ -378,7 +378,7 @@ class RenterController extends Controller
                 'bank_transfer' => 'تحويل بنكي',
                 'cash' => 'نقدي',
                 'cheque' => 'شيك',
-                default => 'إنستاباي / فيزا / إلكتروني',
+                default => 'إنستاباي / محفظة إلكترونية / أخرى',
             },
             'notes' => $payment->notes,
             'has_receipt' => ! empty($payment->receipt_path),

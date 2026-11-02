@@ -223,6 +223,8 @@ class AdminDashboardController extends Controller
                 'rent_amount' => (float) $l->rent_amount,
             ]);
 
+        $workspace->loadMissing(['owner', 'activeSubscription.plan', 'requestedPlan']);
+
         return Inertia::render('Admin/Workspaces/Show', [
             'workspace' => [
                 'id' => $workspace->id,
@@ -238,6 +240,14 @@ class AdminDashboardController extends Controller
                 'created_at' => $workspace->created_at?->format('d/m/Y H:i'),
                 'parent_unit_limit' => $workspace->parent_unit_limit,
                 'active_rental_limit' => $workspace->active_rental_limit,
+                'requested_plan_id' => $workspace->requested_plan_id,
+                'requested_plan_name' => $workspace->requestedPlan?->name,
+                'requested_plan_slug' => $workspace->requestedPlan?->slug,
+                'requested_plan_price' => $workspace->requestedPlan ? (float) $workspace->requestedPlan->monthly_price : null,
+                'requested_plan_unit_limit' => $workspace->requestedPlan?->parent_unit_limit,
+                'plan_request_status' => $workspace->plan_request_status,
+                'plan_requested_at' => $workspace->plan_requested_at?->format('d/m/Y H:i'),
+                'plan_request_notes' => $workspace->plan_request_notes,
             ],
             'usage_summary' => $usageSummary,
             'properties' => $properties,
@@ -250,8 +260,11 @@ class AdminDashboardController extends Controller
     /**
      * Update workspace independent limits from admin panel.
      */
-    public function updateWorkspaceLimits(Request $request, Workspace $workspace): RedirectResponse
-    {
+    public function updateWorkspaceLimits(
+        Request $request,
+        Workspace $workspace,
+        WorkspaceLimitService $limitService
+    ): RedirectResponse {
         $validated = $request->validate([
             'parent_unit_limit' => ['nullable', 'integer', 'min:0'],
             'active_rental_limit' => ['nullable', 'integer', 'min:0'],
@@ -259,13 +272,17 @@ class AdminDashboardController extends Controller
             'is_active_rental_unlimited' => ['nullable', 'boolean'],
         ]);
 
-        $parentLimit = ! empty($validated['is_parent_unit_unlimited'])
-            ? null
-            : ($validated['parent_unit_limit'] ?? null);
+        $parentLimit = null;
+        if (empty($validated['is_parent_unit_unlimited']) && isset($validated['parent_unit_limit'])) {
+            $parentLimit = (int) $validated['parent_unit_limit'];
+        }
 
-        $activeLimit = ! empty($validated['is_active_rental_unlimited'])
-            ? null
-            : ($validated['active_rental_limit'] ?? null);
+        $activeLimit = null;
+        if (empty($validated['is_active_rental_unlimited']) && isset($validated['active_rental_limit'])) {
+            $activeLimit = (int) $validated['active_rental_limit'];
+        }
+
+        $limitService->validateLimitsNotBelowUsage($workspace, $parentLimit, $activeLimit);
 
         $workspace->update([
             'parent_unit_limit' => $parentLimit,
@@ -278,8 +295,11 @@ class AdminDashboardController extends Controller
     /**
      * Update workspace subscription plan.
      */
-    public function updateSubscription(Request $request, Workspace $workspace): RedirectResponse
-    {
+    public function updateSubscription(
+        Request $request,
+        Workspace $workspace,
+        WorkspaceLimitService $limitService
+    ): RedirectResponse {
         $validated = $request->validate([
             'plan_id' => ['required', 'exists:plans,id'],
             'status' => ['required', 'string', Rule::in(['active', 'suspended', 'cancelled', 'expired'])],
@@ -287,7 +307,11 @@ class AdminDashboardController extends Controller
 
         $plan = Plan::findOrFail((int) $validated['plan_id']);
 
-        $subscription = $workspace->subscriptions()->latest()->first();
+        $limitService->validatePlanLimitsNotBelowUsage($workspace, $plan);
+
+        $subscription = $workspace->relationLoaded('activeSubscription') && $workspace->activeSubscription
+            ? $workspace->activeSubscription
+            : $workspace->subscriptions()->latest()->first();
 
         if ($subscription) {
             $subscription->update([
@@ -305,13 +329,58 @@ class AdminDashboardController extends Controller
             ]);
         }
 
-        // Apply plan's default limits to the workspace when changing plan
-        $workspace->update([
+        $workspaceUpdates = [
             'parent_unit_limit' => $plan->parent_unit_limit ?? $plan->unit_limit,
             'active_rental_limit' => $plan->active_rental_limit ?? $plan->unit_limit,
-        ]);
+        ];
+
+        if ($workspace->requested_plan_id === $plan->id) {
+            $workspaceUpdates['plan_request_status'] = 'approved';
+        }
+
+        $workspace->update($workspaceUpdates);
 
         return back()->with('success', 'تم تحديث اشتراك مساحة العمل ('.$workspace->name.') إلى '.$plan->name.' بنجاح.');
+    }
+
+    /**
+     * Approve workspace plan change request.
+     */
+    public function approvePlanRequest(
+        Request $request,
+        Workspace $workspace,
+        WorkspaceLimitService $limitService
+    ): RedirectResponse {
+        if (! $workspace->requested_plan_id || $workspace->plan_request_status !== 'pending') {
+            return back()->with('error', 'لا يوجد طلب باقة معلق لمساحة العمل هذه.');
+        }
+
+        $plan = $workspace->requestedPlan ?? Plan::findOrFail($workspace->requested_plan_id);
+
+        $limitService->approvePlanRequest($workspace, $plan, $this->authenticatedUser($request)->id);
+
+        return back()->with('success', "تمت الموافقة وتفعيل {$plan->name} لمساحة العمل ({$workspace->name}) بنجاح.");
+    }
+
+    /**
+     * Deny workspace plan change request.
+     */
+    public function denyPlanRequest(
+        Request $request,
+        Workspace $workspace,
+        WorkspaceLimitService $limitService
+    ): RedirectResponse {
+        if (! $workspace->requested_plan_id || $workspace->plan_request_status !== 'pending') {
+            return back()->with('error', 'لا يوجد طلب باقة معلق لمساحة العمل هذه.');
+        }
+
+        $validated = $request->validate([
+            'reason' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $limitService->denyPlanRequest($workspace, $validated['reason'] ?? null);
+
+        return back()->with('success', "تم رفض طلب تغيير الباقة لمساحة العمل ({$workspace->name}).");
     }
 
     /**

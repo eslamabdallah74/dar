@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useForm, usePage } from '@inertiajs/vue3';
-import { CreditCard, X, Check, MessageSquare, AlertTriangle, AlertOctagon, Upload, FileText, Trash2 } from 'lucide-vue-next';
+import { Coins, X, Check, MessageSquare, AlertTriangle, AlertOctagon, Upload, FileText, Trash2 } from 'lucide-vue-next';
 
 const props = defineProps<{
     show: boolean;
@@ -163,7 +163,7 @@ const submit = () => {
             <div class="px-6 py-5 border-b border-[#D6E0E7] flex items-center justify-between bg-[#F8FAFC] shrink-0">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center">
-                        <CreditCard class="w-5 h-5" />
+                        <Coins class="w-5 h-5" />
                     </div>
                     <div>
                         <h3 class="text-base font-bold text-[#163E3E]">تسجيل دفعة يدوية جديدة</h3>
@@ -374,7 +374,7 @@ const submit = () => {
                             :class="{ 'border-rose-500 bg-[#FFF5F5] ring-1 ring-rose-500': form.errors.payment_method }"
                         >
                             <option value="bank_transfer">تحويل بنكي / إنستاباي</option>
-                            <option value="other">بطاقة بنكية / فيزا / ميزة</option>
+                            <option value="other">إنستاباي / محفظة إلكترونية / أخرى</option>
                             <option value="cash">نقدي (كاش)</option>
                             <option value="cheque">شيك مصرفي</option>
                         </select>

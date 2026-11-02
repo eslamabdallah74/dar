@@ -72,11 +72,7 @@ parameters:
             paths:
                 - config/app.php
                 - config/database.php
-        -
-            # Same skeleton line: env('APP_URL', 'http://localhost') is typed bool|string.
-            identifier: argument.type
-            message: '#^Parameter \#1 \$string of function rtrim expects string, bool\|string given\.$#'
-            path: config/filesystems.php
+
         -
             # The queue reads a job's $tries / $maxExceptions / $timeout by property access when it builds the payload.
             identifier: shipmonk.deadProperty.neverRead

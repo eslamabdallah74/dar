@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\Lease;
+use App\Models\Plan;
 use App\Models\Property;
 use App\Models\Renter;
 use App\Models\Unit;
@@ -795,4 +796,247 @@ test('scenario 22: child units are never counted as parent units', function (): 
     expect(Unit::where('workspace_id', $this->workspace->id)->count())->toBe(26)
         // But parent count is STILL exactly 1!
         ->and(app(WorkspaceLimitService::class)->countParentUnits($this->workspace))->toBe(1);
+});
+
+/*
+|--------------------------------------------------------------------------
+| 5. Downgrade Prevention (Scenarios 23 - 27)
+|--------------------------------------------------------------------------
+*/
+
+test('scenario 23: super admin cannot downgrade parent unit limit below currently created parent units', function (): void {
+    $this->workspace->update(['parent_unit_limit' => 5, 'active_rental_limit' => 5]);
+
+    $property = Property::create([
+        'workspace_id' => $this->workspace->id,
+        'name' => 'عقار اختبار تخفيض الحدود',
+        'property_type' => 'building',
+    ]);
+
+    for ($i = 1; $i <= 3; $i++) {
+        Unit::create([
+            'workspace_id' => $this->workspace->id,
+            'property_id' => $property->id,
+            'name' => "شقة {$i}",
+            'unit_type' => 'apartment',
+            'parent_unit_id' => null,
+            'is_rentable' => true,
+        ]);
+    }
+
+    expect(app(WorkspaceLimitService::class)->countParentUnits($this->workspace))->toBe(3);
+
+    // Attempt to downgrade parent_unit_limit to 2 (which is less than current 3 units)
+    $response = $this->actingAs($this->adminUser)
+        ->put(route('admin.workspaces.limits.update', $this->workspace->id), [
+            'parent_unit_limit' => 2,
+            'active_rental_limit' => 5,
+        ]);
+
+    $response->assertSessionHasErrors('parent_unit_limit');
+
+    $this->workspace->refresh();
+    expect($this->workspace->parent_unit_limit)->toBe(5);
+});
+
+test('scenario 24: super admin cannot downgrade active rental limit below currently occupied rental slots', function (): void {
+    $this->workspace->update(['parent_unit_limit' => 5, 'active_rental_limit' => 5]);
+
+    $property = Property::create([
+        'workspace_id' => $this->workspace->id,
+        'name' => 'عقار اختبار تخفيض عقود التأجير',
+        'property_type' => 'building',
+    ]);
+
+    $renter = Renter::create([
+        'workspace_id' => $this->workspace->id,
+        'name' => 'مستأجر اختبار',
+        'national_id' => '29901011234567',
+        'phone' => '01099998888',
+    ]);
+
+    for ($i = 1; $i <= 2; $i++) {
+        $unit = Unit::create([
+            'workspace_id' => $this->workspace->id,
+            'property_id' => $property->id,
+            'name' => "محل تجاري {$i}",
+            'unit_type' => 'shop',
+            'parent_unit_id' => null,
+            'is_rentable' => true,
+        ]);
+
+        Lease::create([
+            'workspace_id' => $this->workspace->id,
+            'unit_id' => $unit->id,
+            'renter_id' => $renter->id,
+            'starts_on' => today()->toDateString(),
+            'ends_on' => today()->addYear()->toDateString(),
+            'rent_amount' => 5000,
+            'status' => 'active',
+            'billing_interval' => 'monthly',
+            'billing_anchor_day' => 1,
+            'first_due_date' => today()->toDateString(),
+        ]);
+    }
+
+    expect(app(WorkspaceLimitService::class)->countOccupiedParentRentalSlots($this->workspace))->toBe(2);
+
+    // Attempt to downgrade active_rental_limit to 1 (which is less than current 2 occupied slots)
+    $response = $this->actingAs($this->adminUser)
+        ->put(route('admin.workspaces.limits.update', $this->workspace->id), [
+            'parent_unit_limit' => 5,
+            'active_rental_limit' => 1,
+        ]);
+
+    $response->assertSessionHasErrors('active_rental_limit');
+
+    $this->workspace->refresh();
+    expect($this->workspace->active_rental_limit)->toBe(5);
+});
+
+test('scenario 25: super admin can set limits exactly equal to current usage or to unlimited', function (): void {
+    $this->workspace->update(['parent_unit_limit' => 5, 'active_rental_limit' => 5]);
+
+    $property = Property::create([
+        'workspace_id' => $this->workspace->id,
+        'name' => 'عقار اختبار الحدود الدقيقة',
+        'property_type' => 'building',
+    ]);
+
+    $renter = Renter::create([
+        'workspace_id' => $this->workspace->id,
+        'name' => 'مستأجر دقيق',
+        'national_id' => '29901011234568',
+        'phone' => '01099998889',
+    ]);
+
+    for ($i = 1; $i <= 2; $i++) {
+        $unit = Unit::create([
+            'workspace_id' => $this->workspace->id,
+            'property_id' => $property->id,
+            'name' => "شقة دقيقة {$i}",
+            'unit_type' => 'apartment',
+            'parent_unit_id' => null,
+            'is_rentable' => true,
+        ]);
+
+        Lease::create([
+            'workspace_id' => $this->workspace->id,
+            'unit_id' => $unit->id,
+            'renter_id' => $renter->id,
+            'starts_on' => today()->toDateString(),
+            'ends_on' => today()->addYear()->toDateString(),
+            'rent_amount' => 4000,
+            'status' => 'active',
+            'billing_interval' => 'monthly',
+            'billing_anchor_day' => 1,
+            'first_due_date' => today()->toDateString(),
+        ]);
+    }
+
+    // Setting limits exactly matching current usage: 2 parents, 2 active slots
+    $response = $this->actingAs($this->adminUser)
+        ->put(route('admin.workspaces.limits.update', $this->workspace->id), [
+            'parent_unit_limit' => 2,
+            'active_rental_limit' => 2,
+        ]);
+
+    $response->assertSessionHasNoErrors();
+    $this->workspace->refresh();
+    expect($this->workspace->parent_unit_limit)->toBe(2)
+        ->and($this->workspace->active_rental_limit)->toBe(2);
+
+    // Setting limits to unlimited
+    $unlimitedResponse = $this->actingAs($this->adminUser)
+        ->put(route('admin.workspaces.limits.update', $this->workspace->id), [
+            'is_parent_unit_unlimited' => true,
+            'is_active_rental_unlimited' => true,
+        ]);
+
+    $unlimitedResponse->assertSessionHasNoErrors();
+    $this->workspace->refresh();
+    expect($this->workspace->parent_unit_limit)->toBeNull()
+        ->and($this->workspace->active_rental_limit)->toBeNull();
+});
+
+test('scenario 26: super admin cannot downgrade subscription to a plan whose limits are below current workspace usage', function (): void {
+    $this->workspace->update(['parent_unit_limit' => 10, 'active_rental_limit' => 10]);
+
+    $starterPlan = Plan::create([
+        'name' => 'باقة الانطلاق المحدودة',
+        'slug' => 'starter-strict-'.uniqid(),
+        'monthly_price' => 0.00,
+        'parent_unit_limit' => 1,
+        'active_rental_limit' => 1,
+        'is_active' => true,
+    ]);
+
+    $property = Property::create([
+        'workspace_id' => $this->workspace->id,
+        'name' => 'عقار اختبار اشتراكات',
+        'property_type' => 'building',
+    ]);
+
+    for ($i = 1; $i <= 3; $i++) {
+        Unit::create([
+            'workspace_id' => $this->workspace->id,
+            'property_id' => $property->id,
+            'name' => "وحدة تجريبية {$i}",
+            'unit_type' => 'apartment',
+            'parent_unit_id' => null,
+            'is_rentable' => true,
+        ]);
+    }
+
+    // Attempt to downgrade subscription to Starter plan (limits 1 and 1, but workspace has 3 units)
+    $response = $this->actingAs($this->adminUser)
+        ->post(route('admin.workspaces.subscription', $this->workspace->id), [
+            'plan_id' => $starterPlan->id,
+            'status' => 'active',
+        ]);
+
+    $response->assertSessionHasErrors('plan_id');
+
+    $this->workspace->refresh();
+    expect($this->workspace->parent_unit_limit)->toBe(10);
+});
+
+test('scenario 27: super admin can upgrade subscription to a plan whose limits satisfy current workspace usage', function (): void {
+    $this->workspace->update(['parent_unit_limit' => 2, 'active_rental_limit' => 2]);
+
+    $growthPlan = Plan::create([
+        'name' => 'باقة النمو الكبيرة',
+        'slug' => 'growth-spacious-'.uniqid(),
+        'monthly_price' => 199.00,
+        'parent_unit_limit' => 10,
+        'active_rental_limit' => 10,
+        'is_active' => true,
+    ]);
+
+    $property = Property::create([
+        'workspace_id' => $this->workspace->id,
+        'name' => 'عقار ترقية الباقة',
+        'property_type' => 'building',
+    ]);
+
+    Unit::create([
+        'workspace_id' => $this->workspace->id,
+        'property_id' => $property->id,
+        'name' => 'وحدة ترقية',
+        'unit_type' => 'apartment',
+        'parent_unit_id' => null,
+        'is_rentable' => true,
+    ]);
+
+    $response = $this->actingAs($this->adminUser)
+        ->post(route('admin.workspaces.subscription', $this->workspace->id), [
+            'plan_id' => $growthPlan->id,
+            'status' => 'active',
+        ]);
+
+    $response->assertSessionHasNoErrors();
+
+    $this->workspace->refresh();
+    expect($this->workspace->parent_unit_limit)->toBe(10)
+        ->and($this->workspace->active_rental_limit)->toBe(10);
 });

@@ -9,7 +9,7 @@ import { useConfirmDialog } from '@/composables/useConfirmDialog';
 import {
     AlertCircle,
     ArrowRight,
-    CreditCard,
+    Coins,
     Download,
     FileText,
     Mail,
@@ -271,7 +271,7 @@ const deleteDocument = async (renterDocument: DocumentItem) => {
                 ]"
                 :title="!active_lease ? 'المستأجر لا يستأجر أي وحدة حالياً' : 'تسجيل دفعة يدوية'"
             >
-                <CreditCard class="w-4 h-4" />
+                <Coins class="w-4 h-4" />
                 <span>تسجيل دفعة يدوية</span>
             </button>
         </template>
@@ -508,7 +508,7 @@ const deleteDocument = async (renterDocument: DocumentItem) => {
                             ? 'bg-[#163E3E] text-white shadow-2xs'
                             : 'bg-white text-[#5B6770] hover:text-[#163E3E] border border-[#D6E0E7]'"
                     >
-                        <CreditCard class="w-3.5 h-3.5" />
+                        <Coins class="w-3.5 h-3.5" />
                         <span>سندات القبض المسددة ({{ payments.length }})</span>
                     </button>
 

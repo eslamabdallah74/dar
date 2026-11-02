@@ -461,7 +461,8 @@ test('vacant rentable units count toward the subscription limit', function () {
 });
 
 test('subscription limit is enforced when a new billable unit would exceed it', function () {
-    // Set plan limit to 2
+    // Set workspace limit to 2
+    $this->workspace->update(['parent_unit_limit' => 2]);
     $this->plan->update(['unit_limit' => 2]);
 
     $property = Property::create([
@@ -494,7 +495,7 @@ test('subscription limit is enforced when a new billable unit would exceed it', 
             'is_rentable' => true,
         ]);
 
-    $response->assertSessionHasErrors(['unit_limit']);
+    $response->assertSessionHasErrors(['parent_unit_limit']);
 
     // Ensure 3rd unit was NOT persisted
     $this->assertDatabaseMissing('units', [
@@ -810,5 +811,33 @@ test('property show page displays extended specifications and details', function
         ->where('property.floors_count', 5)
         ->where('property.electricity_meter_number', 'ELEC-SHARM-11')
         ->where('property.guard_name', 'كريم سعيد')
+    );
+});
+
+test('property cover image url resolves via DocumentStorageService as a web-accessible url', function () {
+    $propertyWithoutImage = Property::create([
+        'workspace_id' => $this->workspace->id,
+        'name' => 'عقار بدون صورة',
+        'code' => 'PROP-NO-IMG',
+        'property_type' => 'building',
+    ]);
+
+    expect($propertyWithoutImage->cover_image_url)->toBeNull();
+
+    $propertyWithImage = Property::create([
+        'workspace_id' => $this->workspace->id,
+        'name' => 'عقار مع صورة غلاف',
+        'code' => 'PROP-WITH-IMG',
+        'property_type' => 'apartment',
+        'cover_image' => 'properties/sample-facade.png',
+    ]);
+
+    expect($propertyWithImage->cover_image_url)->toBe('/storage/properties/sample-facade.png');
+
+    $response = $this->actingAs($this->user)->get(route('properties.show', $propertyWithImage->id));
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('Properties/Show')
+        ->where('property.cover_image_url', '/storage/properties/sample-facade.png')
     );
 });

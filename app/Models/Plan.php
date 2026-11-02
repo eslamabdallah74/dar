@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Limits\WorkspaceLimitService;
 use Database\Factories\PlanFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -37,17 +38,7 @@ class Plan extends Model
     {
         static::saved(function (Plan $plan): void {
             if ($plan->wasChanged(['parent_unit_limit', 'active_rental_limit', 'unit_limit'])) {
-                $parentLimit = $plan->parent_unit_limit ?? $plan->unit_limit;
-                $activeLimit = $plan->active_rental_limit ?? $plan->unit_limit;
-
-                foreach ($plan->subscriptions()->where('status', 'active')->with('workspace')->get() as $sub) {
-                    if ($sub->workspace) {
-                        $sub->workspace->update([
-                            'parent_unit_limit' => $parentLimit,
-                            'active_rental_limit' => $activeLimit,
-                        ]);
-                    }
-                }
+                app(WorkspaceLimitService::class)->syncWorkspacesToPlanLimits($plan);
             }
         });
     }

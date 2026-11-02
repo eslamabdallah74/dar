@@ -32,9 +32,12 @@ test('database seeder seeds real data across all entities and tables', function 
         ->and($user->isAdmin())->toBeTrue();
 
     // 2. Plans
-    expect(Plan::count())->toBe(4)
+    expect(Plan::count())->toBe(6)
+        ->and(Plan::where('slug', 'trial')->exists())->toBeTrue()
+        ->and(Plan::where('slug', 'starter')->exists())->toBeTrue()
         ->and(Plan::where('slug', 'growth')->exists())->toBeTrue()
         ->and(Plan::where('slug', 'pro')->exists())->toBeTrue()
+        ->and(Plan::where('slug', 'business')->exists())->toBeTrue()
         ->and(Plan::where('slug', 'enterprise')->exists())->toBeTrue();
 
     // 3. Workspaces & Subscriptions
@@ -131,6 +134,6 @@ test('first test example has active unlimited enterprise subscription', function
             ->component('Subscription/Index')
             ->where('current_plan.units_limit', null)
             ->where('current_plan.name', 'باقة الشركات اللامحدودة (Enterprise)')
-            ->has('plans', 4)
+            ->has('plans', 6)
         );
 });

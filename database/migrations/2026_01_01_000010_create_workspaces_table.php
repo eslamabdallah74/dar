@@ -22,6 +22,10 @@ return new class extends Migration
             $table->string('status', 50)->default('active');
             $table->unsignedInteger('parent_unit_limit')->nullable()->default(1)->comment('NULL = unlimited');
             $table->unsignedInteger('active_rental_limit')->nullable()->default(1)->comment('NULL = unlimited');
+            $table->foreignId('requested_plan_id')->nullable()->constrained('plans')->nullOnDelete();
+            $table->string('plan_request_status', 50)->nullable();
+            $table->timestamp('plan_requested_at')->nullable();
+            $table->text('plan_request_notes')->nullable();
             $table->tinyInteger('rent_reminder_days_before')->unsigned()->default(2);
             $table->boolean('auto_whatsapp_reminders')->default(true);
             $table->boolean('auto_instant_receipts')->default(true);

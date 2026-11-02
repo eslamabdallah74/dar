@@ -212,6 +212,7 @@ Single checks: `composer format:check` (fix: `composer format`), `composer refac
 - Larastan types model attributes from the migrations, but unsaved or unrefreshed models still hold raw input (strings, `null`). Keep `(int)`, `(float)` and `(bool)` casts on model attributes and do not trust "always true/false" reports about database-defaulted columns without checking.
 - Follow Laravel conventions: `env()` only inside `config/`, Form Requests for validation, thin controllers that delegate to services and actions, `$this->authenticatedUser($request)` for the signed-in user, `instanceof` checks (or `ResolvesRouteLease`) for route parameters.
 - Do not change business behavior (calculations, authorization, financial rules, API and Inertia props, database semantics) without approval. Every bug fix and behavior change comes with a test; behavior-preserving refactors of untested code get a characterization test first.
+- Comply with SonarCloud quality standards: never use nested ternary operators (rule `php:S3358`; split into independent `if`/`elseif` statements), define class constants or enums instead of duplicating string literals 3+ times (rule `php:S1192`), and always associate native HTML form controls (`<input>`, `<select>`, `<textarea>`) with a valid `<label for="...">` and explicit `aria-label` attribute (rule `Web:InputWithoutLabelCheck`). Activate the `sonarcloud-code-quality` skill when modifying forms or complex logic.
 
 ## Suppressions and the baseline
 

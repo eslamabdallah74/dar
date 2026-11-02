@@ -130,8 +130,8 @@ test('first-time empty workspace shows onboarding state', function () {
     $response->assertInertia(fn (Assert $page) => $page
         ->component('Dashboard')
         ->where('is_empty_workspace', true)
-        ->where('workspace.plan_name', 'باقة الانطلاق (Starter)')
-        ->where('workspace.units_limit', 5)
+        ->where('workspace.plan_name', 'باقة التجربة (Trial)')
+        ->where('workspace.units_limit', 1)
         ->has('kpis')
         ->where('kpis.properties.value', '0')
         ->where('kpis.units.value', '0')

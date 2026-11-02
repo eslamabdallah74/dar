@@ -1,17 +1,62 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, Lock, Mail, User } from 'lucide-vue-next';
+import { ArrowLeft, CheckCircle2, Lock, Mail, Sparkles, User } from 'lucide-vue-next';
+
+interface PlanOption {
+    id: number;
+    name: string;
+    slug: string;
+    monthly_price: number | string;
+    parent_unit_limit: number | null;
+}
+
+const props = defineProps<{
+    initialPlanSlug?: string | null;
+    selectedPlan?: {
+        id: number;
+        name: string;
+        slug: string;
+        monthly_price: number;
+        parent_unit_limit: number | null;
+    } | null;
+    plans?: PlanOption[];
+}>();
+
+const defaultPlanSlug = computed(() => {
+    if (props.selectedPlan?.slug) {
+        return props.selectedPlan.slug;
+    }
+    if (props.initialPlanSlug) {
+        return props.initialPlanSlug;
+    }
+    if (typeof window !== 'undefined') {
+        const queryPlan = new URLSearchParams(window.location.search).get('plan');
+        if (queryPlan) {
+            return queryPlan;
+        }
+    }
+    return 'trial';
+});
 
 const form = useForm({
     name: '',
     email: '',
     password: '',
     password_confirmation: '',
+    plan: defaultPlanSlug.value,
+});
+
+const activeSelectedPlan = computed(() => {
+    if (!props.plans || props.plans.length === 0) {
+        return props.selectedPlan || null;
+    }
+    return props.plans.find((p) => p.slug === form.plan) || props.selectedPlan || null;
 });
 
 const submit = () => {
@@ -34,7 +79,45 @@ const submit = () => {
             </p>
         </div>
 
+        <!-- كارت الباقة المختارة -->
+        <div class="mb-4 p-3.5 rounded-2xl bg-emerald-950/60 border border-emerald-500/30 text-right space-y-1.5" dir="rtl">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                    <Sparkles class="w-3.5 h-3.5 text-emerald-400" />
+                    <span>الباقة المطلوبة عند التسجيل:</span>
+                </span>
+                <span v-if="activeSelectedPlan" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    {{ activeSelectedPlan.monthly_price == 0 ? 'تجربة مجانية / مخصصة' : `${activeSelectedPlan.monthly_price} ج.م/شهر` }}
+                </span>
+            </div>
+            <div class="text-sm font-black text-white flex items-center gap-2">
+                <CheckCircle2 class="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{{ activeSelectedPlan?.name || 'باقة التجربة (Trial)' }}</span>
+            </div>
+            <p class="text-[11px] text-zinc-300 leading-relaxed">
+                ستبدأ مساحة عملك فوراً، وسيقوم مدير النظام بمراجعة ومنح الباقة المطلوبة لحسابك.
+            </p>
+        </div>
+
         <form @submit.prevent="submit" class="space-y-2 sm:space-y-4">
+            <!-- اختيار أو تغيير الباقة المطلوبة -->
+            <div v-if="plans && plans.length > 0">
+                <label for="plan" class="block text-xs font-semibold text-zinc-300 mb-1.5">الباقة التي ترغب بها</label>
+                <select
+                    id="plan"
+                    v-model="form.plan"
+                    class="block w-full mt-1 h-10 px-3 rounded-xl border border-zinc-700 bg-zinc-900/90 text-white text-xs font-semibold focus:border-emerald-500 focus:ring-emerald-500"
+                    dir="rtl"
+                    aria-label="الباقة التي ترغب بها"
+                >
+                    <option v-for="pl in plans" :key="pl.id" :value="pl.slug">
+                        {{ pl.name }} — {{ pl.monthly_price == 0 ? (pl.slug === 'trial' ? '0 ج.م (تجربة)' : 'تسعير مخصص') : `${pl.monthly_price} ج.م/شهرياً` }}
+                        {{ pl.parent_unit_limit ? `(حتى ${pl.parent_unit_limit} وحدات)` : '(سعة غير محدودة)' }}
+                    </option>
+                </select>
+                <InputError class="mt-1.5" :message="form.errors.plan" />
+            </div>
+
             <!-- الاسم بالكامل -->
             <div>
                 <InputLabel for="name" value="اسمك بالكامل" />

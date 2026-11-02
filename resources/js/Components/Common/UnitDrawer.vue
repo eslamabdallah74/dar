@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import {
-    CreditCard,
+    Coins,
     Home,
     DoorClosed,
     Bed,
@@ -306,7 +306,7 @@ const canDelete = computed(() => {
                                 type="button"
                                 class="w-full h-11 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
                             >
-                                <CreditCard class="w-4 h-4" />
+                                <Coins class="w-4 h-4" />
                                 <span>تسجيل دفعة إيجار لهذا العقد</span>
                             </button>
                         </div>

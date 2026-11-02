@@ -9,7 +9,7 @@ import {
     Calendar,
     Check,
     CheckCircle2,
-    CreditCard,
+    Coins,
     Download,
     ExternalLink,
     Eye,
@@ -220,7 +220,7 @@ const handleRecordExpensePayment = async () => {
     const expenseId = details.value.expense.id;
 
     const confirmed = await confirmDialog.confirm({
-        icon: CreditCard,
+        icon: Coins,
         title: 'تسجيل سداد تكلفة الصيانة؟',
         message: 'يُسجل مصروف الصيانة كمدفوع بتاريخ اليوم.',
         confirmLabel: 'تسجيل السداد',
@@ -748,7 +748,7 @@ const close = () => {
                                                 class="h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
                                             >
                                                 <Loader2 v-if="isRecordingPayment" class="w-3.5 h-3.5 animate-spin" />
-                                                <CreditCard v-else class="w-3.5 h-3.5" />
+                                                <Coins v-else class="w-3.5 h-3.5" />
                                                 <span>تسجيل سداد المصروف</span>
                                             </button>
                                             <button
@@ -1164,4 +1164,3 @@ const close = () => {
 
     </div>
 </template>
-

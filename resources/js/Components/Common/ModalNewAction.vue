@@ -2,7 +2,7 @@
 import { Link } from '@inertiajs/vue3';
 import {
     Building2,
-    CreditCard,
+    Coins,
     FilePlus,
     UserPlus,
     Wrench,
@@ -79,7 +79,7 @@ const emit = defineEmits<{
                     class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#163E3E] hover:bg-[#F8F4EA] transition group text-right cursor-pointer w-full"
                 >
                     <div class="w-11 h-11 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center shrink-0 group-hover:bg-[#163E3E] group-hover:text-white transition">
-                        <CreditCard class="w-5 h-5" />
+                        <Coins class="w-5 h-5" />
                     </div>
                     <div>
                         <div class="text-sm font-bold text-[#163E3E] group-hover:text-[#163E3E] transition">

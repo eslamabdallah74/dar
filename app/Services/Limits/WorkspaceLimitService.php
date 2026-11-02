@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Limits;
 
 use App\Models\Lease;
+use App\Models\Plan;
 use App\Models\Unit;
 use App\Models\Workspace;
 use Illuminate\Validation\ValidationException;
@@ -57,8 +58,6 @@ class WorkspaceLimitService
 
         throw ValidationException::withMessages([
             'parent_unit_limit' => $message,
-            'unit_limit' => $message,
-            'property_type' => $message,
         ]);
     }
 
@@ -156,7 +155,181 @@ class WorkspaceLimitService
 
         throw ValidationException::withMessages([
             'active_rental_limit' => $message,
-            'unit_id' => $message,
+        ]);
+    }
+
+    /**
+     * Validate that the new limits being applied to a workspace are not lower than its current usage.
+     * Prevents administrative limit downgrades below existing parent units or active rental slots.
+     *
+     * @throws ValidationException
+     */
+    public function validateLimitsNotBelowUsage(
+        Workspace $workspace,
+        ?int $newParentLimit,
+        ?int $newActiveRentalLimit
+    ): void {
+        $errors = [];
+
+        if ($newParentLimit !== null) {
+            $currentParentUnits = $this->countParentUnits($workspace);
+            if ($newParentLimit < $currentParentUnits) {
+                $errors['parent_unit_limit'] = "لا يمكن تخفيض حد إنشاء الوحدات الرئيسية إلى ({$newParentLimit})؛ لأن مساحة العمل تحتوي بالفعل على ({$currentParentUnits}) وحدة رئيسية منشأة.";
+            }
+        }
+
+        if ($newActiveRentalLimit !== null) {
+            $currentOccupiedSlots = $this->countOccupiedParentRentalSlots($workspace);
+            if ($newActiveRentalLimit < $currentOccupiedSlots) {
+                $errors['active_rental_limit'] = "لا يمكن تخفيض حد التأجير النشط إلى ({$newActiveRentalLimit})؛ لأن مساحة العمل تشغل حالياً ({$currentOccupiedSlots}) عقار مؤجر بعقود سارية.";
+            }
+        }
+
+        if (! empty($errors)) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    /**
+     * Validate that changing a workspace subscription to the specified plan does not reduce limits below current usage.
+     *
+     * @throws ValidationException
+     */
+    public function validatePlanLimitsNotBelowUsage(Workspace $workspace, Plan $plan): void
+    {
+        $planParentLimit = $plan->parent_unit_limit ?? $plan->unit_limit;
+        $planActiveLimit = $plan->active_rental_limit ?? $plan->unit_limit;
+
+        $currentParentUnits = $this->countParentUnits($workspace);
+        $currentOccupiedSlots = $this->countOccupiedParentRentalSlots($workspace);
+
+        $messages = [];
+        if ($planParentLimit !== null && $planParentLimit < $currentParentUnits) {
+            $messages[] = "عدد الوحدات المنشأة ({$currentParentUnits}) يتجاوز حد الباقة ({$planParentLimit})";
+        }
+        if ($planActiveLimit !== null && $planActiveLimit < $currentOccupiedSlots) {
+            $messages[] = "عدد العقارات المؤجرة سارية العقود ({$currentOccupiedSlots}) يتجاوز حد الباقة ({$planActiveLimit})";
+        }
+
+        if (! empty($messages)) {
+            $detail = implode('، و', $messages);
+            throw ValidationException::withMessages([
+                'plan_id' => "لا يمكن تخفيض الاشتراك إلى ({$plan->name})؛ لأن {$detail}.",
+            ]);
+        }
+    }
+
+    /**
+     * Synchronize subscribed workspaces to the new plan limits while ensuring
+     * limits are never downgraded below each workspace's current usage.
+     */
+    public function syncWorkspacesToPlanLimits(Plan $plan): void
+    {
+        $parentLimit = $plan->parent_unit_limit ?? $plan->unit_limit;
+        $activeLimit = $plan->active_rental_limit ?? $plan->unit_limit;
+
+        foreach ($plan->subscriptions()->where('status', 'active')->with('workspace')->get() as $sub) {
+            $workspace = $sub->workspace;
+            if (! $workspace) {
+                continue;
+            }
+
+            $currentParents = $this->countParentUnits($workspace);
+            $currentOccupied = $this->countOccupiedParentRentalSlots($workspace);
+
+            $newParent = $parentLimit !== null ? max($parentLimit, $currentParents) : null;
+            $newActive = $activeLimit !== null ? max($activeLimit, $currentOccupied) : null;
+
+            $workspace->update([
+                'parent_unit_limit' => $newParent,
+                'active_rental_limit' => $newActive,
+            ]);
+        }
+    }
+
+    /**
+     * Submit a plan change request for the workspace.
+     * Returns false if the workspace is already on the requested plan.
+     */
+    public function requestPlanChange(Workspace $workspace, Plan $plan, ?string $notes = null): bool
+    {
+        $activeSub = $workspace->relationLoaded('activeSubscription')
+            ? $workspace->activeSubscription
+            : $workspace->activeSubscription()->first();
+
+        if ($activeSub?->plan_id === $plan->id) {
+            if ($workspace->plan_request_status === 'pending') {
+                $workspace->update([
+                    'requested_plan_id' => null,
+                    'plan_request_status' => null,
+                    'plan_requested_at' => null,
+                    'plan_request_notes' => null,
+                ]);
+            }
+
+            return false;
+        }
+
+        $workspace->update([
+            'requested_plan_id' => $plan->id,
+            'plan_request_status' => 'pending',
+            'plan_requested_at' => now(),
+            'plan_request_notes' => $notes,
+        ]);
+
+        return true;
+    }
+
+    /**
+     * Approve and activate a requested plan for the workspace.
+     *
+     * @throws ValidationException
+     */
+    public function approvePlanRequest(Workspace $workspace, Plan $plan, ?int $activatedByUserId = null): void
+    {
+        if ($workspace->plan_request_status !== 'pending') {
+            throw new \DomainException('لا يوجد طلب باقة معلق لمساحة العمل هذه.');
+        }
+
+        $this->validatePlanLimitsNotBelowUsage($workspace, $plan);
+
+        $subscription = $workspace->relationLoaded('activeSubscription') && $workspace->activeSubscription
+            ? $workspace->activeSubscription
+            : ($workspace->activeSubscription()->first() ?? $workspace->subscriptions()->latest()->first());
+
+        $subAttributes = [
+            'plan_id' => $plan->id,
+            'status' => 'active',
+            'activated_by' => $activatedByUserId,
+            'starts_at' => now(),
+            'ends_at' => null,
+        ];
+
+        if ($subscription) {
+            $subscription->update($subAttributes);
+        } else {
+            $workspace->subscriptions()->create($subAttributes);
+        }
+
+        $workspace->update([
+            'parent_unit_limit' => $plan->parent_unit_limit ?? $plan->unit_limit,
+            'active_rental_limit' => $plan->active_rental_limit ?? $plan->unit_limit,
+            'plan_request_status' => 'approved',
+        ]);
+    }
+
+    /**
+     * Deny a pending plan change request.
+     */
+    public function denyPlanRequest(Workspace $workspace, ?string $reason = null): void
+    {
+        if ($workspace->plan_request_status !== 'pending') {
+            throw new \DomainException('لا يوجد طلب باقة معلق لمساحة العمل هذه.');
+        }
+
+        $workspace->update([
+            'plan_request_status' => 'rejected',
+            'plan_request_notes' => $reason ?? 'تم رفض الطلب من قبل الإدارة.',
         ]);
     }
 

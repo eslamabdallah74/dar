@@ -23,6 +23,10 @@ use Spatie\Activitylog\Models\Activity;
 
 class AdminDashboardService
 {
+    private const string DATETIME_FORMAT = 'd/m/Y H:i';
+
+    private const string DATE_FORMAT = 'd/m/Y';
+
     public function __construct(
         protected WorkspaceLimitService $limitService
     ) {}
@@ -190,7 +194,7 @@ class AdminDashboardService
         }
 
         // 7. Full Datasets for Control Tabs
-        $workspaces = Workspace::with(['owner', 'activeSubscription.plan'])
+        $workspaces = Workspace::with(['owner', 'activeSubscription.plan', 'requestedPlan'])
             ->withCount([
                 'properties',
                 'units',
@@ -218,9 +222,16 @@ class AdminDashboardService
                 'created_parent_units_count' => (int) ($w->parent_units_count ?? 0),
                 'active_rented_parent_units_count' => $this->limitService->countOccupiedParentRentalSlots($w),
                 'plan_name' => $w->activeSubscription?->plan->name ?? 'بدون اشتراك',
-                'plan_slug' => $w->activeSubscription?->plan->slug ?? 'starter',
+                'plan_slug' => $w->activeSubscription?->plan->slug ?? 'trial',
                 'subscription_status' => $w->activeSubscription->status ?? 'inactive',
-                'created_at' => $w->created_at?->format('d/m/Y H:i'),
+                'requested_plan_id' => $w->requested_plan_id,
+                'requested_plan_name' => $w->requestedPlan?->name,
+                'requested_plan_slug' => $w->requestedPlan?->slug,
+                'requested_plan_price' => $w->requestedPlan ? (float) $w->requestedPlan->monthly_price : null,
+                'plan_request_status' => $w->plan_request_status,
+                'plan_requested_at' => $w->plan_requested_at?->format(self::DATETIME_FORMAT),
+                'plan_request_notes' => $w->plan_request_notes,
+                'created_at' => $w->created_at?->format(self::DATETIME_FORMAT),
             ]);
 
         $users = User::query()
@@ -235,7 +246,7 @@ class AdminDashboardService
                 'is_admin' => (bool) $u->is_admin,
                 'email_verified' => $u->email_verified_at !== null,
                 'owned_workspaces_count' => $u->owned_workspaces_count,
-                'created_at' => $u->created_at?->format('d/m/Y'),
+                'created_at' => $u->created_at?->format(self::DATE_FORMAT),
             ]);
 
         $properties = Property::with('workspace:id,name')
@@ -251,7 +262,7 @@ class AdminDashboardService
                 'city' => $p->city ?? 'القاهرة',
                 'address' => $p->address ?? '—',
                 'units_count' => $p->units_count,
-                'created_at' => $p->created_at?->format('d/m/Y'),
+                'created_at' => $p->created_at?->format(self::DATE_FORMAT),
             ]);
 
         $leases = Lease::with(['renter:id,name,phone', 'unit:id,name', 'workspace:id,name'])
@@ -266,8 +277,8 @@ class AdminDashboardService
                 'unit_name' => $l->unit->name ?? '—',
                 'rent_amount' => (float) $l->rent_amount,
                 'status' => $l->status,
-                'starts_on' => $l->starts_on->format('d/m/Y'),
-                'ends_on' => $l->ends_on->format('d/m/Y'),
+                'starts_on' => $l->starts_on->format(self::DATE_FORMAT),
+                'ends_on' => $l->ends_on->format(self::DATE_FORMAT),
             ]);
 
         $payments = Payment::with(['renter:id,name', 'workspace:id,name'])
@@ -282,7 +293,7 @@ class AdminDashboardService
                 'amount' => (float) $p->amount,
                 'method' => $p->payment_method,
                 'reference' => $p->reference ?? '—',
-                'paid_at' => $p->paid_at->format('d/m/Y H:i'),
+                'paid_at' => $p->paid_at->format(self::DATETIME_FORMAT),
             ]);
 
         $plans = Plan::all()->map(fn (Plan $pl): array => [
@@ -291,6 +302,8 @@ class AdminDashboardService
             'slug' => $pl->slug,
             'monthly_price' => (float) $pl->monthly_price,
             'unit_limit' => $pl->unit_limit,
+            'parent_unit_limit' => $pl->parent_unit_limit,
+            'active_rental_limit' => $pl->active_rental_limit,
             'is_active' => (bool) $pl->is_active,
         ]);
 
@@ -305,8 +318,8 @@ class AdminDashboardService
                 'recipient_phone' => $m->recipient_phone,
                 'template_name' => $m->template_name,
                 'status' => $m->status,
-                'scheduled_at' => $m->scheduled_at->format('d/m/Y H:i'),
-                'sent_at' => $m->sent_at?->format('d/m/Y H:i') ?? '—',
+                'scheduled_at' => $m->scheduled_at->format(self::DATETIME_FORMAT),
+                'sent_at' => $m->sent_at?->format(self::DATETIME_FORMAT) ?? '—',
             ]);
 
         $maintenanceRequests = MaintenanceRequest::with(['unit.property', 'workspace:id,name'])
@@ -321,7 +334,7 @@ class AdminDashboardService
                 'priority' => null,
                 'status' => $mr->status,
                 'estimated_cost' => 0.0,
-                'created_at' => $mr->created_at?->format('d/m/Y'),
+                'created_at' => $mr->created_at?->format(self::DATE_FORMAT),
             ]);
 
         return [

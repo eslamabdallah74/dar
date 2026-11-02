@@ -14,7 +14,6 @@ import {
     Ban,
     Clock,
     Coins,
-    CreditCard,
     FileCheck,
     FileText,
     MessageCircle,
@@ -1034,7 +1033,7 @@ const depositLedgerStyles: Record<DepositLedgerKind, { dot: string; amount: stri
                         <span>إنهاء العقد</span>
                     </button>
                     <button type="button" :class="buttonPrimary" @click="openRentPayment()">
-                        <CreditCard class="h-4 w-4" />
+                        <Coins class="h-4 w-4" />
                         <span>تسجيل دفعة إيجار</span>
                     </button>
                 </template>
@@ -1562,7 +1561,7 @@ const depositLedgerStyles: Record<DepositLedgerKind, { dot: string; amount: stri
                             <option value="cash">نقدي (كاش)</option>
                             <option value="bank_transfer">تحويل بنكي</option>
                             <option value="cheque">شيك مصرفي</option>
-                            <option value="other">إنستاباي / فيزا / إلكتروني</option>
+                            <option value="other">إنستاباي / محفظة إلكترونية / أخرى</option>
                         </select>
                     </div>
 

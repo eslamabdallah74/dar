@@ -228,6 +228,7 @@ test('whatsapp, subscription and settings pages render correctly', function () {
             ->has('plans')
             ->has('current_plan', fn (Assert $currentPlan) => $currentPlan
                 ->missing('trial_days_remaining')
+                ->missing('payment_card')
                 ->where('renewal_date', null)
                 ->etc()
             )

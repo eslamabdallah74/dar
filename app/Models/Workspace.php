@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -16,6 +17,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string $slug
  * @property int|null $parent_unit_limit
  * @property int|null $active_rental_limit
+ * @property int|null $requested_plan_id
+ * @property string|null $plan_request_status
+ * @property Carbon|null $plan_requested_at
+ * @property string|null $plan_request_notes
  * @property-read int|null $parent_units_count
  */
 class Workspace extends Model
@@ -36,6 +41,10 @@ class Workspace extends Model
         'status',
         'parent_unit_limit',
         'active_rental_limit',
+        'requested_plan_id',
+        'plan_request_status',
+        'plan_requested_at',
+        'plan_request_notes',
         'rent_reminder_days_before',
         'auto_whatsapp_reminders',
         'auto_instant_receipts',
@@ -48,6 +57,8 @@ class Workspace extends Model
         return [
             'parent_unit_limit' => 'integer',
             'active_rental_limit' => 'integer',
+            'requested_plan_id' => 'integer',
+            'plan_requested_at' => 'datetime',
             'rent_reminder_days_before' => 'integer',
             'overdue_warning_days_after' => 'integer',
             'auto_whatsapp_reminders' => 'boolean',
@@ -86,6 +97,14 @@ class Workspace extends Model
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_user_id');
+    }
+
+    /**
+     * @return BelongsTo<Plan, $this>
+     */
+    public function requestedPlan(): BelongsTo
+    {
+        return $this->belongsTo(Plan::class, 'requested_plan_id');
     }
 
     /**

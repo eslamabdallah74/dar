@@ -10,15 +10,9 @@ use App\Services\AI\Exceptions\AiExecutionException;
 use App\Services\AI\Exceptions\AiProviderRateLimitException;
 use App\Services\AI\Exceptions\AiProviderTimeoutException;
 use App\Services\AI\Exceptions\AiWorkspaceDisabledException;
-use GuzzleHttp\Client as GuzzleClient;
-use GuzzleHttp\Exception\ConnectException;
-use Illuminate\Container\Container;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use OpenAI;
-use OpenAI\Contracts\ClientContract;
-use OpenAI\Laravel\Testing\OpenAIFake;
-use OpenAI\Responses\Chat\CreateResponse;
-use OpenAI\Responses\Chat\CreateResponseToolCall;
 use Throwable;
 
 class AiService
@@ -38,7 +32,6 @@ class AiService
     public function ask(string $question, Workspace $workspace): string
     {
         $apiKey = $this->validatePreconditions($workspace);
-        $client = $this->resolveClient($apiKey);
         $model = $this->configurationService->getModel();
 
         $messages = [
@@ -46,11 +39,11 @@ class AiService
             ['role' => 'user', 'content' => trim($question)],
         ];
 
-        return $this->runConversationLoop($client, $model, $messages, $workspace);
+        return $this->runConversationLoop($apiKey, $model, $messages, $workspace);
     }
 
     /**
-     * Ensure configuration and workspace permissions are valid before contacting OpenAI.
+     * Ensure configuration and workspace permissions are valid before contacting AI provider.
      */
     protected function validatePreconditions(Workspace $workspace): string
     {
@@ -67,46 +60,12 @@ class AiService
     }
 
     /**
-     * Resolve OpenAI client instance, favoring fake instance during tests.
-     */
-    protected function resolveClient(string $apiKey): ClientContract
-    {
-        $container = Container::getInstance();
-        if ($container->resolved('openai')) {
-            $bound = $container->offsetGet('openai');
-            if ($bound instanceof OpenAIFake) {
-                return $bound;
-            }
-        }
-
-        $provider = $this->configurationService->getProvider();
-        $baseUrl = $this->configurationService->getBaseUrl($provider);
-
-        $factory = OpenAI::factory()
-            ->withApiKey($apiKey)
-            ->withBaseUri($baseUrl)
-            ->withHttpClient(new GuzzleClient(['timeout' => self::TIMEOUT_SECONDS]));
-
-        if ($provider === AiConfigurationService::PROVIDER_OPENROUTER) {
-            /** @var string $appName */
-            $appName = config('app.name', 'Dar');
-            /** @var string $appUrl */
-            $appUrl = config('app.url', 'http://localhost');
-
-            $factory = $factory->withHttpHeader('HTTP-Referer', $appUrl)
-                ->withHttpHeader('X-Title', $appName);
-        }
-
-        return $factory->make();
-    }
-
-    /**
      * Execute chat completion loop supporting function calling up to MAX_TOOL_ROUNDS rounds.
      *
      * @param  array<int, array<string, mixed>>  $messages
      */
     protected function runConversationLoop(
-        ClientContract $client,
+        string $apiKey,
         string $model,
         array $messages,
         Workspace $workspace
@@ -114,21 +73,27 @@ class AiService
         $tools = $this->toolRegistry->getDefinitions();
 
         for ($round = 0; $round < self::MAX_TOOL_ROUNDS; $round++) {
-            $response = $this->requestChatCompletion($client, $model, $messages, $tools);
-            $choice = $response->choices[0] ?? null;
+            $data = $this->requestChatCompletion($apiKey, $model, $messages, $tools);
 
-            if ($choice === null) {
+            $choices = $data['choices'] ?? null;
+            if (! is_array($choices) || ! isset($choices[0]) || ! is_array($choices[0])) {
                 throw new AiExecutionException('لم يُنتج المساعد إجابة، يرجى إعادة الصياغة.');
             }
 
-            $message = $choice->message;
-            $toolCalls = $message->toolCalls;
-
-            if (empty($toolCalls)) {
-                return $this->extractFinalAnswer($message->content);
+            $choice = $choices[0];
+            $message = $choice['message'] ?? null;
+            if (! is_array($message)) {
+                throw new AiExecutionException('لم يُنتج المساعد إجابة، يرجى إعادة الصياغة.');
             }
 
-            $messages = $this->appendToolCallExchanges($messages, $message->content, $toolCalls, $workspace);
+            $toolCalls = $this->parseToolCalls($message['tool_calls'] ?? null);
+
+            if (empty($toolCalls)) {
+                return $this->extractFinalAnswer($message['content'] ?? null);
+            }
+
+            $assistantContent = is_string($message['content'] ?? null) ? $message['content'] : null;
+            $messages = $this->appendToolCallExchanges($messages, $assistantContent, $toolCalls, $workspace);
         }
 
         throw new AiExecutionException('تم تجاوز الحد الأقصى لجولات الاستعلام.');
@@ -137,31 +102,120 @@ class AiService
     /**
      * @param  array<int, array<string, mixed>>  $messages
      * @param  array<int, array<string, mixed>>  $tools
+     * @return array<string, mixed>
      */
     protected function requestChatCompletion(
-        ClientContract $client,
+        string $apiKey,
         string $model,
         array $messages,
         array $tools
-    ): CreateResponse {
-        try {
-            $payload = [
-                'model' => $model,
-                'messages' => $messages,
-                'max_tokens' => 1500,
-            ];
+    ): array {
+        $provider = $this->configurationService->getProvider();
+        $baseUrl = rtrim($this->configurationService->getBaseUrl($provider), '/');
+        $endpoint = $baseUrl.'/chat/completions';
 
-            if (! empty($tools)) {
-                $payload['tools'] = $tools;
+        $headers = [
+            'Authorization' => 'Bearer '.$apiKey,
+            'Content-Type' => 'application/json',
+        ];
+
+        if ($provider === AiConfigurationService::PROVIDER_OPENROUTER) {
+            $rawAppName = config('app.name');
+            $appName = is_string($rawAppName) && $rawAppName !== '' ? $rawAppName : 'Dar';
+            $rawAppUrl = config('app.url');
+            $appUrl = is_string($rawAppUrl) && $rawAppUrl !== '' ? $rawAppUrl : 'http://localhost';
+
+            $headers['HTTP-Referer'] = $appUrl;
+            $headers['X-Title'] = $appName;
+        }
+
+        $payload = [
+            'model' => $model,
+            'messages' => $messages,
+            'max_tokens' => 1500,
+        ];
+
+        if (! empty($tools)) {
+            $payload['tools'] = $tools;
+        }
+
+        try {
+            $response = Http::withHeaders($headers)
+                ->timeout(self::TIMEOUT_SECONDS)
+                ->post($endpoint, $payload);
+
+            if ($response->failed()) {
+                $errorBody = $response->json('error.message') ?? $response->body();
+                throw new \RuntimeException(is_string($errorBody) ? $errorBody : 'AI request failed');
             }
 
-            return $client->chat()->create($payload);
+            $data = $response->json();
+            if (! is_array($data)) {
+                throw new AiExecutionException('استجابة غير متوقعة من مزود الذكاء الاصطناعي.');
+            }
+
+            $structuredData = [];
+            foreach ($data as $key => $value) {
+                $structuredData[(string) $key] = $value;
+            }
+
+            return $structuredData;
         } catch (Throwable $exception) {
             throw $this->mapException($exception);
         }
     }
 
-    protected function extractFinalAnswer(?string $content): string
+    /**
+     * @return array<int, array{id: string, type: string, function: array{name: string, arguments: string}}>
+     */
+    protected function parseToolCalls(mixed $rawToolCalls): array
+    {
+        if (! is_array($rawToolCalls)) {
+            return [];
+        }
+
+        $validToolCalls = [];
+        foreach ($rawToolCalls as $call) {
+            $formatted = $this->formatToolCall($call);
+            if ($formatted !== null) {
+                $validToolCalls[] = $formatted;
+            }
+        }
+
+        return $validToolCalls;
+    }
+
+    /**
+     * @return array{id: string, type: string, function: array{name: string, arguments: string}}|null
+     */
+    protected function formatToolCall(mixed $call): ?array
+    {
+        if (! is_array($call)) {
+            return null;
+        }
+
+        $id = is_string($call['id'] ?? null) ? $call['id'] : '';
+        $function = is_array($call['function'] ?? null) ? $call['function'] : [];
+        $name = is_string($function['name'] ?? null) ? $function['name'] : '';
+
+        if ($id === '' || $name === '') {
+            return null;
+        }
+
+        $arguments = is_string($function['arguments'] ?? null) ? $function['arguments'] : '{}';
+        $type = is_string($call['type'] ?? null) ? $call['type'] : 'function';
+
+        return [
+            'id' => $id,
+            'type' => $type,
+            'function' => [
+                'name' => $name,
+                'arguments' => $arguments,
+            ],
+        ];
+    }
+
+    protected function extractFinalAnswer(mixed $content): string
     {
         $answer = is_string($content) ? trim($content) : '';
         if ($answer === '') {
@@ -173,7 +227,7 @@ class AiService
 
     /**
      * @param  array<int, array<string, mixed>>  $messages
-     * @param  array<int, CreateResponseToolCall>  $toolCalls
+     * @param  array<int, array{id: string, type: string, function: array{name: string, arguments: string}}>  $toolCalls
      * @return array<int, array<string, mixed>>
      */
     protected function appendToolCallExchanges(
@@ -182,22 +236,17 @@ class AiService
         array $toolCalls,
         Workspace $workspace
     ): array {
-        $assistantMessage = ['role' => 'assistant', 'content' => $assistantContent];
-        $assistantMessage['tool_calls'] = array_map(static fn (CreateResponseToolCall $tc): array => [
-            'id' => $tc->id,
-            'type' => 'function',
-            'function' => [
-                'name' => $tc->function->name,
-                'arguments' => $tc->function->arguments,
-            ],
-        ], $toolCalls);
-        $messages[] = $assistantMessage;
+        $messages[] = [
+            'role' => 'assistant',
+            'content' => $assistantContent,
+            'tool_calls' => $toolCalls,
+        ];
 
         foreach ($toolCalls as $toolCall) {
             $toolResult = $this->executeToolCall($toolCall, $workspace);
             $messages[] = [
                 'role' => 'tool',
-                'tool_call_id' => $toolCall->id,
+                'tool_call_id' => $toolCall['id'],
                 'content' => json_encode($toolResult, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
             ];
         }
@@ -206,16 +255,17 @@ class AiService
     }
 
     /**
-     * Execute a single tool call requested by OpenAI.
+     * Execute a single tool call requested by OpenAI/OpenRouter.
      *
+     * @param  array{id: string, type: string, function: array{name: string, arguments: string}}  $toolCall
      * @return array<string, mixed>
      */
-    protected function executeToolCall(CreateResponseToolCall $toolCall, Workspace $workspace): array
+    protected function executeToolCall(array $toolCall, Workspace $workspace): array
     {
-        $toolName = $toolCall->function->name;
+        $toolName = $toolCall['function']['name'];
         $tool = $this->toolRegistry->resolve($toolName);
 
-        $rawArgs = $toolCall->function->arguments;
+        $rawArgs = $toolCall['function']['arguments'];
         $arguments = [];
         if (trim($rawArgs) !== '') {
             try {
@@ -264,7 +314,7 @@ PROMPT;
 
         $message = strtolower($throwable->getMessage());
 
-        if ($throwable instanceof ConnectException || str_contains($message, 'timed out') || str_contains($message, 'timeout')) {
+        if ($throwable instanceof ConnectionException || str_contains($message, 'timed out') || str_contains($message, 'timeout')) {
             return new AiProviderTimeoutException;
         }
 

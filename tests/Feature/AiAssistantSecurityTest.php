@@ -7,8 +7,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceMember;
 use App\Services\AI\AiConfigurationService;
-use OpenAI\Laravel\Facades\OpenAI;
-use OpenAI\Responses\Chat\CreateResponse;
+use Illuminate\Support\Facades\Http;
 
 test('unauthenticated request to ask ai is rejected with 401', function () {
     $this->postJson(route('ai.ask'), [
@@ -95,18 +94,15 @@ test('question exceeding 1000 characters is rejected with 422 validation error',
 test('rate limiter throttles requests exceeding 10 per minute with 429', function () {
     AiConfiguration::setValue(AiConfigurationService::KEY_API_KEY, 'sk-test-key-123456');
 
-    $responses = [];
-    for ($i = 0; $i < 10; $i++) {
-        $responses[] = CreateResponse::fake([
+    Http::fake([
+        'https://api.openai.com/v1/chat/completions' => Http::response([
             'choices' => [
                 [
-                    'finish_reason' => 'stop',
-                    'message' => ['content' => 'إجابة تجريبية '.$i],
+                    'message' => ['content' => 'إجابة تجريبية'],
                 ],
             ],
-        ]);
-    }
-    OpenAI::fake($responses);
+        ], 200),
+    ]);
 
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->aiEnabled()->create([

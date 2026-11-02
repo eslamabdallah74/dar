@@ -104,6 +104,39 @@ test('GetUnpaidRentersTool lists outstanding balances and strictly excludes phon
     expect($renters[0])->not->toHaveKey('national_id');
 });
 
+test('GetUnpaidRentersTool accumulates total across all charges while capping list at 50', function () {
+    $workspace = Workspace::factory()->create();
+    $property = Property::factory()->create(['workspace_id' => $workspace->id]);
+    $currentMonthStart = Carbon::now()->startOfMonth()->toDateString();
+    $currentMonthEnd = Carbon::now()->endOfMonth()->toDateString();
+
+    for ($i = 1; $i <= 55; $i++) {
+        $unit = Unit::factory()->create(['workspace_id' => $workspace->id, 'property_id' => $property->id]);
+        $renter = Renter::factory()->create(['workspace_id' => $workspace->id, 'name' => "المستأجر {$i}"]);
+        Lease::factory()->create([
+            'workspace_id' => $workspace->id,
+            'renter_id' => $renter->id,
+            'unit_id' => $unit->id,
+            'rent_amount' => 100,
+            'starts_on' => $currentMonthStart,
+            'ends_on' => $currentMonthEnd,
+            'status' => 'active',
+        ]);
+    }
+
+    /** @var GetUnpaidRentersTool $tool */
+    $tool = app(GetUnpaidRentersTool::class);
+    $result = $tool->execute([], $workspace);
+
+    /** @var array<int, array<string, mixed>> $rentersList */
+    $rentersList = $result['renters'];
+
+    expect($result['count'])->toBe(55);
+    expect($result['displayed_count'])->toBe(50);
+    expect($result['total_outstanding'])->toBe(5500.0);
+    expect(count($rentersList))->toBe(50);
+});
+
 test('GetExpiringContractsTool retrieves contracts ending within days window', function () {
     $workspace = Workspace::factory()->create();
     $renter = Renter::factory()->create(['workspace_id' => $workspace->id]);

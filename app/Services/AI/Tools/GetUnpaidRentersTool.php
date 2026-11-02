@@ -102,6 +102,7 @@ class GetUnpaidRentersTool implements AiToolContract
     {
         $unpaidRenters = [];
         $totalOutstanding = 0.0;
+        $totalUnpaidCount = 0;
 
         foreach ($charges as $charge) {
             $balance = (float) $charge->outstanding_balance;
@@ -120,6 +121,12 @@ class GetUnpaidRentersTool implements AiToolContract
             }
 
             $totalOutstanding += $balance;
+            $totalUnpaidCount++;
+
+            if (count($unpaidRenters) >= self::MAX_RESULTS) {
+                continue;
+            }
+
             $unit = $lease->unit;
 
             // Note: Sensitive data like phone and national_id are strictly excluded for privacy
@@ -133,14 +140,11 @@ class GetUnpaidRentersTool implements AiToolContract
                 'outstanding_balance' => $balance,
                 'status' => $charge->status_label,
             ];
-
-            if (count($unpaidRenters) >= self::MAX_RESULTS) {
-                break;
-            }
         }
 
         return [
-            'count' => count($unpaidRenters),
+            'count' => $totalUnpaidCount,
+            'displayed_count' => count($unpaidRenters),
             'total_outstanding' => $totalOutstanding,
             'currency' => $workspace->currencySymbol(),
             'formatted_total' => number_format($totalOutstanding, 2).' '.$workspace->currencySymbol(),

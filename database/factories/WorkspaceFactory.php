@@ -38,4 +38,14 @@ class WorkspaceFactory extends Factory
             'active_rental_limit' => null,
         ]);
     }
+
+    /**
+     * Indicate that the workspace has the AI assistant enabled.
+     */
+    public function aiEnabled(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'ai_assistant_enabled' => true,
+        ]);
+    }
 }

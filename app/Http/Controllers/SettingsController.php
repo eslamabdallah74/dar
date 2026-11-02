@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Rules\EgyptianPhoneNumber;
+use App\Services\AI\AiConfigurationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -30,7 +31,11 @@ class SettingsController extends Controller
                 'due_reminder_days_before' => (int) ($workspace->rent_reminder_days_before ?? 2),
                 'overdue_warning_days_after' => (int) ($workspace->overdue_warning_days_after ?? 5),
                 'weekly_summary_report' => (bool) $workspace->weekly_summary_report,
+                'ai_assistant_enabled' => (bool) $workspace->ai_assistant_enabled,
             ],
+            'aiSystemConfigured' => app(AiConfigurationService::class)->isConfigured(),
+            'isWorkspaceOwner' => ($this->authenticatedUser($request)->id === $workspace->owner_user_id) || $this->authenticatedUser($request)->isAdmin(),
+            'isSuperAdmin' => $this->authenticatedUser($request)->isAdmin(),
         ]);
     }
 
@@ -50,11 +55,17 @@ class SettingsController extends Controller
             'due_reminder_days_before' => 'nullable|integer|min:0|max:30',
             'overdue_warning_days_after' => 'nullable|integer|min:0|max:60',
             'weekly_summary_report' => 'nullable|boolean',
+            'ai_assistant_enabled' => 'nullable|boolean',
         ], [
             'name.min' => 'يجب ألا يقل اسم المنشأة عن 3 أحرف.',
         ]);
 
         $updates = array_filter($validated, fn ($val) => $val !== null);
+
+        $user = $this->authenticatedUser($request);
+        if (! $user->isAdmin()) {
+            unset($updates['ai_assistant_enabled']);
+        }
 
         if (isset($validated['due_reminder_days_before'])) {
             $updates['rent_reminder_days_before'] = $validated['due_reminder_days_before'];

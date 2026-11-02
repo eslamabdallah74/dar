@@ -12,6 +12,7 @@ use App\Services\Dashboard\AdminDashboardService;
 use App\Services\Limits\WorkspaceLimitService;
 use App\Services\MaintenanceExpenseService;
 use App\Support\CurrentWorkspace;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -57,6 +58,7 @@ class AdminDashboardController extends Controller
             'name' => ['required', 'string', 'min:3', 'max:255'],
             'currency' => ['required', 'string', 'max:10'],
             'timezone' => ['required', 'string', 'max:100'],
+            'ai_assistant_enabled' => ['nullable', 'boolean'],
         ], [
             'name.min' => 'يجب ألا يقل اسم مساحة العمل عن 3 أحرف.',
         ]);
@@ -75,6 +77,31 @@ class AdminDashboardController extends Controller
         $workspace->delete();
 
         return back()->with('success', "تم حذف مساحة العمل ({$name}) بنجاح.");
+    }
+
+    /**
+     * Toggle AI Assistant feature for a workspace (Super Admin only).
+     */
+    public function toggleAiAssistant(Request $request, Workspace $workspace): RedirectResponse|JsonResponse
+    {
+        $validated = $request->validate([
+            'ai_assistant_enabled' => ['required', 'boolean'],
+        ]);
+
+        $workspace->update([
+            'ai_assistant_enabled' => (bool) $validated['ai_assistant_enabled'],
+        ]);
+
+        $statusText = $workspace->ai_assistant_enabled ? 'تفعيل' : 'تعطيل';
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'message' => "تم {$statusText} المساعد الذكي لمساحة العمل بنجاح.",
+                'ai_assistant_enabled' => (bool) $workspace->ai_assistant_enabled,
+            ]);
+        }
+
+        return back()->with('success', "تم {$statusText} المساعد الذكي لمساحة العمل بنجاح.");
     }
 
     /**
@@ -233,6 +260,7 @@ class AdminDashboardController extends Controller
                 'currency' => $workspace->currency,
                 'timezone' => $workspace->timezone,
                 'status' => $workspace->status,
+                'ai_assistant_enabled' => (bool) $workspace->ai_assistant_enabled,
                 'owner_name' => $workspace->owner->name ?? 'غير محدد',
                 'owner_email' => $workspace->owner->email ?? '—',
                 'plan_name' => $workspace->activeSubscription?->plan->name ?? 'بدون اشتراك',

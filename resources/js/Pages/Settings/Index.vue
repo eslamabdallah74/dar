@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useForm } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
+import { Link, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import {
     Bell,
+    Bot,
     Building2,
+    Info,
     Save,
+    Sparkles,
 } from 'lucide-vue-next';
 
 const props = defineProps<{
@@ -24,10 +27,17 @@ const props = defineProps<{
         due_reminder_days_before: number;
         overdue_warning_days_after: number;
         weekly_summary_report: boolean;
+        ai_assistant_enabled?: boolean;
     };
+    aiSystemConfigured?: boolean;
+    isWorkspaceOwner?: boolean;
+    isSuperAdmin?: boolean;
 }>();
 
-const activeTab = ref<'general' | 'notifications'>('general');
+const page = usePage();
+const isSuperAdmin = computed(() => Boolean(props.isSuperAdmin ?? (page.props.auth?.user as any)?.is_admin));
+
+const activeTab = ref<'general' | 'notifications' | 'ai'>('general');
 
 const form = useForm({
     name: props.workspace.name,
@@ -46,6 +56,10 @@ const prefsForm = useForm({
     weekly_summary_report: props.preferences.weekly_summary_report,
 });
 
+const aiForm = useForm({
+    ai_assistant_enabled: Boolean(props.preferences.ai_assistant_enabled),
+});
+
 const submitGeneral = () => {
     form.put(route('settings.update'), {
         preserveScroll: true,
@@ -54,6 +68,12 @@ const submitGeneral = () => {
 
 const submitNotifications = () => {
     prefsForm.put(route('settings.update'), {
+        preserveScroll: true,
+    });
+};
+
+const submitAi = () => {
+    aiForm.put(route('ai.setting.update'), {
         preserveScroll: true,
     });
 };
@@ -91,6 +111,18 @@ const submitNotifications = () => {
             >
                 <Bell class="w-4 h-4" />
                 <span>قواعد الإشعارات والتذكير</span>
+            </button>
+
+            <button
+                @click="activeTab = 'ai'"
+                type="button"
+                class="px-5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2"
+                :class="activeTab === 'ai'
+                    ? 'bg-[#163E3E] text-white shadow-xs'
+                    : 'bg-white text-[#5B6770] hover:text-[#163E3E] border border-[#D6E0E7]'"
+            >
+                <Sparkles class="w-4 h-4 text-[#E08A3C]" />
+                <span>المساعد الذكي</span>
             </button>
         </div>
 
@@ -247,6 +279,120 @@ const submitNotifications = () => {
                     </button>
                 </div>
             </form>
+        </div>
+
+        <!-- 3. تبويب المساعد الذكي -->
+        <div v-if="activeTab === 'ai'" class="w-full space-y-6">
+            <!-- إذا كان المستخدم مدير النظام (Super Admin) -->
+            <form v-if="isSuperAdmin" @submit.prevent="submitAi" class="rounded-3xl border border-[#D6E0E7] bg-white p-6 sm:p-8 shadow-2xs space-y-6">
+                <div class="space-y-1 pb-4 border-b border-[#D6E0E7]">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <Bot class="w-5 h-5 text-[#163E3E]" />
+                            <h3 class="text-base font-bold text-[#163E3E]">إعدادات المساعد الذكي (Dar AI)</h3>
+                        </div>
+                        <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200">
+                            صلاحيات مدير النظام (Super Admin)
+                        </span>
+                    </div>
+                    <p class="text-xs text-[#5B6770]">تفعيل أو تعطيل قدرات المساعد الذكي لاستعلام أعضاء المنشأة عن العقود، الإيرادات والشواغر</p>
+                </div>
+
+                <div class="space-y-4">
+                    <div v-if="aiSystemConfigured === false" class="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+                        تنبيه: لم يتم ضبط مفتاح مزود الخدمة من قبل الإدارة المركزية بعد. يمكنك تفعيل الميزة وستعمل فور إدخال المفتاح المركزي.
+                    </div>
+
+                    <div v-if="preferences.ai_assistant_enabled" class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-2 text-xs font-bold text-emerald-800">
+                            <Sparkles class="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span>المساعد الذكي مفعّل حالياً لهذه المنشأة ويمكنك بدء المحادثة مباشرة.</span>
+                        </div>
+                        <Link
+                            :href="route('ai.index')"
+                            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#163E3E] text-white text-xs font-bold hover:bg-[#102F2F] transition shrink-0"
+                        >
+                            <span>فتح شاشة المحادثة</span>
+                        </Link>
+                    </div>
+
+                    <label for="ai-assistant-toggle" class="flex items-start gap-3 p-4 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] cursor-pointer hover:bg-slate-100 transition">
+                        <input
+                            id="ai-assistant-toggle"
+                            type="checkbox"
+                            v-model="aiForm.ai_assistant_enabled"
+                            aria-label="تفعيل المساعد الذكي للمنشأة"
+                            class="w-4 h-4 mt-0.5 rounded text-[#163E3E] focus:ring-[#163E3E]"
+                        />
+                        <div>
+                            <span class="text-sm font-bold text-[#163E3E] block">تفعيل المساعد الذكي لهذه المنشأة</span>
+                            <span class="text-xs text-[#5B6770] block mt-0.5">
+                                يتيح لفريق العمل طرح أسئلة باللغة الطبيعية عن الوحدات الشاغرة، الإيرادات الشهرية، وعقود الإيجار. يتم تطبيق عزل تام لبيانات المنشأة.
+                            </span>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="pt-4 flex items-center justify-end border-t border-[#D6E0E7]">
+                    <button
+                        type="submit"
+                        :disabled="aiForm.processing"
+                        class="h-11 px-6 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer disabled:opacity-50"
+                    >
+                        <Save class="w-4 h-4" />
+                        <span>{{ aiForm.processing ? 'جاري الحفظ...' : 'حفظ إعدادات المساعد الذكي' }}</span>
+                    </button>
+                </div>
+            </form>
+
+            <!-- إذا كان المستخدم مالك منشأة عادي (غير مدير نظام) -->
+            <div v-else class="rounded-3xl border border-[#D6E0E7] bg-white p-6 sm:p-8 shadow-2xs space-y-6">
+                <div class="flex items-center justify-between pb-4 border-b border-[#D6E0E7]">
+                    <div class="flex items-center gap-2">
+                        <Bot class="w-5 h-5 text-[#163E3E]" />
+                        <h3 class="text-base font-bold text-[#163E3E]">المساعد الذكي (Dar AI)</h3>
+                    </div>
+                    <span
+                        v-if="preferences.ai_assistant_enabled"
+                        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    >
+                        <Sparkles class="w-3.5 h-3.5 text-emerald-600" />
+                        مفعّل لمنشأتك
+                    </span>
+                    <span
+                        v-else
+                        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200"
+                    >
+                        غير مفعّل
+                    </span>
+                </div>
+
+                <div class="p-4 rounded-2xl bg-[#F0F4F7] border border-[#D6E0E7] text-[#163E3E] text-xs leading-relaxed space-y-2">
+                    <div class="flex items-center gap-2 font-bold text-sm">
+                        <Info class="w-4 h-4 text-[#163E3E]" />
+                        <span>ميزة متقدمة تدار بواسطة إدارة النظام</span>
+                    </div>
+                    <p class="text-[#5B6770]">
+                        تفعيل المساعد الذكي هو ميزة متقدمة تتطلب تفعيلها من قبل الإدارة المركزية للمنصة (Super Admin).
+                        <span v-if="!preferences.ai_assistant_enabled">
+                            إذا كنت ترغب في إتاحة الذكاء الاصطناعي والاستعلام التفاعلي عن العقارات والشواغر والإيرادات لفريق عملك، يرجى التواصل مع إدارة النظام لتفعيل الخدمة.
+                        </span>
+                        <span v-else>
+                            تم تفعيل المساعد الذكي لمنشأتك بنجاح، ويمكنك الوصول إليه مباشرة عبر خيار "المساعد الذكي" في القائمة الجانبية أو من خلال الزر أدناه.
+                        </span>
+                    </p>
+
+                    <div v-if="preferences.ai_assistant_enabled" class="pt-2">
+                        <Link
+                            :href="route('ai.index')"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition shadow-xs"
+                        >
+                            <Sparkles class="w-4 h-4 text-[#F7C33D]" />
+                            <span>الانتقال إلى محادثة المساعد الذكي الآن</span>
+                        </Link>
+                    </div>
+                </div>
+            </div>
         </div>
     </AppLayout>
 </template>

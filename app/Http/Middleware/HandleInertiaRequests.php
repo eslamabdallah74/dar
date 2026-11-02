@@ -58,6 +58,7 @@ class HandleInertiaRequests extends Middleware
                 'notifications' => fn () => ($workspace = $currentWorkspace()) ? $this->notificationCounts($workspace) : ['unread_count' => 0],
             ],
             'quickRenters' => fn () => ($workspace = $currentWorkspace()) ? $this->quickRenters($workspace) : [],
+            'ai' => fn () => $this->sharedAiProp($currentWorkspace),
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
@@ -121,5 +122,21 @@ class HandleInertiaRequests extends Middleware
                     'rent_amount' => (float) $activeLease->rent_amount,
                 ] : null,
             ]);
+    }
+
+    /**
+     * @param  \Closure(): (?Workspace)  $currentWorkspace
+     * @return array{available: bool}
+     */
+    private function sharedAiProp(\Closure $currentWorkspace): array
+    {
+        $workspace = $currentWorkspace();
+        if ($workspace === null) {
+            return ['available' => false];
+        }
+
+        return [
+            'available' => (bool) $workspace->ai_assistant_enabled,
+        ];
     }
 }

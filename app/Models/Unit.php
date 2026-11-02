@@ -1,0 +1,386 @@
+<?php
+
+namespace App\Models;
+
+use App\Enums\UnitAvailabilityStatus;
+use App\Models\Concerns\BelongsToWorkspace;
+use App\Services\Leases\RentalConflictService;
+use App\Services\UnitHierarchyService;
+use Database\Factories\UnitFactory;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\DB;
+
+class Unit extends Model
+{
+    /** @use HasFactory<UnitFactory> */
+    use BelongsToWorkspace, HasFactory;
+
+    protected $fillable = [
+        'workspace_id',
+        'property_id',
+        'parent_unit_id',
+        'unit_type',
+        'code',
+        'name',
+        'is_rentable',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_rentable' => 'boolean',
+        ];
+    }
+
+    /**
+     * @return BelongsTo<Property, $this>
+     */
+    public function property(): BelongsTo
+    {
+        return $this->belongsTo(Property::class);
+    }
+
+    /**
+     * @return BelongsTo<Unit, $this>
+     */
+    public function parentUnit(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class, 'parent_unit_id');
+    }
+
+    /**
+     * @return HasMany<Unit, $this>
+     */
+    public function childUnits(): HasMany
+    {
+        return $this->hasMany(Unit::class, 'parent_unit_id');
+    }
+
+    /**
+     * @return HasMany<Lease, $this>
+     */
+    public function leases(): HasMany
+    {
+        return $this->hasMany(Lease::class);
+    }
+
+    /**
+     * @return HasOne<Lease, $this>
+     */
+    public function currentLease(): HasOne
+    {
+        return $this->hasOne(Lease::class)
+            ->where('status', 'active')
+            ->where('starts_on', '<=', today())
+            ->latestOfMany();
+    }
+
+    public function getIsOccupiedAttribute(): bool
+    {
+        return $this->currentLease !== null;
+    }
+
+    /**
+     * Get the dynamic availability status of this unit across the hierarchy.
+     */
+    public function getAvailabilityStatus(): UnitAvailabilityStatus
+    {
+        return app(RentalConflictService::class)->getUnitAvailabilityStatus($this);
+    }
+
+    /**
+     * Check if this unit can currently be rented independently.
+     */
+    public function isEligibleForRental(): bool
+    {
+        return (bool) $this->is_rentable
+            && $this->getAvailabilityStatus() === UnitAvailabilityStatus::Available;
+    }
+
+    /**
+     * @return HasMany<MaintenanceRequest, $this>
+     */
+    public function maintenanceRequests(): HasMany
+    {
+        return $this->hasMany(MaintenanceRequest::class);
+    }
+
+    /**
+     * @return HasMany<Expense, $this>
+     */
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(Expense::class);
+    }
+
+    public function isApartment(): bool
+    {
+        return $this->unit_type === 'apartment';
+    }
+
+    public function isRoom(): bool
+    {
+        return $this->unit_type === 'room';
+    }
+
+    public function isBed(): bool
+    {
+        return $this->unit_type === 'bed';
+    }
+
+    public function isShop(): bool
+    {
+        return $this->unit_type === 'shop';
+    }
+
+    public function getTypeLabelAttribute(): string
+    {
+        return match ($this->unit_type) {
+            'apartment' => 'شقة',
+            'room' => 'أوضة',
+            'bed' => 'سرير',
+            'shop' => 'محل',
+            default => 'وحدة',
+        };
+    }
+
+    public function allowsChildren(): bool
+    {
+        return in_array($this->unit_type, ['apartment', 'room'], true);
+    }
+
+    public function allowedChildType(): ?string
+    {
+        return match ($this->unit_type) {
+            'apartment' => 'room',
+            'room' => 'bed',
+            default => null,
+        };
+    }
+
+    /**
+     * Get all ancestor IDs of this unit up to the root parent.
+     *
+     * @return array<int>
+     */
+    public function getAncestorIds(): array
+    {
+        $ancestorIds = [];
+        $currentParentId = $this->parent_unit_id;
+
+        while ($currentParentId !== null) {
+            if (in_array((int) $currentParentId, $ancestorIds, true)) {
+                break; // Prevent infinite cycle
+            }
+            $ancestorIds[] = (int) $currentParentId;
+            $parent = static::withoutGlobalScopes()->select(['id', 'parent_unit_id'])->find($currentParentId);
+            $currentParentId = $parent?->parent_unit_id;
+        }
+
+        return $ancestorIds;
+    }
+
+    /**
+     * Get all descendant IDs of this unit at any depth.
+     *
+     * @return array<int>
+     */
+    public function getDescendantIds(): array
+    {
+        $results = DB::select('
+            WITH RECURSIVE unit_descendants AS (
+                SELECT id, parent_unit_id
+                FROM units
+                WHERE parent_unit_id = ?
+
+                UNION ALL
+
+                SELECT u.id, u.parent_unit_id
+                FROM units u
+                JOIN unit_descendants ud ON u.parent_unit_id = ud.id
+            )
+            SELECT id FROM unit_descendants
+        ', [$this->id]);
+
+        return array_map(fn ($r) => (int) $r->id, $results);
+    }
+
+    /**
+     * Get all units in the hierarchy of this unit: self, all ancestors, all descendants.
+     *
+     * @return array<int>
+     */
+    public function getHierarchyUnitIds(): array
+    {
+        return array_values(array_unique(array_merge(
+            [(int) $this->id],
+            $this->getAncestorIds(),
+            $this->getDescendantIds()
+        )));
+    }
+
+    /**
+     * Scope a query to only include parent units (top-level units with no parent).
+     *
+     * @param  Builder<Unit>  $query
+     * @return Builder<Unit>
+     */
+    public function scopeParentUnits(Builder $query): Builder
+    {
+        return $query->whereNull('parent_unit_id');
+    }
+
+    /**
+     * Find the root parent unit in the hierarchy for this unit (topmost unit with parent_unit_id = null).
+     */
+    public function getRootParentUnit(): Unit
+    {
+        if ($this->parent_unit_id === null) {
+            return $this;
+        }
+
+        $current = $this;
+        while ($current->parent_unit_id !== null) {
+            $parent = $current->relationLoaded('parentUnit')
+                ? $current->parentUnit
+                : $current->parentUnit()->first();
+
+            if (! $parent) {
+                break;
+            }
+
+            $current = $parent;
+        }
+
+        return $current;
+    }
+
+    /**
+     * Get the ID of the root parent unit in the hierarchy.
+     */
+    public function getRootParentUnitId(): int
+    {
+        if ($this->parent_unit_id === null) {
+            return (int) $this->id;
+        }
+
+        return (int) $this->getRootParentUnit()->id;
+    }
+
+    /**
+     * Billable units query:
+     * A unit counts as billable when:
+     * 1. is_rentable = true
+     * 2. It has no rentable descendants at any depth.
+     *
+     * Vacant units still count; properties never count as billable units.
+     *
+     * @param  Builder<Unit>  $query
+     * @return Builder<Unit>
+     */
+    public function scopeBillableLeaves(Builder $query): Builder
+    {
+        return $query->where('is_rentable', true)
+            ->whereNotExists(function ($sub) {
+                $sub->selectRaw(1)
+                    ->fromRaw('(
+                        WITH RECURSIVE unit_descendants AS (
+                            SELECT id, parent_unit_id, is_rentable, parent_unit_id AS ancestor_id
+                            FROM units
+                            WHERE parent_unit_id IS NOT NULL
+
+                            UNION ALL
+
+                            SELECT u.id, u.parent_unit_id, u.is_rentable, ud.ancestor_id
+                            FROM units u
+                            JOIN unit_descendants ud ON u.parent_unit_id = ud.id
+                        )
+                        SELECT ancestor_id, is_rentable FROM unit_descendants
+                    ) AS ud')
+                    ->whereColumn('ud.ancestor_id', 'units.id')
+                    ->where('ud.is_rentable', 1);
+            });
+    }
+
+    /**
+     * Helper to get the total billable leaf unit count for a given workspace.
+     */
+    public static function billableCountForWorkspace(int $workspaceId): int
+    {
+        return static::withoutGlobalScopes()
+            ->where('workspace_id', $workspaceId)
+            ->billableLeaves()
+            ->count();
+    }
+
+    /**
+     * Find the root apartment unit in the hierarchy for this unit.
+     */
+    public function findApartmentUnit(): ?Unit
+    {
+        if ($this->unit_type === 'apartment') {
+            return $this;
+        }
+
+        $current = $this;
+        while ($current->parent_unit_id !== null) {
+            $parent = $current->relationLoaded('parentUnit')
+                ? $current->parentUnit
+                : $current->parentUnit()->first();
+
+            if (! $parent) {
+                break;
+            }
+
+            if ($parent->unit_type === 'apartment') {
+                return $parent;
+            }
+
+            $current = $parent;
+        }
+
+        return null;
+    }
+
+    /**
+     * Get the gender classification info for the apartment this unit belongs to.
+     *
+     * @return array{
+     *     status: 'male'|'female'|'mixed'|'unspecified',
+     *     label: string,
+     *     short_label: string,
+     *     description: string,
+     *     badge_class: string,
+     *     male_count: int,
+     *     female_count: int,
+     *     unspecified_count: int,
+     *     total_active_renters: int
+     * }
+     */
+    public function getApartmentGenderInfo(): array
+    {
+        $apartment = $this->findApartmentUnit();
+        if (! $apartment) {
+            return app(UnitHierarchyService::class)->computeApartmentGender([]);
+        }
+
+        $subtreeUnitIds = array_merge([$apartment->id], $apartment->getDescendantIds());
+
+        $activeRenters = Lease::query()
+            ->whereIn('unit_id', $subtreeUnitIds)
+            ->where('status', 'active')
+            ->where('starts_on', '<=', today())
+            ->where('ends_on', '>=', today())
+            ->with('renter')
+            ->get()
+            ->pluck('renter')
+            ->filter();
+
+        return app(UnitHierarchyService::class)->computeApartmentGender($activeRenters);
+    }
+}

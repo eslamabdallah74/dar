@@ -1,3 +1,74 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    html,
+    body,
+    #app {
+        min-height: 100%;
+    }
+
+    html {
+        direction: rtl;
+        text-align: right;
+    }
+
+    body {
+        min-height: 100vh;
+        background-color: #F8F4EA;
+        direction: rtl;
+        text-align: right;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    }
+
+    #app {
+        min-height: 100vh;
+    }
+
+    [dir="rtl"] select {
+        background-position: left 0.5rem center;
+        padding-left: 2.5rem;
+        padding-right: 0.75rem;
+    }
+
+    /* Arabic typography: prevent tracking-tight from breaking cursive connections */
+    [dir="rtl"] h1,
+    [dir="rtl"] h2,
+    [dir="rtl"] h3,
+    [dir="rtl"] h4,
+    [dir="rtl"] h5,
+    [dir="rtl"] h6,
+    [dir="rtl"] p,
+    [dir="rtl"] span:not(.font-mono),
+    [dir="rtl"] a,
+    [dir="rtl"] button,
+    [dir="rtl"] label,
+    [dir="rtl"] input,
+    [dir="rtl"] select,
+    [dir="rtl"] textarea {
+        letter-spacing: 0 !important;
+    }
+}
+
+/* Custom scrollbar for sidebar and smooth panels */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.35);
+}
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}

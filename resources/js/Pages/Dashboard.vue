@@ -1,30 +1,582 @@
 <script setup lang="ts">
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import { ref } from 'vue';
+import { router, Link, useForm } from '@inertiajs/vue3';
+import AppLayout from '@/Layouts/AppLayout.vue';
+import PrimaryKpiRow from '@/Components/Dashboard/PrimaryKpiRow.vue';
+import RentalIncomeChart from '@/Components/Dashboard/RentalIncomeChart.vue';
+import OccupancySummaryCard from '@/Components/Dashboard/OccupancySummaryCard.vue';
+import AttentionRequiredCard from '@/Components/Dashboard/AttentionRequiredCard.vue';
+import UpcomingCollectionsTable from '@/Components/Dashboard/UpcomingCollectionsTable.vue';
+import RecentPropertiesGrid from '@/Components/Dashboard/RecentPropertiesGrid.vue';
+import RecentActivityFeed from '@/Components/Dashboard/RecentActivityFeed.vue';
+import QuickActionsBar from '@/Components/Dashboard/QuickActionsBar.vue';
+import WhatsAppSummaryCard from '@/Components/Dashboard/WhatsAppSummaryCard.vue';
+import EmptyWorkspaceOnboarding from '@/Components/Dashboard/EmptyWorkspaceOnboarding.vue';
+import ModalRecordPayment from '@/Components/Common/ModalRecordPayment.vue';
+import Modal from '@/Components/Modal.vue';
+import InputError from '@/Components/InputError.vue';
+import PrimaryButton from '@/Components/PrimaryButton.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
+import {
+    Plus,
+    Coins,
+    Shield,
+    AlertCircle,
+    Crown,
+    Sparkles,
+    Clock,
+} from 'lucide-vue-next';
+
+interface Props {
+    user: {
+        name: string;
+        email: string;
+        role: string;
+    };
+    workspace: {
+        id: number;
+        name: string;
+        currency: string;
+        currency_symbol?: string;
+        currency_label?: string;
+        plan_name: string;
+        plan_slug?: string;
+        units_used: number;
+        units_limit: number | null;
+        usage_percentage?: number;
+        requested_plan?: {
+            id: number;
+            name: string;
+            slug: string;
+            monthly_price: number;
+            parent_unit_limit: number | null;
+        } | null;
+        plan_request_status?: string | null;
+        plan_requested_at?: string | null;
+        plan_request_notes?: string | null;
+    };
+    available_plans?: Array<{
+        id: number;
+        name: string;
+        slug: string;
+        monthly_price: number | string;
+        parent_unit_limit: number | null;
+        active_rental_limit: number | null;
+    }>;
+    is_empty_workspace?: boolean;
+    header: {
+        greeting: string;
+        subtitle: string;
+        breadcrumb?: string;
+    };
+    checklist?: {
+        title: string;
+        steps: string[];
+        percentage: number;
+        action_label: string;
+    };
+    kpis: {
+        properties: { label: string; value: string; subtitle: string };
+        units: { label: string; value: string; subtitle: string };
+        occupancy: { label: string; value: string; subtitle: string };
+        collected: { label: string; value: string; subtitle: string };
+        overdue?: { label: string; value: string; subtitle: string; count: number };
+        expiring?: { label: string; value: string; subtitle: string };
+    };
+    occupancy_summary?: {
+        total: number;
+        occupied: number;
+        vacant: number;
+        maintenance: number;
+        occupancy_rate: number;
+    };
+    income_chart?: {
+        months: string[];
+        amounts: number[];
+        history: Array<{ month: string; year: number; amount: number }>;
+        has_history: boolean;
+        total_collected: number;
+    };
+    attention_items?: Array<{
+        id: number;
+        type: string;
+        title: string;
+        desc: string;
+        phone?: string;
+        amount?: number;
+        severity?: string;
+        link?: string;
+    }>;
+    upcoming_dues?: Array<{
+        id: number;
+        tenant: string;
+        renter_id?: number;
+        unit: string;
+        due_date: string;
+        due_date_iso?: string;
+        amount: string;
+        amount_raw?: number;
+        outstanding_balance?: number;
+        status: string;
+        status_label: string;
+        phone?: string;
+    }>;
+    recent_properties?: Array<{
+        id: number;
+        name: string;
+        property_type: string;
+        property_type_label: string;
+        address: string;
+        units_count: number;
+        occupied_count: number;
+        vacant_count: number;
+        occupancy_rate: number;
+    }>;
+    recent_activities?: Array<{
+        id: string;
+        type: string;
+        title: string;
+        subtitle: string;
+        time_ago: string;
+        timestamp: number;
+    }>;
+    whatsapp_summary?: {
+        total: number;
+        sent: number;
+        delivered: number;
+        pending: number;
+        failed: number;
+    };
+    subscription_usage?: {
+        units_used: number;
+        units_limit: number | null;
+        percentage: number;
+        plan_name: string;
+        days_remaining: number;
+    };
+    security_deposits?: {
+        total_held: number;
+        awaiting_settlement_count: number;
+        awaiting_settlement_amount: number;
+        refunds_outstanding: number;
+        confirmed_deductions: number;
+        currency_symbol: string;
+    };
+    renters?: Array<{
+        id: number;
+        name: string;
+        phone: string;
+        active_lease?: {
+            id: number;
+            unit_name?: string;
+            rent_amount: number;
+        } | null;
+    }>;
+    footer?: {
+        copyright: string;
+        last_updated: string;
+    };
+}
+
+const props = defineProps<Props>();
+
+// Real Modals
+const recordPaymentOpen = ref(false);
+const paymentInitialRenterId = ref<number | undefined>();
+const paymentInitialAmount = ref<number | undefined>();
+const paymentInitialRentChargeId = ref<number | undefined>();
+
+function handleRecordPayment(dueItem?: any) {
+    if (dueItem) {
+        paymentInitialRentChargeId.value = dueItem.id;
+        paymentInitialAmount.value = dueItem.amount_raw || Number.parseFloat(String(dueItem.amount || '').replace(/[^0-9.]/g, '') || '0');
+        const matched = props.renters?.find(r => r.name === dueItem.tenant || r.id === dueItem.renter_id);
+        paymentInitialRenterId.value = matched?.id;
+    } else {
+        paymentInitialRentChargeId.value = undefined;
+        paymentInitialAmount.value = undefined;
+        paymentInitialRenterId.value = undefined;
+    }
+    recordPaymentOpen.value = true;
+}
+
+function addProperty() {
+    router.visit(route('properties.create'));
+}
+
+function handleSendWhatsApp(dueItem: any) {
+    if (!dueItem?.phone) return;
+    let phone = dueItem.phone.replace(/[^0-9]/g, '');
+    if (phone.startsWith('01')) {
+        phone = '2' + phone;
+    } else if (!phone.startsWith('20') && phone.startsWith('1')) {
+        phone = '20' + phone;
+    }
+    const unitLabel = dueItem.unit || dueItem.desc || 'الوحدة';
+    const amountLabel = dueItem.amount ? `بمبلغ ${dueItem.amount}` : '';
+    const msg = encodeURIComponent(`السلام عليكم ورحمة الله وبركاته يا فندم، نذكّركم باستحقاق إيجار (${unitLabel}) ${amountLabel}. شاكرين حسن تعاونكم.`);
+    window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+}
+
+function handleAttentionAction(item: any) {
+    if (item.type === 'overdue') {
+        if (item.phone) {
+            handleSendWhatsApp(item);
+        } else {
+            handleRecordPayment(item);
+        }
+    } else if (item.type === 'lease_expiring') {
+        router.visit(route('leases.index'));
+    } else if (item.type === 'maintenance') {
+        router.visit(route('maintenance.index'));
+    } else {
+        router.visit(route('dashboard'));
+    }
+}
+
+const showPlanChangeModal = ref(false);
+const planChangeForm = useForm({
+    plan_id: 0,
+    notes: '',
+});
+
+function openPlanChangeModal() {
+    if (props.available_plans && props.available_plans.length > 0) {
+        planChangeForm.plan_id = props.workspace.requested_plan?.id || props.available_plans[0].id;
+    }
+    planChangeForm.notes = '';
+    showPlanChangeModal.value = true;
+}
+
+function submitPlanChangeRequest() {
+    planChangeForm.post(route('subscription.request'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showPlanChangeModal.value = false;
+        },
+    });
+}
 </script>
 
 <template>
-    <Head title="Dashboard" />
+    <AppLayout
+        title="الرئيسية — Nook Mate لإدارة العقارات"
+        active-tab="dashboard"
+    >
+        <!-- قسم الترحيب الرئيسي (Welcome Hero Section) -->
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[#E8EFF4]">
+                    <div>
+                        <h1 class="text-2xl sm:text-3xl font-black text-[#163E3E] tracking-tight">
+                            {{ header?.greeting || 'مرحباً، أهلاً بك في Nook Mate 👋' }}
+                        </h1>
+                        <p class="text-xs sm:text-sm text-[#5B6770] font-medium mt-1">
+                            {{ header?.subtitle }}
+                        </p>
+                    </div>
 
-    <AuthenticatedLayout>
-        <template #header>
-            <h2
-                class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200"
-            >
-                Dashboard
-            </h2>
-        </template>
+                    <!-- الأزرار الرئيسية في الهيدر -->
+                    <div class="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
+                        <!-- زر إضافة عقار جديد الأساسي -->
+                        <button
+                            type="button"
+                            @click="addProperty"
+                            class="h-11 px-5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-sm font-bold transition shadow-xs flex items-center justify-center gap-2"
+                        >
+                            <Plus class="h-4 w-4 stroke-[2.5]" />
+                            <span>إضافة عقار جديد</span>
+                        </button>
 
-        <div class="py-12">
-            <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                <div
-                    class="overflow-hidden bg-white shadow-sm sm:rounded-lg dark:bg-gray-800"
-                >
-                    <div class="p-6 text-gray-900 dark:text-gray-100">
-                        You're logged in!
+                        <!-- زر تسجيل دفعة السريع -->
+                        <button
+                            @click="handleRecordPayment()"
+                            type="button"
+                            class="h-11 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F8FAFC] text-[#163E3E] text-sm font-semibold transition shadow-2xs flex items-center justify-center gap-2"
+                        >
+                            <Coins class="h-4 w-4 text-[#163E3E]" />
+                            <span>تسجيل دفعة</span>
+                        </button>
                     </div>
                 </div>
+
+                <!-- شريط الإجراءات السريعة (Quick Actions Bar) -->
+                <QuickActionsBar
+                    @record-payment="handleRecordPayment()"
+                    @add-property="addProperty"
+                />
+
+                <!-- بطاقة باقة المنشأة الحالية وطلب التغيير -->
+                <div class="rounded-2xl border border-[#D6E0E7] bg-white p-4 sm:p-5 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4" dir="rtl">
+                    <div class="flex items-start sm:items-center gap-3.5">
+                        <div class="w-11 h-11 rounded-2xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center shrink-0">
+                            <Crown class="w-6 h-6" />
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="text-xs font-bold text-[#5B6770]">باقتك الحالية:</span>
+                                <h3 class="text-sm font-extrabold text-[#163E3E]">{{ workspace?.plan_name }}</h3>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E8F0F0] text-[#163E3E]">
+                                    {{ workspace?.units_limit ? `سعة حتى ${workspace.units_limit} عقارات رئيسية` : 'سعة غير محدودة' }}
+                                </span>
+                            </div>
+
+                            <!-- حالة طلب التغيير المعلق إن وُجد -->
+                            <div v-if="workspace?.plan_request_status === 'pending' && workspace?.requested_plan" class="flex items-center gap-1.5 text-xs text-amber-800 font-semibold pt-0.5">
+                                <Clock class="w-4 h-4 text-amber-600 shrink-0" />
+                                <span>
+                                    طلبك لتغيير الباقة إلى <strong class="font-bold text-amber-950">{{ workspace.requested_plan.name }}</strong> قيد مراجعة واعتماد الإدارة
+                                </span>
+                            </div>
+                            <div v-else-if="workspace?.plan_request_status === 'rejected' && workspace?.requested_plan" class="flex items-center gap-1.5 text-xs text-rose-700 font-semibold pt-0.5">
+                                <AlertCircle class="w-4 h-4 text-rose-600 shrink-0" />
+                                <span>تم رفض طلب الترقية الأخير إلى {{ workspace.requested_plan.name }}. يمكنك اختيار باقة أخرى.</span>
+                            </div>
+                            <div v-else class="text-[11px] text-[#5B6770]">
+                                مستخدم حالياً {{ workspace?.units_used ?? 0 }} من أصل {{ workspace?.units_limit ?? '∞' }} وحدة رئيسية.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
+                        <button
+                            type="button"
+                            @click="openPlanChangeModal"
+                            class="h-9 px-4 rounded-xl border border-[#163E3E] text-[#163E3E] hover:bg-[#163E3E] hover:text-white text-xs font-bold transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                        >
+                            <Sparkles class="w-3.5 h-3.5" />
+                            <span>طلب تغيير الباقة</span>
+                        </button>
+                        <Link
+                            :href="route('subscription.index')"
+                            class="h-9 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] hover:bg-[#E8EFF4] text-[#5B6770] hover:text-[#163E3E] text-xs font-semibold transition flex items-center"
+                        >
+                            صفحة الباقات
+                        </Link>
+                    </div>
+                </div>
+
+                <!-- حالة مساحة العمل الجديدة والفارغة (First-time empty workspace) -->
+                <EmptyWorkspaceOnboarding
+                    v-if="is_empty_workspace"
+                    :user-name="user?.name"
+                />
+
+                <!-- العرض الكامل للوحة التحكم عند وجود عقارات ووحدات -->
+                <template v-else>
+                    <!-- المؤشرات الأربعة الرئيسية (KPI Cards) -->
+                    <PrimaryKpiRow :kpis="kpis" />
+
+                    <!-- شريط تنبيه المتأخرات إن وُجدت مبالغ متأخرة -->
+                    <div
+                        v-if="kpis?.overdue && (kpis.overdue.count || 0) > 0"
+                        class="p-4 rounded-2xl bg-rose-50/80 border border-rose-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-rose-900"
+                    >
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                                <AlertCircle class="h-5 w-5" />
+                            </div>
+                            <div>
+                                <span class="text-xs font-bold block">تنبيه مستحقات متأخرة</span>
+                                <span class="text-xs text-rose-800 font-medium">
+                                    لديك {{ kpis.overdue.count }} دفعات إيجار متأخرة بإجمالي مطلوب {{ kpis.overdue.value }}.
+                                </span>
+                            </div>
+                        </div>
+
+                        <Link
+                            :href="route('payments.index')"
+                            class="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs shrink-0 self-start sm:self-auto"
+                        >
+                            مراجعة المتأخرات
+                        </Link>
+                    </div>
+
+                    <!-- شريط ملخص تأمين الوحدات المسترد (مفصول عن الإيراد التشغيلي) -->
+                    <div
+                        v-if="security_deposits && (security_deposits.total_held > 0 || security_deposits.awaiting_settlement_count > 0 || security_deposits.confirmed_deductions > 0)"
+                        class="p-5 rounded-2xl bg-white border border-[#D6E0E7] shadow-2xs space-y-3"
+                    >
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E8EFF4]">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center">
+                                    <Shield class="w-4 h-4 stroke-[2.2]" />
+                                </div>
+                                <div>
+                                    <h3 class="text-xs sm:text-sm font-bold text-[#163E3E]">
+                                        صندوق تأمين الوحدات المسترد (محفوظ ومفصول عن إيراد الإيجار)
+                                    </h3>
+                                    <span class="text-[11px] text-[#5B6770]">أموال تأمين مستردة للمستأجرين عند انتهاء العقود</span>
+                                </div>
+                            </div>
+                            <Link
+                                :href="route('leases.index')"
+                                class="text-xs font-bold text-[#163E3E] hover:underline flex items-center gap-1 self-start sm:self-auto"
+                            >
+                                <span>متابعة عقود التأمين</span>
+                                <span>←</span>
+                            </Link>
+                        </div>
+
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1">
+                            <div>
+                                <span class="text-xs text-[#5B6770] block">إجمالي مبالغ التأمين المحتجزة</span>
+                                <span class="text-lg font-bold text-emerald-700 font-mono mt-0.5 block">
+                                    {{ security_deposits.total_held.toLocaleString() }} {{ security_deposits.currency_symbol || 'ج.م' }}
+                                </span>
+                            </div>
+                            <div>
+                                <span class="text-xs text-[#5B6770] block">تأمينات بانتظار التسوية</span>
+                                <span class="text-lg font-bold text-amber-700 font-mono mt-0.5 block">
+                                    {{ security_deposits.awaiting_settlement_count }} عقود
+                                </span>
+                            </div>
+                            <div>
+                                <span class="text-xs text-[#5B6770] block">مبالغ مستحقة الرد للمستأجرين</span>
+                                <span class="text-lg font-bold text-[#163E3E] font-mono mt-0.5 block">
+                                    {{ security_deposits.refunds_outstanding.toLocaleString() }} {{ security_deposits.currency_symbol || 'ج.م' }}
+                                </span>
+                            </div>
+                            <div>
+                                <span class="text-xs text-[#5B6770] block">خصومات أضرار معتمدة</span>
+                                <span class="text-lg font-bold text-rose-700 font-mono mt-0.5 block">
+                                    {{ security_deposits.confirmed_deductions.toLocaleString() }} {{ security_deposits.currency_symbol || 'ج.م' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- الصف الأول: رسم الإيرادات الشهرية (8 أعمدة) + ملخص الإشغال (4 أعمدة) -->
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                        <!-- رسم الإيرادات الإيجارية الشهرية خلال 6 أشهر -->
+                        <div class="lg:col-span-8 flex flex-col">
+                            <RentalIncomeChart
+                                :months="income_chart?.months"
+                                :amounts="income_chart?.amounts"
+                                :history="income_chart?.history"
+                                :has-history="income_chart?.has_history"
+                                :total-collected="income_chart?.total_collected"
+                                :currency-symbol="workspace?.currency_symbol"
+                                :currency-label="workspace?.currency_label"
+                            />
+                        </div>
+
+                        <!-- كارت ملخص وتوزيع إشغال الوحدات -->
+                        <div class="lg:col-span-4 flex flex-col">
+                            <OccupancySummaryCard
+                                :summary="occupancy_summary"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- الصف الثاني: جدول الاستحقاقات القادمة (8 أعمدة) + كارت تحتاج انتباهك (4 أعمدة) -->
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                        <!-- جدول الاستحقاقات القادمة مع زر تسجيل الدفعة السريع وتذكير واتساب -->
+                        <div class="lg:col-span-8 flex flex-col">
+                            <UpcomingCollectionsTable
+                                :items="upcoming_dues"
+                                @record-payment="handleRecordPayment"
+                                @send-whats-app="handleSendWhatsApp"
+                            />
+                        </div>
+
+                        <!-- كارت التنبيهات التي تحتاج انتباه المالك مع الحالة الإيجابية -->
+                        <div class="lg:col-span-4 flex flex-col">
+                            <AttentionRequiredCard
+                                :items="attention_items"
+                                @view-all="router.visit(route('payments.index'))"
+                                @action="handleAttentionAction"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- قسم أحدث العقارات المسجلة -->
+                    <RecentPropertiesGrid
+                        :properties="recent_properties"
+                    />
+
+                    <!-- الصف الثالث: سجل الأنشطة الأخيرة (6 أعمدة) + ملخص رسائل واتساب (6 أعمدة) -->
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                        <!-- سجل النشاط الإداري والمالي الأخير -->
+                        <div class="lg:col-span-6 flex flex-col">
+                            <RecentActivityFeed
+                                :activities="recent_activities"
+                            />
+                        </div>
+
+                        <!-- ملخص رسائل وتذكيرات واتساب -->
+                        <div class="lg:col-span-6 flex flex-col">
+                            <WhatsAppSummaryCard
+                                :summary="whatsapp_summary"
+                            />
+                        </div>
+                    </div>
+                </template>
+
+        <ModalRecordPayment
+            :show="recordPaymentOpen"
+            :renters="renters"
+            :initial-renter-id="paymentInitialRenterId"
+            :initial-amount="paymentInitialAmount"
+            :initial-rent-charge-id="paymentInitialRentChargeId"
+            @close="recordPaymentOpen = false"
+        />
+
+        <!-- مودال طلب تغيير الباقة من لوحة التحكم -->
+        <Modal :show="showPlanChangeModal" @close="showPlanChangeModal = false" max-width="md">
+            <div class="p-6 text-right space-y-4" dir="rtl">
+                <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
+                    <div class="flex items-center gap-2">
+                        <Crown class="w-5 h-5 text-[#163E3E]" />
+                        <h3 class="text-base font-bold text-[#163E3E]">طلب تغيير باقة المنشأة</h3>
+                    </div>
+                    <button @click="showPlanChangeModal = false" type="button" class="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+                </div>
+
+                <p class="text-xs text-[#5B6770] leading-relaxed">
+                    باقتك الحالية هي <strong>{{ workspace?.plan_name }}</strong>. اختر الباقة الجديدة التي ترغب بالانتقال إليها وسيقوم مدير النظام بمراجعة واعتماد طلبك:
+                </p>
+
+                <form @submit.prevent="submitPlanChangeRequest" class="space-y-4 pt-1">
+                    <div>
+                        <label for="dashboard_plan_id" class="block text-xs font-semibold text-[#163E3E] mb-1.5">اختر الباقة المطلوبة</label>
+                        <select
+                            id="dashboard_plan_id"
+                            v-model="planChangeForm.plan_id"
+                            class="w-full mt-1.5 h-11 px-3 rounded-xl border border-[#D6E0E7] bg-white text-xs font-bold text-[#163E3E]"
+                            aria-label="اختر الباقة المطلوبة"
+                            required
+                        >
+                            <option
+                                v-for="plan in available_plans"
+                                :key="plan.id"
+                                :value="plan.id"
+                            >
+                                {{ plan.name }} — {{ plan.monthly_price == 0 ? (plan.slug === 'trial' ? 'مجاناً' : 'تسعير مخصص') : `${plan.monthly_price} ج.م/شهرياً` }}
+                                {{ plan.parent_unit_limit ? `(حتى ${plan.parent_unit_limit} عقارات)` : '(سعة غير محدودة)' }}
+                            </option>
+                        </select>
+                        <InputError :message="planChangeForm.errors.plan_id" class="mt-1" />
+                    </div>
+
+                    <div>
+                        <label for="dashboard_plan_notes" class="block text-xs font-semibold text-[#163E3E] mb-1.5">ملاحظات للإدارة (اختياري)</label>
+                        <textarea
+                            id="dashboard_plan_notes"
+                            v-model="planChangeForm.notes"
+                            rows="2"
+                            class="w-full mt-1 p-2.5 rounded-xl border border-[#D6E0E7] text-xs text-[#163E3E]"
+                            placeholder="أي تفاصيل أو متطلبات ترغب بتوضيحها للإدارة..."
+                            aria-label="ملاحظات للإدارة (اختياري)"
+                        ></textarea>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-[#D6E0E7]">
+                        <SecondaryButton @click="showPlanChangeModal = false" type="button">إلغاء</SecondaryButton>
+                        <PrimaryButton :disabled="planChangeForm.processing" class="!px-5 !py-2.5 !text-xs !bg-[#163E3E] !text-white hover:!bg-[#102F2F]">
+                            {{ planChangeForm.processing ? 'جاري الإرسال...' : 'إرسال طلب التغيير' }}
+                        </PrimaryButton>
+                    </div>
+                </form>
             </div>
-        </div>
-    </AuthenticatedLayout>
+        </Modal>
+    </AppLayout>
 </template>

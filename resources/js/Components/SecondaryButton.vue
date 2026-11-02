@@ -12,7 +12,7 @@ withDefaults(
 <template>
     <button
         :type="type"
-        class="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-widest text-gray-700 shadow-sm transition duration-150 ease-in-out hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 dark:border-gray-500 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 dark:focus:ring-offset-gray-800"
+        class="inline-flex items-center rounded-xl border border-[#D6E0E7] bg-white px-4 py-2 text-xs font-semibold text-[#163E3E] shadow-sm transition hover:bg-[#F8FAFC] focus:outline-none focus:ring-2 focus:ring-[#163E3E]/30 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
     >
         <slot />
     </button>

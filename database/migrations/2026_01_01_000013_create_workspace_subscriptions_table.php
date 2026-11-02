@@ -13,13 +13,12 @@ return new class extends Migration
             $table->foreignId('workspace_id')->constrained()->restrictOnDelete();
             $table->foreignId('plan_id')->constrained()->restrictOnDelete();
             $table->foreignId('activated_by')->constrained('users')->restrictOnDelete();
-            $table->enum('status', ['active', 'suspended', 'cancelled', 'expired']);
+            $table->string('status', 50)->default('active');
             $table->timestamp('starts_at');
             $table->timestamp('ends_at')->nullable();
             $table->string('provider_reference')->nullable()->comment('Reserved for future payment gateway');
             $table->timestamps();
 
-            $table->index('workspace_id');
             $table->index(['workspace_id', 'status']);
             $table->index('starts_at');
         });

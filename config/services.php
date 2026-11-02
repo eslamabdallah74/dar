@@ -35,4 +35,24 @@ return [
         ],
     ],
 
+    'whatsapp' => [
+        'driver' => env('WHATSAPP_DRIVER', 'log'),
+        'token' => env('WHATSAPP_API_TOKEN'),
+        'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'phone_number' => env('WHATSAPP_PHONE_NUMBER'),
+        'business_account_id' => env('WHATSAPP_BUSINESS_ACCOUNT_ID'),
+        'app_secret' => env('WHATSAPP_APP_SECRET'),
+        'webhook_verify_token' => env('WHATSAPP_WEBHOOK_VERIFY_TOKEN'),
+        'api_version' => env('WHATSAPP_API_VERSION', 'v21.0'),
+    ],
+
+    'payment_gateway' => [
+        'driver' => env('PAYMENT_GATEWAY_DRIVER', 'log'),
+        'moyasar' => [
+            'publishable_key' => env('MOYASAR_PUBLISHABLE_KEY'),
+            'secret_key' => env('MOYASAR_SECRET_KEY'),
+            'webhook_secret' => env('MOYASAR_WEBHOOK_SECRET'),
+        ],
+    ],
+
 ];

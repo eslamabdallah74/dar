@@ -263,9 +263,6 @@ function submitPlanChangeRequest() {
     <AppLayout
         title="الرئيسية — Nook Mate لإدارة العقارات"
         active-tab="dashboard"
-        :plan-name="workspace?.plan_name"
-        :units-used="workspace?.units_used"
-        :units-limit="workspace?.units_limit"
     >
         <!-- قسم الترحيب الرئيسي (Welcome Hero Section) -->
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[#E8EFF4]">

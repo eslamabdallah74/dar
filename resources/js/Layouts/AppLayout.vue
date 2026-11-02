@@ -19,9 +19,6 @@ const props = withDefaults(
         breadcrumb?: string;
         adminMode?: boolean;
         customNavLinks?: any[];
-        planName?: string;
-        unitsUsed?: number;
-        unitsLimit?: number | null;
     }>(),
     {
         title: 'Nook Mate — Find Your Spot. Rent the Space You Need.',
@@ -81,9 +78,6 @@ function handleNewAction() {
         <AppSidebar
             :user-name="user?.name || (adminMode ? 'مدير النظام' : 'أحمد حسن')"
             :user-role="adminMode ? 'مدير النظام المركزي' : (user?.role || 'مالك الحساب')"
-            :plan-name="planName || 'باقة الانطلاق (Starter)'"
-            :units-used="unitsUsed ?? 0"
-            :units-limit="unitsLimit"
             :mobile-open="mobileOpen"
             :active-tab="activeTab"
             :admin-mode="adminMode"

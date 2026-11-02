@@ -32,9 +32,6 @@ interface NavItem {
 const props = defineProps<{
     userName?: string;
     userRole?: string;
-    planName?: string;
-    unitsUsed?: number;
-    unitsLimit?: number | null;
     mobileOpen?: boolean;
     activeTab?: string;
     adminMode?: boolean;
@@ -103,17 +100,6 @@ function handleNavClick(link: NavItem) {
 }
 
 const userMenuOpen = ref(false);
-const unitUsagePercentage = computed(() => {
-    if (props.unitsLimit === null || props.unitsLimit === undefined) {
-        return 0;
-    }
-    const unitsLimit = props.unitsLimit;
-
-    return unitsLimit > 0
-        ? Math.min(100, Math.round(((props.unitsUsed ?? 0) / unitsLimit) * 100))
-        : 0;
-});
-
 const closeUserMenu = () => {
     userMenuOpen.value = false;
 };
@@ -242,36 +228,10 @@ onUnmounted(() => {
             </nav>
         </div>
 
-        <!-- الجزء السفلي: ملخص الخطة أو انتقال للتطبيق + حساب المستخدم -->
+        <!-- الجزء السفلي: انتقال التطبيق + حساب المستخدم -->
         <div class="space-y-4 pt-6 border-t border-white/10">
-            <!-- كارت التطبيق أو الخطة -->
-            <div v-if="!adminMode" class="w-full rounded-xl bg-[#102F2F] p-3.5 border border-white/5 space-y-2">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-semibold text-white">
-                        {{ planName || 'باقة الانطلاق (Starter)' }}
-                    </span>
-                    <span
-                        v-if="unitsLimit === null"
-                        class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#F7C33D]/15 text-[#F7C33D] border border-[#F7C33D]/25"
-                    >
-                        غير محدود ∞
-                    </span>
-                </div>
-                <div class="flex items-center justify-between text-[11px] text-[#F8F4EA]/80">
-                    <span>الوحدات المستخدمة</span>
-                    <span v-if="unitsLimit !== null && unitsLimit !== undefined">{{ unitsUsed ?? 0 }} / {{ unitsLimit }}</span>
-                    <span v-else>{{ unitsUsed ?? 0 }} / ∞ غير محدود</span>
-                </div>
-                <div class="w-full h-1.5 bg-black/30 rounded-full overflow-hidden">
-                    <div
-                        class="h-full bg-[#F7C33D] rounded-full"
-                        :style="{ width: unitsLimit ? `${unitUsagePercentage}%` : '100%' }"
-                    ></div>
-                </div>
-            </div>
-
             <!-- رابط انتقال لتطبيق المستأجرين في وضع الأدمن -->
-            <div v-else class="w-full rounded-xl bg-[#102F2F] p-3 border border-white/5 space-y-2">
+            <div v-if="adminMode" class="w-full rounded-xl bg-[#102F2F] p-3 border border-white/5 space-y-2">
                 <div class="text-[11px] font-medium text-[#F8F4EA]/80">التحويل السريع:</div>
                 <Link
                     :href="route('dashboard')"

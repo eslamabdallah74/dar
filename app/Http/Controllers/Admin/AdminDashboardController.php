@@ -351,7 +351,7 @@ class AdminDashboardController extends Controller
         Workspace $workspace,
         WorkspaceLimitService $limitService
     ): RedirectResponse {
-        if (! $workspace->requested_plan_id) {
+        if (! $workspace->requested_plan_id || $workspace->plan_request_status !== 'pending') {
             return back()->with('error', 'لا يوجد طلب باقة معلق لمساحة العمل هذه.');
         }
 
@@ -370,6 +370,10 @@ class AdminDashboardController extends Controller
         Workspace $workspace,
         WorkspaceLimitService $limitService
     ): RedirectResponse {
+        if (! $workspace->requested_plan_id || $workspace->plan_request_status !== 'pending') {
+            return back()->with('error', 'لا يوجد طلب باقة معلق لمساحة العمل هذه.');
+        }
+
         $validated = $request->validate([
             'reason' => ['nullable', 'string', 'max:500'],
         ]);

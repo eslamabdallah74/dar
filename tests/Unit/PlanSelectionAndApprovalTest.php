@@ -137,16 +137,26 @@ test('scenario 1: requestPlanChange updates workspace with pending status and no
 // Scenario 2: Requesting the current active plan returns false without updating
 // -------------------------------------------------------------------------
 
-test('scenario 2: requestPlanChange returns false and does not update workspace if already on requested plan', function () {
+test('scenario 2: requestPlanChange returns false and clears pending request if already on requested plan', function () {
     /** @var Workspace&Mockery\MockInterface $workspace */
     $workspace = Mockery::mock(Workspace::class)->makePartial();
     $workspace->id = 10;
+    $workspace->plan_request_status = 'pending';
+    $workspace->requested_plan_id = 99;
 
     $growthPlan = createMockPlan(3, 'growth', 'باقة النمو', 199.0, 10, 10);
     $activeSub = createMockSubscription(1, 10, $growthPlan->id);
     $workspace->setRelation('activeSubscription', $activeSub);
 
-    $workspace->shouldNotReceive('update');
+    $workspace->shouldReceive('update')
+        ->once()
+        ->with([
+            'requested_plan_id' => null,
+            'plan_request_status' => null,
+            'plan_requested_at' => null,
+            'plan_request_notes' => null,
+        ])
+        ->andReturn(true);
 
     $limitService = new WorkspaceLimitService;
     $result = $limitService->requestPlanChange($workspace, $growthPlan, 'نفس الباقة');
@@ -165,6 +175,7 @@ test('scenario 3: approvePlanRequest validates limits, activates subscription, a
     /** @var Workspace&Mockery\MockInterface $workspace */
     $workspace = Mockery::mock(Workspace::class)->makePartial();
     $workspace->id = 20;
+    $workspace->plan_request_status = 'pending';
 
     $growthPlan = createMockPlan(3, 'growth', 'باقة النمو', 199.0, 10, 10);
 
@@ -182,7 +193,8 @@ test('scenario 3: approvePlanRequest validates limits, activates subscription, a
         ->with(Mockery::on(function (array $attrs) use ($growthPlan): bool {
             return $attrs['plan_id'] === $growthPlan->id
                 && $attrs['status'] === 'active'
-                && $attrs['activated_by'] === 42;
+                && $attrs['activated_by'] === 42
+                && $attrs['ends_at'] === null;
         }))
         ->andReturn(true);
 
@@ -198,6 +210,18 @@ test('scenario 3: approvePlanRequest validates limits, activates subscription, a
     $limitService->approvePlanRequest($workspace, $growthPlan, 42);
 });
 
+test('scenario 3b: approvePlanRequest throws DomainException when status is not pending', function () {
+    /** @var Workspace&Mockery\MockInterface $workspace */
+    $workspace = Mockery::mock(Workspace::class)->makePartial();
+    $workspace->plan_request_status = 'approved';
+
+    $growthPlan = createMockPlan(3, 'growth', 'باقة النمو', 199.0, 10, 10);
+    $limitService = new WorkspaceLimitService;
+
+    expect(fn () => $limitService->approvePlanRequest($workspace, $growthPlan, 42))
+        ->toThrow(\DomainException::class);
+});
+
 // -------------------------------------------------------------------------
 // Scenario 4: WorkspaceLimitService::denyPlanRequest
 // -------------------------------------------------------------------------
@@ -207,6 +231,7 @@ test('scenario 4: denyPlanRequest sets status to rejected and notes reason witho
     $workspace = Mockery::mock(Workspace::class)->makePartial();
     $workspace->parent_unit_limit = 1;
     $workspace->active_rental_limit = 1;
+    $workspace->plan_request_status = 'pending';
 
     $workspace->shouldReceive('update')
         ->once()
@@ -221,6 +246,17 @@ test('scenario 4: denyPlanRequest sets status to rejected and notes reason witho
 
     expect($workspace->parent_unit_limit)->toBe(1)
         ->and($workspace->active_rental_limit)->toBe(1);
+});
+
+test('scenario 4b: denyPlanRequest throws DomainException when status is not pending', function () {
+    /** @var Workspace&Mockery\MockInterface $workspace */
+    $workspace = Mockery::mock(Workspace::class)->makePartial();
+    $workspace->plan_request_status = 'rejected';
+
+    $limitService = new WorkspaceLimitService;
+
+    expect(fn () => $limitService->denyPlanRequest($workspace, 'يرجى استكمال الوثائق الرسمية أولاً.'))
+        ->toThrow(\DomainException::class);
 });
 
 // -------------------------------------------------------------------------
@@ -325,6 +361,25 @@ test('scenario 8: approvePlanRequest delegates to limit service and redirects wi
     expect($session->get('success'))->toBe("تمت الموافقة وتفعيل {$growthPlan->name} لمساحة العمل ({$workspace->name}) بنجاح.");
 });
 
+test('scenario 8b: approvePlanRequest returns error redirect when workspace has no pending request', function () {
+    /** @var AdminDashboardService&Mockery\MockInterface $adminService */
+    $adminService = Mockery::mock(AdminDashboardService::class);
+    $controller = new AdminDashboardController($adminService);
+
+    $workspace = createMockWorkspace(1, 'مساحة بلا طلب معلق', 1, 1, 3, 'approved');
+
+    $request = Request::create('/admin/workspaces/1/plan-requests/approve', 'POST');
+    $session = attachSession($request);
+
+    /** @var WorkspaceLimitService&Mockery\MockInterface $limitService */
+    $limitService = Mockery::mock(WorkspaceLimitService::class);
+    $limitService->shouldNotReceive('approvePlanRequest');
+
+    $controller->approvePlanRequest($request, $workspace, $limitService);
+
+    expect($session->get('error'))->toBe('لا يوجد طلب باقة معلق لمساحة العمل هذه.');
+});
+
 // -------------------------------------------------------------------------
 // Scenario 9: AdminDashboardController::denyPlanRequest delegates to limit service
 // -------------------------------------------------------------------------
@@ -350,6 +405,27 @@ test('scenario 9: denyPlanRequest delegates to limit service with validated reas
     $controller->denyPlanRequest($request, $workspace, $limitService);
 
     expect($session->get('success'))->toBe("تم رفض طلب تغيير الباقة لمساحة العمل ({$workspace->name}).");
+});
+
+test('scenario 9b: denyPlanRequest returns error redirect when workspace has no pending request', function () {
+    /** @var AdminDashboardService&Mockery\MockInterface $adminService */
+    $adminService = Mockery::mock(AdminDashboardService::class);
+    $controller = new AdminDashboardController($adminService);
+
+    $workspace = createMockWorkspace(1, 'مساحة بلا طلب معلق', 1, 1, 3, 'rejected');
+
+    $request = Request::create('/admin/workspaces/1/plan-requests/deny', 'POST', [
+        'reason' => 'سبب مرفوض',
+    ]);
+    $session = attachSession($request);
+
+    /** @var WorkspaceLimitService&Mockery\MockInterface $limitService */
+    $limitService = Mockery::mock(WorkspaceLimitService::class);
+    $limitService->shouldNotReceive('denyPlanRequest');
+
+    $controller->denyPlanRequest($request, $workspace, $limitService);
+
+    expect($session->get('error'))->toBe('لا يوجد طلب باقة معلق لمساحة العمل هذه.');
 });
 
 // -------------------------------------------------------------------------

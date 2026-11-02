@@ -258,6 +258,15 @@ class WorkspaceLimitService
             : $workspace->activeSubscription()->first();
 
         if ($activeSub?->plan_id === $plan->id) {
+            if ($workspace->plan_request_status === 'pending') {
+                $workspace->update([
+                    'requested_plan_id' => null,
+                    'plan_request_status' => null,
+                    'plan_requested_at' => null,
+                    'plan_request_notes' => null,
+                ]);
+            }
+
             return false;
         }
 
@@ -278,26 +287,28 @@ class WorkspaceLimitService
      */
     public function approvePlanRequest(Workspace $workspace, Plan $plan, ?int $activatedByUserId = null): void
     {
+        if ($workspace->plan_request_status !== 'pending') {
+            throw new \DomainException('لا يوجد طلب باقة معلق لمساحة العمل هذه.');
+        }
+
         $this->validatePlanLimitsNotBelowUsage($workspace, $plan);
 
         $subscription = $workspace->relationLoaded('activeSubscription') && $workspace->activeSubscription
             ? $workspace->activeSubscription
-            : $workspace->subscriptions()->latest()->first();
+            : ($workspace->activeSubscription()->first() ?? $workspace->subscriptions()->latest()->first());
+
+        $subAttributes = [
+            'plan_id' => $plan->id,
+            'status' => 'active',
+            'activated_by' => $activatedByUserId,
+            'starts_at' => now(),
+            'ends_at' => null,
+        ];
 
         if ($subscription) {
-            $subscription->update([
-                'plan_id' => $plan->id,
-                'status' => 'active',
-                'activated_by' => $activatedByUserId,
-                'starts_at' => now(),
-            ]);
+            $subscription->update($subAttributes);
         } else {
-            $workspace->subscriptions()->create([
-                'plan_id' => $plan->id,
-                'status' => 'active',
-                'activated_by' => $activatedByUserId,
-                'starts_at' => now(),
-            ]);
+            $workspace->subscriptions()->create($subAttributes);
         }
 
         $workspace->update([
@@ -312,6 +323,10 @@ class WorkspaceLimitService
      */
     public function denyPlanRequest(Workspace $workspace, ?string $reason = null): void
     {
+        if ($workspace->plan_request_status !== 'pending') {
+            throw new \DomainException('لا يوجد طلب باقة معلق لمساحة العمل هذه.');
+        }
+
         $workspace->update([
             'plan_request_status' => 'rejected',
             'plan_request_notes' => $reason ?? 'تم رفض الطلب من قبل الإدارة.',

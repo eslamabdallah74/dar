@@ -182,6 +182,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // 11 / الاشتراك والإعدادات
     Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
+    Route::post('/subscription/request', [SubscriptionController::class, 'requestPlanChange'])->name('subscription.request');
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
 
@@ -213,6 +214,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::put('/limits', [AdminDashboardController::class, 'updateWorkspaceLimits'])->name('limits.update');
             Route::post('/impersonate', [AdminDashboardController::class, 'impersonateWorkspace'])->name('impersonate');
             Route::post('/subscription', [AdminDashboardController::class, 'updateSubscription'])->name('subscription');
+            Route::post('/plan-requests/approve', [AdminDashboardController::class, 'approvePlanRequest'])->name('plan-requests.approve');
+            Route::post('/plan-requests/deny', [AdminDashboardController::class, 'denyPlanRequest'])->name('plan-requests.deny');
         });
 
         Route::post('/users', [AdminDashboardController::class, 'storeUser'])->name('users.store');

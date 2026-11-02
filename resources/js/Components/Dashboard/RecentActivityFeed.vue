@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { CreditCard, FileText, Wrench, Activity } from 'lucide-vue-next';
+import { Coins, FileText, Wrench, Activity } from 'lucide-vue-next';
 
 interface ActivityItem {
     id: string;
@@ -51,7 +51,7 @@ const safeActivities = computed(() => props.activities || []);
                             'bg-[#E8F0F0] text-[#163E3E]'
                         ]"
                     >
-                        <CreditCard v-if="act.type === 'payment'" class="h-4 w-4" />
+                        <Coins v-if="act.type === 'payment'" class="h-4 w-4" />
                         <FileText v-else-if="act.type === 'lease'" class="h-4 w-4" />
                         <Wrench v-else-if="act.type === 'maintenance'" class="h-4 w-4" />
                         <Activity v-else class="h-4 w-4" />
@@ -88,4 +88,3 @@ const safeActivities = computed(() => props.activities || []);
         </div>
     </div>
 </template>
-

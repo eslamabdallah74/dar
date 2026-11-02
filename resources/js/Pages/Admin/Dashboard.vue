@@ -19,7 +19,8 @@ import Checkbox from '@/Components/Checkbox.vue';
 
 import {
     Building2,
-    CreditCard,
+    Check,
+    Coins,
     Edit3,
     Eye,
     FileText,
@@ -33,6 +34,7 @@ import {
     Shield,
     ShieldCheck,
     Sliders,
+    Sparkles,
     Trash2,
     Users,
     Wrench,
@@ -92,7 +94,7 @@ const controlTabs = [
     { key: 'users', name: 'المستخدمون', count: props.users.length, icon: Users },
     { key: 'properties', name: 'العقارات والوحدات', count: props.properties.length, icon: Home },
     { key: 'leases', name: 'العقود', count: props.leases.length, icon: FileText },
-    { key: 'payments', name: 'المدفوعات', count: props.payments.length, icon: CreditCard },
+    { key: 'payments', name: 'المدفوعات', count: props.payments.length, icon: Coins },
     { key: 'maintenance', name: 'طلبات الصيانة', count: props.maintenanceRequests.length, icon: Wrench },
     { key: 'subscriptions', name: 'الباقات والاشتراكات', count: props.plans.length, icon: Layers },
     { key: 'logs', name: 'رسائل واتساب', count: props.messageLogs.length, icon: MessageSquare },
@@ -315,6 +317,29 @@ function submitSubscription() {
             showSubscriptionModal.value = false;
         },
     });
+}
+
+function quickApprovePlan(ws: any) {
+    router.post(route('admin.workspaces.plan-requests.approve', ws.id));
+}
+
+function isPlanBelowWorkspaceUsage(plan: any, ws: any): boolean {
+    if (!ws || !plan) {
+        return false;
+    }
+    const planParent = plan.parent_unit_limit ?? plan.unit_limit;
+    const planActive = plan.active_rental_limit ?? plan.unit_limit;
+
+    const currentParents = Number(ws.created_parent_units_count ?? 0);
+    const currentActive = Number(ws.active_rented_parent_units_count ?? 0);
+
+    if (planParent !== null && planParent !== undefined && currentParents > Number(planParent)) {
+        return true;
+    }
+    if (planActive !== null && planActive !== undefined && currentActive > Number(planActive)) {
+        return true;
+    }
+    return false;
 }
 
 function updateLeaseStatus(leaseId: number, status: string) {
@@ -549,9 +574,21 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                 <td class="p-3.5 text-center font-bold">{{ ws.properties_count }}</td>
                                 <td class="p-3.5 text-center font-bold">{{ ws.units_count }}</td>
                                 <td class="p-3.5">
-                                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#E8F0F0] text-[#163E3E]">
-                                        {{ ws.plan_name }}
-                                    </span>
+                                    <div class="space-y-1">
+                                        <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#E8F0F0] text-[#163E3E] inline-block">
+                                            {{ ws.plan_name }}
+                                        </span>
+                                        <div v-if="ws.plan_request_status === 'pending' && ws.requested_plan_name" class="flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-md border border-amber-300">
+                                            <Sparkles class="w-3 h-3 text-amber-600 shrink-0" />
+                                            <span>مطلوب: {{ ws.requested_plan_name }}</span>
+                                        </div>
+                                        <div v-else-if="ws.plan_request_status === 'approved' && ws.requested_plan_name" class="text-[10px] text-emerald-700 font-semibold">
+                                            ✓ معتمد: {{ ws.requested_plan_name }}
+                                        </div>
+                                        <div v-else-if="ws.plan_request_status === 'rejected' && ws.requested_plan_name" class="text-[10px] text-rose-600 font-semibold">
+                                            ✕ مرفوض: {{ ws.requested_plan_name }}
+                                        </div>
+                                    </div>
                                 </td>
                                 <td class="p-3.5">
                                     <StatusBadge :status="ws.subscription_status || ws.status" />
@@ -559,6 +596,16 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                 <td class="p-3.5 text-[#5B6770]">{{ ws.created_at }}</td>
                                 <td class="p-3.5">
                                     <div class="flex items-center justify-center gap-1.5">
+                                        <button
+                                            v-if="ws.plan_request_status === 'pending' && ws.requested_plan_name"
+                                            @click="quickApprovePlan(ws)"
+                                            type="button"
+                                            class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition flex items-center gap-1 cursor-pointer text-xs shadow-xs"
+                                            :title="`الموافقة ومنح ${ws.requested_plan_name}`"
+                                        >
+                                            <Check class="w-3.5 h-3.5" />
+                                            <span>منح</span>
+                                        </button>
                                         <Link
                                             :href="route('admin.workspaces.show', ws.id)"
                                             class="px-2.5 py-1.5 rounded-lg bg-[#E8F0F0] text-[#163E3E] hover:bg-[#D4EAEF] font-bold transition flex items-center gap-1 cursor-pointer"
@@ -1133,6 +1180,17 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                         </div>
                     </div>
 
+                    <div class="p-3 bg-[#F8FAFC] rounded-xl border border-[#E8EFF4] text-xs text-[#5B6770] space-y-1">
+                        <div class="flex justify-between">
+                            <span>الوحدات الرئيسية المنشأة:</span>
+                            <strong class="text-[#163E3E]">{{ selectedWorkspace?.created_parent_units_count ?? 0 }}</strong>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>العقارات المؤجرة حالياً:</span>
+                            <strong class="text-[#163E3E]">{{ selectedWorkspace?.active_rented_parent_units_count ?? 0 }}</strong>
+                        </div>
+                    </div>
+
                     <div>
                         <InputLabel for="sub_plan" value="اختر الباقة المطلوبة" />
                         <select
@@ -1140,10 +1198,17 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                             v-model="subscriptionForm.plan_id"
                             class="w-full mt-1 h-10 px-3 rounded-xl border border-[#D6E0E7] bg-white text-sm"
                         >
-                            <option v-for="plan in plans" :key="plan.id" :value="plan.id">
+                            <option
+                                v-for="plan in plans"
+                                :key="plan.id"
+                                :value="plan.id"
+                                :disabled="isPlanBelowWorkspaceUsage(plan, selectedWorkspace)"
+                            >
                                 {{ plan.name }} ({{ plan.monthly_price }} ج.م)
+                                {{ isPlanBelowWorkspaceUsage(plan, selectedWorkspace) ? '— غير متاح (أقل من الاستخدام الحالي)' : '' }}
                             </option>
                         </select>
+                        <InputError :message="subscriptionForm.errors.plan_id" class="mt-1.5" />
                     </div>
 
                     <div>
@@ -1206,11 +1271,14 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                             <TextInput
                                 id="parent_unit_limit"
                                 type="number"
-                                min="0"
+                                :min="selectedWorkspace?.created_parent_units_count ?? 0"
                                 v-model="limitsForm.parent_unit_limit"
                                 class="w-full h-10 px-3"
                                 required
                             />
+                            <p class="text-[10px] text-[#5B6770] mt-1">
+                                الحد الأدنى المسموح به: {{ selectedWorkspace?.created_parent_units_count ?? 0 }} وحدة
+                            </p>
                         </div>
                         <div v-else class="text-xs font-bold text-emerald-700 bg-emerald-50 p-2 rounded-lg text-center">
                             تم تفعيل السعة غير المحدودة لإنشاء الوحدات الرئيسية (∞)
@@ -1237,11 +1305,14 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                             <TextInput
                                 id="active_rental_limit"
                                 type="number"
-                                min="0"
+                                :min="selectedWorkspace?.active_rented_parent_units_count ?? 0"
                                 v-model="limitsForm.active_rental_limit"
                                 class="w-full h-10 px-3"
                                 required
                             />
+                            <p class="text-[10px] text-[#5B6770] mt-1">
+                                الحد الأدنى المسموح به: {{ selectedWorkspace?.active_rented_parent_units_count ?? 0 }} عقار
+                            </p>
                         </div>
                         <div v-else class="text-xs font-bold text-emerald-700 bg-emerald-50 p-2 rounded-lg text-center">
                             تم تفعيل السعة غير المحدودة للعقود التأجيرية المتزامنة (∞)

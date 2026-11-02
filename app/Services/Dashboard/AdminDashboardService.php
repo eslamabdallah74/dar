@@ -190,7 +190,7 @@ class AdminDashboardService
         }
 
         // 7. Full Datasets for Control Tabs
-        $workspaces = Workspace::with(['owner', 'activeSubscription.plan'])
+        $workspaces = Workspace::with(['owner', 'activeSubscription.plan', 'requestedPlan'])
             ->withCount([
                 'properties',
                 'units',
@@ -218,8 +218,15 @@ class AdminDashboardService
                 'created_parent_units_count' => (int) ($w->parent_units_count ?? 0),
                 'active_rented_parent_units_count' => $this->limitService->countOccupiedParentRentalSlots($w),
                 'plan_name' => $w->activeSubscription?->plan->name ?? 'بدون اشتراك',
-                'plan_slug' => $w->activeSubscription?->plan->slug ?? 'starter',
+                'plan_slug' => $w->activeSubscription?->plan->slug ?? 'trial',
                 'subscription_status' => $w->activeSubscription->status ?? 'inactive',
+                'requested_plan_id' => $w->requested_plan_id,
+                'requested_plan_name' => $w->requestedPlan?->name,
+                'requested_plan_slug' => $w->requestedPlan?->slug,
+                'requested_plan_price' => $w->requestedPlan ? (float) $w->requestedPlan->monthly_price : null,
+                'plan_request_status' => $w->plan_request_status,
+                'plan_requested_at' => $w->plan_requested_at?->format('d/m/Y H:i'),
+                'plan_request_notes' => $w->plan_request_notes,
                 'created_at' => $w->created_at?->format('d/m/Y H:i'),
             ]);
 
@@ -291,6 +298,8 @@ class AdminDashboardService
             'slug' => $pl->slug,
             'monthly_price' => (float) $pl->monthly_price,
             'unit_limit' => $pl->unit_limit,
+            'parent_unit_limit' => $pl->parent_unit_limit,
+            'active_rental_limit' => $pl->active_rental_limit,
             'is_active' => (bool) $pl->is_active,
         ]);
 

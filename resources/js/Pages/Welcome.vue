@@ -58,24 +58,45 @@ const mobileMenuOpen = ref(false);
                         "offers": [
                             {
                                 "@type": "Offer",
-                                "name": "الباقة المجانية",
+                                "name": "باقة التجربة (Trial)",
                                 "price": "0",
                                 "priceCurrency": "EGP",
-                                "description": "إدارة عقار رئيسي واحد مع عقد تأجير نشط وتقسيمات داخلية غير محدودة (غرف وأسرّة) مجاناً مدى الحياة"
+                                "description": "تجربة مجانية لوحدة أو عقار رئيسي واحد مع عقد تأجير نشط وتقسيمات داخلية غير محدودة"
                             },
                             {
                                 "@type": "Offer",
-                                "name": "باقة النمو",
-                                "price": "249",
+                                "name": "باقة البداية (Starter)",
+                                "price": "99",
                                 "priceCurrency": "EGP",
-                                "description": "إدارة حتى 10 عقارات رئيسية مع 10 عقود تأجير نشطة وتقسيمات داخلية غير محدودة مع تذكيرات واتساب"
+                                "description": "إدارة حتى 3 وحدات وعقارات رئيسية مع عقود تأجير نشطة وتقسيمات داخلية وتذكيرات واتساب"
                             },
                             {
                                 "@type": "Offer",
-                                "name": "إدارة الأملاك (الشركات)",
-                                "price": "599",
+                                "name": "باقة النمو (Growth)",
+                                "price": "199",
                                 "priceCurrency": "EGP",
-                                "description": "عقارات رئيسية وعقود تأجير نشطة غير محدودة مع تقسيمات داخلية غير محدودة ودعم متقدم"
+                                "description": "إدارة من 4 إلى 10 وحدات وعقارات رئيسية مع تذكيرات واتساب وإدارة صيانة متقدمة"
+                            },
+                            {
+                                "@type": "Offer",
+                                "name": "باقة المحترفين (Pro)",
+                                "price": "399",
+                                "priceCurrency": "EGP",
+                                "description": "إدارة من 11 إلى 25 وحدة وعقار رئيسي مع تقارير مالية ومحاسبية متقدمة"
+                            },
+                            {
+                                "@type": "Offer",
+                                "name": "باقة الأعمال (Business)",
+                                "price": "699",
+                                "priceCurrency": "EGP",
+                                "description": "إدارة من 26 إلى 50 وحدة وعقار رئيسي مع دعم فني VIP وتقارير ضريبية مفصلة"
+                            },
+                            {
+                                "@type": "Offer",
+                                "name": "باقة الشركات وكبار الملاك (Enterprise)",
+                                "price": "0",
+                                "priceCurrency": "EGP",
+                                "description": "إدارة أكثر من 50 وحدة وعقار رئيسي مع سعة غير محدودة وتسعير مخصص ومدير حساب مخصص"
                             }
                         ]
                     },
@@ -544,19 +565,23 @@ const mobileMenuOpen = ref(false);
                     </p>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
-                    <!-- Plan 1: الباقة المجانية -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch">
+                    <!-- Plan 1: باقة التجربة -->
                     <div class="bg-white rounded-3xl p-8 border border-[#E2DDD2] flex flex-col justify-between hover:shadow-md transition">
                         <div>
                             <div class="flex items-center justify-between mb-4">
-                                <h3 class="text-xl font-bold text-[#163E3E]">الباقة المجانية</h3>
-                                <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#F8F4EA] text-[#163E3E]">للبدء</span>
+                                <h3 class="text-xl font-bold text-[#163E3E]">باقة التجربة (Trial)</h3>
+                                <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#F8F4EA] text-[#163E3E]">تجربة مجانية</span>
                             </div>
-                            <p class="text-sm text-[#5B6770] mb-6">مثالية للبدء وإدارة عقارك الأول بكل سهولة دون تكلفة.</p>
+                            <p class="text-sm text-[#5B6770] mb-4">مثالية للبدء وتجربة المنصة لإدارة عقارك الأول بكل سهولة دون أي تكلفة.</p>
                             
+                            <div class="p-3 mb-6 rounded-2xl bg-[#F8F4EA]/70 border border-[#E2DDD2]/60 text-xs text-[#163E3E] font-bold">
+                                السعة: عقار رئيسي واحد (1 وحدة)
+                            </div>
+
                             <div class="flex items-baseline gap-1 mb-8">
                                 <span class="text-4xl font-extrabold text-[#163E3E]">0</span>
-                                <span class="text-base font-semibold text-[#5B6770]">ج.م / شهريًا</span>
+                                <span class="text-base font-semibold text-[#5B6770]">ج.م / تجربة مجانية</span>
                             </div>
 
                             <ul class="space-y-3.5 text-sm font-medium text-[#334155] mb-8">
@@ -576,84 +601,272 @@ const mobileMenuOpen = ref(false);
                                     <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
                                     <span>إدارة العقود والمستأجرين وسندات القبض</span>
                                 </li>
-                                <li class="flex items-center gap-3 text-[#B6C5D0]">
-                                    <svg aria-hidden="true" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                    <span>تذكيرات واتساب التلقائية</span>
-                                </li>
                             </ul>
                         </div>
 
                         <Link
-                            v-if="canRegister"
-                            :href="route('register')"
+                            v-if="$page.props.auth?.user"
+                            :href="route('subscription.index')"
                             class="w-full py-3.5 rounded-xl border border-[#E2DDD2] text-center font-bold text-sm text-[#163E3E] hover:bg-[#F8F4EA] transition"
                         >
-                            ابدأ مجانًا الآن
+                            اختيار هذه الخطة
+                        </Link>
+                        <Link
+                            v-else-if="canRegister"
+                            :href="route('register', { plan: 'trial' })"
+                            class="w-full py-3.5 rounded-xl border border-[#E2DDD2] text-center font-bold text-sm text-[#163E3E] hover:bg-[#F8F4EA] transition"
+                        >
+                            ابدأ التجربة الآن
                         </Link>
                     </div>
 
-                    <!-- الباقة الأكثر طلبًا -->
-                    <div class="bg-white rounded-3xl p-8 border-2 border-[#163E3E] flex flex-col justify-between shadow-xl relative lg:-translate-y-2">
-                        <div class="absolute -top-4 right-8 px-4 py-1 rounded-full bg-[#F7C33D] text-[#163E3E] text-xs font-black shadow-sm">
-                            الأكثر طلبًا
-                        </div>
+                    <!-- Plan 2: حتى 3 وحدات (99 ج.م) -->
+                    <div class="bg-white rounded-3xl p-8 border border-[#E2DDD2] flex flex-col justify-between hover:shadow-md transition">
                         <div>
-                            <div class="flex items-center justify-between mb-4 mt-1">
-                                <h3 class="text-xl font-bold text-[#163E3E]">باقة الملاك (النمو)</h3>
-                                <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#FEF7E6] text-[#163E3E]">شاملة</span>
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold text-[#163E3E]">باقة البداية (Starter)</h3>
+                                <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#F8F4EA] text-[#163E3E]">اقتصادية</span>
                             </div>
-                            <p class="text-sm text-[#5B6770] mb-6">للملاك وأصحاب العقارات الساعين للتوسع وأتمتة كاملة للتحصيل.</p>
+                            <p class="text-sm text-[#5B6770] mb-4">مناسبة للملاك المبتدئين وأصحاب العقارات المحدودة حتى 3 وحدات.</p>
                             
+                            <div class="p-3 mb-6 rounded-2xl bg-[#F8F4EA]/70 border border-[#E2DDD2]/60 text-xs text-[#163E3E] font-bold">
+                                السعة: حتى 3 وحدات / عقارات رئيسية
+                            </div>
+
                             <div class="flex items-baseline gap-1 mb-8">
-                                <span class="text-4xl font-extrabold text-[#163E3E]">249</span>
+                                <span class="text-4xl font-extrabold text-[#163E3E]">99</span>
                                 <span class="text-base font-semibold text-[#5B6770]">ج.م / شهريًا</span>
                             </div>
 
                             <ul class="space-y-3.5 text-sm font-medium text-[#334155] mb-8">
                                 <li class="flex items-center gap-3">
                                     <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                                    <span><strong>حتى 10 عقارات رئيسية</strong> مستقلة</span>
+                                    <span><strong>حتى 3 عقارات رئيسية</strong> مستقلة</span>
                                 </li>
                                 <li class="flex items-center gap-3">
                                     <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                                    <span><strong>حتى 10 عقود تأجير نشطة</strong> متزامنة</span>
+                                    <span><strong>حتى 3 عقود تأجير نشطة</strong> متزامنة</span>
                                 </li>
                                 <li class="flex items-center gap-3">
                                     <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                                    <span><strong>غرف وأسِرّة غير محدودة</strong> داخل العقارات</span>
+                                    <span>تقسيمات غير محدودة (غرف وأسرّة)</span>
                                 </li>
                                 <li class="flex items-center gap-3">
                                     <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                                    <span><strong>تذكيرات واتساب الآلية</strong> للمستأجرين</span>
-                                </li>
-                                <li class="flex items-center gap-3">
-                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                                    <span>إدارة فواتير الصيانة والمصروفات والتقارير</span>
+                                    <span>تذكيرات واتساب التلقائية للمستأجرين</span>
                                 </li>
                             </ul>
                         </div>
 
                         <Link
-                            v-if="canRegister"
-                            :href="route('register')"
-                            class="w-full py-3.5 rounded-xl bg-[#163E3E] text-center font-bold text-sm text-white hover:bg-[#102F2F] shadow-md transition"
+                            v-if="$page.props.auth?.user"
+                            :href="route('subscription.index')"
+                            class="w-full py-3.5 rounded-xl border border-[#E2DDD2] text-center font-bold text-sm text-[#163E3E] hover:bg-[#F8F4EA] transition"
                         >
-                            ابدأ باستخدام الباقة
+                            ترقية لهذه الباقة
+                        </Link>
+                        <Link
+                            v-else-if="canRegister"
+                            :href="route('register', { plan: 'starter' })"
+                            class="w-full py-3.5 rounded-xl border border-[#E2DDD2] text-center font-bold text-sm text-[#163E3E] hover:bg-[#F8F4EA] transition"
+                        >
+                            ابدأ الآن
                         </Link>
                     </div>
 
-                    <!-- Plan 3: إدارة الأملاك والشركات -->
+                    <!-- Plan 3: من 4 إلى 10 وحدات (199 ج.م) — الأكثر طلباً -->
+                    <div class="bg-white rounded-3xl p-8 border-2 border-[#163E3E] flex flex-col justify-between shadow-xl relative lg:-translate-y-2">
+                        <div class="absolute -top-4 right-8 px-4 py-1 rounded-full bg-[#F7C33D] text-[#163E3E] text-xs font-black shadow-sm">
+                            الأكثر طلباً
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between mb-4 mt-1">
+                                <h3 class="text-xl font-bold text-[#163E3E]">باقة النمو (Growth)</h3>
+                                <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#FEF7E6] text-[#163E3E]">شاملة</span>
+                            </div>
+                            <p class="text-sm text-[#5B6770] mb-4">للملاك وأصحاب العقارات الساعين للتوسع وأتمتة كاملة للتحصيل.</p>
+                            
+                            <div class="p-3 mb-6 rounded-2xl bg-[#E8F0F0] border border-[#163E3E]/20 text-xs text-[#163E3E] font-bold">
+                                السعة: من 4 إلى 10 وحدات / عقارات رئيسية
+                            </div>
+
+                            <div class="flex items-baseline gap-1 mb-8">
+                                <span class="text-4xl font-extrabold text-[#163E3E]">199</span>
+                                <span class="text-base font-semibold text-[#5B6770]">ج.م / شهريًا</span>
+                            </div>
+
+                            <ul class="space-y-3.5 text-sm font-medium text-[#334155] mb-8">
+                                <li class="flex items-center gap-3">
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <span><strong>من 4 حتى 10 عقارات رئيسية</strong> مستقلة</span>
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <span><strong>من 4 حتى 10 عقود تأجير نشطة</strong> متزامنة</span>
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <span>غرف وأسِرّة غير محدودة داخل الوحدات</span>
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <span>تذكيرات واتساب الآلية وسندات القبض الفورية</span>
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <span>إدارة فواتير الصيانة والمصروفات ودعم فني سريع</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <Link
+                            v-if="$page.props.auth?.user"
+                            :href="route('subscription.index')"
+                            class="w-full py-3.5 rounded-xl bg-[#163E3E] text-center font-bold text-sm text-white hover:bg-[#102F2F] shadow-md transition"
+                        >
+                            ترقية لهذه الباقة
+                        </Link>
+                        <Link
+                            v-else-if="canRegister"
+                            :href="route('register', { plan: 'growth' })"
+                            class="w-full py-3.5 rounded-xl bg-[#163E3E] text-center font-bold text-sm text-white hover:bg-[#102F2F] shadow-md transition"
+                        >
+                            ابدأ الآن
+                        </Link>
+                    </div>
+
+                    <!-- Plan 4: من 11 إلى 25 وحدة (399 ج.م) -->
                     <div class="bg-white rounded-3xl p-8 border border-[#E2DDD2] flex flex-col justify-between hover:shadow-md transition">
                         <div>
                             <div class="flex items-center justify-between mb-4">
-                                <h3 class="text-xl font-bold text-[#163E3E]">إدارة الأملاك (الشركات)</h3>
+                                <h3 class="text-xl font-bold text-[#163E3E]">باقة المحترفين (Pro)</h3>
+                                <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#F8F4EA] text-[#163E3E]">للمحترفين</span>
+                            </div>
+                            <p class="text-sm text-[#5B6770] mb-4">للمستثمرين والملاك الذين يديرون محافظ متنامية حتى 25 وحدة رئيسية.</p>
+                            
+                            <div class="p-3 mb-6 rounded-2xl bg-[#F8F4EA]/70 border border-[#E2DDD2]/60 text-xs text-[#163E3E] font-bold">
+                                السعة: من 11 إلى 25 وحدة / عقار رئيسي
+                            </div>
+
+                            <div class="flex items-baseline gap-1 mb-8">
+                                <span class="text-4xl font-extrabold text-[#163E3E]">399</span>
+                                <span class="text-base font-semibold text-[#5B6770]">ج.م / شهريًا</span>
+                            </div>
+
+                            <ul class="space-y-3.5 text-sm font-medium text-[#334155] mb-8">
+                                <li class="flex items-center gap-3">
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <span><strong>من 11 حتى 25 عقار رئيسي</strong> مستقل</span>
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <span><strong>من 11 حتى 25 عقد تأجير نشط</strong> متزامن</span>
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <span>تقسيمات غير محدودة للغرف والأسرة</span>
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <span>تقارير مالية ومحاسبية متقدمة مع ضريبة القيمة المضافة</span>
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <span>دعم فني مخصص ذو أولوية</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <Link
+                            v-if="$page.props.auth?.user"
+                            :href="route('subscription.index')"
+                            class="w-full py-3.5 rounded-xl border border-[#E2DDD2] text-center font-bold text-sm text-[#163E3E] hover:bg-[#F8F4EA] transition"
+                        >
+                            ترقية لهذه الباقة
+                        </Link>
+                        <Link
+                            v-else-if="canRegister"
+                            :href="route('register', { plan: 'pro' })"
+                            class="w-full py-3.5 rounded-xl border border-[#E2DDD2] text-center font-bold text-sm text-[#163E3E] hover:bg-[#F8F4EA] transition"
+                        >
+                            ابدأ الآن
+                        </Link>
+                    </div>
+
+                    <!-- Plan 5: من 26 إلى 50 وحدة (699 ج.م) -->
+                    <div class="bg-white rounded-3xl p-8 border border-[#E2DDD2] flex flex-col justify-between hover:shadow-md transition">
+                        <div>
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold text-[#163E3E]">باقة الأعمال (Business)</h3>
                                 <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#F8F4EA] text-[#163E3E]">للشركات</span>
                             </div>
-                            <p class="text-sm text-[#5B6770] mb-6">لشركات إدارة العقارات والسكن المشترك ذي الحجم الكبير.</p>
+                            <p class="text-sm text-[#5B6770] mb-4">لشركات إدارة العقارات والمجمعات التي تدير حتى 50 وحدة سكنية أو تجارية.</p>
                             
+                            <div class="p-3 mb-6 rounded-2xl bg-[#F8F4EA]/70 border border-[#E2DDD2]/60 text-xs text-[#163E3E] font-bold">
+                                السعة: من 26 إلى 50 وحدة / عقار رئيسي
+                            </div>
+
                             <div class="flex items-baseline gap-1 mb-8">
-                                <span class="text-4xl font-extrabold text-[#163E3E]">599</span>
+                                <span class="text-4xl font-extrabold text-[#163E3E]">699</span>
                                 <span class="text-base font-semibold text-[#5B6770]">ج.م / شهريًا</span>
+                            </div>
+
+                            <ul class="space-y-3.5 text-sm font-medium text-[#334155] mb-8">
+                                <li class="flex items-center gap-3">
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <span><strong>من 26 حتى 50 عقار رئيسي</strong> مستقل</span>
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <span><strong>من 26 حتى 50 عقد تأجير نشط</strong> متزامن</span>
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <span>تقارير الضرائب والتحليلات المالية المتقدمة</span>
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <span>سجلات الصيانة والمصروفات وسندات الصرف</span>
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <span>دعم فني VIP مباشر على مدار الساعة</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <Link
+                            v-if="$page.props.auth?.user"
+                            :href="route('subscription.index')"
+                            class="w-full py-3.5 rounded-xl border border-[#E2DDD2] text-center font-bold text-sm text-[#163E3E] hover:bg-[#F8F4EA] transition"
+                        >
+                            ترقية لهذه الباقة
+                        </Link>
+                        <Link
+                            v-else-if="canRegister"
+                            :href="route('register', { plan: 'business' })"
+                            class="w-full py-3.5 rounded-xl border border-[#E2DDD2] text-center font-bold text-sm text-[#163E3E] hover:bg-[#F8F4EA] transition"
+                        >
+                            ابدأ الآن
+                        </Link>
+                    </div>
+
+                    <!-- Plan 6: أكثر من 50 وحدة (تسعير مخصص / Enterprise) -->
+                    <div class="bg-white rounded-3xl p-8 border border-[#E2DDD2] flex flex-col justify-between hover:shadow-md transition">
+                        <div>
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold text-[#163E3E]">كبار الملاك والشركات</h3>
+                                <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#F8F4EA] text-[#163E3E]">أكثر من 50 وحدة</span>
+                            </div>
+                            <p class="text-sm text-[#5B6770] mb-4">للشركات الكبرى والمحافظ العقارية الضخمة التي تتجاوز 50 وحدة سكنية أو تجارية.</p>
+                            
+                            <div class="p-3 mb-6 rounded-2xl bg-[#F8F4EA]/70 border border-[#E2DDD2]/60 text-xs text-[#163E3E] font-bold">
+                                السعة: أكثر من 50 وحدة (سعة غير محدودة ∞)
+                            </div>
+
+                            <div class="flex items-baseline gap-1 mb-8">
+                                <span class="text-3xl font-extrabold text-[#163E3E]">تسعير مخصص</span>
+                                <span class="text-xs font-semibold text-[#5B6770]">(حسب احتياجاتك)</span>
                             </div>
 
                             <ul class="space-y-3.5 text-sm font-medium text-[#334155] mb-8">
@@ -667,25 +880,33 @@ const mobileMenuOpen = ref(false);
                                 </li>
                                 <li class="flex items-center gap-3">
                                     <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                                    <span><strong>تقسيمات وغرف وأسِرّة غير محدودة</strong></span>
+                                    <span>مدير حساب مخصص واتفاقية مستوى الخدمة SLA</span>
                                 </li>
                                 <li class="flex items-center gap-3">
                                     <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                                    <span>فصل الحسابات لكبار الملاك وتقارير مالية وضريبية</span>
+                                    <span>فصل الحسابات لكبار الملاك وتكامل مخصص</span>
                                 </li>
                                 <li class="flex items-center gap-3">
                                     <svg aria-hidden="true" class="w-4 h-4 text-[#163E3E]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                                    <span>دعم فني مخصص ذو أولوية على مدار الساعة VIP</span>
+                                    <span>دعم هاتفي مباشر وتقني على مدار الساعة VIP</span>
                                 </li>
                             </ul>
                         </div>
 
-                        <a
-                            href="#contact"
+                        <Link
+                            v-if="$page.props.auth?.user"
+                            :href="route('subscription.index')"
                             class="w-full py-3.5 rounded-xl border border-[#E2DDD2] text-center font-bold text-sm text-[#163E3E] hover:bg-[#F8F4EA] transition"
                         >
-                            تواصل مع المبيعات
-                        </a>
+                            طلب باقة مخصصة
+                        </Link>
+                        <Link
+                            v-else-if="canRegister"
+                            :href="route('register', { plan: 'enterprise' })"
+                            class="w-full py-3.5 rounded-xl border border-[#E2DDD2] text-center font-bold text-sm text-[#163E3E] hover:bg-[#F8F4EA] transition"
+                        >
+                            ابدأ الآن واطلب الباقة
+                        </Link>
                     </div>
                 </div>
             </div>

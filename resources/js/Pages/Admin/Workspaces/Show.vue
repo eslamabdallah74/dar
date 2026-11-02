@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { Link, useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
@@ -12,6 +12,7 @@ import {
     ArrowRight,
     Building2,
     Calendar,
+    Check,
     FileText,
     Home,
     Layers,
@@ -21,6 +22,8 @@ import {
     Sparkles,
     User,
 } from 'lucide-vue-next';
+import Modal from '@/Components/Modal.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
 
 interface WorkspaceData {
     id: number;
@@ -36,6 +39,14 @@ interface WorkspaceData {
     created_at: string;
     parent_unit_limit: number | null;
     active_rental_limit: number | null;
+    requested_plan_id?: number | null;
+    requested_plan_name?: string | null;
+    requested_plan_slug?: string | null;
+    requested_plan_price?: number | null;
+    requested_plan_unit_limit?: number | null;
+    plan_request_status?: string | null;
+    plan_requested_at?: string | null;
+    plan_request_notes?: string | null;
 }
 
 interface UsageSummary {
@@ -114,6 +125,29 @@ function impersonate() {
     router.post(route('admin.workspaces.impersonate', props.workspace.id));
 }
 
+const approveForm = useForm({});
+const denyForm = useForm({
+    reason: '',
+});
+const showDenyModal = ref(false);
+
+function approvePlanRequest() {
+    approveForm.post(route('admin.workspaces.plan-requests.approve', props.workspace.id));
+}
+
+function openDenyModal() {
+    denyForm.reason = '';
+    showDenyModal.value = true;
+}
+
+function submitDenyPlanRequest() {
+    denyForm.post(route('admin.workspaces.plan-requests.deny', props.workspace.id), {
+        onSuccess: () => {
+            showDenyModal.value = false;
+        },
+    });
+}
+
 const parentCreationPercent = computed(() => {
     if (props.usage_summary.is_parent_units_unlimited || !props.usage_summary.parent_units_limit) {
         return 0;
@@ -171,6 +205,16 @@ const activeRentalPercent = computed(() => {
                                     <Layers class="w-3.5 h-3.5 text-[#8899A6]" />
                                     <span>الباقة الحالية: <strong class="text-[#163E3E]">{{ workspace.plan_name }}</strong></span>
                                 </div>
+                                <div v-if="workspace.plan_request_status === 'pending' && workspace.requested_plan_name" class="flex items-center gap-1 text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
+                                    <Sparkles class="w-3.5 h-3.5 text-amber-600" />
+                                    <span>طلب معلق: {{ workspace.requested_plan_name }}</span>
+                                </div>
+                                <div v-else-if="workspace.plan_request_status === 'approved' && workspace.requested_plan_name" class="flex items-center gap-1 text-emerald-700 font-semibold">
+                                    <span>✓ معتمد: {{ workspace.requested_plan_name }}</span>
+                                </div>
+                                <div v-else-if="workspace.plan_request_status === 'rejected' && workspace.requested_plan_name" class="flex items-center gap-1 text-rose-600 font-semibold">
+                                    <span>✕ تم رفض طلب: {{ workspace.requested_plan_name }}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -185,6 +229,76 @@ const activeRentalPercent = computed(() => {
                             <span>دخول كمدير نظام</span>
                         </button>
                     </div>
+                </div>
+            </div>
+
+            <!-- بطاقة طلب تغيير الباقة (إن وجد) -->
+            <div
+                v-if="workspace.requested_plan_name && workspace.plan_request_status === 'pending'"
+                class="rounded-2xl border-2 border-amber-400 bg-amber-50/90 p-6 shadow-sm space-y-4"
+                dir="rtl"
+            >
+                <div class="flex items-center justify-between pb-3 border-b border-amber-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-amber-200 text-amber-900 flex items-center justify-center font-bold">
+                            <Sparkles class="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-amber-950">يوجد طلب تغيير باقة معلق لهذه المساحة</h3>
+                            <p class="text-xs text-amber-800">طلب العميل ترقية/تغيير الباقة إلى خطة جديدة وبانتظار موافقة الإدارة.</p>
+                        </div>
+                    </div>
+                    <span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-200 text-amber-900">
+                        طلب معلق
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-white/80 border border-amber-200 text-xs">
+                    <div>
+                        <span class="text-[#5B6770] block">الباقة الحالية:</span>
+                        <strong class="text-sm text-[#163E3E]">{{ workspace.plan_name }}</strong>
+                    </div>
+                    <div>
+                        <span class="text-[#5B6770] block">الباقة المطلوبة الجديدة:</span>
+                        <strong class="text-sm text-emerald-800">
+                            {{ workspace.requested_plan_name }}
+                            <template v-if="Number(workspace.requested_plan_price) > 0">
+                                ({{ workspace.requested_plan_price }} ج.م/شهر)
+                            </template>
+                            <template v-else>
+                                (سعر مخصص)
+                            </template>
+                        </strong>
+                        <span v-if="workspace.requested_plan_unit_limit" class="block text-[11px] text-[#5B6770]">
+                            السعة: حتى {{ workspace.requested_plan_unit_limit }} وحدات رئيسية
+                        </span>
+                    </div>
+                    <div>
+                        <span class="text-[#5B6770] block">تاريخ الطلب:</span>
+                        <strong class="text-sm text-[#163E3E]">{{ workspace.plan_requested_at || '—' }}</strong>
+                    </div>
+                    <div v-if="workspace.plan_request_notes" class="sm:col-span-3 pt-2 border-t border-amber-100 text-[#5B6770]">
+                        <span class="font-bold text-[#163E3E]">ملاحظات العميل:</span> {{ workspace.plan_request_notes }}
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-2">
+                    <button
+                        type="button"
+                        @click="openDenyModal"
+                        class="px-4 py-2 rounded-xl border border-rose-300 text-rose-700 bg-white hover:bg-rose-50 text-xs font-bold transition cursor-pointer"
+                    >
+                        رفض الطلب
+                    </button>
+                    <button
+                        type="button"
+                        @click="approvePlanRequest"
+                        :disabled="approveForm.processing"
+                        class="px-5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    >
+                        <Check class="w-4 h-4" />
+                        <span>{{ approveForm.processing ? 'جاري التفعيل...' : 'الموافقة ومنح الباقة المطلوبة فوراً' }}</span>
+                    </button>
                 </div>
             </div>
 
@@ -330,11 +444,14 @@ const activeRentalPercent = computed(() => {
                             <TextInput
                                 id="parent_unit_limit"
                                 type="number"
-                                min="0"
+                                :min="usage_summary.parent_units_created"
                                 v-model="limitsForm.parent_unit_limit"
                                 class="w-full h-10 px-3 bg-white"
                                 required
                             />
+                            <p class="text-[10px] text-[#5B6770] mt-1">
+                                الحد الأدنى المسموح به: {{ usage_summary.parent_units_created }} وحدة (لا يمكن التخفيض إلى أقل من الوحدات المنشأة حالياً)
+                            </p>
                         </div>
                         <div v-else class="text-xs font-bold text-emerald-700 bg-emerald-50 p-2.5 rounded-lg text-center">
                             سعة غير محدودة لإنشاء الوحدات الرئيسية (∞)
@@ -360,11 +477,14 @@ const activeRentalPercent = computed(() => {
                             <TextInput
                                 id="active_rental_limit"
                                 type="number"
-                                min="0"
+                                :min="usage_summary.active_rental_slots_occupied"
                                 v-model="limitsForm.active_rental_limit"
                                 class="w-full h-10 px-3 bg-white"
                                 required
                             />
+                            <p class="text-[10px] text-[#5B6770] mt-1">
+                                الحد الأدنى المسموح به: {{ usage_summary.active_rental_slots_occupied }} عقار (لا يمكن التخفيض إلى أقل من العقارات المؤجرة حالياً)
+                            </p>
                         </div>
                         <div v-else class="text-xs font-bold text-emerald-700 bg-emerald-50 p-2.5 rounded-lg text-center">
                             سعة غير محدودة للتأجير النشط المتزامن (∞)
@@ -472,5 +592,43 @@ const activeRentalPercent = computed(() => {
                 </div>
             </div>
         </div>
+
+        <!-- مودال رفض طلب تغيير الباقة -->
+        <Modal :show="showDenyModal" @close="showDenyModal = false" max-width="md">
+            <div class="p-6 text-right space-y-4" dir="rtl">
+                <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
+                    <h3 class="text-base font-bold text-rose-700">رفض طلب تغيير الباقة</h3>
+                    <button @click="showDenyModal = false" type="button" class="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+                </div>
+
+                <p class="text-xs text-[#5B6770] leading-relaxed">
+                    هل أنت متأكد من رفض طلب تغيير الباقة إلى <strong>{{ workspace.requested_plan_name }}</strong>؟ يمكنك كتابة سبب الرفض لتوضيحه للعميل.
+                </p>
+
+                <form @submit.prevent="submitDenyPlanRequest" class="space-y-4">
+                    <div>
+                        <InputLabel for="deny_reason" value="سبب الرفض (اختياري)" />
+                        <textarea
+                            id="deny_reason"
+                            v-model="denyForm.reason"
+                            rows="3"
+                            class="w-full mt-1.5 p-3 rounded-xl border border-[#D6E0E7] text-xs text-[#163E3E]"
+                            placeholder="مثال: يرجى تسوية المبالغ السابقة أولاً، أو اختيار باقة تتناسب مع عدد العقارات الحالي..."
+                        ></textarea>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-[#D6E0E7]">
+                        <SecondaryButton @click="showDenyModal = false" type="button">إلغاء</SecondaryButton>
+                        <button
+                            type="submit"
+                            :disabled="denyForm.processing"
+                            class="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs cursor-pointer"
+                        >
+                            {{ denyForm.processing ? 'جاري الرفض...' : 'تأكيد رفض الطلب' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </Modal>
     </AppLayout>
 </template>

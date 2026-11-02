@@ -228,7 +228,7 @@ const submit = () => {
                             :class="{ 'border-rose-500 bg-[#FFF5F5] ring-1 ring-rose-500': form.errors.payment_method }"
                         >
                             <option value="bank_transfer">تحويل بنكي / إنستاباي</option>
-                            <option value="other">بطاقة بنكية / إلكتروني</option>
+                            <option value="other">إنستاباي / محفظة إلكترونية / أخرى</option>
                             <option value="cash">نقدي (كاش)</option>
                             <option value="cheque">شيك مصرفي</option>
                         </select>
@@ -317,4 +317,3 @@ const submit = () => {
         </div>
     </div>
 </template>
-

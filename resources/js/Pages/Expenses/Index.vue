@@ -11,7 +11,6 @@ import {
     CheckCircle2,
     Clock,
     Coins,
-    CreditCard,
     Edit3,
     Loader2,
     Plus,
@@ -151,7 +150,7 @@ const handleRecordPayment = async (expense: ExpenseItem) => {
     if (!expense.id || expense.is_pending_amount || isRecordingPayment.value !== null) return;
 
     const confirmed = await confirmDialog.confirm({
-        icon: CreditCard,
+        icon: Coins,
         title: 'تسجيل سداد هذا المصروف؟',
         message: 'يُسجل المصروف كمدفوع بتاريخ اليوم.',
         details: expenseDetails(expense),
@@ -465,7 +464,7 @@ const handleReversePayment = async (expense: ExpenseItem) => {
                                         title="تسجيل سداد المصروف"
                                     >
                                         <Loader2 v-if="isRecordingPayment === exp.id" class="w-3.5 h-3.5 animate-spin" />
-                                        <CreditCard v-else class="w-3.5 h-3.5" />
+                                        <Coins v-else class="w-3.5 h-3.5" />
                                         <span>سداد</span>
                                     </button>
 

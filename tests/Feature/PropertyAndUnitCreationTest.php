@@ -813,3 +813,31 @@ test('property show page displays extended specifications and details', function
         ->where('property.guard_name', 'كريم سعيد')
     );
 });
+
+test('property cover image url resolves via DocumentStorageService as a web-accessible url', function () {
+    $propertyWithoutImage = Property::create([
+        'workspace_id' => $this->workspace->id,
+        'name' => 'عقار بدون صورة',
+        'code' => 'PROP-NO-IMG',
+        'property_type' => 'building',
+    ]);
+
+    expect($propertyWithoutImage->cover_image_url)->toBeNull();
+
+    $propertyWithImage = Property::create([
+        'workspace_id' => $this->workspace->id,
+        'name' => 'عقار مع صورة غلاف',
+        'code' => 'PROP-WITH-IMG',
+        'property_type' => 'apartment',
+        'cover_image' => 'properties/sample-facade.png',
+    ]);
+
+    expect($propertyWithImage->cover_image_url)->toBe('/storage/properties/sample-facade.png');
+
+    $response = $this->actingAs($this->user)->get(route('properties.show', $propertyWithImage->id));
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('Properties/Show')
+        ->where('property.cover_image_url', '/storage/properties/sample-facade.png')
+    );
+});

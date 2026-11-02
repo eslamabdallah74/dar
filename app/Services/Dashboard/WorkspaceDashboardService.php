@@ -7,6 +7,7 @@ namespace App\Services\Dashboard;
 use App\Enums\PropertyType;
 use App\Enums\UnitAvailabilityStatus;
 use App\Models\Lease;
+use App\Models\Plan;
 use App\Models\RentCharge;
 use App\Models\Unit;
 use App\Models\User;
@@ -166,10 +167,29 @@ class WorkspaceDashboardService
                 'currency_symbol' => $currencySymbol,
                 'currency_label' => $currencyLabel,
                 'plan_name' => $subscriptionUsage['plan_name'],
+                'plan_slug' => $subscriptionUsage['plan_slug'],
                 'units_used' => $subscriptionUsage['units_used'],
                 'units_limit' => $subscriptionUsage['units_limit'],
                 'usage_percentage' => $subscriptionUsage['percentage'],
+                'requested_plan' => $workspace->requestedPlan ? [
+                    'id' => $workspace->requestedPlan->id,
+                    'name' => $workspace->requestedPlan->name,
+                    'slug' => $workspace->requestedPlan->slug,
+                    'monthly_price' => (float) $workspace->requestedPlan->monthly_price,
+                    'parent_unit_limit' => $workspace->requestedPlan->parent_unit_limit,
+                ] : null,
+                'plan_request_status' => $workspace->plan_request_status,
+                'plan_requested_at' => $workspace->plan_requested_at?->format('d/m/Y'),
+                'plan_request_notes' => $workspace->plan_request_notes,
             ],
+            'available_plans' => Plan::where('is_active', true)->orderBy('id')->get(['id', 'name', 'slug', 'monthly_price', 'parent_unit_limit', 'active_rental_limit'])->map(fn (Plan $pl): array => [
+                'id' => $pl->id,
+                'name' => $pl->name,
+                'slug' => $pl->slug,
+                'monthly_price' => (float) $pl->monthly_price,
+                'parent_unit_limit' => $pl->parent_unit_limit,
+                'active_rental_limit' => $pl->active_rental_limit,
+            ]),
             'is_empty_workspace' => ($totalProperties === 0 && $totalBillableUnits === 0),
             'header' => [
                 'greeting' => ((now()->hour >= 5 && now()->hour < 12) ? 'صباح الخير' : 'مساء الخير').'، '.($user->name ?: 'عزيزي المالك').' 👋',
@@ -587,8 +607,9 @@ class WorkspaceDashboardService
     private function buildSubscriptionUsage(Workspace $workspace, int $totalBillableUnits): array
     {
         $activeSubscription = $workspace->activeSubscription()->with('plan')->first();
-        $planName = $activeSubscription?->plan->name ?? 'باقة الانطلاق (Starter)';
-        $unitsLimit = $activeSubscription ? $activeSubscription->plan?->unit_limit : 5;
+        $planName = $activeSubscription?->plan->name ?? 'باقة التجربة (Trial)';
+        $planSlug = $activeSubscription?->plan->slug ?? 'trial';
+        $unitsLimit = $activeSubscription ? $activeSubscription->plan?->unit_limit : ($workspace->parent_unit_limit ?? 1);
         $unitsUsed = $totalBillableUnits;
         $usagePercentage = ($unitsLimit !== null && $unitsLimit > 0)
             ? (int) min(100, round(($unitsUsed / $unitsLimit) * 100))
@@ -599,6 +620,7 @@ class WorkspaceDashboardService
             'units_limit' => $unitsLimit,
             'percentage' => $usagePercentage,
             'plan_name' => $planName,
+            'plan_slug' => $planSlug,
             'days_remaining' => 10,
         ];
     }

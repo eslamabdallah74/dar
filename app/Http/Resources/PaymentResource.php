@@ -62,7 +62,7 @@ class PaymentResource extends JsonResource
                 'bank_transfer' => 'تحويل بنكي',
                 'cash' => 'نقدي',
                 'cheque' => 'شيك',
-                default => 'إنستاباي / فيزا / إلكتروني',
+                default => 'إنستاباي / محفظة إلكترونية / أخرى',
             },
             'payment_method_label' => match ($this->payment_method) {
                 'bank_transfer' => 'تحويل بنكي',

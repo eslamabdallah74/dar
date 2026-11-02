@@ -4,7 +4,7 @@ import {
     Building2,
     UserPlus,
     FileText,
-    CreditCard,
+    Coins,
     Receipt,
     Wrench,
     Zap,
@@ -71,7 +71,7 @@ function navigate(routeName: string, params: Record<string, any> = {}) {
                 type="button"
                 class="h-11 px-3 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-2 group cursor-pointer"
             >
-                <CreditCard class="h-4 w-4 text-white group-hover:scale-110 transition-transform" />
+                <Coins class="h-4 w-4 text-white group-hover:scale-110 transition-transform" />
                 <span>+ تسجيل دفعة</span>
             </button>
 

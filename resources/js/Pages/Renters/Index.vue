@@ -9,7 +9,7 @@ import ModalRecordPayment from '@/Components/Common/ModalRecordPayment.vue';
 import {
     AlertTriangle,
     Check,
-    CreditCard,
+    Coins,
     MessageCircle,
     Search,
     Trash2,
@@ -403,7 +403,7 @@ const submitRenter = () => {
                                         class="h-8 px-3 rounded-lg bg-[#E8F0F0] hover:bg-[#163E3E] text-[#163E3E] hover:text-white text-xs font-bold transition flex items-center gap-1 cursor-pointer"
                                         title="تسجيل دفعة سريعة"
                                     >
-                                        <CreditCard class="w-3.5 h-3.5" />
+                                        <Coins class="w-3.5 h-3.5" />
                                         <span>دفعة</span>
                                     </button>
                                     <button
@@ -413,7 +413,7 @@ const submitRenter = () => {
                                         class="h-8 px-3 rounded-lg bg-slate-100 text-[#8A9AA7] hover:bg-amber-50 hover:text-amber-800 text-xs font-semibold flex items-center gap-1 cursor-not-allowed border border-[#D6E0E7]/60 transition"
                                         title="المستأجر غير مرتبط بأي عقد إيجار سارٍ حالياً"
                                     >
-                                        <CreditCard class="w-3.5 h-3.5 opacity-40" />
+                                        <Coins class="w-3.5 h-3.5 opacity-40" />
                                         <span>دفعة</span>
                                     </button>
 

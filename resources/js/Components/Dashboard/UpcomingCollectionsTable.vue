@@ -3,7 +3,7 @@ import { ref, computed } from 'vue';
 import ResourceTableHeading from '@/Components/Common/ResourceTableHeading.vue';
 import {
     MessageCircle,
-    CreditCard,
+    Coins,
     CheckCircle2,
     Search,
 } from 'lucide-vue-next';
@@ -238,7 +238,7 @@ const filteredItems = computed(() => {
                                         class="h-8 px-3 rounded-lg bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
                                         title="تسجيل دفعة سداد لهذا المستحق"
                                     >
-                                        <CreditCard class="h-3.5 w-3.5" />
+                                        <Coins class="h-3.5 w-3.5" />
                                         <span>سداد</span>
                                     </button>
                                 </div>

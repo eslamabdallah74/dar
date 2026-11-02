@@ -11,6 +11,7 @@ use App\Services\AI\Exceptions\AiProviderRateLimitException;
 use App\Services\AI\Exceptions\AiProviderTimeoutException;
 use App\Services\AI\Exceptions\AiWorkspaceDisabledException;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -113,21 +114,7 @@ class AiService
         $provider = $this->configurationService->getProvider();
         $baseUrl = rtrim($this->configurationService->getBaseUrl($provider), '/');
         $endpoint = $baseUrl.'/chat/completions';
-
-        $headers = [
-            'Authorization' => 'Bearer '.$apiKey,
-            'Content-Type' => 'application/json',
-        ];
-
-        if ($provider === AiConfigurationService::PROVIDER_OPENROUTER) {
-            $rawAppName = config('app.name');
-            $appName = is_string($rawAppName) && $rawAppName !== '' ? $rawAppName : 'Dar';
-            $rawAppUrl = config('app.url');
-            $appUrl = is_string($rawAppUrl) && $rawAppUrl !== '' ? $rawAppUrl : 'http://localhost';
-
-            $headers['HTTP-Referer'] = $appUrl;
-            $headers['X-Title'] = $appName;
-        }
+        $headers = $this->buildHeaders($apiKey, $provider);
 
         $payload = [
             'model' => $model,
@@ -145,8 +132,7 @@ class AiService
                 ->post($endpoint, $payload);
 
             if ($response->failed()) {
-                $errorBody = $response->json('error.message') ?? $response->body();
-                throw new \RuntimeException(is_string($errorBody) ? $errorBody : 'AI request failed');
+                $this->handleFailedResponse($response);
             }
 
             $data = $response->json();
@@ -163,6 +149,47 @@ class AiService
         } catch (Throwable $exception) {
             throw $this->mapException($exception);
         }
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function buildHeaders(string $apiKey, string $provider): array
+    {
+        $headers = [
+            'Authorization' => 'Bearer '.$apiKey,
+            'Content-Type' => 'application/json',
+        ];
+
+        if ($provider === AiConfigurationService::PROVIDER_OPENROUTER) {
+            $rawAppName = config('app.name');
+            $appName = is_string($rawAppName) && $rawAppName !== '' ? $rawAppName : 'Dar';
+            $rawAppUrl = config('app.url');
+            $appUrl = is_string($rawAppUrl) && $rawAppUrl !== '' ? $rawAppUrl : 'http://localhost';
+
+            $headers['HTTP-Referer'] = $appUrl;
+            $headers['X-Title'] = $appName;
+        }
+
+        return $headers;
+    }
+
+    /**
+     * @return never
+     */
+    protected function handleFailedResponse(Response $response): void
+    {
+        $status = $response->status();
+        $errorBody = $response->json('error.message') ?? $response->body();
+        $errorMessage = is_string($errorBody) ? $errorBody : 'AI request failed';
+
+        throw match ($status) {
+            429 => new AiProviderRateLimitException,
+            401, 403 => new AiConfigurationException('مفتاح API غير صالح، يرجى إعادة الضبط.'),
+            402 => new AiConfigurationException('رصيد حساب مزود الذكاء الاصطناعي غير كافٍ، يرجى شحن الرصيد لدى المزود.'),
+            404 => new AiConfigurationException('نموذج الذكاء الاصطناعي المحدد غير متاح لدى المزود حالياً، يرجى اختيار نموذج آخر من لوحة الإدارة.'),
+            default => new \RuntimeException("[{$status}] {$errorMessage}"),
+        };
     }
 
     /**

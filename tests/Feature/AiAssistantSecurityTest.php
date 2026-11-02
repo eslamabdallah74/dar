@@ -146,3 +146,57 @@ test('user without authorized workspace is forbidden from asking ai', function (
 
     $response->assertStatus(403);
 });
+
+test('provider returning 401 or 403 maps to 503 with invalid api key message', function () {
+    AiConfiguration::setValue(AiConfigurationService::KEY_API_KEY, 'sk-test-invalid-key');
+
+    Http::fake([
+        'https://api.openai.com/v1/chat/completions' => Http::response([
+            'error' => ['message' => 'Incorrect API key provided'],
+        ], 401),
+    ]);
+
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->aiEnabled()->create([
+        'owner_user_id' => $owner->id,
+    ]);
+    WorkspaceMember::create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $owner->id,
+        'role' => 'owner',
+    ]);
+
+    $response = $this->actingAs($owner)
+        ->withSession(['active_workspace_id' => $workspace->id])
+        ->postJson(route('ai.ask'), ['question' => 'مرحبا']);
+
+    $response->assertStatus(503)
+        ->assertJson(['message' => 'مفتاح API غير صالح، يرجى إعادة الضبط.']);
+});
+
+test('provider returning 429 maps to 429 with rate limit message', function () {
+    AiConfiguration::setValue(AiConfigurationService::KEY_API_KEY, 'sk-test-key');
+
+    Http::fake([
+        'https://api.openai.com/v1/chat/completions' => Http::response([
+            'error' => ['message' => 'Rate limit exceeded'],
+        ], 429),
+    ]);
+
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->aiEnabled()->create([
+        'owner_user_id' => $owner->id,
+    ]);
+    WorkspaceMember::create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $owner->id,
+        'role' => 'owner',
+    ]);
+
+    $response = $this->actingAs($owner)
+        ->withSession(['active_workspace_id' => $workspace->id])
+        ->postJson(route('ai.ask'), ['question' => 'مرحبا']);
+
+    $response->assertStatus(429)
+        ->assertJson(['message' => 'تم الوصول للحد الأقصى، يرجى الانتظار.']);
+});

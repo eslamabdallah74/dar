@@ -33,7 +33,35 @@ class AdminDashboardController extends Controller
      */
     public function index(Request $request): Response
     {
-        return Inertia::render('Admin/Dashboard', $this->adminDashboardService->build($this->authenticatedUser($request)));
+        $validated = $request->validate([
+            'tab' => ['nullable', 'string', Rule::in([
+                'overview',
+                'workspaces',
+                'users',
+                'properties',
+                'leases',
+                'payments',
+                'maintenance',
+                'subscriptions',
+                'logs',
+            ])],
+            'page' => ['nullable', 'integer', 'min:1', 'max:1000000'],
+            'search' => ['nullable', 'string', 'max:100'],
+        ]);
+        $adminUser = $this->authenticatedUser($request);
+
+        return Inertia::render('Admin/Dashboard', [
+            ...$this->adminDashboardService->build($adminUser),
+            'activeTab' => $validated['tab'] ?? 'overview',
+            'initialPage' => (int) ($validated['page'] ?? 1),
+            'initialSearch' => $validated['search'] ?? '',
+            'tableData' => Inertia::optional(fn (): array => $this->adminDashboardService->loadTabData(
+                (string) ($validated['tab'] ?? 'overview'),
+                (int) ($validated['page'] ?? 1),
+                (string) ($validated['search'] ?? ''),
+                $adminUser
+            )),
+        ]);
     }
 
     /**

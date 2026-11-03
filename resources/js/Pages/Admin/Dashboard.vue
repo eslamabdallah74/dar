@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PrimaryKpiRow from '@/Components/Dashboard/PrimaryKpiRow.vue';
@@ -8,6 +8,7 @@ import RentalIncomeChart from '@/Components/Dashboard/RentalIncomeChart.vue';
 import OccupancySummaryCard from '@/Components/Dashboard/OccupancySummaryCard.vue';
 import AttentionRequiredCard from '@/Components/Dashboard/AttentionRequiredCard.vue';
 import RecentActivityFeed from '@/Components/Dashboard/RecentActivityFeed.vue';
+import AdminDashboardPagination from '@/Components/Dashboard/AdminDashboardPagination.vue';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
 import Modal from '@/Components/Modal.vue';
 import TextInput from '@/Components/TextInput.vue';
@@ -42,7 +43,26 @@ import {
 } from 'lucide-vue-next';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
 
+type DashboardTab = 'overview' | 'workspaces' | 'users' | 'properties' | 'leases' | 'payments' | 'maintenance' | 'subscriptions' | 'logs';
+
+interface PaginatedRecords {
+    data: any[];
+    current_page: number;
+    last_page: number;
+    from: number | null;
+    to: number | null;
+    total: number;
+}
+
+interface DashboardTableData {
+    records: PaginatedRecords;
+    plans?: any[];
+}
+
 interface Props {
+    activeTab: DashboardTab;
+    initialPage: number;
+    initialSearch: string;
     adminUser: {
         name: string;
         email: string;
@@ -71,82 +91,147 @@ interface Props {
     occupancySummary: any;
     attentionItems: any[];
     recentActivities: any[];
-    workspaces: any[];
-    users: any[];
-    properties: any[];
-    leases: any[];
-    payments: any[];
-    plans: any[];
-    messageLogs: any[];
-    maintenanceRequests: any[];
+    tabCounts: Record<string, number>;
+    workspaceSummary: {
+        total: number;
+        active_subscriptions: number;
+        pending_plan_requests: number;
+    };
+    tableData?: DashboardTableData;
 }
 
 const props = defineProps<Props>();
 
-// Current selected tab for data control
-const currentTab = ref<'overview' | 'workspaces' | 'users' | 'properties' | 'leases' | 'payments' | 'maintenance' | 'subscriptions' | 'logs'>('overview');
-const searchQuery = ref('');
+const currentTab = ref<DashboardTab>(props.activeTab);
+const searchQuery = ref(props.initialSearch);
+const loadedTab = ref<DashboardTab | null>(null);
+const tableLoading = ref(false);
+const tableError = ref('');
+let searchTimeout: ReturnType<typeof setTimeout> | undefined;
 
-// Tabs metadata
-const controlTabs = [
-    { key: 'overview', name: 'نظرة عامة', icon: LayoutDashboard },
-    { key: 'workspaces', name: 'مساحات العمل', count: props.workspaces.length, icon: Building2 },
-    { key: 'users', name: 'المستخدمون', count: props.users.length, icon: Users },
-    { key: 'properties', name: 'العقارات والوحدات', count: props.properties.length, icon: Home },
-    { key: 'leases', name: 'العقود', count: props.leases.length, icon: FileText },
-    { key: 'payments', name: 'المدفوعات', count: props.payments.length, icon: Coins },
-    { key: 'maintenance', name: 'طلبات الصيانة', count: props.maintenanceRequests.length, icon: Wrench },
-    { key: 'subscriptions', name: 'الباقات والاشتراكات', count: props.plans.length, icon: Layers },
-    { key: 'logs', name: 'رسائل واتساب', count: props.messageLogs.length, icon: MessageSquare },
-];
+const controlTabs = computed(() => [
+    { key: 'overview' as const, name: 'نظرة عامة', icon: LayoutDashboard },
+    { key: 'workspaces' as const, name: 'مساحات العمل', count: props.tabCounts.workspaces, icon: Building2 },
+    { key: 'users' as const, name: 'المستخدمون', count: props.tabCounts.users, icon: Users },
+    { key: 'properties' as const, name: 'العقارات والوحدات', count: props.tabCounts.properties, icon: Home },
+    { key: 'leases' as const, name: 'العقود', count: props.tabCounts.leases, icon: FileText },
+    { key: 'payments' as const, name: 'المدفوعات', count: props.tabCounts.payments, icon: Coins },
+    { key: 'maintenance' as const, name: 'طلبات الصيانة', count: props.tabCounts.maintenance, icon: Wrench },
+    { key: 'subscriptions' as const, name: 'الباقات والاشتراكات', count: props.tabCounts.subscriptions, icon: Layers },
+    { key: 'logs' as const, name: 'رسائل واتساب', count: props.tabCounts.logs, icon: MessageSquare },
+]);
+
+const currentRecords = computed(() => loadedTab.value === currentTab.value ? props.tableData?.records : undefined);
+const tabRows = computed(() => currentRecords.value?.data ?? []);
+const plans = computed(() => props.tableData?.plans ?? []);
 
 function handleGlobalSearch(query: string) {
-    searchQuery.value = query.toLowerCase();
+    searchQuery.value = query;
 }
 
-// Filtered lists
-const filteredWorkspaces = computed(() => {
-    if (!searchQuery.value) return props.workspaces;
-    return props.workspaces.filter(w =>
-        w.name.toLowerCase().includes(searchQuery.value) ||
-        w.owner_name.toLowerCase().includes(searchQuery.value) ||
-        w.owner_email.toLowerCase().includes(searchQuery.value)
-    );
+function loadTabData(tab: DashboardTab, page = 1): void {
+    if (tab === 'overview') {
+        return;
+    }
+
+    tableLoading.value = true;
+    tableError.value = '';
+    router.get(route('admin.dashboard'), {
+        tab,
+        page,
+        search: searchQuery.value,
+    }, {
+        only: ['tableData'],
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+        onSuccess: () => {
+            loadedTab.value = tab;
+        },
+        onError: () => {
+            tableError.value = 'تعذر تحميل البيانات. يرجى المحاولة مرة أخرى.';
+        },
+        onFinish: () => {
+            tableLoading.value = false;
+        },
+    });
+}
+
+function selectTab(tab: string): void {
+    if (!isDashboardTab(tab)) {
+        return;
+    }
+
+    currentTab.value = tab;
+    if (tab !== 'overview') {
+        loadTabData(tab);
+    }
+}
+
+function isDashboardTab(tab: string): tab is DashboardTab {
+    return tab === 'overview'
+        || tab === 'workspaces'
+        || tab === 'users'
+        || tab === 'properties'
+        || tab === 'leases'
+        || tab === 'payments'
+        || tab === 'maintenance'
+        || tab === 'subscriptions'
+        || tab === 'logs';
+}
+
+function changePage(page: number): void {
+    loadTabData(currentTab.value, page);
+}
+
+function refreshDashboard(): void {
+    const only = [
+        'kpis',
+        'platformSummary',
+        'operationalKpis',
+        'incomeChart',
+        'occupancySummary',
+        'attentionItems',
+        'recentActivities',
+        'tabCounts',
+        'workspaceSummary',
+    ];
+
+    if (currentTab.value !== 'overview') {
+        only.push('tableData');
+        tableLoading.value = true;
+    }
+
+    router.reload({
+        only,
+        onSuccess: () => {
+            if (currentTab.value !== 'overview') {
+                loadedTab.value = currentTab.value;
+            }
+        },
+        onFinish: () => {
+            tableLoading.value = false;
+        },
+    });
+}
+
+watch(searchQuery, () => {
+    if (currentTab.value === 'overview') {
+        return;
+    }
+
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => loadTabData(currentTab.value), 300);
 });
 
-const filteredUsers = computed(() => {
-    if (!searchQuery.value) return props.users;
-    return props.users.filter(u =>
-        u.name.toLowerCase().includes(searchQuery.value) ||
-        u.email.toLowerCase().includes(searchQuery.value)
-    );
+onMounted(() => {
+    if (currentTab.value !== 'overview') {
+        loadTabData(currentTab.value, props.initialPage);
+    }
 });
 
-const filteredProperties = computed(() => {
-    if (!searchQuery.value) return props.properties;
-    return props.properties.filter(p =>
-        p.name.toLowerCase().includes(searchQuery.value) ||
-        p.workspace_name.toLowerCase().includes(searchQuery.value) ||
-        p.city.toLowerCase().includes(searchQuery.value)
-    );
-});
-
-const filteredLeases = computed(() => {
-    if (!searchQuery.value) return props.leases;
-    return props.leases.filter(l =>
-        l.lease_number.toLowerCase().includes(searchQuery.value) ||
-        l.renter_name.toLowerCase().includes(searchQuery.value) ||
-        l.workspace_name.toLowerCase().includes(searchQuery.value)
-    );
-});
-
-const filteredPayments = computed(() => {
-    if (!searchQuery.value) return props.payments;
-    return props.payments.filter(p =>
-        p.payment_number.toLowerCase().includes(searchQuery.value) ||
-        p.renter_name.toLowerCase().includes(searchQuery.value) ||
-        p.workspace_name.toLowerCase().includes(searchQuery.value)
-    );
+onUnmounted(() => {
+    clearTimeout(searchTimeout);
 });
 
 // Modals State
@@ -287,7 +372,7 @@ async function deleteWorkspace(wsId: number, name: string) {
 function openChangePlan(ws: any) {
     selectedWorkspace.value = ws;
     subscriptionForm.workspace_id = ws.id;
-    const currentPlan = props.plans.find(p => p.slug === ws.plan_slug) || props.plans[0];
+    const currentPlan = plans.value.find(p => p.slug === ws.plan_slug) || plans.value[0];
     subscriptionForm.plan_id = currentPlan ? currentPlan.id : 1;
     subscriptionForm.status = ws.subscription_status || 'active';
     showSubscriptionModal.value = true;
@@ -305,11 +390,11 @@ function openEditLimits(ws: any) {
 
 function handleKpiSelect(key: 'properties' | 'units' | 'occupancy' | 'collected') {
     if (key === 'properties' || key === 'units') {
-        currentTab.value = 'properties';
+        selectTab('properties');
     } else if (key === 'occupancy') {
-        currentTab.value = 'leases';
+        selectTab('leases');
     } else if (key === 'collected') {
-        currentTab.value = 'payments';
+        selectTab('payments');
     }
 }
 
@@ -369,14 +454,14 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
         breadcrumb="لوحة القيادة المركزية"
         :admin-mode="true"
         :active-tab="currentTab"
-        @select-tab="(tab: any) => currentTab = tab"
+        @select-tab="selectTab"
         @search="handleGlobalSearch"
         @new-action="openCreateUser"
     >
         <template #actions>
             <div class="flex items-center gap-2.5">
                 <button
-                    @click="router.reload()"
+                    @click="refreshDashboard"
                     type="button"
                     class="group flex h-10 items-center gap-1.5 rounded-xl border border-[#D6E0E7] bg-white px-3.5 text-xs font-semibold text-[#163E3E] transition hover:border-[#B8CECA] hover:bg-[#F0F6F4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#163E3E] focus-visible:ring-offset-2 active:scale-[0.98]"
                     title="تحديث البيانات"
@@ -463,7 +548,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
             <button
                 v-for="tab in controlTabs"
                 :key="tab.key"
-                @click="currentTab = tab.key as any"
+                @click="selectTab(tab.key)"
                 type="button"
                 class="min-h-11 shrink-0 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
                 :class="currentTab === tab.key
@@ -482,8 +567,17 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
             </button>
         </div>
 
+        <div v-if="tableError" class="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800" role="alert">
+            <span>{{ tableError }}</span>
+            <button type="button" class="font-semibold underline" @click="loadTabData(currentTab)">إعادة المحاولة</button>
+        </div>
+
+        <div v-else-if="tableLoading" class="rounded-xl border border-[#D6E0E7] bg-white px-4 py-3 text-sm text-[#5B6770]" role="status" aria-live="polite">
+            جارٍ تحميل بيانات {{ controlTabs.find((tab) => tab.key === currentTab)?.name }}...
+        </div>
+
         <!-- TAB 1: نظرة عامة ورسوم بيانية (Overview Tab) -->
-        <div v-show="currentTab === 'overview'" class="space-y-8 animate-in fade-in">
+        <div v-if="currentTab === 'overview'" class="space-y-8 animate-in fade-in">
             <!-- المؤشرات الأربعة الرئيسية (إعادة استخدام PrimaryKpiRow المعتمد مع تبديل التبويبات عند النقر) -->
             <PrimaryKpiRow
                 :kpis="kpis"
@@ -523,8 +617,8 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                 <AttentionRequiredCard
                     title="تنبيهات المنصة العاجلة"
                     :items="attentionItems"
-                    @view-all="currentTab = 'leases'"
-                    @action="(item) => currentTab = (item.type === 'overdue' ? 'payments' : 'leases')"
+                    @view-all="selectTab('leases')"
+                    @action="(item) => selectTab(item.type === 'overdue' ? 'payments' : 'leases')"
                 />
                 <RecentActivityFeed
                     :activities="recentActivities"
@@ -533,7 +627,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
         </div>
 
         <!-- TAB 2: إدارة مساحات العمل (Workspaces Tab) -->
-        <div v-show="currentTab === 'workspaces'" class="space-y-4 animate-in fade-in">
+        <div v-if="currentTab === 'workspaces'" class="space-y-4 animate-in fade-in">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                     <h3 class="text-xl font-bold tracking-tight text-[#163E3E]">مساحات العمل المسجلة</h3>
@@ -543,20 +637,20 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                     <span class="inline-flex items-center gap-1.5 rounded-xl border border-[#D6E0E7] bg-white px-3 py-2 font-semibold text-[#163E3E]">
                         <Building2 class="w-3.5 h-3.5 text-[#163E3E]" />
                         <span>إجمالي المساحات:</span>
-                        <strong class="text-[#163E3E]">{{ props.workspaces.length }}</strong>
+                        <strong class="text-[#163E3E]">{{ workspaceSummary.total }}</strong>
                     </span>
                     <span class="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 font-semibold text-emerald-800">
                         <Check class="w-3.5 h-3.5 text-emerald-600" />
                         <span>اشتراكات نشطة:</span>
-                        <strong class="text-emerald-900">{{ props.workspaces.filter(w => w.subscription_status === 'active').length }}</strong>
+                        <strong class="text-emerald-900">{{ workspaceSummary.active_subscriptions }}</strong>
                     </span>
                     <span
-                        v-if="props.workspaces.filter(w => w.plan_request_status === 'pending').length > 0"
+                        v-if="workspaceSummary.pending_plan_requests > 0"
                         class="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 font-semibold text-amber-900"
                     >
                         <Sparkles class="w-3.5 h-3.5 text-amber-600" />
                         <span>طلبات ترقية معلقة:</span>
-                        <strong class="text-amber-900">{{ props.workspaces.filter(w => w.plan_request_status === 'pending').length }}</strong>
+                        <strong class="text-amber-900">{{ workspaceSummary.pending_plan_requests }}</strong>
                     </span>
                 </div>
             </div>
@@ -575,7 +669,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-[#E8EFF4]">
-                            <tr v-for="ws in filteredWorkspaces" :key="ws.id" class="group transition-colors duration-150 hover:bg-[#F6F9F8]">
+                            <tr v-for="ws in tabRows" :key="ws.id" class="group transition-colors duration-150 hover:bg-[#F6F9F8]">
                                 <td class="px-4 py-4">
                                     <div class="flex items-start gap-3">
                                         <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E8F0F0] text-[#163E3E]">
@@ -739,7 +833,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                     </div>
                                 </td>
                             </tr>
-                            <tr v-if="filteredWorkspaces.length === 0">
+                            <tr v-if="!tableLoading && loadedTab === 'workspaces' && tabRows.length === 0">
                                 <td colspan="6" class="px-4 py-14 text-center">
                                     <div class="mx-auto flex max-w-sm flex-col items-center gap-2">
                                         <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F0F5F4] text-[#587070]">
@@ -754,10 +848,20 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                     </table>
                 </div>
             </div>
+            <AdminDashboardPagination
+                v-if="loadedTab === 'workspaces' && currentRecords"
+                :current-page="currentRecords.current_page"
+                :last-page="currentRecords.last_page"
+                :from="currentRecords.from"
+                :to="currentRecords.to"
+                :total="currentRecords.total"
+                :loading="tableLoading"
+                @change-page="changePage"
+            />
         </div>
 
         <!-- TAB 3: إدارة المستخدمين (Users Tab) -->
-        <div v-show="currentTab === 'users'" class="space-y-4 animate-in fade-in">
+        <div v-if="currentTab === 'users'" class="space-y-4 animate-in fade-in">
             <div class="flex items-center justify-between">
                 <div>
                     <h3 class="text-lg font-bold text-[#163E3E]">المستخدمون والمسؤولون (Platform Users)</h3>
@@ -783,7 +887,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-[#E8EFF4]">
-                            <tr v-for="u in filteredUsers" :key="u.id" class="hover:bg-[#F8FAFC] transition">
+                            <tr v-for="u in tabRows" :key="u.id" class="hover:bg-[#F8FAFC] transition">
                                 <td class="p-3.5 font-bold text-[#163E3E]">
                                     <div class="flex items-center gap-2">
                                         <div
@@ -844,17 +948,27 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                     </div>
                                 </td>
                             </tr>
-                            <tr v-if="filteredUsers.length === 0">
+                            <tr v-if="!tableLoading && loadedTab === 'users' && tabRows.length === 0">
                                 <td colspan="6" class="p-8 text-center text-[#5B6770]">لا يوجد مستخدمون مطابقون لبحثك.</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
+            <AdminDashboardPagination
+                v-if="loadedTab === 'users' && currentRecords"
+                :current-page="currentRecords.current_page"
+                :last-page="currentRecords.last_page"
+                :from="currentRecords.from"
+                :to="currentRecords.to"
+                :total="currentRecords.total"
+                :loading="tableLoading"
+                @change-page="changePage"
+            />
         </div>
 
         <!-- TAB 4: العقارات والوحدات (Properties Tab) -->
-        <div v-show="currentTab === 'properties'" class="space-y-4 animate-in fade-in">
+        <div v-if="currentTab === 'properties'" class="space-y-4 animate-in fade-in">
             <div>
                 <h3 class="text-lg font-bold text-[#163E3E]">العقارات والوحدات عبر المنصة</h3>
                 <p class="text-xs text-[#5B6770]">مراقبة كافة المباني والوحدات السكنية والتجارية في كل مساحات العمل.</p>
@@ -874,7 +988,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-[#E8EFF4]">
-                            <tr v-for="p in filteredProperties" :key="p.id" class="hover:bg-[#F8FAFC] transition">
+                            <tr v-for="p in tabRows" :key="p.id" class="hover:bg-[#F8FAFC] transition">
                                 <td class="p-3.5 font-bold text-[#163E3E]">{{ p.name }}</td>
                                 <td class="p-3.5">
                                     <span class="px-2 py-0.5 rounded-md bg-[#E8F0F0] text-[#163E3E] font-semibold text-[11px]">
@@ -886,14 +1000,27 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                 <td class="p-3.5 text-center font-bold text-[#163E3E]">{{ p.units_count }}</td>
                                 <td class="p-3.5 text-[#5B6770]">{{ p.created_at }}</td>
                             </tr>
+                            <tr v-if="!tableLoading && loadedTab === 'properties' && tabRows.length === 0">
+                                <td colspan="6" class="p-8 text-center text-[#5B6770]">لا توجد عقارات مطابقة لبحثك.</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
+            <AdminDashboardPagination
+                v-if="loadedTab === 'properties' && currentRecords"
+                :current-page="currentRecords.current_page"
+                :last-page="currentRecords.last_page"
+                :from="currentRecords.from"
+                :to="currentRecords.to"
+                :total="currentRecords.total"
+                :loading="tableLoading"
+                @change-page="changePage"
+            />
         </div>
 
         <!-- TAB 5: العقود والمستأجرون (Leases Tab) -->
-        <div v-show="currentTab === 'leases'" class="space-y-4 animate-in fade-in">
+        <div v-if="currentTab === 'leases'" class="space-y-4 animate-in fade-in">
             <div>
                 <h3 class="text-lg font-bold text-[#163E3E]">العقود الإيجارية (Platform Leases)</h3>
                 <p class="text-xs text-[#5B6770]">مراقبة سريان العقود، القيم الإيجارية، وتغيير حالات العقود مركزياً.</p>
@@ -915,7 +1042,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-[#E8EFF4]">
-                            <tr v-for="l in filteredLeases" :key="l.id" class="hover:bg-[#F8FAFC] transition">
+                            <tr v-for="l in tabRows" :key="l.id" class="hover:bg-[#F8FAFC] transition">
                                 <td class="p-3.5 font-bold font-mono text-[#163E3E]">{{ l.lease_number }}</td>
                                 <td class="p-3.5 font-medium text-[#163E3E]">{{ l.workspace_name }}</td>
                                 <td class="p-3.5 font-semibold text-[#163E3E]">{{ l.renter_name }}</td>
@@ -939,14 +1066,27 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                     </select>
                                 </td>
                             </tr>
+                            <tr v-if="!tableLoading && loadedTab === 'leases' && tabRows.length === 0">
+                                <td colspan="8" class="p-8 text-center text-[#5B6770]">لا توجد عقود مطابقة لبحثك.</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
+            <AdminDashboardPagination
+                v-if="loadedTab === 'leases' && currentRecords"
+                :current-page="currentRecords.current_page"
+                :last-page="currentRecords.last_page"
+                :from="currentRecords.from"
+                :to="currentRecords.to"
+                :total="currentRecords.total"
+                :loading="tableLoading"
+                @change-page="changePage"
+            />
         </div>
 
         <!-- TAB 6: المالية والمدفوعات (Payments Tab) -->
-        <div v-show="currentTab === 'payments'" class="space-y-4 animate-in fade-in">
+        <div v-if="currentTab === 'payments'" class="space-y-4 animate-in fade-in">
             <div>
                 <h3 class="text-lg font-bold text-[#163E3E]">سجل الدفعات والتحصيلات في المنصة</h3>
                 <p class="text-xs text-[#5B6770]">كافة المعاملات المالية وسندات القبض المسجلة في مختلف مساحات العمل.</p>
@@ -967,7 +1107,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-[#E8EFF4]">
-                            <tr v-for="p in filteredPayments" :key="p.id" class="hover:bg-[#F8FAFC] transition">
+                            <tr v-for="p in tabRows" :key="p.id" class="hover:bg-[#F8FAFC] transition">
                                 <td class="p-3.5 font-bold font-mono text-[#163E3E]">{{ p.payment_number }}</td>
                                 <td class="p-3.5 font-semibold text-[#163E3E]">{{ p.workspace_name }}</td>
                                 <td class="p-3.5 font-semibold text-[#163E3E]">{{ p.renter_name }}</td>
@@ -976,14 +1116,27 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                 <td class="p-3.5 font-mono text-[#5B6770]">{{ p.reference }}</td>
                                 <td class="p-3.5 text-[#5B6770]">{{ p.paid_at }}</td>
                             </tr>
+                            <tr v-if="!tableLoading && loadedTab === 'payments' && tabRows.length === 0">
+                                <td colspan="7" class="p-8 text-center text-[#5B6770]">لا توجد دفعات مطابقة لبحثك.</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
+            <AdminDashboardPagination
+                v-if="loadedTab === 'payments' && currentRecords"
+                :current-page="currentRecords.current_page"
+                :last-page="currentRecords.last_page"
+                :from="currentRecords.from"
+                :to="currentRecords.to"
+                :total="currentRecords.total"
+                :loading="tableLoading"
+                @change-page="changePage"
+            />
         </div>
 
         <!-- TAB 7: طلبات الصيانة (Maintenance Tab) -->
-        <div v-show="currentTab === 'maintenance'" class="space-y-4 animate-in fade-in">
+        <div v-if="currentTab === 'maintenance'" class="space-y-4 animate-in fade-in">
             <div>
                 <h3 class="text-lg font-bold text-[#163E3E]">طلبات الصيانة المركزية</h3>
                 <p class="text-xs text-[#5B6770]">متابعة كافة طلبات الصيانة والإصلاح في الوحدات العقارية والتحكم بحالاتها.</p>
@@ -1004,7 +1157,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-[#E8EFF4]">
-                            <tr v-for="mr in maintenanceRequests" :key="mr.id" class="hover:bg-[#F8FAFC] transition">
+                            <tr v-for="mr in tabRows" :key="mr.id" class="hover:bg-[#F8FAFC] transition">
                                 <td class="p-3.5 font-bold text-[#163E3E]">{{ mr.title }}</td>
                                 <td class="p-3.5 text-[#163E3E] font-medium">{{ mr.workspace_name }}</td>
                                 <td class="p-3.5">
@@ -1033,14 +1186,27 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                     </select>
                                 </td>
                             </tr>
+                            <tr v-if="!tableLoading && loadedTab === 'maintenance' && tabRows.length === 0">
+                                <td colspan="7" class="p-8 text-center text-[#5B6770]">لا توجد طلبات صيانة مطابقة لبحثك.</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
+            <AdminDashboardPagination
+                v-if="loadedTab === 'maintenance' && currentRecords"
+                :current-page="currentRecords.current_page"
+                :last-page="currentRecords.last_page"
+                :from="currentRecords.from"
+                :to="currentRecords.to"
+                :total="currentRecords.total"
+                :loading="tableLoading"
+                @change-page="changePage"
+            />
         </div>
 
         <!-- TAB 8: الباقات والاشتراكات (Subscriptions Tab) -->
-        <div v-show="currentTab === 'subscriptions'" class="space-y-6 animate-in fade-in">
+        <div v-if="currentTab === 'subscriptions'" class="space-y-6 animate-in fade-in">
             <div>
                 <h3 class="text-lg font-bold text-[#163E3E]">باقات الاشتراك الرسمية للمنصة</h3>
                 <p class="text-xs text-[#5B6770]">إدارة تسعير الخطط والحدود القصوى للوحدات.</p>
@@ -1049,7 +1215,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
             <!-- كروت الباقات -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div
-                    v-for="plan in plans"
+                    v-for="plan in tabRows"
                     :key="plan.id"
                     class="p-5 rounded-2xl border border-[#D6E0E7] bg-white shadow-2xs space-y-3"
                 >
@@ -1064,11 +1230,24 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                         حد الوحدات: <strong class="text-[#163E3E]">{{ plan.unit_limit ? plan.unit_limit + ' وحدة' : 'غير محدود' }}</strong>
                     </div>
                 </div>
+                <p v-if="!tableLoading && loadedTab === 'subscriptions' && tabRows.length === 0" class="col-span-full rounded-xl border border-dashed border-[#D6E0E7] bg-white p-8 text-center text-sm text-[#5B6770]">
+                    لا توجد باقات مطابقة لبحثك.
+                </p>
             </div>
+            <AdminDashboardPagination
+                v-if="loadedTab === 'subscriptions' && currentRecords"
+                :current-page="currentRecords.current_page"
+                :last-page="currentRecords.last_page"
+                :from="currentRecords.from"
+                :to="currentRecords.to"
+                :total="currentRecords.total"
+                :loading="tableLoading"
+                @change-page="changePage"
+            />
         </div>
 
         <!-- TAB 9: سجل رسائل واتساب (WhatsApp Logs Tab) -->
-        <div v-show="currentTab === 'logs'" class="space-y-4 animate-in fade-in">
+        <div v-if="currentTab === 'logs'" class="space-y-4 animate-in fade-in">
             <div>
                 <h3 class="text-lg font-bold text-[#163E3E]">سجل رسائل واتساب الرسمية (WhatsApp Cloud API)</h3>
                 <p class="text-xs text-[#5B6770]">مراقبة تسليم قوالب التذكيرات التلقائية وحالات الرسائل عبر المنصة.</p>
@@ -1089,7 +1268,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-[#E8EFF4]">
-                            <tr v-for="log in messageLogs" :key="log.id" class="hover:bg-[#F8FAFC] transition">
+                            <tr v-for="log in tabRows" :key="log.id" class="hover:bg-[#F8FAFC] transition">
                                 <td class="p-3.5 font-bold text-[#163E3E]">{{ log.renter_name }}</td>
                                 <td class="p-3.5 font-mono text-[#5B6770]" dir="ltr">{{ log.recipient_phone }}</td>
                                 <td class="p-3.5 text-[#163E3E] font-medium">{{ log.workspace_name }}</td>
@@ -1100,13 +1279,23 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                 <td class="p-3.5 text-[#5B6770]">{{ log.scheduled_at }}</td>
                                 <td class="p-3.5 text-[#5B6770]">{{ log.sent_at }}</td>
                             </tr>
-                            <tr v-if="messageLogs.length === 0">
+                            <tr v-if="!tableLoading && loadedTab === 'logs' && tabRows.length === 0">
                                 <td colspan="7" class="p-8 text-center text-[#5B6770]">لا توجد سجلات رسائل واتساب مسجلة حالياً.</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
+            <AdminDashboardPagination
+                v-if="loadedTab === 'logs' && currentRecords"
+                :current-page="currentRecords.current_page"
+                :last-page="currentRecords.last_page"
+                :from="currentRecords.from"
+                :to="currentRecords.to"
+                :total="currentRecords.total"
+                :loading="tableLoading"
+                @change-page="changePage"
+            />
         </div>
 
         <!-- مودال إضافة مستخدم جديد (Create User Modal) -->

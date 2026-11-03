@@ -72,37 +72,37 @@
     </div>
 
     <!-- Outer Table -->
-    <table border="0" cellpadding="0" cellspacing="0" width="100%" bgcolor="#F4F6F5" style="background-color: #F4F6F5; min-height: 100vh; padding: 32px 12px;" dir="rtl">
+    <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #F4F6F5; min-height: 100vh; padding: 32px 12px;" dir="rtl">
         <tr>
-            <td align="center" valign="top">
+            <td style="text-align: center; vertical-align: top;">
                 <!-- Main Email Card -->
-                <table border="0" cellpadding="0" cellspacing="0" width="100%" class="email-container" style="max-width: 600px; background-color: #FFFFFF; border-radius: 20px; overflow: hidden; border: 1px solid #E2E8F0; box-shadow: 0 10px 30px rgba(22, 62, 62, 0.06);">
+                <table role="presentation" class="email-container" style="width: 100%; max-width: 600px; margin: 0 auto; border-collapse: collapse; background-color: #FFFFFF; border-radius: 20px; overflow: hidden; border: 1px solid #E2E8F0; box-shadow: 0 10px 30px rgba(22, 62, 62, 0.06);">
                     
                     <!-- Top Brand Color Accent Bar -->
                     <tr>
-                        <td height="6" style="background: linear-gradient(90deg, #163E3E 0%, #163E3E 70%, #F7C33D 70%, #F7C33D 100%); line-height: 6px; font-size: 6px;">
+                        <td style="height: 6px; background: linear-gradient(90deg, #163E3E 0%, #163E3E 70%, #F7C33D 70%, #F7C33D 100%); line-height: 6px; font-size: 6px;">
                             &nbsp;
                         </td>
                     </tr>
 
                     <!-- Brand Header -->
                     <tr>
-                        <td align="center" class="brand-header" style="padding: 32px 36px 24px; border-bottom: 1px solid #F1F5F9; background-color: #FAFCFB;">
-                            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                        <td class="brand-header" style="text-align: center; padding: 32px 36px 24px; border-bottom: 1px solid #F1F5F9; background-color: #FAFCFB;">
+                            <table role="presentation" style="width: 100%; border-collapse: collapse;">
                                 <tr>
                                     <!-- Brand Logo and Name -->
-                                    <td align="right" valign="middle">
-                                        <table border="0" cellpadding="0" cellspacing="0">
+                                    <td style="text-align: right; vertical-align: middle;">
+                                        <table role="presentation" style="border-collapse: collapse; display: inline-table;">
                                             <tr>
-                                                <td valign="middle" style="padding-left: 12px;">
+                                                <td style="vertical-align: middle; padding-left: 12px;">
                                                     <!-- The Nested Boxes Icon mark representation -->
-                                                    <table border="0" cellpadding="0" cellspacing="0" style="width: 44px; height: 44px; background-color: #163E3E; border-radius: 12px; text-align: center;">
+                                                    <table role="presentation" style="width: 44px; height: 44px; border-collapse: collapse; background-color: #163E3E; border-radius: 12px; text-align: center;">
                                                         <tr>
-                                                            <td align="center" valign="middle">
-                                                                <table border="0" cellpadding="0" cellspacing="0" style="width: 26px; height: 26px; background-color: #F8F4EA; border-radius: 7px; text-align: center;">
+                                                            <td style="text-align: center; vertical-align: middle;">
+                                                                <table role="presentation" style="width: 26px; height: 26px; margin: 0 auto; border-collapse: collapse; background-color: #F8F4EA; border-radius: 7px; text-align: center;">
                                                                     <tr>
-                                                                        <td align="center" valign="middle">
-                                                                            <table border="0" cellpadding="0" cellspacing="0" style="width: 13px; height: 13px; background-color: #F7C33D; border-radius: 4px;">
+                                                                        <td style="text-align: center; vertical-align: middle;">
+                                                                            <table role="presentation" style="width: 13px; height: 13px; margin: 0 auto; border-collapse: collapse; background-color: #F7C33D; border-radius: 4px;">
                                                                                 <tr><td></td></tr>
                                                                             </table>
                                                                         </td>
@@ -112,7 +112,7 @@
                                                         </tr>
                                                     </table>
                                                 </td>
-                                                <td valign="middle" align="right">
+                                                <td style="text-align: right; vertical-align: middle;">
                                                     <div dir="ltr" style="font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 22px; font-weight: 800; line-height: 1; letter-spacing: -0.5px;">
                                                         <span style="color: #163E3E;">Nook</span><span style="color: #F7C33D;">Mate</span>
                                                     </div>
@@ -124,7 +124,7 @@
                                         </table>
                                     </td>
                                     <!-- Security Shield Tag -->
-                                    <td align="left" valign="middle">
+                                    <td style="text-align: left; vertical-align: middle;">
                                         <span style="display: inline-block; background-color: #EBF5F0; color: #163E3E; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 999px; border: 1px solid #C8E3D7; letter-spacing: 0.2px;">
                                             أمان الحساب 🔒
                                         </span>
@@ -138,12 +138,12 @@
                     <tr>
                         <td class="content-padding" style="padding: 36px 36px 28px;">
                             <!-- Visual Key / Lock Badge -->
-                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px;">
+                            <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
                                 <tr>
-                                    <td align="center">
-                                        <table border="0" cellpadding="0" cellspacing="0" style="width: 68px; height: 68px; background: #163E3E; border-radius: 20px; box-shadow: 0 8px 20px rgba(22, 62, 62, 0.15);">
+                                    <td style="text-align: center;">
+                                        <table role="presentation" style="width: 68px; height: 68px; margin: 0 auto; border-collapse: collapse; background: #163E3E; border-radius: 20px; box-shadow: 0 8px 20px rgba(22, 62, 62, 0.15);">
                                             <tr>
-                                                <td align="center" valign="middle" style="font-size: 30px; line-height: 1;">
+                                                <td style="text-align: center; vertical-align: middle; font-size: 30px; line-height: 1;">
                                                     🔑
                                                 </td>
                                             </tr>
@@ -169,12 +169,12 @@
                             </div>
 
                             <!-- Bulletproof Call-To-Action Button -->
-                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 30px 0;">
+                            <table role="presentation" style="width: 100%; border-collapse: collapse; margin: 30px 0;">
                                 <tr>
-                                    <td align="center">
-                                        <table border="0" cellpadding="0" cellspacing="0" class="button-wrapper">
+                                    <td style="text-align: center;">
+                                        <table role="presentation" class="button-wrapper" style="margin: 0 auto; border-collapse: collapse;">
                                             <tr>
-                                                <td align="center" bgcolor="#163E3E" style="border-radius: 14px; background-color: #163E3E; box-shadow: 0 6px 18px rgba(22, 62, 62, 0.22); border: 2px solid #F7C33D;">
+                                                <td style="text-align: center; border-radius: 14px; background-color: #163E3E; box-shadow: 0 6px 18px rgba(22, 62, 62, 0.22); border: 2px solid #F7C33D;">
                                                     <a href="{{ $resetUrl }}" target="_blank" class="cta-button" style="display: inline-block; padding: 15px 44px; font-family: 'Cairo', sans-serif; font-size: 16px; font-weight: 800; color: #FFFFFF; text-decoration: none; border-radius: 12px; letter-spacing: 0.3px;">
                                                         تعيين كلمة المرور الجديدة &larr;
                                                     </a>
@@ -186,24 +186,24 @@
                             </table>
 
                             <!-- Security / Info Highlights Card -->
-                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F8F4EA; border: 1px solid #E5DEC9; border-radius: 14px; margin: 24px 0 16px; overflow: hidden;">
+                            <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #F8F4EA; border: 1px solid #E5DEC9; border-radius: 14px; margin: 24px 0 16px; overflow: hidden;">
                                 <tr>
                                     <td style="padding: 18px 20px; font-size: 13px; line-height: 1.7; color: #163E3E; text-align: right;">
-                                        <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                        <table role="presentation" style="width: 100%; border-collapse: collapse;">
                                             <tr>
-                                                <td valign="top" style="padding-bottom: 10px;">
+                                                <td style="vertical-align: top; padding-bottom: 10px;">
                                                     <strong style="color: #163E3E;">⏳ مدة الصلاحية:</strong>
                                                     <span style="color: #475569;">هذا الرابط صالح للاستخدام لمرة واحدة فقط لمدة <strong>{{ $expire }} دقيقة</strong> من وقت طلبه.</span>
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td valign="top" style="padding-bottom: 10px;">
+                                                <td style="vertical-align: top; padding-bottom: 10px;">
                                                     <strong style="color: #163E3E;">🛡️ لم تقم بهذا الطلب؟</strong>
                                                     <span style="color: #475569;">لا داعي للقلق؛ يمكنك تجاهل هذا البريد تماماً وستظل كلمة مرورك الحالية صالحة وحسابك في أمان تام.</span>
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td valign="top">
+                                                <td style="vertical-align: top;">
                                                     <strong style="color: #163E3E;">🔒 حماية الحساب:</strong>
                                                     <span style="color: #475569;">لا تشارك هذا الرابط مع أي شخص. فريق Nook Mate لن يطلب منك أبداً الإفصاح عن كلمة مرورك.</span>
                                                 </td>
@@ -229,7 +229,7 @@
 
                     <!-- Footer -->
                     <tr>
-                        <td align="center" style="background-color: #F8FAFC; padding: 28px 36px; border-top: 1px solid #F1F5F9; text-align: center;">
+                        <td style="text-align: center; background-color: #F8FAFC; padding: 28px 36px; border-top: 1px solid #F1F5F9;">
                             <div style="font-size: 13px; font-weight: 700; color: #163E3E; margin-bottom: 4px;">
                                 منصة Nook Mate لإدارة وتأجير العقارات والوحدات
                             </div>

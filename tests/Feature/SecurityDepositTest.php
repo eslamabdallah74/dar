@@ -17,6 +17,7 @@ use App\Models\WorkspaceMember;
 use App\Models\WorkspaceSubscription;
 use App\Services\SecurityDepositService;
 use App\Support\CurrentWorkspace;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -968,4 +969,78 @@ test('final deposit settlement shows its decision and exports itemized totals fo
             ->where('security_deposit.deductions.0.description', 'إصلاح الباب')
             ->where('security_deposit.deductions.1.description', 'تعويض مفتاح مفقود')
         );
+});
+
+test('removing a deduction during settlement finalization deletes the deduction and its attachment after commit', function () {
+    Storage::fake('public');
+
+    $lease = Lease::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'unit_id' => $this->unit->id,
+        'renter_id' => $this->renter->id,
+        'rent_amount' => 5000.00,
+        'security_deposit_amount' => 10000.00,
+        'security_deposit_status' => 'held',
+    ]);
+
+    SecurityDepositPayment::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'amount' => 10000.00,
+    ]);
+
+    $file = UploadedFile::fake()->create('damage_receipt.pdf', 100, 'application/pdf');
+    $storedPath = $file->store('deposit_attachments', 'public');
+    if ($storedPath === false) {
+        throw new RuntimeException('Failed to store test attachment');
+    }
+
+    $deductionToKeep = SecurityDepositDeduction::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'category' => 'fixture_damage',
+        'description' => 'إصلاح سباكة',
+        'amount' => 500.00,
+        'status' => 'confirmed',
+    ]);
+
+    $deductionToRemove = SecurityDepositDeduction::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'category' => 'cleaning',
+        'description' => 'تنظيف إضافي سيتم التنازل عنه',
+        'amount' => 300.00,
+        'status' => 'confirmed',
+        'attachment_path' => $storedPath,
+    ]);
+
+    Storage::disk('public')->assertExists($storedPath);
+
+    $this->actingAs($this->user)->post(route('leases.security-deposit.settle', $lease->id), [
+        'inspection_category' => 'fixture_damage',
+        'inspection_notes' => 'تم التنازل عن خصم التنظيف واعتماد السباكة فقط',
+        'deductions' => [
+            [
+                'id' => $deductionToKeep->id,
+                'category' => 'fixture_damage',
+                'description' => 'إصلاح سباكة',
+                'amount' => 500.00,
+            ],
+        ],
+    ])->assertRedirect();
+
+    $this->assertDatabaseMissing('security_deposit_deductions', [
+        'id' => $deductionToRemove->id,
+    ]);
+
+    $this->assertDatabaseHas('security_deposit_deductions', [
+        'id' => $deductionToKeep->id,
+        'amount' => 500.00,
+    ]);
+
+    Storage::disk('public')->assertMissing($storedPath);
+
+    $lease->refresh();
+    expect((float) $lease->total_deposit_deductions)->toBe(500.0)
+        ->and((float) $lease->refundable_deposit_balance)->toBe(9500.0);
 });

@@ -87,7 +87,11 @@ class AppServiceProvider extends ServiceProvider
 
         $expireConfig = config("auth.passwords.{$broker}.expire", 60);
 
-        return is_int($expireConfig) ? $expireConfig : (is_numeric($expireConfig) ? (int) $expireConfig : 60);
+        if (is_numeric($expireConfig)) {
+            return (int) $expireConfig;
+        }
+
+        return 60;
     }
 
     private function resolveResetNotifiableEmail(mixed $notifiable): string

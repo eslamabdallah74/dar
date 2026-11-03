@@ -606,9 +606,9 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
             <button type="button" class="font-semibold underline" @click="loadTabData(currentTab)">إعادة المحاولة</button>
         </div>
 
-        <div v-else-if="tableLoading" class="rounded-xl border border-[#D6E0E7] bg-white px-4 py-3 text-sm text-[#5B6770]" role="status" aria-live="polite">
+        <output v-else-if="tableLoading" class="block rounded-xl border border-[#D6E0E7] bg-white px-4 py-3 text-sm text-[#5B6770]" aria-live="polite">
             جارٍ تحميل بيانات {{ controlTabs.find((tab) => tab.key === currentTab)?.name }}...
-        </div>
+        </output>
 
         <!-- TAB 1: نظرة عامة ورسوم بيانية (Overview Tab) -->
         <div v-if="currentTab === 'overview'" class="space-y-8 animate-in fade-in">

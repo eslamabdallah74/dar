@@ -130,41 +130,46 @@ const depositLedgerStyles: Record<string, { dot: string; amount: string; sign: s
 
         <template v-else>
             <!-- Header (Accordion Trigger) -->
-            <header
-                class="flex flex-wrap items-center justify-between gap-3 border-b border-[#EEF2F4] p-5 sm:p-6 cursor-pointer bg-white transition hover:bg-[#FBFAF6]"
-                @click="isAccordionOpen = !isAccordionOpen"
-            >
-                <div class="space-y-1">
-                    <div class="flex items-center gap-2">
-                        <div class="flex h-7 w-7 items-center justify-center rounded-xl bg-[#E8F0F0] text-[#163E3E]">
-                            <ShieldCheck class="h-4 w-4" />
+            <header class="border-b border-[#EEF2F4] bg-white">
+                <button
+                    type="button"
+                    class="flex w-full flex-wrap items-center justify-between gap-3 p-5 sm:p-6 text-start cursor-pointer transition hover:bg-[#FBFAF6] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#163E3E]/30"
+                    :aria-expanded="isAccordionOpen"
+                    aria-controls="deposit-accordion-content"
+                    @click="isAccordionOpen = !isAccordionOpen"
+                >
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <div class="flex h-7 w-7 items-center justify-center rounded-xl bg-[#E8F0F0] text-[#163E3E]">
+                                <ShieldCheck class="h-4 w-4" />
+                            </div>
+                            <h2 id="deposit-section-heading" class="text-base sm:text-lg font-bold text-[#163E3E]">
+                                التأمين وتسوية الوحدة
+                            </h2>
+                            <StatusBadge
+                                :status="depositBadgeStatus"
+                                :label="securityDeposit.status_label"
+                                size="sm"
+                            />
                         </div>
-                        <h2 id="deposit-section-heading" class="text-base sm:text-lg font-bold text-[#163E3E]">
-                            التأمين وتسوية الوحدة
-                        </h2>
-                        <StatusBadge
-                            :status="depositBadgeStatus"
-                            :label="securityDeposit.status_label"
-                            size="sm"
-                        />
+                        <p class="text-xs text-[#5B6770]">
+                            الرصيد المحفوظ القابل للرد:
+                            <strong class="font-mono text-[#163E3E]">{{ formatMoney(securityDeposit.refundable_balance) }} {{ currencySymbol }}</strong>
+                        </p>
                     </div>
-                    <p class="text-xs text-[#5B6770]">
-                        الرصيد المحفوظ القابل للرد:
-                        <strong class="font-mono text-[#163E3E]">{{ formatMoney(securityDeposit.refundable_balance) }} {{ currencySymbol }}</strong>
-                    </p>
-                </div>
 
-                <div class="flex items-center gap-2">
-                    <span class="text-xs font-semibold text-[#5B6770]">
-                        {{ isAccordionOpen ? 'طي القسم' : 'عرض التفاصيل والتسوية' }}
-                    </span>
-                    <ChevronUp v-if="isAccordionOpen" class="h-4 w-4 text-[#5B6770]" />
-                    <ChevronDown v-else class="h-4 w-4 text-[#5B6770]" />
-                </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-semibold text-[#5B6770]">
+                            {{ isAccordionOpen ? 'طي القسم' : 'عرض التفاصيل والتسوية' }}
+                        </span>
+                        <ChevronUp v-if="isAccordionOpen" class="h-4 w-4 text-[#5B6770]" />
+                        <ChevronDown v-else class="h-4 w-4 text-[#5B6770]" />
+                    </div>
+                </button>
             </header>
 
             <!-- Collapsible Body -->
-            <div v-show="isAccordionOpen" class="p-5 sm:p-6 space-y-6">
+            <div id="deposit-accordion-content" v-show="isAccordionOpen" class="p-5 sm:p-6 space-y-6">
                 <!-- 1. Human-language Summary Sentence in Callout Box -->
                 <div class="rounded-2xl border border-[#163E3E]/15 bg-[#E8F0F0]/40 p-4 sm:p-5 text-xs sm:text-sm text-[#163E3E] leading-relaxed flex items-start gap-3">
                     <Shield class="h-5 w-5 shrink-0 text-[#163E3E] mt-0.5" />

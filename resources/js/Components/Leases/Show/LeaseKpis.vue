@@ -68,12 +68,12 @@ const depositRefundCaption = computed(() => {
                     {{ formatMoney(rentTotals.paid) }}
                     <span class="text-sm font-sans font-medium text-[#5B6770]">من {{ formatMoney(rentTotals.billed) }} {{ currencySymbol }}</span>
                 </p>
-                <div class="mt-3 relative h-2 w-full overflow-hidden rounded-full bg-[#E6ECF0]">
-                    <div
-                        class="h-full rounded-full bg-[#163E3E] transition-all duration-500 ease-out"
-                        :style="{ width: `${paidPercentage}%` }"
-                    ></div>
-                </div>
+                <progress
+                    class="mt-3 h-2 w-full overflow-hidden rounded-full bg-[#E6ECF0] accent-[#163E3E]"
+                    :value="paidPercentage"
+                    max="100"
+                    aria-label="نسبة المحصل من الإيجار"
+                ></progress>
             </div>
 
             <p class="text-xs text-[#5B6770] flex items-center justify-between border-t border-[#EEF2F4] pt-2.5">

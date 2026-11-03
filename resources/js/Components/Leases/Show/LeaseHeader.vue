@@ -195,6 +195,7 @@ onUnmounted(() => {
                                 rel="noopener noreferrer"
                                 class="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-start text-xs font-semibold text-[#163E3E] transition hover:bg-[#F8F4EA]"
                                 @click="closeMenu()"
+                                @keydown.enter="closeMenu()"
                             >
                                 <FileText class="h-3.5 w-3.5 text-[#5B6770]" />
                                 <span>عرض نسخة العقد</span>
@@ -237,6 +238,7 @@ onUnmounted(() => {
                                 :href="route('leases.index')"
                                 class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-start text-xs font-semibold text-[#5B6770] transition hover:bg-[#F8F4EA] hover:text-[#163E3E]"
                                 @click="closeMenu()"
+                                @keydown.enter="closeMenu()"
                             >
                                 <ArrowRight class="h-3.5 w-3.5" />
                                 <span>العودة لقائمة كل العقود</span>
@@ -284,20 +286,12 @@ onUnmounted(() => {
             </div>
 
             <!-- Progress Track -->
-            <div
-                class="relative h-2 w-full overflow-hidden rounded-full bg-[#E6ECF0]"
-                role="progressbar"
-                :aria-valuenow="timeline.elapsedPercent"
-                aria-valuemin="0"
-                aria-valuemax="100"
+            <progress
+                class="h-2 w-full overflow-hidden rounded-full bg-[#E6ECF0] accent-[#163E3E]"
+                :value="timeline.elapsedPercent"
+                max="100"
                 aria-label="المنقضي من مدة العقد"
-            >
-                <div
-                    class="h-full rounded-full transition-all duration-500 ease-out"
-                    :class="lease.is_past_end_date ? 'bg-amber-500' : 'bg-[#163E3E]'"
-                    :style="{ width: `${timeline.elapsedPercent}%` }"
-                ></div>
-            </div>
+            ></progress>
         </div>
     </header>
 </template>

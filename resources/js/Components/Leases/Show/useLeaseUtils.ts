@@ -278,6 +278,171 @@ export const deriveSmartPrimaryButton = (
     };
 };
 
+const resolveOverdueItem = (
+    rentTotals: RentTotals,
+    isLeaseActive: boolean,
+    currencySymbol: string
+): ActionCenterItem | null => {
+    if (!isLeaseActive || rentTotals.overdue <= 0) {
+        return null;
+    }
+
+    const countText = arabicCount(rentTotals.overdueCount, {
+        one: 'فاتورة متأخرة',
+        two: 'فاتورتان متأخرتان',
+        few: 'فواتير متأخرة',
+        many: 'فاتورة متأخرة',
+    });
+
+    return {
+        id: 'overdue-rent',
+        priority: 1,
+        title: `متأخرات إيجار: ${formatMoney(rentTotals.overdue)} ${currencySymbol}`,
+        description: `يوجد ${countText} تجاوزت موعد الاستحقاق المطلوب سداده.`,
+        badge: 'متأخر',
+        badgeTone: 'rose',
+        buttonLabel: 'تسجيل دفعة',
+        buttonTone: 'primary',
+        action: 'record-rent-payment',
+    };
+};
+
+const resolveUpcomingChargeItem = (
+    rentCharges: RentChargeItem[],
+    isLeaseActive: boolean,
+    currencySymbol: string
+): ActionCenterItem | null => {
+    if (!isLeaseActive) {
+        return null;
+    }
+
+    const upcomingCharge = rentCharges.find((charge) => {
+        if (charge.outstanding_balance <= 0) return false;
+        const rel = formatRelativeDays(charge.due_date);
+        return !rel.isPast && rel.daysDiff <= 14;
+    });
+
+    if (!upcomingCharge) {
+        return null;
+    }
+
+    const rel = formatRelativeDays(upcomingCharge.due_date);
+    return {
+        id: `upcoming-charge-${upcomingCharge.id}`,
+        priority: 2,
+        title: `فاتورة إيجار ${rel.text}`,
+        description: `قيمة الفاتورة ${formatMoney(upcomingCharge.outstanding_balance)} ${currencySymbol}، موعد الاستحقاق: ${upcomingCharge.due_date}.`,
+        badge: 'قادمة',
+        badgeTone: 'amber',
+        buttonLabel: 'تسجيل دفعة',
+        buttonTone: 'secondary',
+        action: 'record-charge-payment',
+        meta: { charge: upcomingCharge },
+    };
+};
+
+const resolveLeaseExpiryItem = (
+    lease: LeaseData,
+    remainingDays: number,
+    isLeaseActive: boolean
+): ActionCenterItem | null => {
+    if (!isLeaseActive) {
+        return null;
+    }
+
+    if (lease.is_past_end_date || remainingDays < 0) {
+        return {
+            id: 'lease-expired',
+            priority: 3,
+            title: `انتهت مدة العقد في ${lease.ends_on} ولم يُغلق بعد`,
+            description: 'تبقى الوحدة مشغولة حتى تجدد العقد أو تنهيه وتسوي التأمين.',
+            badge: 'انتهى موعده',
+            badgeTone: 'amber',
+            buttonLabel: 'تجديد العقد',
+            buttonTone: 'secondary',
+            action: 'extend-lease',
+        };
+    }
+
+    if (lease.is_expiring_soon || remainingDays <= 30) {
+        return {
+            id: 'lease-expiring',
+            priority: 3,
+            title: `العقد ينتهي بعد ${formatDuration(remainingDays)} (${lease.ends_on})`,
+            description: 'تواصل مع المستأجر لبحث تجديد العقد أو البدء في ترتيبات إخلاء الوحدة.',
+            badge: 'قرب الانتهاء',
+            badgeTone: 'amber',
+            buttonLabel: 'تجديد العقد',
+            buttonTone: 'secondary',
+            action: 'extend-lease',
+        };
+    }
+
+    return null;
+};
+
+const resolveDepositPendingRefundItem = (
+    securityDeposit: SecurityDepositData,
+    currencySymbol: string
+): ActionCenterItem | null => {
+    if (!securityDeposit.actions.can_record_pending_refund) {
+        return null;
+    }
+
+    return {
+        id: 'deposit-pending-refund',
+        priority: 4,
+        title: `اعتُمد رد ${formatMoney(securityDeposit.refundable_balance)} ${currencySymbol} للمستأجر ولم يُصرف بعد`,
+        description: 'التسوية معتمدة وبانتظار توثيق التحويل أو الصرف الفعلي للمستأجر.',
+        badge: 'بانتظار الصرف',
+        badgeTone: 'amber',
+        buttonLabel: 'تسجيل صرف المبلغ',
+        buttonTone: 'primary',
+        action: 'pending-refund',
+    };
+};
+
+const resolveDepositReviewItem = (
+    securityDeposit: SecurityDepositData
+): ActionCenterItem | null => {
+    if (securityDeposit.status !== 'under_review' || !securityDeposit.actions.can_settle) {
+        return null;
+    }
+
+    return {
+        id: 'deposit-under-review',
+        priority: 5,
+        title: 'تسوية التأمين مفتوحة وبانتظار المراجعة والاعتماد',
+        description: 'راجع بنود الخصومات واعتمد التسوية لإغلاق حساب التأمين ورد المستحق.',
+        badge: 'قيد التسوية',
+        badgeTone: 'teal',
+        buttonLabel: 'مراجعة الخصومات',
+        buttonTone: 'primary',
+        action: 'finalize-settlement',
+    };
+};
+
+const resolveDepositUnpaidItem = (
+    securityDeposit: SecurityDepositData,
+    currencySymbol: string
+): ActionCenterItem | null => {
+    if (!securityDeposit.actions.can_record_payment || securityDeposit.outstanding_amount <= 0) {
+        return null;
+    }
+
+    return {
+        id: 'deposit-unpaid',
+        priority: 6,
+        title: `متبقٍ تحصيل ${formatMoney(securityDeposit.outstanding_amount)} ${currencySymbol} من التأمين`,
+        description: `استُلم ${formatMoney(securityDeposit.total_received)} من أصل ${formatMoney(securityDeposit.agreed_amount)} ${currencySymbol} متفق عليه.`,
+        badge: 'تأمين معلق',
+        badgeTone: 'amber',
+        buttonLabel: 'تسجيل استلام دفعة',
+        buttonTone: 'secondary',
+        action: 'record-deposit-payment',
+    };
+};
+
 export const buildActionCenterItems = (
     lease: LeaseData,
     rentTotals: RentTotals,
@@ -286,130 +451,28 @@ export const buildActionCenterItems = (
     remainingDays: number,
     currencySymbol: string
 ): ActionCenterItem[] => {
-    const items: ActionCenterItem[] = [];
     const isLeaseActive = lease.status === 'active';
+    const resolvers: Array<() => ActionCenterItem | null> = [
+        () => resolveOverdueItem(rentTotals, isLeaseActive, currencySymbol),
+        () => resolveUpcomingChargeItem(rentCharges, isLeaseActive, currencySymbol),
+        () => resolveLeaseExpiryItem(lease, remainingDays, isLeaseActive),
+        () => resolveDepositPendingRefundItem(securityDeposit, currencySymbol),
+        () => resolveDepositReviewItem(securityDeposit),
+        () => resolveDepositUnpaidItem(securityDeposit, currencySymbol),
+    ];
 
-    // 1. Overdue Rent Charges (Priority 1 - Urgent)
-    if (rentTotals.overdue > 0 && isLeaseActive) {
-        const countText = arabicCount(rentTotals.overdueCount, {
-            one: 'فاتورة متأخرة',
-            two: 'فاتورتان متأخرتان',
-            few: 'فواتير متأخرة',
-            many: 'فاتورة متأخرة',
-        });
-        items.push({
-            id: 'overdue-rent',
-            priority: 1,
-            title: `متأخرات إيجار: ${formatMoney(rentTotals.overdue)} ${currencySymbol}`,
-            description: `يوجد ${countText} تجاوزت موعد الاستحقاق المطلوب سداده.`,
-            badge: 'متأخر',
-            badgeTone: 'rose',
-            buttonLabel: 'تسجيل دفعة',
-            buttonTone: 'primary',
-            action: 'record-rent-payment',
-        });
-    }
-
-    // 2. Rent Charge Due Soon (within 14 days)
-    if (items.length < 3 && isLeaseActive) {
-        const upcomingCharge = rentCharges.find((charge) => {
-            if (charge.outstanding_balance <= 0) return false;
-            const rel = formatRelativeDays(charge.due_date);
-            return !rel.isPast && rel.daysDiff <= 14;
-        });
-
-        if (upcomingCharge) {
-            const rel = formatRelativeDays(upcomingCharge.due_date);
-            items.push({
-                id: `upcoming-charge-${upcomingCharge.id}`,
-                priority: 2,
-                title: `فاتورة إيجار ${rel.text}`,
-                description: `قيمة الفاتورة ${formatMoney(upcomingCharge.outstanding_balance)} ${currencySymbol}، موعد الاستحقاق: ${upcomingCharge.due_date}.`,
-                badge: 'قادمة',
-                badgeTone: 'amber',
-                buttonLabel: 'تسجيل دفعة',
-                buttonTone: 'secondary',
-                action: 'record-charge-payment',
-                meta: { charge: upcomingCharge },
-            });
+    const items: ActionCenterItem[] = [];
+    for (const resolver of resolvers) {
+        if (items.length >= 3) {
+            break;
+        }
+        const item = resolver();
+        if (item) {
+            items.push(item);
         }
     }
 
-    // 3. Lease Expiring Soon or Expired (Priority 3)
-    if (items.length < 3 && isLeaseActive) {
-        if (lease.is_past_end_date || remainingDays < 0) {
-            items.push({
-                id: 'lease-expired',
-                priority: 3,
-                title: `انتهت مدة العقد في ${lease.ends_on} ولم يُغلق بعد`,
-                description: 'تبقى الوحدة مشغولة حتى تجدد العقد أو تنهيه وتسوي التأمين.',
-                badge: 'انتهى موعده',
-                badgeTone: 'amber',
-                buttonLabel: 'تجديد العقد',
-                buttonTone: 'secondary',
-                action: 'extend-lease',
-            });
-        } else if (lease.is_expiring_soon || remainingDays <= 30) {
-            items.push({
-                id: 'lease-expiring',
-                priority: 3,
-                title: `العقد ينتهي بعد ${formatDuration(remainingDays)} (${lease.ends_on})`,
-                description: 'تواصل مع المستأجر لبحث تجديد العقد أو البدء في ترتيبات إخلاء الوحدة.',
-                badge: 'قرب الانتهاء',
-                badgeTone: 'amber',
-                buttonLabel: 'تجديد العقد',
-                buttonTone: 'secondary',
-                action: 'extend-lease',
-            });
-        }
-    }
-
-    // 4. Pending Refund for Security Deposit (Priority 4)
-    if (items.length < 3 && securityDeposit.actions.can_record_pending_refund) {
-        items.push({
-            id: 'deposit-pending-refund',
-            priority: 4,
-            title: `اعتُمد رد ${formatMoney(securityDeposit.refundable_balance)} ${currencySymbol} للمستأجر ولم يُصرف بعد`,
-            description: 'التسوية معتمدة وبانتظار توثيق التحويل أو الصرف الفعلي للمستأجر.',
-            badge: 'بانتظار الصرف',
-            badgeTone: 'amber',
-            buttonLabel: 'تسجيل صرف المبلغ',
-            buttonTone: 'primary',
-            action: 'pending-refund',
-        });
-    }
-
-    // 5. Deposit Settlement Under Review (Priority 5)
-    if (items.length < 3 && securityDeposit.status === 'under_review' && securityDeposit.actions.can_settle) {
-        items.push({
-            id: 'deposit-under-review',
-            priority: 5,
-            title: 'تسوية التأمين مفتوحة وبانتظار المراجعة والاعتماد',
-            description: 'راجع بنود الخصومات واعتمد التسوية لإغلاق حساب التأمين ورد المستحق.',
-            badge: 'قيد التسوية',
-            badgeTone: 'teal',
-            buttonLabel: 'مراجعة الخصومات',
-            buttonTone: 'primary',
-            action: 'finalize-settlement',
-        });
-    }
-
-    // 6. Outstanding Security Deposit Payment (Priority 6)
-    if (items.length < 3 && securityDeposit.actions.can_record_payment && securityDeposit.outstanding_amount > 0) {
-        items.push({
-            id: 'deposit-unpaid',
-            priority: 6,
-            title: `متبقٍ تحصيل ${formatMoney(securityDeposit.outstanding_amount)} ${currencySymbol} من التأمين`,
-            description: `استُلم ${formatMoney(securityDeposit.total_received)} من أصل ${formatMoney(securityDeposit.agreed_amount)} ${currencySymbol} متفق عليه.`,
-            badge: 'تأمين معلق',
-            badgeTone: 'amber',
-            buttonLabel: 'تسجيل استلام دفعة',
-            buttonTone: 'secondary',
-            action: 'record-deposit-payment',
-        });
-    }
-
-    return items.slice(0, 3);
+    return items;
 };
 
 export const getDepositHumanSummary = (

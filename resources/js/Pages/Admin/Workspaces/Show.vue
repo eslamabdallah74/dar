@@ -111,8 +111,8 @@ interface Props {
 const props = defineProps<Props>();
 
 const limitsForm = useForm({
-    parent_unit_limit: (props.workspace.parent_unit_limit !== null ? props.workspace.parent_unit_limit : 1) as number | string,
-    active_rental_limit: (props.workspace.active_rental_limit !== null ? props.workspace.active_rental_limit : 1) as number | string,
+    parent_unit_limit: (props.workspace.parent_unit_limit !== null ? props.workspace.parent_unit_limit : Math.max(1, props.usage_summary.parent_units_created || 1)) as number | string,
+    active_rental_limit: (props.workspace.active_rental_limit !== null ? props.workspace.active_rental_limit : Math.max(1, props.usage_summary.active_rental_slots_occupied || 1)) as number | string,
     is_parent_unit_unlimited: props.workspace.parent_unit_limit === null,
     is_active_rental_unlimited: props.workspace.active_rental_limit === null,
 });
@@ -164,7 +164,11 @@ const activeRentalPercent = computed(() => {
 </script>
 
 <template>
-    <AppLayout :title="`إدارة مساحة العمل: ${workspace.name}`">
+    <AppLayout
+        :title="`إدارة مساحة العمل: ${workspace.name}`"
+        :admin-mode="true"
+        breadcrumb="تفاصيل مساحة العمل"
+    >
         <div class="space-y-6 pb-12" dir="rtl">
             <!-- Breadcrumb Navigation -->
             <div class="flex items-center gap-2 text-xs text-[#5B6770]">

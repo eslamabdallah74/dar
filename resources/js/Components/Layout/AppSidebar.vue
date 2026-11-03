@@ -66,7 +66,7 @@ const defaultAdminNavLinks: NavItem[] = [
     { key: 'users', name: 'المستخدمون', icon: Users },
     { key: 'properties', name: 'العقارات والوحدات', icon: Home },
     { key: 'leases', name: 'العقود والمستأجرين', icon: FileText },
-    { key: 'financials', name: 'المالية والمدفوعات', icon: Coins },
+    { key: 'payments', name: 'المالية والمدفوعات', icon: Coins },
     { key: 'maintenance', name: 'طلبات الصيانة', icon: Wrench },
     { key: 'subscriptions', name: 'الباقات والاشتراكات', icon: Layers },
     { key: 'logs', name: 'رسائل واتساب والسجلات', icon: MessageSquare },

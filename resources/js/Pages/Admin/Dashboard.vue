@@ -297,10 +297,20 @@ function openEditLimits(ws: any) {
     selectedWorkspace.value = ws;
     limitsForm.workspace_id = ws.id;
     limitsForm.is_parent_unit_unlimited = ws.parent_unit_limit === null;
-    limitsForm.parent_unit_limit = ws.parent_unit_limit !== null ? ws.parent_unit_limit : 1;
+    limitsForm.parent_unit_limit = ws.parent_unit_limit !== null ? ws.parent_unit_limit : Math.max(1, ws.created_parent_units_count ?? 1);
     limitsForm.is_active_rental_unlimited = ws.active_rental_limit === null;
-    limitsForm.active_rental_limit = ws.active_rental_limit !== null ? ws.active_rental_limit : 1;
+    limitsForm.active_rental_limit = ws.active_rental_limit !== null ? ws.active_rental_limit : Math.max(1, ws.active_rented_parent_units_count ?? 1);
     showLimitsModal.value = true;
+}
+
+function handleKpiSelect(key: 'properties' | 'units' | 'occupancy' | 'collected') {
+    if (key === 'properties' || key === 'units') {
+        currentTab.value = 'properties';
+    } else if (key === 'occupancy') {
+        currentTab.value = 'leases';
+    } else if (key === 'collected') {
+        currentTab.value = 'payments';
+    }
 }
 
 function submitLimits() {
@@ -474,8 +484,12 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
 
         <!-- TAB 1: نظرة عامة ورسوم بيانية (Overview Tab) -->
         <div v-show="currentTab === 'overview'" class="space-y-8 animate-in fade-in">
-            <!-- المؤشرات الأربعة الرئيسية (إعادة استخدام PrimaryKpiRow المعتمد) -->
-            <PrimaryKpiRow :kpis="kpis" />
+            <!-- المؤشرات الأربعة الرئيسية (إعادة استخدام PrimaryKpiRow المعتمد مع تبديل التبويبات عند النقر) -->
+            <PrimaryKpiRow
+                :kpis="kpis"
+                :disable-links="true"
+                @select-kpi="handleKpiSelect"
+            />
 
             <!-- صف الرسم البياني ومخطط الإشغال (إعادة استخدام RentalIncomeChart و OccupancySummaryCard) -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -494,7 +508,10 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
 
                 <!-- بطاقة ملخص الإشغال العام -->
                 <div class="lg:col-span-1">
-                    <OccupancySummaryCard :summary="occupancySummary" />
+                    <OccupancySummaryCard
+                        :summary="occupancySummary"
+                        subtitle="توزيع كافة الوحدات القابلة للتأجير بالمنصة"
+                    />
                 </div>
             </div>
 
@@ -506,6 +523,8 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                 <AttentionRequiredCard
                     title="تنبيهات المنصة العاجلة"
                     :items="attentionItems"
+                    @view-all="currentTab = 'leases'"
+                    @action="(item) => currentTab = (item.type === 'overdue' ? 'payments' : 'leases')"
                 />
                 <RecentActivityFeed
                     :activities="recentActivities"
@@ -1003,15 +1022,14 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                 <td class="p-3.5 text-[#5B6770]">{{ mr.created_at }}</td>
                                 <td class="p-3.5 text-center">
                                     <select
-                                        :value="mr.status"
+                                        :value="mr.status === 'open' ? 'pending' : (mr.status === 'closed' ? 'completed' : mr.status)"
                                         @change="updateMaintenanceStatus(mr.id, ($event.target as HTMLSelectElement).value)"
                                         aria-label="تحديث حالة طلب الصيانة"
                                         class="h-9 min-w-[144px] rounded-lg border border-[#D6E0E7] bg-white px-3 text-xs font-semibold text-[#163E3E] transition hover:border-[#B8CECA] hover:bg-[#F8FAFA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#163E3E] focus-visible:ring-offset-2"
                                     >
-                                        <option value="open">مفتوح (Open)</option>
+                                        <option value="pending">قيد الانتظار (Pending)</option>
                                         <option value="in_progress">قيد التنفيذ (In Progress)</option>
                                         <option value="completed">مكتمل (Completed)</option>
-                                        <option value="cancelled">ملغي (Cancelled)</option>
                                     </select>
                                 </td>
                             </tr>

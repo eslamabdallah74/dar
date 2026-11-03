@@ -77,8 +77,8 @@ test('admin can view full central dashboard with platform data', function () {
 
     $workspaceOwner = User::factory()->create();
     $workspace = Workspace::create([
-        'name' => 'Al-Rawda Portfolio',
-        'slug' => 'al-rawda-portfolio',
+        'name' => 'Al-Rawda Workspace',
+        'slug' => 'al-rawda-workspace',
         'owner_user_id' => $workspaceOwner->id,
         'currency' => 'EGP',
     ]);

@@ -40,6 +40,32 @@ class SecurityDepositService
             ]);
         }
 
+        $depositRequired = (float) $lease->security_deposit_amount;
+        if ($depositRequired <= 0) {
+            throw ValidationException::withMessages([
+                'amount' => 'هذا العقد لا يتطلب سداد مبلغ تأمين.',
+            ]);
+        }
+
+        $outstanding = (float) $lease->outstanding_deposit_amount;
+        if ($outstanding <= 0) {
+            throw ValidationException::withMessages([
+                'amount' => 'تم سداد مبلغ التأمين المتفق عليه بالكامل بالفعل.',
+            ]);
+        }
+
+        $rawAmount = $data['amount'] ?? 0;
+        $amount = is_numeric($rawAmount) ? (float) $rawAmount : 0.0;
+        if ($amount > $outstanding) {
+            $formattedOutstanding = number_format($outstanding);
+            $formattedAgreed = number_format($depositRequired);
+            $currency = $workspace->currency ?? 'ج.م';
+
+            throw ValidationException::withMessages([
+                'amount' => "لا يمكن سداد مبلغ أكبر من قيمة التأمين المستحقة ({$formattedOutstanding} {$currency} متبقية من إجمالي تأمين {$formattedAgreed} {$currency}).",
+            ]);
+        }
+
         return DB::transaction(function () use ($workspace, $lease, $data, $userId): SecurityDepositPayment {
             $lockedLease = $this->lockLease($lease);
 

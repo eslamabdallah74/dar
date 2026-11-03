@@ -219,6 +219,73 @@ test('5. fully collected deposit updates status to held', function () {
         ->and($lease->refundable_deposit_balance)->toBe(10000.0);
 });
 
+test('cannot pay amount greater than agreed security deposit amount', function () {
+    $lease = Lease::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'unit_id' => $this->unit->id,
+        'renter_id' => $this->renter->id,
+        'rent_amount' => 5000.00,
+        'security_deposit_amount' => 10000.00,
+        'security_deposit_status' => 'due',
+    ]);
+
+    // Attempting to pay 15,000 when deposit is 10,000 must fail validation
+    $response = $this->actingAs($this->user)->post(route('leases.security-deposit.payment', $lease->id), [
+        'amount' => 15000.00,
+        'payment_method' => 'cash',
+    ]);
+
+    $response->assertSessionHasErrors('amount');
+    expect($lease->refresh()->total_deposit_received)->toBe(0.0);
+});
+
+test('cannot pay amount greater than remaining outstanding security deposit', function () {
+    $lease = Lease::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'unit_id' => $this->unit->id,
+        'renter_id' => $this->renter->id,
+        'rent_amount' => 5000.00,
+        'security_deposit_amount' => 10000.00,
+        'security_deposit_status' => 'due',
+    ]);
+
+    // Pay 4,000 of 10,000 (remaining: 6,000)
+    $this->actingAs($this->user)->post(route('leases.security-deposit.payment', $lease->id), [
+        'amount' => 4000.00,
+        'payment_method' => 'cash',
+    ])->assertSessionHasNoErrors();
+
+    expect($lease->refresh()->outstanding_deposit_amount)->toBe(6000.0);
+
+    // Attempting to pay 7,000 when remaining is 6,000 must fail validation
+    $response = $this->actingAs($this->user)->post(route('leases.security-deposit.payment', $lease->id), [
+        'amount' => 7000.00,
+        'payment_method' => 'cash',
+    ]);
+
+    $response->assertSessionHasErrors('amount');
+    expect($lease->refresh()->total_deposit_received)->toBe(4000.0);
+});
+
+test('cannot pay security deposit when lease requires zero deposit', function () {
+    $lease = Lease::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'unit_id' => $this->unit->id,
+        'renter_id' => $this->renter->id,
+        'rent_amount' => 5000.00,
+        'security_deposit_amount' => 0.00,
+        'security_deposit_status' => 'not_required',
+    ]);
+
+    $response = $this->actingAs($this->user)->post(route('leases.security-deposit.payment', $lease->id), [
+        'amount' => 1000.00,
+        'payment_method' => 'cash',
+    ]);
+
+    $response->assertSessionHasErrors('amount');
+    expect($lease->refresh()->total_deposit_received)->toBe(0.0);
+});
+
 /*
 |--------------------------------------------------------------------------
 | Requirement 6: Lease settlement with full refund when no issues exist

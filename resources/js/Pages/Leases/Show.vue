@@ -810,6 +810,8 @@ const recordDepositPaymentAction: DepositAction = {
     key: 'record-payment',
     label: 'تسجيل استلام دفعة',
     run: () => {
+        paymentForm.amount = props.security_deposit.outstanding_amount > 0 ? props.security_deposit.outstanding_amount : props.security_deposit.agreed_amount;
+        paymentForm.clearErrors();
         showRecordPaymentModal.value = true;
     },
 };
@@ -1539,25 +1541,34 @@ const depositLedgerStyles: Record<DepositLedgerKind, { dot: string; amount: stri
 
                 <form @submit.prevent="submitPayment" class="space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1">المبلغ المحصل *</label>
+                        <label for="deposit_payment_amount" class="block text-xs font-bold text-[#163E3E] mb-1">المبلغ المحصل *</label>
                         <div class="relative">
                             <input
+                                id="deposit_payment_amount"
                                 v-model="paymentForm.amount"
                                 type="number"
                                 step="0.01"
                                 min="0.01"
+                                :max="security_deposit.outstanding_amount"
                                 required
+                                aria-label="المبلغ المحصل للتأمين"
                                 class="w-full h-11 pl-12 pr-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-mono font-bold"
                             />
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#5B6770] font-semibold">
                                 {{ currency_symbol }}
                             </span>
                         </div>
+                        <p class="text-[11px] text-[#5B6770] mt-1">
+                            الحد الأقصى المسموح بسداده: {{ security_deposit.outstanding_amount.toLocaleString() }} {{ currency_symbol }}
+                        </p>
+                        <p v-if="paymentForm.errors.amount" class="text-xs text-rose-600 font-semibold mt-1">
+                            {{ paymentForm.errors.amount }}
+                        </p>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1">طريقة السداد *</label>
-                        <select v-model="paymentForm.payment_method" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs">
+                        <label for="deposit_payment_method" class="block text-xs font-bold text-[#163E3E] mb-1">طريقة السداد *</label>
+                        <select id="deposit_payment_method" aria-label="طريقة السداد" v-model="paymentForm.payment_method" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs">
                             <option value="cash">نقدي (كاش)</option>
                             <option value="bank_transfer">تحويل بنكي</option>
                             <option value="cheque">شيك مصرفي</option>
@@ -1566,23 +1577,23 @@ const depositLedgerStyles: Record<DepositLedgerKind, { dot: string; amount: stri
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1">تاريخ التحصيل *</label>
-                        <input v-model="paymentForm.paid_at" type="date" required class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right" />
+                        <label for="deposit_paid_at" class="block text-xs font-bold text-[#163E3E] mb-1">تاريخ التحصيل *</label>
+                        <input id="deposit_paid_at" aria-label="تاريخ التحصيل" v-model="paymentForm.paid_at" type="date" required class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right" />
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1">رقم المرجع / الإيصال</label>
-                        <input v-model="paymentForm.reference" type="text" placeholder="مثال: REC-10293" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right" />
+                        <label for="deposit_reference" class="block text-xs font-bold text-[#163E3E] mb-1">رقم المرجع / الإيصال</label>
+                        <input id="deposit_reference" aria-label="رقم المرجع أو الإيصال" v-model="paymentForm.reference" type="text" placeholder="مثال: REC-10293" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right" />
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1">ملاحظات إضافية</label>
-                        <textarea v-model="paymentForm.notes" rows="2" class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right"></textarea>
+                        <label for="deposit_notes" class="block text-xs font-bold text-[#163E3E] mb-1">ملاحظات إضافية</label>
+                        <textarea id="deposit_notes" aria-label="ملاحظات إضافية" v-model="paymentForm.notes" rows="2" class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right"></textarea>
                     </div>
 
                     <div class="pt-3 border-t border-[#D6E0E7] flex justify-end gap-2">
                         <button @click="showRecordPaymentModal = false" type="button" class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold">إلغاء</button>
-                        <button type="submit" class="h-10 px-4 rounded-xl bg-[#163E3E] text-white text-xs font-bold">تأكيد تسجيل الدفعة</button>
+                        <button type="submit" :disabled="paymentForm.processing" class="h-10 px-4 rounded-xl bg-[#163E3E] text-white text-xs font-bold">تأكيد تسجيل الدفعة</button>
                     </div>
                 </form>
             </div>

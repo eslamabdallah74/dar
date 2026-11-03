@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
+use App\Models\Lease;
+use App\Models\SecurityDepositPayment;
 use App\Models\Workspace;
 use App\Services\Limits\WorkspaceLimitService;
 use Carbon\Carbon;
@@ -14,10 +16,9 @@ use Illuminate\Support\Collection;
  *
  * Runs 100% in-memory without database access or migrations:
  *  1. Benchmarks memory usage and execution time when processing and mapping 10,000 workspaces.
- *  2. Stress tests limit decisions (parent unit creation & rental slots) across 10,000 iterations.
+ *  2. Stress tests limit decisions via WorkspaceLimitService across 10,000 iterations.
  *  3. Stress tests high-volume platform financial aggregation algorithms across 20,000 records.
- *  4. Stress tests security deposit overpayment validation boundaries across 10,000 simulated attempts.
- *  5. Simulates high-concurrency race condition scenarios for workspace rental limit capacity.
+ *  4. Stress tests lease model deposit accessors and boundary checks across 10,000 simulated payments.
  */
 function makeStressWorkspace(
     int $id,
@@ -167,14 +168,33 @@ test('stress test: financial aggregations compute 20,000 transactions without ar
         ->and((float) $formattedOverdue)->toBeGreaterThan(1000000.0);
 })->group('benchmark');
 
-test('stress test: security deposit validation prevents overpayment across 10,000 simulated payments', function (): void {
+test('stress test: lease model security deposit accessors compute outstanding balance across 10,000 iterations', function (): void {
     $rejectedOverpayments = 0;
     $acceptedValidPayments = 0;
 
     for ($i = 1; $i <= 10000; $i++) {
         $depositAgreed = 10000.0;
-        $alreadyReceived = ($i % 3 === 0) ? 4000.0 : 0.0;
-        $outstanding = $depositAgreed - $alreadyReceived;
+        $receivedAmount = ($i % 3 === 0) ? 4000.0 : 0.0;
+
+        /** @var Lease $lease */
+        $lease = (new Lease)->forceFill([
+            'id' => $i,
+            'security_deposit_amount' => $depositAgreed,
+            'security_deposit_status' => 'due',
+        ]);
+
+        /** @var Collection<int, SecurityDepositPayment> $payments */
+        $payments = collect();
+        if ($receivedAmount > 0) {
+            $payments->push((new SecurityDepositPayment)->forceFill([
+                'amount' => $receivedAmount,
+                'is_reversed' => false,
+            ]));
+        }
+        $lease->setRelation('securityDepositPayments', $payments);
+
+        // Exercise the real production accessor: Lease::getOutstandingDepositAmountAttribute()
+        $outstanding = $lease->outstanding_deposit_amount;
 
         // Payment attempt varies from 1,000 to 20,000
         $attemptedPayment = (float) ((($i % 20) + 1) * 1000);
@@ -189,28 +209,4 @@ test('stress test: security deposit validation prevents overpayment across 10,00
     expect($rejectedOverpayments + $acceptedValidPayments)->toBe(10000)
         ->and($rejectedOverpayments)->toBeGreaterThan(4000)
         ->and($acceptedValidPayments)->toBeGreaterThan(3000);
-})->group('benchmark');
-
-test('stress test: high-concurrency race condition simulation on workspace limits', function (): void {
-    $workspaceLimit = 10;
-    $currentlyOccupied = 8;
-    $availableSlots = $workspaceLimit - $currentlyOccupied; // 2 slots left
-
-    $successfulAcquisitions = 0;
-    $rejectedAcquisitions = 0;
-
-    // Simulate 50 concurrent requests competing for the remaining 2 slots
-    for ($attempt = 1; $attempt <= 50; $attempt++) {
-        if ($availableSlots > 0) {
-            $availableSlots--;
-            $successfulAcquisitions++;
-        } else {
-            $rejectedAcquisitions++;
-        }
-    }
-
-    // Exactly 2 requests must succeed and 48 must be rejected safely
-    expect($successfulAcquisitions)->toBe(2)
-        ->and($rejectedAcquisitions)->toBe(48)
-        ->and($availableSlots)->toBe(0);
 })->group('benchmark');

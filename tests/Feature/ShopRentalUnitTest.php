@@ -321,9 +321,19 @@ test('an owner can create a lease for a shop, record rent payments, and settle i
         'reference' => 'SHOP-REF-25000',
     ]);
 
+    $deduction = $lease->securityDepositDeductions->firstOrFail();
+
     $this->actingAs($this->user)->post(route('leases.security-deposit.settle', $lease->id), [
         'inspection_category' => 'fixture_damage',
         'inspection_notes' => 'تم استلام المحل وإصلاح الواجهة ورد 25,000 ج.م للمستأجر',
+        'deductions' => [
+            [
+                'id' => $deduction->id,
+                'category' => $deduction->category,
+                'description' => $deduction->description,
+                'amount' => (float) $deduction->amount,
+            ],
+        ],
     ]);
 
     $lease->refresh();

@@ -421,10 +421,18 @@ test('7. a lease with confirmed deductions calculates the correct refundable bal
         'reference' => 'REF-REMAINDER-8000',
     ]);
 
+    $deductions = $lease->securityDepositDeductions->map(fn ($d) => [
+        'id' => $d->id,
+        'category' => $d->category,
+        'description' => $d->description,
+        'amount' => (float) $d->amount,
+    ])->all();
+
     // Finalize settlement
     $this->actingAs($this->user)->post(route('leases.security-deposit.settle', $lease->id), [
         'inspection_category' => 'fixture_damage',
         'inspection_notes' => 'تم خصم 2000 ورد 8000',
+        'deductions' => $deductions,
     ]);
 
     $lease->refresh();
@@ -527,10 +535,20 @@ test('10. zero-refund settlement works correctly when entire deposit is legitima
     expect($lease->refundable_deposit_balance)->toBe(0.0)
         ->and($lease->total_deposit_deductions)->toBe(10000.0);
 
+    $deduction = $lease->securityDepositDeductions->firstOrFail();
+
     // Finalize settlement with 0 refund
     $this->actingAs($this->user)->post(route('leases.security-deposit.settle', $lease->id), [
         'inspection_category' => 'furniture_damage',
         'inspection_notes' => 'تم استهلاك كامل التأمين في صيانة التلفيات والمسترد صفر',
+        'deductions' => [
+            [
+                'id' => $deduction->id,
+                'category' => $deduction->category,
+                'description' => $deduction->description,
+                'amount' => (float) $deduction->amount,
+            ],
+        ],
     ]);
 
     $lease->refresh();
@@ -608,6 +626,14 @@ test('12. cannot add or delete deductions after settlement is finalized', functi
     // Finalize settlement
     $this->actingAs($this->user)->post(route('leases.security-deposit.settle', $lease->id), [
         'inspection_category' => 'fixture_damage',
+        'deductions' => [
+            [
+                'id' => $deduction->id,
+                'category' => $deduction->category,
+                'description' => $deduction->description,
+                'amount' => (float) $deduction->amount,
+            ],
+        ],
     ]);
 
     $lease->refresh();
@@ -938,9 +964,18 @@ test('final deposit settlement shows its decision and exports itemized totals fo
     $this->actingAs($this->user)->get(route('leases.security-deposit.export', $lease->id))
         ->assertNotFound();
 
+    $deductions = $lease->securityDepositDeductions->map(fn ($d) => [
+        'id' => $d->id,
+        'category' => $d->category,
+        'description' => $d->description,
+        'amount' => (float) $d->amount,
+        'notes' => $d->notes,
+    ])->all();
+
     $this->actingAs($this->user)->post(route('leases.security-deposit.settle', $lease->id), [
         'inspection_category' => 'fixture_damage',
         'inspection_notes' => 'تمت معاينة الوحدة',
+        'deductions' => $deductions,
     ])->assertRedirect();
 
     $settlement = $lease->securityDepositSettlement()->firstOrFail();
@@ -1043,4 +1078,129 @@ test('removing a deduction during settlement finalization deletes the deduction 
     $lease->refresh();
     expect((float) $lease->total_deposit_deductions)->toBe(500.0)
         ->and((float) $lease->refundable_deposit_balance)->toBe(9500.0);
+});
+
+test('settling with no deductions removes all existing confirmed deductions and their linked payments', function () {
+    Storage::fake('public');
+
+    $lease = Lease::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'unit_id' => $this->unit->id,
+        'renter_id' => $this->renter->id,
+        'rent_amount' => 5000.00,
+        'security_deposit_amount' => 10000.00,
+        'security_deposit_status' => 'held',
+    ]);
+
+    SecurityDepositPayment::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'amount' => 10000.00,
+    ]);
+
+    $file = UploadedFile::fake()->create('proof.pdf', 100, 'application/pdf');
+    $storedPath = $file->store('deposit_attachments', 'public');
+    if ($storedPath === false) {
+        throw new RuntimeException('Failed to store test attachment');
+    }
+
+    $confirmedDeduction = SecurityDepositDeduction::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'category' => 'fixture_damage',
+        'description' => 'تلفيات ستتم تسويتها بالتراضي بدون خصم',
+        'amount' => 1500.00,
+        'status' => 'confirmed',
+        'attachment_path' => $storedPath,
+    ]);
+
+    $linkedPayment = Payment::create([
+        'workspace_id' => $this->workspace->id,
+        'renter_id' => $this->renter->id,
+        'lease_id' => $lease->id,
+        'amount' => 1500.00,
+        'payment_method' => 'cash',
+        'reference' => 'DEP-SETTLE-'.$confirmedDeduction->id,
+        'status' => 'completed',
+        'paid_at' => now(),
+        'recorded_by' => $this->user->id,
+    ]);
+
+    Storage::disk('public')->assertExists($storedPath);
+    $lease->refresh();
+    expect((float) $lease->total_deposit_deductions)->toBe(1500.0)
+        ->and((float) $lease->refundable_deposit_balance)->toBe(8500.0);
+
+    // Finalize settlement without sending any 'deductions' key (as happens when user removes all deductions in modal)
+    $this->actingAs($this->user)->post(route('leases.security-deposit.settle', $lease->id), [
+        'inspection_category' => 'no_issues',
+        'inspection_notes' => 'تم التنازل عن جميع الخصومات وتسوية التأمين كاملاً',
+        'refund_status' => 'refunded',
+        'refund_method' => 'bank_transfer',
+        'refund_payment_date' => now()->toDateString(),
+    ])->assertRedirect();
+
+    $this->assertDatabaseMissing('security_deposit_deductions', [
+        'id' => $confirmedDeduction->id,
+    ]);
+
+    $this->assertDatabaseMissing('payments', [
+        'id' => $linkedPayment->id,
+    ]);
+
+    Storage::disk('public')->assertMissing($storedPath);
+
+    $lease->refresh();
+    expect($lease->security_deposit_status)->toBe('settled')
+        ->and((float) $lease->total_deposit_deductions)->toBe(0.0)
+        ->and((float) $lease->total_deposit_refunded)->toBe(10000.0)
+        ->and((float) $lease->refundable_deposit_balance)->toBe(0.0);
+
+    $settlement = $lease->securityDepositSettlement()->firstOrFail();
+    expect($settlement->status)->toBe('settled')
+        ->and($settlement->settlement_type)->toBe('full_refund')
+        ->and((float) $settlement->total_received)->toBe(10000.0)
+        ->and((float) $settlement->total_deductions)->toBe(0.0)
+        ->and((float) $settlement->total_refunded)->toBe(10000.0)
+        ->and((float) $settlement->refundable_balance)->toBe(0.0);
+});
+
+test('settling with null deductions key removes all existing confirmed deductions', function () {
+    $lease = Lease::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'unit_id' => $this->unit->id,
+        'renter_id' => $this->renter->id,
+        'rent_amount' => 5000.00,
+        'security_deposit_amount' => 5000.00,
+        'security_deposit_status' => 'held',
+    ]);
+
+    SecurityDepositPayment::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'amount' => 5000.00,
+    ]);
+
+    $confirmedDeduction = SecurityDepositDeduction::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'category' => 'cleaning',
+        'description' => 'تنظيف',
+        'amount' => 800.00,
+        'status' => 'confirmed',
+    ]);
+
+    $response = $this->actingAs($this->user)->post(route('leases.security-deposit.settle', $lease->id), [
+        'inspection_category' => 'no_issues',
+        'deductions' => null,
+    ]);
+    $response->assertSessionHasNoErrors();
+
+    $this->assertDatabaseMissing('security_deposit_deductions', [
+        'id' => $confirmedDeduction->id,
+    ]);
+
+    $lease->refresh();
+    expect((float) $lease->total_deposit_deductions)->toBe(0.0)
+        ->and((float) $lease->refundable_deposit_balance)->toBe(5000.0);
 });

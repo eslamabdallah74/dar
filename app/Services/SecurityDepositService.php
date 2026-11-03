@@ -744,12 +744,10 @@ class SecurityDepositService
      */
     private function removeOmittedDeductions(Workspace $workspace, Lease $lockedLease, array $data): void
     {
-        if (! isset($data['deductions']) || ! is_array($data['deductions'])) {
-            return;
-        }
+        $deductions = is_array($data['deductions'] ?? null) ? $data['deductions'] : [];
 
         $submittedExistingIds = array_values(array_filter(
-            array_map('intval', array_column($data['deductions'], 'id')),
+            array_map('intval', array_column($deductions, 'id')),
             fn (int $id): bool => $id > 0
         ));
 

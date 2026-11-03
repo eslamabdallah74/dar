@@ -368,11 +368,12 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                 <button
                     @click="router.reload()"
                     type="button"
-                    class="h-10 px-3.5 rounded-xl border border-[#D6E0E7] bg-white text-xs font-semibold text-[#163E3E] hover:bg-[#F8F4EA] flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+                    class="group flex h-10 items-center gap-1.5 rounded-xl border border-[#D6E0E7] bg-white px-3.5 text-xs font-semibold text-[#163E3E] transition hover:border-[#B8CECA] hover:bg-[#F0F6F4] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#163E3E] focus-visible:ring-offset-2 active:scale-[0.98]"
                     title="تحديث البيانات"
+                    aria-label="تحديث البيانات"
                 >
-                    <RefreshCw class="w-3.5 h-3.5 text-[#5B6770]" />
-                    <span>تحديث حي</span>
+                    <RefreshCw class="h-3.5 w-3.5 text-[#5B6770] transition-transform duration-300 group-hover:rotate-180" />
+                    <span>تحديث البيانات</span>
                 </button>
 
                 <PrimaryButton
@@ -514,103 +515,165 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
 
         <!-- TAB 2: إدارة مساحات العمل (Workspaces Tab) -->
         <div v-show="currentTab === 'workspaces'" class="space-y-4 animate-in fade-in">
-            <div class="flex items-center justify-between">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                    <h3 class="text-lg font-bold text-[#163E3E]">مساحات العمل المسجلة (Workspaces)</h3>
-                    <p class="text-xs text-[#5B6770]">عرض شامل والتحكم في كل مساحة عمل، ترقية الباقات، أو الدخول كمدير نظام.</p>
+                    <h3 class="text-xl font-bold tracking-tight text-[#163E3E]">مساحات العمل المسجلة</h3>
+                    <p class="mt-1 text-sm leading-6 text-[#5B6770]">إدارة المساحات والاشتراكات وحدود الاستخدام من مكان واحد.</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-xs">
+                    <span class="inline-flex items-center gap-1.5 rounded-xl border border-[#D6E0E7] bg-white px-3 py-2 font-semibold text-[#163E3E]">
+                        <Building2 class="w-3.5 h-3.5 text-[#163E3E]" />
+                        <span>إجمالي المساحات:</span>
+                        <strong class="text-[#163E3E]">{{ props.workspaces.length }}</strong>
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 font-semibold text-emerald-800">
+                        <Check class="w-3.5 h-3.5 text-emerald-600" />
+                        <span>اشتراكات نشطة:</span>
+                        <strong class="text-emerald-900">{{ props.workspaces.filter(w => w.subscription_status === 'active').length }}</strong>
+                    </span>
+                    <span
+                        v-if="props.workspaces.filter(w => w.plan_request_status === 'pending').length > 0"
+                        class="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 font-semibold text-amber-900"
+                    >
+                        <Sparkles class="w-3.5 h-3.5 text-amber-600" />
+                        <span>طلبات ترقية معلقة:</span>
+                        <strong class="text-amber-900">{{ props.workspaces.filter(w => w.plan_request_status === 'pending').length }}</strong>
+                    </span>
                 </div>
             </div>
 
-            <div class="rounded-2xl border border-[#D6E0E7] bg-white overflow-hidden shadow-2xs">
+            <div class="overflow-hidden rounded-2xl border border-[#D6E0E7] bg-white shadow-sm shadow-[#163E3E]/5">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-right text-xs">
-                        <thead class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
+                    <table class="w-full min-w-[1160px] text-right text-xs">
+                        <thead class="border-b border-[#D6E0E7] bg-[#F4F7F7] text-[11px] font-semibold text-[#5B6770]">
                             <tr>
-                                <th class="p-3.5">مساحة العمل</th>
-                                <th class="p-3.5">المالك المسجل</th>
-                                <th class="p-3.5 text-center">حد الوحدات الرئيسية</th>
-                                <th class="p-3.5 text-center">حد التأجير النشط</th>
-                                <th class="p-3.5 text-center">العقارات</th>
-                                <th class="p-3.5 text-center">الوحدات الكلية</th>
-                                <th class="p-3.5">الباقة الحالية</th>
-                                <th class="p-3.5">الحالة</th>
-                                <th class="p-3.5">تاريخ الإنشاء</th>
-                                <th class="p-3.5 text-center">الإجراءات والتحكم</th>
+                                <th class="w-[30%] px-4 py-3.5">مساحة العمل والمالك</th>
+                                <th class="w-[25%] px-4 py-3.5">الاستخدام</th>
+                                <th class="px-4 py-3.5">الباقة</th>
+                                <th class="px-4 py-3.5">الحالة</th>
+                                <th class="px-4 py-3.5 whitespace-nowrap">تاريخ الإنشاء</th>
+                                <th class="px-4 py-3.5 text-center">الإجراءات</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-[#E8EFF4]">
-                            <tr v-for="ws in filteredWorkspaces" :key="ws.id" class="hover:bg-[#F8FAFC] transition">
-                                <td class="p-3.5 font-bold text-[#163E3E]">
-                                    <div class="flex items-center gap-2">
-                                        <div class="w-7 h-7 rounded-lg bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center font-bold">
+                            <tr v-for="ws in filteredWorkspaces" :key="ws.id" class="group transition-colors duration-150 hover:bg-[#F6F9F8]">
+                                <td class="px-4 py-4">
+                                    <div class="flex items-start gap-3">
+                                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E8F0F0] text-[#163E3E]">
                                             <Building2 class="w-4 h-4" />
                                         </div>
-                                        <span>{{ ws.name }}</span>
+                                        <div class="min-w-0">
+                                            <div class="flex flex-wrap items-center gap-1.5">
+                                                <span class="max-w-[260px] truncate text-sm font-bold text-[#163E3E]" :title="ws.name">{{ ws.name }}</span>
+                                                <span
+                                                    v-if="ws.ai_assistant_enabled"
+                                                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0"
+                                                    title="المساعد الذكي مفعّل"
+                                                >
+                                                    <Sparkles class="w-3 h-3 text-emerald-600" />
+                                                    AI
+                                                </span>
+                                            </div>
+                                            <div class="mt-1 text-[11px] text-[#5B6770]">
+                                                <span class="font-medium text-[#344C4C]">{{ ws.owner_name }}</span>
+                                                <span class="mx-1 text-[#A0ACAC]">·</span>
+                                                <span dir="ltr" class="inline-block max-w-[190px] truncate align-bottom">{{ ws.owner_email }}</span>
+                                            </div>
+                                            <div class="mt-1 font-mono text-[10px] text-[#7A8989]">#{{ ws.id }} · {{ ws.slug }}</div>
+                                        </div>
                                     </div>
                                 </td>
-                                <td class="p-3.5">
-                                    <div class="font-semibold text-[#163E3E]">{{ ws.owner_name }}</div>
-                                    <div class="text-[11px] text-[#5B6770]">{{ ws.owner_email }}</div>
-                                </td>
-                                <td class="p-3.5 text-center">
-                                    <div class="inline-flex items-center gap-1 font-bold">
-                                        <span class="text-[#163E3E]">{{ ws.created_parent_units_count }}</span>
-                                        <span class="text-[#5B6770]">/</span>
-                                        <span :class="ws.parent_unit_limit === null ? 'text-emerald-700' : 'text-[#163E3E]'">
-                                            {{ ws.parent_unit_limit === null ? 'غير محدود ∞' : ws.parent_unit_limit }}
-                                        </span>
+                                <td class="px-4 py-4">
+                                    <div class="grid min-w-[270px] grid-cols-2 gap-3">
+                                        <div class="space-y-1.5">
+                                            <div class="flex items-center justify-between gap-2">
+                                                <span class="text-[10px] font-medium text-[#5B6770]">وحدات رئيسية</span>
+                                                <span class="whitespace-nowrap font-mono text-xs font-semibold tabular-nums text-[#163E3E]">
+                                                    {{ ws.created_parent_units_count }}
+                                                    <span class="font-sans font-normal text-[#9AA7A7]">/</span>
+                                                    <span :class="ws.parent_unit_limit === null ? 'text-emerald-700' : 'text-[#5B6770]'">
+                                                        {{ ws.parent_unit_limit === null ? '∞' : ws.parent_unit_limit }}
+                                                    </span>
+                                                </span>
+                                            </div>
+                                            <div v-if="ws.parent_unit_limit !== null" class="h-1.5 overflow-hidden rounded-full bg-[#E8EFF4]">
+                                                <div
+                                                    class="h-full rounded-full transition-all duration-300"
+                                                    :class="ws.created_parent_units_count >= ws.parent_unit_limit ? 'bg-rose-500' : (ws.created_parent_units_count / ws.parent_unit_limit >= 0.8 ? 'bg-amber-500' : 'bg-[#163E3E]')"
+                                                    :style="{ width: `${Math.min(100, Math.round((ws.created_parent_units_count / ws.parent_unit_limit) * 100))}%` }"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div class="space-y-1.5 border-r border-[#E8EFF4] pr-3">
+                                            <div class="flex items-center justify-between gap-2">
+                                                <span class="text-[10px] font-medium text-[#5B6770]">تأجير نشط</span>
+                                                <span class="whitespace-nowrap font-mono text-xs font-semibold tabular-nums text-[#163E3E]">
+                                                    {{ ws.active_rented_parent_units_count }}
+                                                    <span class="font-sans font-normal text-[#9AA7A7]">/</span>
+                                                    <span :class="ws.active_rental_limit === null ? 'text-emerald-700' : 'text-[#5B6770]'">
+                                                        {{ ws.active_rental_limit === null ? '∞' : ws.active_rental_limit }}
+                                                    </span>
+                                                </span>
+                                            </div>
+                                            <div v-if="ws.active_rental_limit !== null" class="h-1.5 overflow-hidden rounded-full bg-[#E8EFF4]">
+                                                <div
+                                                    class="h-full rounded-full transition-all duration-300"
+                                                    :class="ws.active_rented_parent_units_count >= ws.active_rental_limit ? 'bg-rose-500' : (ws.active_rented_parent_units_count / ws.active_rental_limit >= 0.8 ? 'bg-amber-500' : 'bg-emerald-600')"
+                                                    :style="{ width: `${Math.min(100, Math.round((ws.active_rented_parent_units_count / ws.active_rental_limit) * 100))}%` }"
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="text-[10px] text-[#5B6770]">منشأة / مسموح</div>
                                 </td>
-                                <td class="p-3.5 text-center">
-                                    <div class="inline-flex items-center gap-1 font-bold">
-                                        <span class="text-[#163E3E]">{{ ws.active_rented_parent_units_count }}</span>
-                                        <span class="text-[#5B6770]">/</span>
-                                        <span :class="ws.active_rental_limit === null ? 'text-emerald-700' : 'text-[#163E3E]'">
-                                            {{ ws.active_rental_limit === null ? 'غير محدود ∞' : ws.active_rental_limit }}
-                                        </span>
-                                    </div>
-                                    <div class="text-[10px] text-[#5B6770]">مؤجرة / مسموح</div>
-                                </td>
-                                <td class="p-3.5 text-center font-bold">{{ ws.properties_count }}</td>
-                                <td class="p-3.5 text-center font-bold">{{ ws.units_count }}</td>
-                                <td class="p-3.5">
+                                <td class="px-4 py-4">
                                     <div class="space-y-1">
-                                        <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#E8F0F0] text-[#163E3E] inline-block">
+                                        <span class="inline-block rounded-md border border-[#D4E2E2] bg-[#F0F5F4] px-2.5 py-1 text-[11px] font-semibold text-[#163E3E]">
                                             {{ ws.plan_name }}
                                         </span>
-                                        <div v-if="ws.plan_request_status === 'pending' && ws.requested_plan_name" class="flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-md border border-amber-300">
+                                        <div v-if="ws.plan_request_status === 'pending' && ws.requested_plan_name" class="flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-800">
                                             <Sparkles class="w-3 h-3 text-amber-600 shrink-0" />
                                             <span>مطلوب: {{ ws.requested_plan_name }}</span>
                                         </div>
-                                        <div v-else-if="ws.plan_request_status === 'approved' && ws.requested_plan_name" class="text-[10px] text-emerald-700 font-semibold">
+                                        <div v-else-if="ws.plan_request_status === 'approved' && ws.requested_plan_name" class="text-[10px] font-medium text-emerald-700">
                                             ✓ معتمد: {{ ws.requested_plan_name }}
                                         </div>
-                                        <div v-else-if="ws.plan_request_status === 'rejected' && ws.requested_plan_name" class="text-[10px] text-rose-600 font-semibold">
+                                        <div v-else-if="ws.plan_request_status === 'rejected' && ws.requested_plan_name" class="text-[10px] font-medium text-rose-600">
                                             ✕ مرفوض: {{ ws.requested_plan_name }}
                                         </div>
                                     </div>
                                 </td>
-                                <td class="p-3.5">
+                                <td class="px-4 py-4">
                                     <StatusBadge :status="ws.subscription_status || ws.status" />
                                 </td>
-                                <td class="p-3.5 text-[#5B6770]">{{ ws.created_at }}</td>
-                                <td class="p-3.5">
-                                    <div class="flex items-center justify-center gap-1.5">
+                                <td class="whitespace-nowrap px-4 py-4 font-mono text-[11px] tabular-nums text-[#5B6770]">{{ ws.created_at }}</td>
+                                <td class="px-4 py-4">
+                                    <div class="flex min-w-[310px] items-center justify-center gap-1.5">
                                         <button
                                             v-if="ws.plan_request_status === 'pending' && ws.requested_plan_name"
                                             @click="quickApprovePlan(ws)"
                                             type="button"
-                                            class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition flex items-center gap-1 cursor-pointer text-xs shadow-xs"
+                                            class="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 active:scale-[0.98]"
                                             :title="`الموافقة ومنح ${ws.requested_plan_name}`"
+                                            aria-label="الموافقة ومنح الباقة"
                                         >
                                             <Check class="w-3.5 h-3.5" />
                                             <span>منح</span>
                                         </button>
+                                        <button
+                                            @click="impersonate(ws.id)"
+                                            type="button"
+                                            class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 active:scale-[0.98]"
+                                            title="دخول مساحة العمل كمدير"
+                                            aria-label="دخول مساحة العمل كمدير"
+                                        >
+                                            <LogIn class="w-3.5 h-3.5" />
+                                            <span>دخول</span>
+                                        </button>
                                         <Link
                                             :href="route('admin.workspaces.show', ws.id)"
-                                            class="px-2.5 py-1.5 rounded-lg bg-[#E8F0F0] text-[#163E3E] hover:bg-[#D4EAEF] font-bold transition flex items-center gap-1 cursor-pointer"
+                                            class="inline-flex items-center gap-1 rounded-lg bg-[#163E3E] px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-[#235555] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#163E3E] focus-visible:ring-offset-2 active:scale-[0.98]"
                                             title="عرض تفاصيل مساحة العمل"
+                                            aria-label="عرض تفاصيل مساحة العمل"
                                         >
                                             <Eye class="w-3.5 h-3.5" />
                                             <span>تفاصيل</span>
@@ -618,50 +681,55 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                         <button
                                             @click="openEditLimits(ws)"
                                             type="button"
-                                            class="px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-800 hover:bg-amber-100 font-bold transition flex items-center gap-1 cursor-pointer"
+                                            class="inline-flex items-center gap-1 rounded-lg border border-[#D6E0E7] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#465B5B] transition hover:bg-[#F4F7F7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#163E3E] focus-visible:ring-offset-2 active:scale-[0.98]"
                                             title="تعديل حدود الإنشاء والتأجير"
+                                            aria-label="تعديل حدود الإنشاء والتأجير"
                                         >
                                             <Sliders class="w-3.5 h-3.5" />
                                             <span>الحدود</span>
                                         </button>
-                                        <button
-                                            @click="impersonate(ws.id)"
-                                            type="button"
-                                            class="px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-bold transition flex items-center gap-1 cursor-pointer"
-                                            title="دخول مساحة العمل كمدير"
-                                        >
-                                            <LogIn class="w-3.5 h-3.5" />
-                                            <span>دخول</span>
-                                        </button>
-                                        <button
-                                            @click="openChangePlan(ws)"
-                                            type="button"
-                                            class="p-1.5 rounded-lg text-[#5B6770] hover:text-[#163E3E] hover:bg-[#E8F0F0] transition cursor-pointer"
-                                            title="ترقية / تغيير الباقة"
-                                        >
-                                            <Layers class="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            @click="openEditWorkspace(ws)"
-                                            type="button"
-                                            class="p-1.5 rounded-lg text-[#5B6770] hover:text-[#163E3E] hover:bg-[#F8F4EA] transition cursor-pointer"
-                                            title="تعديل البيانات"
-                                        >
-                                            <Edit3 class="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            @click="deleteWorkspace(ws.id, ws.name)"
-                                            type="button"
-                                            class="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                                            title="حذف مساحة العمل"
-                                        >
-                                            <Trash2 class="w-4 h-4" />
-                                        </button>
+                                        <div class="inline-flex items-center rounded-lg border border-[#D6E0E7] bg-[#F8FAFA] p-0.5">
+                                            <button
+                                                @click="openChangePlan(ws)"
+                                                type="button"
+                                                class="rounded-md p-1.5 text-[#5B6770] transition hover:bg-white hover:text-[#163E3E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#163E3E] focus-visible:ring-offset-1 active:scale-[0.98]"
+                                                title="ترقية / تغيير الباقة"
+                                                aria-label="ترقية / تغيير الباقة"
+                                            >
+                                                <Layers class="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                                @click="openEditWorkspace(ws)"
+                                                type="button"
+                                                class="rounded-md p-1.5 text-[#5B6770] transition hover:bg-white hover:text-[#163E3E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#163E3E] focus-visible:ring-offset-1 active:scale-[0.98]"
+                                                title="تعديل البيانات"
+                                                aria-label="تعديل بيانات مساحة العمل"
+                                            >
+                                                <Edit3 class="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                                @click="deleteWorkspace(ws.id, ws.name)"
+                                                type="button"
+                                                class="rounded-md p-1.5 text-rose-600 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 focus-visible:ring-offset-1 active:scale-[0.98]"
+                                                title="حذف مساحة العمل"
+                                                aria-label="حذف مساحة العمل"
+                                            >
+                                                <Trash2 class="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
                             <tr v-if="filteredWorkspaces.length === 0">
-                                <td colspan="10" class="p-8 text-center text-[#5B6770]">لا توجد مساحات عمل مطابقة لبحثك.</td>
+                                <td colspan="6" class="px-4 py-14 text-center">
+                                    <div class="mx-auto flex max-w-sm flex-col items-center gap-2">
+                                        <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F0F5F4] text-[#587070]">
+                                            <Building2 class="h-5 w-5" />
+                                        </div>
+                                        <p class="font-semibold text-[#344C4C]">لا توجد مساحات مطابقة</p>
+                                        <p class="text-xs leading-5 text-[#718080]">جرّب البحث باسم المساحة أو المالك أو البريد الإلكتروني.</p>
+                                    </div>
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -690,7 +758,6 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                 <th class="p-3.5">الاسم</th>
                                 <th class="p-3.5">البريد الإلكتروني</th>
                                 <th class="p-3.5 text-center">الرتبة / الصلاحية</th>
-                                <th class="p-3.5 text-center">المحافظ المملوكة</th>
                                 <th class="p-3.5 text-center">حالة التحقق</th>
                                 <th class="p-3.5">تاريخ التسجيل</th>
                                 <th class="p-3.5 text-center">الإجراءات</th>
@@ -719,7 +786,6 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                         {{ u.is_admin ? 'مدير نظام (Admin)' : 'مستخدم عادي' }}
                                     </span>
                                 </td>
-                                <td class="p-3.5 text-center font-bold">{{ u.owned_workspaces_count }}</td>
                                 <td class="p-3.5 text-center">
                                     <span
                                         class="px-2 py-0.5 rounded-full text-[10px] font-bold"
@@ -758,6 +824,9 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                         </button>
                                     </div>
                                 </td>
+                            </tr>
+                            <tr v-if="filteredUsers.length === 0">
+                                <td colspan="6" class="p-8 text-center text-[#5B6770]">لا يوجد مستخدمون مطابقون لبحثك.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -842,7 +911,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                         :value="l.status"
                                         @change="updateLeaseStatus(l.id, ($event.target as HTMLSelectElement).value)"
                                         aria-label="تحديث حالة العقد"
-                                        class="h-7 px-2 rounded-lg border border-[#D6E0E7] bg-white text-[11px] font-semibold text-[#163E3E] cursor-pointer"
+                                        class="h-9 min-w-[144px] rounded-lg border border-[#D6E0E7] bg-white px-3 text-xs font-semibold text-[#163E3E] transition hover:border-[#B8CECA] hover:bg-[#F8FAFA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#163E3E] focus-visible:ring-offset-2"
                                     >
                                         <option value="active">نشط (Active)</option>
                                         <option value="draft">مسودة (Draft)</option>
@@ -937,7 +1006,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                         :value="mr.status"
                                         @change="updateMaintenanceStatus(mr.id, ($event.target as HTMLSelectElement).value)"
                                         aria-label="تحديث حالة طلب الصيانة"
-                                        class="h-7 px-2 rounded-lg border border-[#D6E0E7] bg-white text-[11px] font-semibold text-[#163E3E] cursor-pointer"
+                                        class="h-9 min-w-[144px] rounded-lg border border-[#D6E0E7] bg-white px-3 text-xs font-semibold text-[#163E3E] transition hover:border-[#B8CECA] hover:bg-[#F8FAFA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#163E3E] focus-visible:ring-offset-2"
                                     >
                                         <option value="open">مفتوح (Open)</option>
                                         <option value="in_progress">قيد التنفيذ (In Progress)</option>

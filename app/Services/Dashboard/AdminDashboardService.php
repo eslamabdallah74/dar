@@ -44,36 +44,45 @@ class AdminDashboardService
         // 1. Platform-wide Counts
         $totalWorkspaces = Workspace::count();
         $totalUsers = User::count();
-        $totalProperties = Property::count();
-        $totalUnits = Unit::count();
-        $totalLeases = Lease::count();
-        $totalRenters = Renter::count();
+        $totalProperties = Property::withoutGlobalScopes()->count();
+        $totalUnits = Unit::withoutGlobalScopes()->count();
+        $totalLeases = Lease::withoutGlobalScopes()->count();
+        $totalRenters = Renter::withoutGlobalScopes()->count();
 
         // Occupancy calculation across all workspaces
-        $occupiedUnits = Unit::whereHas('leases', function ($query): void {
-            $query->where('status', 'active')
+        $occupiedUnits = Unit::withoutGlobalScopes()->whereHas('leases', function ($query): void {
+            $query->withoutGlobalScopes()
+                ->where('status', 'active')
                 ->where('starts_on', '<=', today());
         })->count();
 
-        $maintenanceUnits = Unit::whereHas('maintenanceRequests', function ($query): void {
-            $query->whereIn('status', ['open', 'in_progress']);
+        $maintenanceUnits = Unit::withoutGlobalScopes()->whereHas('maintenanceRequests', function ($query): void {
+            $query->withoutGlobalScopes()
+                ->whereIn('status', ['open', 'in_progress']);
         })->count();
         $vacantUnits = max(0, $totalUnits - $occupiedUnits);
         $occupancyRate = $totalUnits > 0 ? (int) round(($occupiedUnits / $totalUnits) * 100) : 0;
 
         // 2. Platform Financials
-        $monthlyCollected = (float) Payment::whereBetween('paid_at', [$startOfMonth, $endOfMonth])->sum('amount');
-        $monthlyDue = (float) RentCharge::whereBetween('due_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()])->sum('amount');
+        $monthlyCollected = (float) Payment::withoutGlobalScopes()->whereBetween('paid_at', [$startOfMonth, $endOfMonth])->sum('amount');
+        $monthlyDue = (float) RentCharge::withoutGlobalScopes()->whereBetween('due_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()])->sum('amount');
 
-        $overdueCharges = RentCharge::overdue()
-            ->with(['lease.renter', 'lease.unit.property', 'workspace'])
+        $overdueCharges = RentCharge::withoutGlobalScopes()
+            ->overdue()
+            ->with([
+                'lease' => fn ($q) => $q->withoutGlobalScopes(),
+                'lease.renter' => fn ($q) => $q->withoutGlobalScopes(),
+                'lease.unit' => fn ($q) => $q->withoutGlobalScopes(),
+                'lease.unit.property' => fn ($q) => $q->withoutGlobalScopes(),
+                'workspace',
+            ])
             ->orderBy('due_date')
             ->get();
         $totalOverdueBalance = (float) $overdueCharges->sum(fn ($c): float => (float) $c->outstanding_balance);
         $overdueCount = $overdueCharges->count();
 
         // Operational Expenses
-        $maintenanceExpenses = (float) Expense::where(function ($query): void {
+        $maintenanceExpenses = (float) Expense::withoutGlobalScopes()->where(function ($query): void {
             $query->where('origin', 'maintenance')
                 ->orWhere('category', 'صيانة وتشغيل')
                 ->orWhere('category', 'maintenance');
@@ -83,14 +92,14 @@ class AdminDashboardService
             ->whereBetween('expense_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()])
             ->sum('amount');
 
-        $operatingExpenses = (float) Expense::where('origin', '!=', 'maintenance')
+        $operatingExpenses = (float) Expense::withoutGlobalScopes()->where('origin', '!=', 'maintenance')
             ->whereNotIn('category', ['maintenance', 'صيانة وتشغيل'])
             ->whereNotNull('amount')
             ->where('amount', '>', 0)
             ->whereBetween('expense_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()])
             ->sum('amount');
 
-        $openMaintenanceCount = MaintenanceRequest::whereIn('status', ['open', 'in_progress'])->count();
+        $openMaintenanceCount = MaintenanceRequest::withoutGlobalScopes()->whereIn('status', ['open', 'in_progress'])->count();
 
         // Subscriptions & MRR
         $activeSubscriptions = WorkspaceSubscription::where('status', 'active')->with('plan')->get();
@@ -107,7 +116,7 @@ class AdminDashboardService
             $mStart = $monthDate->copy()->startOfMonth();
             $mEnd = $monthDate->copy()->endOfMonth();
 
-            $collected = (float) Payment::whereBetween('paid_at', [$mStart, $mEnd])->sum('amount');
+            $collected = (float) Payment::withoutGlobalScopes()->whereBetween('paid_at', [$mStart, $mEnd])->sum('amount');
 
             $monthLabel = $monthsNames[$monthDate->month - 1];
             $chartMonths[] = $monthLabel;
@@ -121,11 +130,11 @@ class AdminDashboardService
 
         // 4. WhatsApp Logs Overview
         $whatsappStats = [
-            'total' => MessageLog::count(),
-            'delivered' => MessageLog::where('status', 'delivered')->count(),
-            'sent' => MessageLog::where('status', 'sent')->count(),
-            'pending' => MessageLog::where('status', 'pending')->count(),
-            'failed' => MessageLog::where('status', 'failed')->count(),
+            'total' => MessageLog::withoutGlobalScopes()->count(),
+            'delivered' => MessageLog::withoutGlobalScopes()->where('status', 'delivered')->count(),
+            'sent' => MessageLog::withoutGlobalScopes()->where('status', 'sent')->count(),
+            'pending' => MessageLog::withoutGlobalScopes()->where('status', 'pending')->count(),
+            'failed' => MessageLog::withoutGlobalScopes()->where('status', 'failed')->count(),
         ];
         $whatsappDeliveryRate = $whatsappStats['total'] > 0
             ? (int) round((($whatsappStats['delivered'] + $whatsappStats['sent']) / $whatsappStats['total']) * 100)
@@ -146,9 +155,15 @@ class AdminDashboardService
             ];
         }
 
-        $expiringLeases = Lease::where('status', 'active')
+        $expiringLeases = Lease::withoutGlobalScopes()
+            ->where('status', 'active')
             ->whereBetween('ends_on', [today(), today()->addDays(30)])
-            ->with(['renter', 'unit.property', 'workspace'])
+            ->with([
+                'renter' => fn ($q) => $q->withoutGlobalScopes(),
+                'unit' => fn ($q) => $q->withoutGlobalScopes(),
+                'unit.property' => fn ($q) => $q->withoutGlobalScopes(),
+                'workspace',
+            ])
             ->take(3)
             ->get();
         foreach ($expiringLeases as $lease) {
@@ -181,7 +196,10 @@ class AdminDashboardService
         }
 
         if ($recentActivities->isEmpty()) {
-            foreach (Payment::with(['renter', 'workspace'])->latest('paid_at')->take(4)->get() as $payment) {
+            foreach (Payment::withoutGlobalScopes()->with([
+                'renter' => fn ($q) => $q->withoutGlobalScopes(),
+                'workspace',
+            ])->latest('paid_at')->take(4)->get() as $payment) {
                 $recentActivities->push([
                     'id' => 'p-'.$payment->id,
                     'type' => 'payment',
@@ -196,11 +214,11 @@ class AdminDashboardService
         // 7. Full Datasets for Control Tabs
         $workspaces = Workspace::with(['owner', 'activeSubscription.plan', 'requestedPlan'])
             ->withCount([
-                'properties',
-                'units',
-                'units as parent_units_count' => fn ($query) => $query->whereNull('parent_unit_id'),
-                'leases',
-                'renters',
+                'properties' => fn ($query) => $query->withoutGlobalScopes(),
+                'units' => fn ($query) => $query->withoutGlobalScopes(),
+                'units as parent_units_count' => fn ($query) => $query->withoutGlobalScopes()->whereNull('parent_unit_id'),
+                'leases' => fn ($query) => $query->withoutGlobalScopes(),
+                'renters' => fn ($query) => $query->withoutGlobalScopes(),
             ])
             ->latest()
             ->get()
@@ -249,8 +267,9 @@ class AdminDashboardService
                 'created_at' => $u->created_at?->format(self::DATE_FORMAT),
             ]);
 
-        $properties = Property::with('workspace:id,name')
-            ->withCount('units')
+        $properties = Property::withoutGlobalScopes()
+            ->with('workspace:id,name')
+            ->withCount(['units' => fn ($q) => $q->withoutGlobalScopes()])
             ->latest()
             ->take(50)
             ->get()
@@ -265,7 +284,12 @@ class AdminDashboardService
                 'created_at' => $p->created_at?->format(self::DATE_FORMAT),
             ]);
 
-        $leases = Lease::with(['renter:id,name,phone', 'unit:id,name', 'workspace:id,name'])
+        $leases = Lease::withoutGlobalScopes()
+            ->with([
+                'renter' => fn ($q) => $q->withoutGlobalScopes()->select(['id', 'name', 'phone']),
+                'unit' => fn ($q) => $q->withoutGlobalScopes()->select(['id', 'name']),
+                'workspace:id,name',
+            ])
             ->latest()
             ->take(50)
             ->get()
@@ -281,7 +305,11 @@ class AdminDashboardService
                 'ends_on' => $l->ends_on->format(self::DATE_FORMAT),
             ]);
 
-        $payments = Payment::with(['renter:id,name', 'workspace:id,name'])
+        $payments = Payment::withoutGlobalScopes()
+            ->with([
+                'renter' => fn ($q) => $q->withoutGlobalScopes()->select(['id', 'name']),
+                'workspace:id,name',
+            ])
             ->latest('paid_at')
             ->take(50)
             ->get()
@@ -307,7 +335,11 @@ class AdminDashboardService
             'is_active' => (bool) $pl->is_active,
         ]);
 
-        $messageLogs = MessageLog::with(['renter:id,name', 'workspace:id,name'])
+        $messageLogs = MessageLog::withoutGlobalScopes()
+            ->with([
+                'renter' => fn ($q) => $q->withoutGlobalScopes()->select(['id', 'name']),
+                'workspace:id,name',
+            ])
             ->latest('scheduled_at')
             ->take(50)
             ->get()
@@ -322,7 +354,13 @@ class AdminDashboardService
                 'sent_at' => $m->sent_at?->format(self::DATETIME_FORMAT) ?? '—',
             ]);
 
-        $maintenanceRequests = MaintenanceRequest::with(['unit.property', 'workspace:id,name'])
+        $maintenanceRequests = MaintenanceRequest::withoutGlobalScopes()
+            ->with([
+                'unit' => fn ($q) => $q->withoutGlobalScopes()->with([
+                    'property' => fn ($pq) => $pq->withoutGlobalScopes()->select(['id', 'name']),
+                ])->select(['id', 'name', 'property_id']),
+                'workspace:id,name',
+            ])
             ->latest()
             ->take(50)
             ->get()
@@ -357,7 +395,7 @@ class AdminDashboardService
                 'occupancy' => [
                     'label' => 'معدل الإشغال العام',
                     'value' => $occupancyRate.'%',
-                    'subtitle' => 'معدل الإشغال لكافة المحافظ',
+                    'subtitle' => 'معدل الإشغال العام لكافة مساحات العمل',
                 ],
                 'collected' => [
                     'label' => 'إجمالي التحصيلات هذا الشهر',

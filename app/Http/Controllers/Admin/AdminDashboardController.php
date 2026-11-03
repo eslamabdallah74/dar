@@ -181,7 +181,8 @@ class AdminDashboardController extends Controller
         $usageSummary = $limitService->getWorkspaceUsageSummary($workspace);
 
         $properties = $workspace->properties()
-            ->withCount('units')
+            ->withoutGlobalScopes()
+            ->withCount(['units' => fn ($q) => $q->withoutGlobalScopes()])
             ->latest()
             ->get()
             ->map(fn ($p): array => [
@@ -194,8 +195,12 @@ class AdminDashboardController extends Controller
             ]);
 
         $parentUnits = $workspace->units()
+            ->withoutGlobalScopes()
             ->whereNull('parent_unit_id')
-            ->with(['property:id,name', 'leases' => fn ($q) => $q->where('status', 'active')->with('renter:id,name')])
+            ->with([
+                'property' => fn ($q) => $q->withoutGlobalScopes()->select(['id', 'name']),
+                'leases' => fn ($q) => $q->withoutGlobalScopes()->where('status', 'active')->with(['renter' => fn ($rq) => $rq->withoutGlobalScopes()->select(['id', 'name'])]),
+            ])
             ->get()
             ->map(fn ($u): array => [
                 'id' => $u->id,
@@ -208,8 +213,13 @@ class AdminDashboardController extends Controller
             ]);
 
         $activeLeases = $workspace->leases()
+            ->withoutGlobalScopes()
             ->where('status', 'active')
-            ->with(['renter:id,name,phone', 'unit:id,name,property_id', 'unit.property:id,name'])
+            ->with([
+                'renter' => fn ($q) => $q->withoutGlobalScopes()->select(['id', 'name', 'phone']),
+                'unit' => fn ($q) => $q->withoutGlobalScopes()->select(['id', 'name', 'property_id']),
+                'unit.property' => fn ($q) => $q->withoutGlobalScopes()->select(['id', 'name']),
+            ])
             ->latest()
             ->get()
             ->map(fn ($l): array => [
@@ -386,8 +396,10 @@ class AdminDashboardController extends Controller
     /**
      * Update lease status.
      */
-    public function updateLeaseStatus(Request $request, Lease $lease, WorkspaceLimitService $limitService): RedirectResponse
+    public function updateLeaseStatus(Request $request, int|string $lease, WorkspaceLimitService $limitService): RedirectResponse
     {
+        $lease = Lease::withoutGlobalScopes()->findOrFail($lease);
+
         $validated = $request->validate([
             'status' => ['required', 'string', Rule::in(['active', 'draft', 'terminated', 'expired'])],
         ]);
@@ -395,7 +407,7 @@ class AdminDashboardController extends Controller
         if ($validated['status'] === 'active' && $lease->status !== 'active') {
             DB::transaction(function () use ($lease, $validated, $limitService): void {
                 $workspace = Workspace::where('id', $lease->workspace_id)->lockForUpdate()->firstOrFail();
-                $unit = $lease->unit;
+                $unit = $lease->unit()->withoutGlobalScopes()->first();
                 if ($unit) {
                     $limitService->validateCanActivateRental($workspace, $unit);
                 }
@@ -413,9 +425,11 @@ class AdminDashboardController extends Controller
      */
     public function updateMaintenanceStatus(
         Request $request,
-        MaintenanceRequest $maintenance,
+        int|string $maintenance,
         MaintenanceExpenseService $expenseService
     ): RedirectResponse {
+        $maintenance = MaintenanceRequest::withoutGlobalScopes()->findOrFail($maintenance);
+
         $validated = $request->validate([
             'status' => ['required', 'string', Rule::in(['open', 'pending', 'in_progress', 'completed', 'closed'])],
         ]);

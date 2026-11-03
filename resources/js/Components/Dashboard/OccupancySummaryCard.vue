@@ -45,7 +45,7 @@ const maintenancePercent = computed(() => {
                 <div>
                     <h3 class="text-base font-bold text-[#163E3E]">ملخص إشغال الوحدات</h3>
                     <p class="text-xs text-[#5B6770] font-medium mt-0.5">
-                        توزيع الوحدات القابلة للتأجير في محفظتك
+                        توزيع الوحدات القابلة للتأجير في مساحة عملك
                     </p>
                 </div>
                 <div class="text-start sm:text-left">

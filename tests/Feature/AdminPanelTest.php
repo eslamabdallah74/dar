@@ -8,6 +8,7 @@ use App\Models\Renter;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -330,4 +331,58 @@ test('admin dashboard identifies leases by contract number and payments by recei
         ->where('payments.0.payment_number', 'REC-2026-0042')
         ->where('payments.0.method', 'cash')
     );
+});
+
+test('admin dashboard accurately counts parent units and active rentals for other workspaces when active_workspace_id is set in session', function (): void {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    $activeSessionWorkspace = Workspace::factory()->create(['name' => 'Session Workspace']);
+    $otherWorkspace = Workspace::factory()->create([
+        'name' => 'Other Workspace',
+        'parent_unit_limit' => 10,
+        'active_rental_limit' => 10,
+    ]);
+
+    $property = Property::factory()->create(['workspace_id' => $otherWorkspace->id]);
+
+    $parentUnits = Unit::factory()->count(5)->create([
+        'workspace_id' => $otherWorkspace->id,
+        'property_id' => $property->id,
+        'parent_unit_id' => null,
+    ]);
+
+    $targetUnit = $parentUnits->firstOrFail();
+
+    $renter = Renter::factory()->create(['workspace_id' => $otherWorkspace->id]);
+
+    Lease::factory()->create([
+        'workspace_id' => $otherWorkspace->id,
+        'unit_id' => $targetUnit->id,
+        'renter_id' => $renter->id,
+        'status' => 'active',
+        'starts_on' => now()->subMonth(),
+        'ends_on' => now()->addMonths(6),
+    ]);
+
+    $response = $this->actingAs($admin)
+        ->withSession(['active_workspace_id' => $activeSessionWorkspace->id])
+        ->get(route('admin.dashboard'));
+
+    $response->assertOk()->assertInertia(function (Assert $page) use ($otherWorkspace): void {
+        $page->component('Admin/Dashboard')
+            ->where('workspaces', function (mixed $workspaces) use ($otherWorkspace): bool {
+                $workspaceCollection = $workspaces instanceof Collection
+                    ? $workspaces
+                    : collect(is_array($workspaces) ? $workspaces : []);
+
+                /** @var array<string, mixed>|null $found */
+                $found = $workspaceCollection->firstWhere('id', $otherWorkspace->id);
+
+                return is_array($found)
+                    && ($found['created_parent_units_count'] ?? null) === 5
+                    && ($found['active_rented_parent_units_count'] ?? null) === 1
+                    && ($found['parent_unit_limit'] ?? null) === 10
+                    && ($found['active_rental_limit'] ?? null) === 10;
+            });
+    });
 });

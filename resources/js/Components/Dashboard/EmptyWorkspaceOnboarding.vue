@@ -52,7 +52,7 @@ const steps = [
                     <span>مرحباً بك في Nook Mate لإدارة وتأجير العقارات</span>
                 </div>
                 <h2 class="text-2xl sm:text-3xl font-black text-[#163E3E] tracking-tight">
-                    ابدأ بإعداد محفظتك العقارية في 4 خطوات بسيطة
+                    ابدأ بإعداد مساحة عملك في 4 خطوات بسيطة
                 </h2>
                 <p class="text-sm text-[#5B6770] font-medium max-w-2xl leading-relaxed">
                     منصة Nook Mate مصممة لمساعدتك على متابعة الإيجارات، وتحصيل المستحقات، وتتبع الإشغال، وإرسال تذكيرات واتساب لمستأجريك بكل دقة وسهولة.

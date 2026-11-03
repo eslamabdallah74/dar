@@ -212,7 +212,7 @@ const submitPlanRequest = () => {
                     <Sparkles class="w-5 h-5 text-[#163E3E]" />
                     <h2 class="text-lg font-bold text-[#163E3E]">باقات Nook Mate المتاحة</h2>
                 </div>
-                <span class="text-xs text-[#5B6770]">اختر الخطة المناسبة لحجم محفظتك العقارية لطلب تفعيلها</span>
+                <span class="text-xs text-[#5B6770]">اختر الخطة المناسبة لاحتياجات مساحة عملك لطلب تفعيلها</span>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">

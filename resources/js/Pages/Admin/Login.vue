@@ -96,11 +96,12 @@ const submit = () => {
             <div class="pt-2">
                 <PrimaryButton
                     class="w-full justify-center !py-3 text-sm font-bold !bg-amber-400 !text-slate-950 hover:!bg-amber-300 !ring-amber-400 transition cursor-pointer shadow-lg shadow-amber-400/10"
-                    :class="{ 'opacity-50 cursor-not-allowed': form.processing }"
+                    :loading="form.processing"
                     :disabled="form.processing"
                 >
-                    <ShieldCheck class="w-4 h-4 ml-1.5" />
-                    <span>دخول لوحة التحكم المركزية</span>
+                    <ShieldCheck v-if="!form.processing" class="w-4 h-4 ml-1.5" />
+                    <span v-if="form.processing">جاري تسجيل الدخول...</span>
+                    <span v-else>دخول لوحة التحكم المركزية</span>
                 </PrimaryButton>
             </div>
 

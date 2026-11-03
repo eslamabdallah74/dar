@@ -501,6 +501,28 @@ class SecurityDepositService
             'refundable_balance' => $lockedLease->total_deposit_received,
         ]);
 
+        $rawDeductions = is_array($data['deductions'] ?? null) ? $data['deductions'] : [];
+        $submittedExistingIds = [];
+        foreach ($rawDeductions as $deductionItem) {
+            if (is_array($deductionItem) && isset($deductionItem['id']) && is_numeric($deductionItem['id'])) {
+                $submittedExistingIds[] = (int) $deductionItem['id'];
+            }
+        }
+
+        $removedDeductions = SecurityDepositDeduction::where('lease_id', $lockedLease->id)
+            ->where('workspace_id', $workspace->id)
+            ->where('status', 'confirmed')
+            ->whereNotIn('id', $submittedExistingIds)
+            ->get();
+
+        foreach ($removedDeductions as $removedDeduction) {
+            $this->financialObligationService->removeDepositDeductionPayment($workspace, $removedDeduction);
+            if ($removedDeduction->attachment_path) {
+                $this->storage->delete($removedDeduction->attachment_path);
+            }
+            $removedDeduction->delete();
+        }
+
         foreach ($data['deductions'] ?? [] as $index => $deductionData) {
             $attachmentPath = $this->storeDeductionAttachment($uploadedFiles, $index);
             $existingDeductionId = $deductionData['id'] ?? null;

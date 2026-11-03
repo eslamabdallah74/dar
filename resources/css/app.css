@@ -72,3 +72,28 @@
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
+
+/* Inertia global request progress bar */
+#nprogress .bar {
+    background: #F7C33D !important;
+    height: 3px !important;
+    z-index: 99999 !important;
+}
+
+#nprogress .peg {
+    box-shadow: 0 0 10px #F7C33D, 0 0 5px #F7C33D !important;
+}
+
+#nprogress .spinner {
+    z-index: 99999 !important;
+}
+
+#nprogress .spinner-icon {
+    border-top-color: #F7C33D !important;
+    border-left-color: #F7C33D !important;
+}
+
+[dir="rtl"] #nprogress .spinner {
+    right: auto !important;
+    left: 15px !important;
+}

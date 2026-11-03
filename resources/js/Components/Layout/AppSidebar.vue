@@ -141,7 +141,7 @@ onUnmounted(() => {
                             </span>
                         </div>
                         <span class="text-[10px] text-[#F8F4EA]/80 font-medium mt-1 font-poppins truncate max-w-[145px]">
-                            {{ adminMode ? 'لوحة الإدارة المركزية' : 'اعثر على مساحتك' }}
+                            {{ adminMode ? 'لوحة الإدارة المركزية' : 'إدارة ممتلكاتك، بكل سهولة' }}
                         </span>
                     </div>
                 </Link>

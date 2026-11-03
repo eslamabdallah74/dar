@@ -841,3 +841,30 @@ test('property cover image url resolves via DocumentStorageService as a web-acce
         ->where('property.cover_image_url', '/storage/properties/sample-facade.png')
     );
 });
+
+test('property show page presents localized arabic labels for finishing type and amenities', function () {
+    $property = Property::create([
+        'workspace_id' => $this->workspace->id,
+        'name' => 'عمارة المهندسين',
+        'code' => 'ENG-01',
+        'property_type' => 'building',
+        'finishing_type' => 'super_lux',
+        'amenities' => ['elevator', 'parking', 'cctv'],
+    ]);
+
+    expect($property->finishing_type_label)->toBe('سوبر لوكس')
+        ->and($property->amenities_labels)->toHaveCount(3)
+        ->and($property->amenities_labels[0]['label'])->toBe('مصعد كهربائي')
+        ->and($property->amenities_labels[1]['label'])->toBe('موقف سيارات / جراج');
+
+    $response = $this->actingAs($this->user)->get(route('properties.show', $property->id));
+
+    $response->assertOk();
+    $response->assertInertia(fn ($page) => $page
+        ->component('Properties/Show')
+        ->where('property.finishing_type', 'super_lux')
+        ->where('property.finishing_type_label', 'سوبر لوكس')
+        ->has('property.amenities_labels', 3)
+        ->where('property.amenities_labels.0.label', 'مصعد كهربائي')
+    );
+});

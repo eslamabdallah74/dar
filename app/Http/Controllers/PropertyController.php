@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\FinishingType;
+use App\Enums\PropertyAmenity;
 use App\Enums\PropertyType;
 use App\Http\Requests\Properties\StorePropertyRequest;
 use App\Http\Requests\Properties\StoreUnitRequest;
@@ -104,10 +106,14 @@ class PropertyController extends Controller
                 'postal_code' => $property->postal_code,
                 'google_maps_url' => $property->google_maps_url,
                 'floors_count' => $property->floors_count ?? 1,
+                'floor_number' => $property->floor_number,
                 'total_area' => $property->total_area,
+                'commercial_activity' => $property->commercial_activity,
                 'year_built' => $property->year_built,
-                'finishing_type' => $property->finishing_type,
+                'finishing_type' => $property->finishing_type instanceof FinishingType ? $property->finishing_type->value : $property->finishing_type,
+                'finishing_type_label' => $property->finishing_type_label,
                 'amenities' => $property->amenities ?? [],
+                'amenities_labels' => $property->amenities_labels,
                 'electricity_meter_number' => $property->electricity_meter_number,
                 'water_meter_number' => $property->water_meter_number,
                 'gas_meter_number' => $property->gas_meter_number,
@@ -148,28 +154,8 @@ class PropertyController extends Controller
 
         return Inertia::render('Properties/Create', [
             'property_types' => PropertyType::options(),
-            'amenities_list' => [
-                ['id' => 'elevator', 'label' => 'مصعد كهربائي', 'icon' => 'ArrowUpDown'],
-                ['id' => 'parking', 'label' => 'موقف سيارات / جراج', 'icon' => 'Car'],
-                ['id' => 'security_guard', 'label' => 'حارس أمن / مشرف', 'icon' => 'ShieldCheck'],
-                ['id' => 'cctv', 'label' => 'كاميرات مراقبة CCTV', 'icon' => 'Video'],
-                ['id' => 'water_tank', 'label' => 'خزان ومضخة مياه', 'icon' => 'Droplets'],
-                ['id' => 'natural_gas', 'label' => 'غاز طبيعي مركزي', 'icon' => 'Flame'],
-                ['id' => 'central_ac', 'label' => 'تكييف مركزي', 'icon' => 'Wind'],
-                ['id' => 'fiber_internet', 'label' => 'إنترنت ألياف ضوئية', 'icon' => 'Wifi'],
-                ['id' => 'intercom', 'label' => 'انتركم مرئي / صوتي', 'icon' => 'PhoneCall'],
-                ['id' => 'fire_system', 'label' => 'نظام إطفاء وإنذار حريق', 'icon' => 'BellRing'],
-                ['id' => 'generator', 'label' => 'مولد كهرباء طوارئ', 'icon' => 'Zap'],
-                ['id' => 'waste_chute', 'label' => 'ممر ومجمع نفايات', 'icon' => 'Trash2'],
-            ],
-            'finishing_types' => [
-                ['value' => 'deluxe', 'label' => 'الترا ديلوكس / فاخر جداً'],
-                ['value' => 'super_lux', 'label' => 'سوبر لوكس'],
-                ['value' => 'lux', 'label' => 'لوكس'],
-                ['value' => 'standard', 'label' => 'تشطيب قياسي / عادي'],
-                ['value' => 'semi_finished', 'label' => 'نصف تشطيب (محارة وحلوق)'],
-                ['value' => 'commercial', 'label' => 'تشطيب تجاري / إداري'],
-            ],
+            'amenities_list' => PropertyAmenity::options(),
+            'finishing_types' => FinishingType::options(),
         ]);
     }
 

@@ -338,6 +338,12 @@ const availableDepositForSettlement = computed(() => {
     return Math.max(0, received - previouslyRefunded - previouslyDeducted);
 });
 
+const finalizeAvailableDeposit = computed(() => {
+    const received = Number(props.security_deposit.total_received) || 0;
+    const previouslyRefunded = Number(props.security_deposit.total_refunded) || 0;
+    return Math.max(0, Math.round((received - previouslyRefunded) * 100) / 100);
+});
+
 const finalizeTotalDeductions = computed(() => {
     return Math.round(
         finalizeSettlementForm.deductions.reduce((sum, d) => sum + (Number(d.amount) || 0), 0) * 100
@@ -345,7 +351,7 @@ const finalizeTotalDeductions = computed(() => {
 });
 
 const finalizeRefundDue = computed(() => {
-    return Math.max(0, Math.round((availableDepositForSettlement.value - finalizeTotalDeductions.value) * 100) / 100);
+    return Math.max(0, Math.round((finalizeAvailableDeposit.value - finalizeTotalDeductions.value) * 100) / 100);
 });
 
 const finalizeRetainedAmount = computed(() => {
@@ -353,7 +359,7 @@ const finalizeRetainedAmount = computed(() => {
 });
 
 const finalizeExceedsBalance = computed(() => {
-    return finalizeTotalDeductions.value > availableDepositForSettlement.value;
+    return finalizeTotalDeductions.value > finalizeAvailableDeposit.value;
 });
 
 const finalizeCalculatedOutcome = computed(() => {
@@ -361,7 +367,7 @@ const finalizeCalculatedOutcome = computed(() => {
         return {
             type: 'full_refund' as const,
             title: 'رد كامل مبلغ التأمين (Full Refund)',
-            description: `لا توجد خصومات؛ سيتم صرف كامل الرصيد المتاح (${availableDepositForSettlement.value.toLocaleString()} ${props.currency_symbol}) للمستأجر.`,
+            description: `لا توجد خصومات؛ سيتم صرف كامل الرصيد المتاح (${finalizeAvailableDeposit.value.toLocaleString()} ${props.currency_symbol}) للمستأجر.`,
             badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-300',
         };
     }
@@ -1745,7 +1751,7 @@ const depositLedgerStyles: Record<DepositLedgerKind, { dot: string; amount: stri
                     <!-- قسم خصومات التأمين -->
                     <DeductionSection
                         v-model="finalizeSettlementForm.deductions"
-                        :available-deposit="availableDepositForSettlement"
+                        :available-deposit="finalizeAvailableDeposit"
                         :currency-symbol="currency_symbol"
                         :errors="finalizeSettlementForm.errors"
                     />
@@ -1758,7 +1764,7 @@ const depositLedgerStyles: Record<DepositLedgerKind, { dot: string; amount: stri
                                 <span>{{ finalizeCalculatedOutcome.title }}</span>
                             </span>
                             <span class="font-mono font-bold text-xs">
-                                الرصيد الأصلي المتاح: {{ availableDepositForSettlement.toLocaleString() }} {{ currency_symbol }}
+                                الرصيد الأصلي المتاح: {{ finalizeAvailableDeposit.toLocaleString() }} {{ currency_symbol }}
                             </span>
                         </div>
                         <p class="text-xs leading-relaxed text-[#163E3E]">

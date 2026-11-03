@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Properties;
 
+use App\Enums\FinishingType;
 use App\Enums\PropertyType;
 use App\Rules\EgyptianPhoneNumber;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -38,7 +39,7 @@ class UpdatePropertyRequest extends FormRequest
             'total_area' => ['nullable', 'numeric', 'min:0'],
             'commercial_activity' => ['nullable', 'string', 'max:150'],
             'year_built' => ['nullable', 'integer', 'min:1800', 'max:2100'],
-            'finishing_type' => ['nullable', 'string', 'max:50'],
+            'finishing_type' => ['nullable', Rule::enum(FinishingType::class)],
             'amenities' => ['nullable', 'array'],
             'amenities.*' => ['string', 'max:50'],
             'electricity_meter_number' => ['nullable', 'string', 'max:100'],

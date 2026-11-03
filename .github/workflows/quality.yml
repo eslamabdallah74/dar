@@ -2,7 +2,7 @@ name: Quality gate
 
 on:
   push:
-    branches: [main]
+    branches: [production]
   pull_request:
 
 concurrency:

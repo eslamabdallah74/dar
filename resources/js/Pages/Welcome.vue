@@ -22,13 +22,13 @@ const mobileMenuOpen = ref(false);
 
 <template>
     <Head>
-        <title>Nook Mate — اعثر على مساحتك واستأجر ما تحتاج إليه</title>
-        <meta name="description" content="Nook Mate — اعثر على مساحتك واستأجر ما تحتاج إليه. منصة سحابية لإدارة وتأجير العقارات والشقق والغرف والأسرة بنظام الصناديق المتداخلة." />
-        <meta property="og:title" content="Nook Mate — اعثر على مساحتك واستأجر ما تحتاج إليه" />
+        <title>Nook Mate — إدارة ممتلكاتك، بكل سهولة</title>
+        <meta name="description" content="Nook Mate — إدارة ممتلكاتك، بكل سهولة. منصة سحابية لإدارة وتأجير العقارات والشقق والغرف والأسرة بنظام الصناديق المتداخلة." />
+        <meta property="og:title" content="Nook Mate — إدارة ممتلكاتك، بكل سهولة" />
         <meta property="og:description" content="أدر عقاراتك، وحداتك، غرفك وأسرتك مع تذكيرات واتساب التلقائية وسندات القبض الفورية." />
         <meta property="og:image" content="/images/logo.png" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Nook Mate — اعثر على مساحتك واستأجر ما تحتاج إليه" />
+        <meta name="twitter:title" content="Nook Mate — إدارة ممتلكاتك، بكل سهولة" />
         <meta name="twitter:description" content="منصة سحابية متكاملة لإدارة وتأجير العقارات، عقود الإيجار، وسندات القبض مع تذكيرات واتساب." />
         <meta name="twitter:image" content="/images/logo.png" />
 
@@ -160,7 +160,7 @@ const mobileMenuOpen = ref(false);
                                 <div dir="ltr" class="flex items-center gap-1.5 tracking-tight font-black text-2xl font-montserrat">
                                     <span class="text-[#163E3E]">Nook</span><span class="text-[#F7C33D]">Mate</span>
                                 </div>
-                                <span class="text-[10px] font-medium text-[#5B6770] font-poppins -mt-0.5">اعثر على مساحتك</span>
+                                <span class="text-[10px] font-medium text-[#5B6770] font-poppins -mt-0.5">إدارة ممتلكاتك، بكل سهولة</span>
                             </div>
                         </Link>
 
@@ -242,7 +242,7 @@ const mobileMenuOpen = ref(false);
         <section class="overflow-hidden bg-[#F8F4EA]">
             <div class="relative">
                 <img
-                    src="/images/banner.png"
+                    src="/images/banner.webp"
                     alt="منصة Nook Mate لإدارة العقارات على الحاسوب والهاتف"
                     fetchpriority="high"
                     class="block aspect-[16/9] w-full object-cover object-[76%_center] lg:aspect-[1983/793] lg:object-fill"
@@ -251,8 +251,8 @@ const mobileMenuOpen = ref(false);
                 <div class="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:absolute lg:inset-0 lg:flex lg:items-center lg:px-8 lg:py-0" dir="ltr">
                     <div class="max-w-xl text-right" dir="rtl">
                         <h1 class="mb-4 text-3xl font-extrabold leading-[1.2] tracking-tight text-[#163E3E] sm:text-5xl lg:text-6xl font-montserrat">
-                            اعثر على مساحتك
-                            <span class="block text-[#F7C33D] mt-1">واستأجر ما تحتاج إليه</span>
+                            إدارة ممتلكاتك،
+                            <span class="block text-[#F7C33D] mt-1">بكل سهولة</span>
                         </h1>
 
                         <p class="mb-7 max-w-2xl text-base font-normal leading-relaxed text-[#334155] sm:text-lg">
@@ -381,7 +381,7 @@ const mobileMenuOpen = ref(false);
                         كل الأدوات التي تحتاجها لتشغيل عقاراتك بسلاسة
                     </h2>
                     <p class="text-base text-[#5B6770]">
-                        ودّع جداول الحساب المعقدة والأوراق الضائعة، <bdi dir="ltr">Nook Mate</bdi> يضع محفظتك العقارية تحت سيطرتك بنقرات بسيطة.
+                        ودّع جداول الحساب المعقدة والأوراق الضائعة، <bdi dir="ltr">Nook Mate</bdi> يضع عقاراتك ووحداتك تحت سيطرتك بنقرات بسيطة.
                     </p>
                 </div>
 
@@ -742,7 +742,7 @@ const mobileMenuOpen = ref(false);
                                 <h3 class="text-xl font-bold text-[#163E3E]">باقة المحترفين (Pro)</h3>
                                 <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#F8F4EA] text-[#163E3E]">للمحترفين</span>
                             </div>
-                            <p class="text-sm text-[#5B6770] mb-4">للمستثمرين والملاك الذين يديرون محافظ متنامية حتى 25 وحدة رئيسية.</p>
+                            <p class="text-sm text-[#5B6770] mb-4">للمستثمرين والملاك الذين يديرون عقارات ووحدات متنامية حتى 25 وحدة رئيسية.</p>
                             
                             <div class="p-3 mb-6 rounded-2xl bg-[#F8F4EA]/70 border border-[#E2DDD2]/60 text-xs text-[#163E3E] font-bold">
                                 السعة: من 11 إلى 25 وحدة / عقار رئيسي
@@ -858,7 +858,7 @@ const mobileMenuOpen = ref(false);
                                 <h3 class="text-xl font-bold text-[#163E3E]">كبار الملاك والشركات</h3>
                                 <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-[#F8F4EA] text-[#163E3E]">أكثر من 50 وحدة</span>
                             </div>
-                            <p class="text-sm text-[#5B6770] mb-4">للشركات الكبرى والمحافظ العقارية الضخمة التي تتجاوز 50 وحدة سكنية أو تجارية.</p>
+                            <p class="text-sm text-[#5B6770] mb-4">للشركات الكبرى وإدارات الأملاك العقارية التي تتجاوز 50 وحدة سكنية أو تجارية.</p>
                             
                             <div class="p-3 mb-6 rounded-2xl bg-[#F8F4EA]/70 border border-[#E2DDD2]/60 text-xs text-[#163E3E] font-bold">
                                 السعة: أكثر من 50 وحدة (سعة غير محدودة ∞)
@@ -1016,7 +1016,7 @@ const mobileMenuOpen = ref(false);
             <div class="absolute inset-0 bg-radial-gradient from-[#F7C33D]/20 to-transparent pointer-events-none"></div>
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
                 <span class="inline-block px-4 py-1 rounded-full bg-white/10 text-[#F8F4EA] border border-white/20 text-xs font-bold mb-4 font-poppins">
-                    اعثر على مساحتك واستأجر ما تحتاج إليه
+                    إدارة ممتلكاتك، بكل سهولة
                 </span>
                 <h2 class="text-3xl sm:text-5xl font-extrabold mb-6 leading-tight font-montserrat">
                     جاهز لتنظيم عقاراتك وضمان تحصيلك في الموعد؟
@@ -1056,7 +1056,7 @@ const mobileMenuOpen = ref(false);
                                 <div dir="ltr" class="flex items-center gap-1.5 tracking-tight font-black text-2xl font-montserrat">
                                     <span class="text-white">Nook</span><span class="text-[#F7C33D]">Mate</span>
                                 </div>
-                                <span class="text-[10px] font-medium text-[#F8F4EA]/70 font-poppins">اعثر على مساحتك واستأجر ما تحتاج إليه</span>
+                                <span class="text-[10px] font-medium text-[#F8F4EA]/70 font-poppins">إدارة ممتلكاتك، بكل سهولة</span>
                             </div>
                         </div>
                         <p class="text-xs text-[#F8F4EA]/70 leading-relaxed max-w-sm">
@@ -1088,7 +1088,7 @@ const mobileMenuOpen = ref(false);
                 </div>
 
                 <div class="pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-poppins">
-                    <span>جميع الحقوق محفوظة © 2026 منصة <bdi dir="ltr">Nook Mate</bdi>. اعثر على مساحتك واستأجر ما تحتاج إليه.</span>
+                    <span>جميع الحقوق محفوظة © 2026 منصة <bdi dir="ltr">Nook Mate</bdi>. إدارة ممتلكاتك، بكل سهولة.</span>
                     <span class="text-[#F8F4EA]/60">نظام الصناديق المتداخلة</span>
                 </div>
             </div>

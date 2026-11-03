@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Link } from '@inertiajs/vue3';
-import { ArrowLeft } from 'lucide-vue-next';
 
 interface OccupancyData {
     total: number;
@@ -13,6 +11,7 @@ interface OccupancyData {
 
 const props = defineProps<{
     summary?: OccupancyData;
+    subtitle?: string;
 }>();
 
 const totalUnits = computed(() => props.summary?.total ?? 0);
@@ -45,7 +44,7 @@ const maintenancePercent = computed(() => {
                 <div>
                     <h3 class="text-base font-bold text-[#163E3E]">ملخص إشغال الوحدات</h3>
                     <p class="text-xs text-[#5B6770] font-medium mt-0.5">
-                        توزيع الوحدات القابلة للتأجير في محفظتك
+                        {{ subtitle || 'توزيع الوحدات القابلة للتأجير' }}
                     </p>
                 </div>
                 <div class="text-start sm:text-left">
@@ -123,17 +122,6 @@ const maintenancePercent = computed(() => {
                     <span class="text-[10px] text-sky-700 font-medium">طلبات جارية</span>
                 </div>
             </div>
-        </div>
-
-        <!-- رابط إدارة الوحدات -->
-        <div class="pt-4 mt-2">
-            <Link
-                :href="route('properties.index')"
-                class="w-full py-2 px-3 rounded-xl border border-[#D6E0E7] hover:border-[#163E3E] hover:bg-[#E8F0F0]/30 text-xs font-bold text-[#163E3E] transition flex items-center justify-center gap-2"
-            >
-                <span>إدارة وتصفح الوحدات</span>
-                <ArrowLeft class="h-3.5 w-3.5" />
-            </Link>
         </div>
     </div>
 </template>

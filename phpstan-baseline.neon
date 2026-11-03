@@ -711,7 +711,7 @@ parameters:
 		-
 			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
 			identifier: foreach.nonIterable
-			count: 2
+			count: 1
 			path: app/Services/SecurityDepositService.php
 
 		-
@@ -741,7 +741,7 @@ parameters:
 		-
 			message: '#^Parameter \#2 \$deductionIndex of method App\\Services\\SecurityDepositService\:\:storeDeductionAttachment\(\) expects int\|string, mixed given\.$#'
 			identifier: argument.type
-			count: 2
+			count: 1
 			path: app/Services/SecurityDepositService.php
 
 		-

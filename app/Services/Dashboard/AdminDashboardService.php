@@ -119,28 +119,8 @@ class AdminDashboardService
             ->where('workspace_subscriptions.status', 'active')
             ->sum('plans.monthly_price');
 
-        // 3. Historical Monthly Collections (Last 6 months across platform)
-        $monthsNames = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
-        $chartMonths = [];
-        $chartAmounts = [];
-        $chartHistory = [];
-
-        for ($i = 5; $i >= 0; $i--) {
-            $monthDate = now()->subMonths($i);
-            $mStart = $monthDate->copy()->startOfMonth();
-            $mEnd = $monthDate->copy()->endOfMonth();
-
-            $collected = (float) Payment::withoutGlobalScopes()->whereBetween('paid_at', [$mStart, $mEnd])->sum('amount');
-
-            $monthLabel = $monthsNames[$monthDate->month - 1];
-            $chartMonths[] = $monthLabel;
-            $chartAmounts[] = (int) $collected;
-            $chartHistory[] = [
-                'month' => $monthLabel,
-                'year' => $monthDate->year,
-                'amount' => (int) $collected,
-            ];
-        }
+        // 3. Historical Monthly Collections
+        $incomeChart = $this->buildIncomeChart($monthlyCollected);
 
         // 4. WhatsApp Logs Overview
         $whatsappStats = [
@@ -153,77 +133,6 @@ class AdminDashboardService
         $whatsappDeliveryRate = $whatsappStats['total'] > 0
             ? (int) round((($whatsappStats['delivered'] + $whatsappStats['sent']) / $whatsappStats['total']) * 100)
             : 100;
-
-        // 5. Attention Items (Platform Overdue, expiring leases, urgent maintenance)
-        $attentionItems = [];
-        foreach ($attentionOverdueCharges as $charge) {
-            $days = (int) Carbon::parse($charge->due_date)->diffInDays(today());
-            $attentionItems[] = [
-                'id' => $charge->id,
-                'type' => 'overdue',
-                'title' => 'متأخرات إيجار ('.$days.' يوم) • '.($charge->workspace->name ?? 'مساحة عمل'),
-                'desc' => ($charge->lease?->renter->name ?? 'مستأجر').' • '.number_format((float) $charge->outstanding_balance).' ج.م',
-                'phone' => $charge->lease?->renter->phone ?? '',
-                'amount' => (float) $charge->outstanding_balance,
-                'severity' => 'danger',
-            ];
-        }
-
-        $expiringLeases = Lease::withoutGlobalScopes()
-            ->where('status', 'active')
-            ->whereBetween('ends_on', [today(), today()->addDays(30)])
-            ->with([
-                'renter' => fn ($q) => $q->withoutGlobalScopes(),
-                'unit' => fn ($q) => $q->withoutGlobalScopes(),
-                'unit.property' => fn ($q) => $q->withoutGlobalScopes(),
-                'workspace',
-            ])
-            ->take(3)
-            ->get();
-        foreach ($expiringLeases as $lease) {
-            $days = (int) today()->diffInDays(Carbon::parse($lease->ends_on), false);
-            $attentionItems[] = [
-                'id' => $lease->id,
-                'type' => 'lease_expiring',
-                'title' => 'عقد ينتهي خلال '.max(0, $days).' يوم • '.($lease->workspace->name ?? 'مساحة عمل'),
-                'desc' => ($lease->renter->name ?? 'مستأجر').' • '.($lease->unit?->property->name ?? 'عقار'),
-                'phone' => $lease->renter->phone ?? '',
-                'amount' => (float) $lease->rent_amount,
-                'severity' => 'warning',
-            ];
-        }
-
-        // 6. Recent Platform Activity
-        $recentActivities = collect();
-        if (class_exists(Activity::class)) {
-            $dbActivities = Activity::latest()->take(8)->get();
-            foreach ($dbActivities as $act) {
-                $recentActivities->push([
-                    'id' => 'act-'.$act->id,
-                    'type' => 'activity',
-                    'title' => $act->description,
-                    'subtitle' => 'سجل العمليات المركزي',
-                    'time_ago' => $act->created_at?->diffForHumans() ?? 'مؤخراً',
-                    'timestamp' => $act->created_at->timestamp ?? 0,
-                ]);
-            }
-        }
-
-        if ($recentActivities->isEmpty()) {
-            foreach (Payment::withoutGlobalScopes()->with([
-                'renter' => fn ($q) => $q->withoutGlobalScopes(),
-                'workspace',
-            ])->latest('paid_at')->take(4)->get() as $payment) {
-                $recentActivities->push([
-                    'id' => 'p-'.$payment->id,
-                    'type' => 'payment',
-                    'title' => 'سداد بقيمة '.number_format((float) $payment->amount).' ج.م في '.($payment->workspace->name ?? 'مساحة عمل'),
-                    'subtitle' => 'المستأجر: '.($payment->renter->name ?? 'مستأجر'),
-                    'time_ago' => $payment->paid_at->diffForHumans(),
-                    'timestamp' => $payment->paid_at->timestamp,
-                ]);
-            }
-        }
 
         return [
             'adminUser' => [
@@ -281,15 +190,7 @@ class AdminDashboardService
                     'subtitle' => 'خدمات وفواتير وإدارة',
                 ],
             ],
-            'incomeChart' => [
-                'months' => $chartMonths,
-                'amounts' => $chartAmounts,
-                'history' => $chartHistory,
-                'has_history' => collect($chartAmounts)->some(fn ($a): bool => $a > 0),
-                'total_collected' => (int) $monthlyCollected,
-                'currency_symbol' => 'ج.م',
-                'currency_label' => 'بالجنيه المصري',
-            ],
+            'incomeChart' => $incomeChart,
             'occupancySummary' => [
                 'total' => $totalUnits,
                 'occupied' => $occupiedUnits,
@@ -297,11 +198,138 @@ class AdminDashboardService
                 'maintenance' => $maintenanceUnits,
                 'occupancy_rate' => $occupancyRate,
             ],
-            'attentionItems' => $attentionItems,
-            'recentActivities' => $recentActivities->sortByDesc('timestamp')->values()->take(8)->all(),
+            'attentionItems' => $this->buildAttentionItems($attentionOverdueCharges),
+            'recentActivities' => $this->recentActivities(),
             'tabCounts' => $this->tabCounts($adminUser, $totalWorkspaces, $totalProperties, $totalLeases, $whatsappStats['total']),
             'workspaceSummary' => $this->workspaceSummary($totalWorkspaces),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildIncomeChart(float $monthlyCollected): array
+    {
+        $monthsNames = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+        $chartMonths = [];
+        $chartAmounts = [];
+        $chartHistory = [];
+
+        for ($i = 5; $i >= 0; $i--) {
+            $monthDate = now()->subMonths($i);
+            $mStart = $monthDate->copy()->startOfMonth();
+            $mEnd = $monthDate->copy()->endOfMonth();
+
+            $collected = (float) Payment::withoutGlobalScopes()->whereBetween('paid_at', [$mStart, $mEnd])->sum('amount');
+
+            $monthLabel = $monthsNames[$monthDate->month - 1];
+            $chartMonths[] = $monthLabel;
+            $chartAmounts[] = (int) $collected;
+            $chartHistory[] = [
+                'month' => $monthLabel,
+                'year' => $monthDate->year,
+                'amount' => (int) $collected,
+            ];
+        }
+
+        return [
+            'months' => $chartMonths,
+            'amounts' => $chartAmounts,
+            'history' => $chartHistory,
+            'has_history' => collect($chartAmounts)->some(fn ($a): bool => $a > 0),
+            'total_collected' => (int) $monthlyCollected,
+            'currency_symbol' => 'ج.م',
+            'currency_label' => 'بالجنيه المصري',
+        ];
+    }
+
+    /**
+     * @param  Collection<int, RentCharge>  $attentionOverdueCharges
+     * @return list<array<string, mixed>>
+     */
+    private function buildAttentionItems(Collection $attentionOverdueCharges): array
+    {
+        $attentionItems = [];
+        foreach ($attentionOverdueCharges as $charge) {
+            $days = (int) Carbon::parse($charge->due_date)->diffInDays(today());
+            $attentionItems[] = [
+                'id' => $charge->id,
+                'type' => 'overdue',
+                'title' => 'متأخرات إيجار ('.$days.' يوم) • '.($charge->workspace->name ?? 'مساحة عمل'),
+                'desc' => ($charge->lease?->renter->name ?? 'مستأجر').' • '.number_format((float) $charge->outstanding_balance).' ج.م',
+                'phone' => $charge->lease?->renter->phone ?? '',
+                'amount' => (float) $charge->outstanding_balance,
+                'severity' => 'danger',
+            ];
+        }
+
+        $expiringLeases = Lease::withoutGlobalScopes()
+            ->where('status', 'active')
+            ->whereBetween('ends_on', [today(), today()->addDays(30)])
+            ->with([
+                'renter' => fn ($q) => $q->withoutGlobalScopes(),
+                'unit' => fn ($q) => $q->withoutGlobalScopes(),
+                'unit.property' => fn ($q) => $q->withoutGlobalScopes(),
+                'workspace',
+            ])
+            ->take(3)
+            ->get();
+
+        foreach ($expiringLeases as $lease) {
+            $days = (int) today()->diffInDays(Carbon::parse($lease->ends_on), false);
+            $attentionItems[] = [
+                'id' => $lease->id,
+                'type' => 'lease_expiring',
+                'title' => 'عقد ينتهي خلال '.max(0, $days).' يوم • '.($lease->workspace->name ?? 'مساحة عمل'),
+                'desc' => ($lease->renter->name ?? 'مستأجر').' • '.($lease->unit?->property->name ?? 'عقار'),
+                'phone' => $lease->renter->phone ?? '',
+                'amount' => (float) $lease->rent_amount,
+                'severity' => 'warning',
+            ];
+        }
+
+        return $attentionItems;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function recentActivities(): array
+    {
+        /** @var Collection<int, array<string, mixed>> $recentActivities */
+        $recentActivities = collect();
+        if (class_exists(Activity::class)) {
+            $dbActivities = Activity::latest()->take(8)->get();
+            foreach ($dbActivities as $act) {
+                $createdAt = $act->created_at;
+                $recentActivities->push([
+                    'id' => 'act-'.$act->id,
+                    'type' => 'activity',
+                    'title' => $act->description,
+                    'subtitle' => 'سجل العمليات المركزي',
+                    'time_ago' => $createdAt !== null ? $createdAt->diffForHumans() : 'مؤخراً',
+                    'timestamp' => $createdAt !== null ? $createdAt->timestamp : 0,
+                ]);
+            }
+        }
+
+        if ($recentActivities->isEmpty()) {
+            foreach (Payment::withoutGlobalScopes()->with([
+                'renter' => fn ($q) => $q->withoutGlobalScopes(),
+                'workspace',
+            ])->latest('paid_at')->take(4)->get() as $payment) {
+                $recentActivities->push([
+                    'id' => 'p-'.$payment->id,
+                    'type' => 'payment',
+                    'title' => 'سداد بقيمة '.number_format((float) $payment->amount).' ج.م في '.($payment->workspace->name ?? 'مساحة عمل'),
+                    'subtitle' => 'المستأجر: '.($payment->renter->name ?? 'مستأجر'),
+                    'time_ago' => $payment->paid_at->diffForHumans(),
+                    'timestamp' => $payment->paid_at->timestamp,
+                ]);
+            }
+        }
+
+        return array_values($recentActivities->sortByDesc('timestamp')->values()->take(8)->all());
     }
 
     /**
@@ -626,8 +654,10 @@ class AdminDashboardService
 
             foreach ($relationships as $relationship => $relationColumns) {
                 $searchQuery->orWhereHas($relationship, function (Builder $relationQuery) use ($relationColumns, $pattern): void {
+                    $relationQuery->withoutGlobalScopes();
+                    $relTable = $relationQuery->getModel()->getTable();
                     foreach ($relationColumns as $column) {
-                        $relationQuery->orWhere($column, 'like', $pattern);
+                        $relationQuery->orWhere($relTable.'.'.$column, 'like', $pattern);
                     }
                 });
             }

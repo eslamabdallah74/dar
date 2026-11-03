@@ -281,6 +281,12 @@ const subscriptionForm = useForm({
 });
 
 // Actions
+function refreshCurrentTabData(): void {
+    if (currentTab.value !== 'overview') {
+        loadTabData(currentTab.value, currentRecords.value?.current_page ?? 1);
+    }
+}
+
 function impersonate(workspaceId: number) {
     router.post(route('admin.workspaces.impersonate', workspaceId));
 }
@@ -292,9 +298,11 @@ function openCreateUser() {
 
 function submitCreateUser() {
     createUserForm.post(route('admin.users.store'), {
+        preserveScroll: true,
         onSuccess: () => {
             showCreateUserModal.value = false;
             createUserForm.reset();
+            refreshCurrentTabData();
         },
     });
 }
@@ -311,15 +319,20 @@ function openEditUser(user: any) {
 
 function submitEditUser() {
     editUserForm.put(route('admin.users.update', editUserForm.id), {
+        preserveScroll: true,
         onSuccess: () => {
             showEditUserModal.value = false;
             editUserForm.reset();
+            refreshCurrentTabData();
         },
     });
 }
 
 function toggleAdminRole(userId: number) {
-    router.patch(route('admin.users.toggle-admin', userId));
+    router.patch(route('admin.users.toggle-admin', userId), {}, {
+        preserveScroll: true,
+        onSuccess: refreshCurrentTabData,
+    });
 }
 
 const confirmDialog = useConfirmDialog();
@@ -334,7 +347,10 @@ async function deleteUser(userId: number, name: string) {
     });
 
     if (confirmed) {
-        router.delete(route('admin.users.destroy', userId));
+        router.delete(route('admin.users.destroy', userId), {
+            preserveScroll: true,
+            onSuccess: refreshCurrentTabData,
+        });
     }
 }
 
@@ -349,8 +365,10 @@ function openEditWorkspace(ws: any) {
 
 function submitEditWorkspace() {
     editWorkspaceForm.put(route('admin.workspaces.update', editWorkspaceForm.id), {
+        preserveScroll: true,
         onSuccess: () => {
             showEditWorkspaceModal.value = false;
+            refreshCurrentTabData();
         },
     });
 }
@@ -365,7 +383,10 @@ async function deleteWorkspace(wsId: number, name: string) {
     });
 
     if (confirmed) {
-        router.delete(route('admin.workspaces.destroy', wsId));
+        router.delete(route('admin.workspaces.destroy', wsId), {
+            preserveScroll: true,
+            onSuccess: refreshCurrentTabData,
+        });
     }
 }
 
@@ -400,22 +421,29 @@ function handleKpiSelect(key: 'properties' | 'units' | 'occupancy' | 'collected'
 
 function submitLimits() {
     limitsForm.put(route('admin.workspaces.limits.update', limitsForm.workspace_id), {
+        preserveScroll: true,
         onSuccess: () => {
             showLimitsModal.value = false;
+            refreshCurrentTabData();
         },
     });
 }
 
 function submitSubscription() {
     subscriptionForm.post(route('admin.workspaces.subscription', subscriptionForm.workspace_id), {
+        preserveScroll: true,
         onSuccess: () => {
             showSubscriptionModal.value = false;
+            refreshCurrentTabData();
         },
     });
 }
 
 function quickApprovePlan(ws: any) {
-    router.post(route('admin.workspaces.plan-requests.approve', ws.id));
+    router.post(route('admin.workspaces.plan-requests.approve', ws.id), {}, {
+        preserveScroll: true,
+        onSuccess: refreshCurrentTabData,
+    });
 }
 
 function isPlanBelowWorkspaceUsage(plan: any, ws: any): boolean {
@@ -438,11 +466,17 @@ function isPlanBelowWorkspaceUsage(plan: any, ws: any): boolean {
 }
 
 function updateLeaseStatus(leaseId: number, status: string) {
-    router.patch(route('admin.leases.status', leaseId), { status });
+    router.patch(route('admin.leases.status', leaseId), { status }, {
+        preserveScroll: true,
+        onSuccess: refreshCurrentTabData,
+    });
 }
 
 function updateMaintenanceStatus(maintenanceId: number, status: string) {
-    router.patch(route('admin.maintenance.status', maintenanceId), { status });
+    router.patch(route('admin.maintenance.status', maintenanceId), { status }, {
+        preserveScroll: true,
+        onSuccess: refreshCurrentTabData,
+    });
 }
 </script>
 
@@ -676,16 +710,8 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                             <Building2 class="w-4 h-4" />
                                         </div>
                                         <div class="min-w-0">
-                                            <div class="flex flex-wrap items-center gap-1.5">
+                                            <div class="flex items-center gap-1.5">
                                                 <span class="max-w-[260px] truncate text-sm font-bold text-[#163E3E]" :title="ws.name">{{ ws.name }}</span>
-                                                <span
-                                                    v-if="ws.ai_assistant_enabled"
-                                                    class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0"
-                                                    title="المساعد الذكي مفعّل"
-                                                >
-                                                    <Sparkles class="w-3 h-3 text-emerald-600" />
-                                                    AI
-                                                </span>
                                             </div>
                                             <div class="mt-1 text-[11px] text-[#5B6770]">
                                                 <span class="font-medium text-[#344C4C]">{{ ws.owner_name }}</span>

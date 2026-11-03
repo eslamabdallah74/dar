@@ -15,9 +15,11 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceMember;
 use App\Models\WorkspaceSubscription;
+use App\Services\SecurityDepositService;
 use App\Support\CurrentWorkspace;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -284,6 +286,35 @@ test('cannot pay security deposit when lease requires zero deposit', function ()
 
     $response->assertSessionHasErrors('amount');
     expect($lease->refresh()->total_deposit_received)->toBe(0.0);
+});
+
+test('security deposit service locks lease and rejects payment exceeding freshly locked outstanding amount', function () {
+    $lease = Lease::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'unit_id' => $this->unit->id,
+        'renter_id' => $this->renter->id,
+        'rent_amount' => 5000.00,
+        'security_deposit_amount' => 10000.00,
+        'security_deposit_status' => 'due',
+    ]);
+
+    $service = app(SecurityDepositService::class);
+
+    // Record first valid payment of 6,000
+    $service->recordPayment($this->workspace, $lease, [
+        'amount' => 6000.00,
+        'payment_method' => 'cash',
+    ], $this->user->id);
+
+    expect($lease->refresh()->outstanding_deposit_amount)->toBe(4000.0);
+
+    // Recording another payment of 5,000 against the service must throw ValidationException
+    expect(fn () => $service->recordPayment($this->workspace, $lease, [
+        'amount' => 5000.00,
+        'payment_method' => 'cash',
+    ], $this->user->id))->toThrow(ValidationException::class);
+
+    expect($lease->refresh()->total_deposit_received)->toBe(6000.0);
 });
 
 /*

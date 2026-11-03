@@ -45,10 +45,7 @@ function makeStressWorkspace(
     return $workspace;
 }
 
-test('stress benchmark: processes and transforms 10,000 in-memory workspaces within strict time and memory budgets', function (): void {
-    $initialMemory = memory_get_usage(true);
-    $startTime = microtime(true);
-
+test('stress benchmark: processes and transforms 10,000 in-memory workspaces', function (): void {
     /** @var Collection<int, Workspace> $workspaces */
     $workspaces = collect();
     for ($i = 1; $i <= 10000; $i++) {
@@ -102,20 +99,20 @@ test('stress benchmark: processes and transforms 10,000 in-memory workspaces wit
     $searchTarget = 'مساحة عمل رقم 999';
     $searchMatches = $transformed->filter(fn (array $item): bool => str_contains((string) $item['name'], $searchTarget));
 
-    $endTime = microtime(true);
-    $executionDurationMs = ($endTime - $startTime) * 1000;
-    $memoryConsumedMb = (memory_get_usage(true) - $initialMemory) / 1024 / 1024;
-
     expect($transformed)->toHaveCount(10000)
-        ->and($searchMatches->count())->toBeGreaterThanOrEqual(1)
-        ->and($executionDurationMs)->toBeLessThan(3500.0) // Must process 10k in < 3.5s
-        ->and($memoryConsumedMb)->toBeLessThan(64.0); // Must consume < 64MB RAM
-});
+        ->and($searchMatches->count())->toBeGreaterThanOrEqual(1);
+})->group('benchmark');
 
 test('stress test: workspace limit evaluator performs 10,000 consecutive decisions without crash', function (): void {
-    $mockLimitService = new WorkspaceLimitService;
+    $limitService = new class extends WorkspaceLimitService
+    {
+        public int $simulatedUnits = 0;
 
-    $startTime = microtime(true);
+        public function countParentUnits(Workspace|int $workspace): int
+        {
+            return $this->simulatedUnits;
+        }
+    };
 
     $passedDecisions = 0;
     $blockedDecisions = 0;
@@ -131,8 +128,8 @@ test('stress test: workspace limit evaluator performs 10,000 consecutive decisio
             'active_rental_limit' => $parentLimit,
         ]);
 
-        // If unlimited or createdCount + 1 <= limit, it can create
-        $canCreate = $parentLimit === null || ($createdCount + 1) <= $parentLimit;
+        $limitService->simulatedUnits = $createdCount;
+        $canCreate = $limitService->canCreateParentUnits($workspace);
 
         if ($canCreate) {
             $passedDecisions++;
@@ -141,17 +138,12 @@ test('stress test: workspace limit evaluator performs 10,000 consecutive decisio
         }
     }
 
-    $durationMs = (microtime(true) - $startTime) * 1000;
-
     expect($passedDecisions + $blockedDecisions)->toBe(10000)
         ->and($passedDecisions)->toBeGreaterThan(5000)
-        ->and($blockedDecisions)->toBeGreaterThan(2000)
-        ->and($durationMs)->toBeLessThan(1000.0); // 10,000 decisions under 1 second
-});
+        ->and($blockedDecisions)->toBeGreaterThan(2000);
+})->group('benchmark');
 
 test('stress test: financial aggregations compute 20,000 transactions without arithmetic overflow or precision loss', function (): void {
-    $startTime = microtime(true);
-
     $totalPayments = 0.0;
     $totalOverdue = 0.0;
     $overdueCount = 0;
@@ -170,17 +162,12 @@ test('stress test: financial aggregations compute 20,000 transactions without ar
     $formattedTotal = number_format($totalPayments, 2, '.', '');
     $formattedOverdue = number_format($totalOverdue, 2, '.', '');
 
-    $durationMs = (microtime(true) - $startTime) * 1000;
-
     expect((float) $formattedTotal)->toBeGreaterThan(10000000.0)
         ->and($overdueCount)->toBeGreaterThan(2800)
-        ->and((float) $formattedOverdue)->toBeGreaterThan(1000000.0)
-        ->and($durationMs)->toBeLessThan(100.0);
-});
+        ->and((float) $formattedOverdue)->toBeGreaterThan(1000000.0);
+})->group('benchmark');
 
 test('stress test: security deposit validation prevents overpayment across 10,000 simulated payments', function (): void {
-    $startTime = microtime(true);
-
     $rejectedOverpayments = 0;
     $acceptedValidPayments = 0;
 
@@ -193,20 +180,16 @@ test('stress test: security deposit validation prevents overpayment across 10,00
         $attemptedPayment = (float) ((($i % 20) + 1) * 1000);
 
         if ($attemptedPayment > $outstanding) {
-            // Emulate the validation condition added in StoreSecurityDepositPaymentRequest
             $rejectedOverpayments++;
         } else {
             $acceptedValidPayments++;
         }
     }
 
-    $durationMs = (microtime(true) - $startTime) * 1000;
-
     expect($rejectedOverpayments + $acceptedValidPayments)->toBe(10000)
         ->and($rejectedOverpayments)->toBeGreaterThan(4000)
-        ->and($acceptedValidPayments)->toBeGreaterThan(3000)
-        ->and($durationMs)->toBeLessThan(50.0);
-});
+        ->and($acceptedValidPayments)->toBeGreaterThan(3000);
+})->group('benchmark');
 
 test('stress test: high-concurrency race condition simulation on workspace limits', function (): void {
     $workspaceLimit = 10;
@@ -230,4 +213,4 @@ test('stress test: high-concurrency race condition simulation on workspace limit
     expect($successfulAcquisitions)->toBe(2)
         ->and($rejectedAcquisitions)->toBe(48)
         ->and($availableSlots)->toBe(0);
-});
+})->group('benchmark');

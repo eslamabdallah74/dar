@@ -19,7 +19,8 @@ const emit = defineEmits<{
     <div class="flex flex-col gap-3 border-t border-[#E8EFF4] px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between">
         <p class="text-[#5B6770]" aria-live="polite">
             <span v-if="loading">جارٍ تحميل النتائج...</span>
-            <span v-else>عرض {{ from ?? 0 }}–{{ to ?? 0 }} من {{ total }}</span>
+            <span v-else-if="total === 0">لا توجد نتائج مسجلة</span>
+            <span v-else>عرض {{ from ?? 1 }}–{{ to ?? total }} من {{ total }}</span>
         </p>
 
         <nav v-if="lastPage > 1" class="flex items-center gap-2" aria-label="التنقل بين صفحات النتائج">

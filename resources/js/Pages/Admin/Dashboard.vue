@@ -1194,16 +1194,17 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                                         {{ mr.priority }}
                                     </span>
                                 </td>
-                                <td class="p-3.5 font-bold">{{ mr.estimated_cost.toLocaleString() }} ج.م</td>
+                                <td class="p-3.5 font-bold">{{ (mr.estimated_cost ?? 0).toLocaleString() }} ج.م</td>
                                 <td class="p-3.5">
                                     <StatusBadge :status="mr.status" />
                                 </td>
                                 <td class="p-3.5 text-[#5B6770]">{{ mr.created_at }}</td>
                                 <td class="p-3.5 text-center">
                                     <select
+                                        :id="`admin-mr-status-${mr.id}`"
+                                        aria-label="تحديث حالة الصيانة"
                                         :value="mr.status === 'open' ? 'pending' : (mr.status === 'closed' ? 'completed' : mr.status)"
                                         @change="updateMaintenanceStatus(mr.id, ($event.target as HTMLSelectElement).value)"
-                                        aria-label="تحديث حالة طلب الصيانة"
                                         class="h-9 min-w-[144px] rounded-lg border border-[#D6E0E7] bg-white px-3 text-xs font-semibold text-[#163E3E] transition hover:border-[#B8CECA] hover:bg-[#F8FAFA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#163E3E] focus-visible:ring-offset-2"
                                     >
                                         <option value="pending">قيد الانتظار (Pending)</option>

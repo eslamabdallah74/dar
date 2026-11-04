@@ -120,8 +120,10 @@ const submitNotifications = () => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">عملة الحساب *</label>
+                        <label for="settings-currency" class="block text-xs font-bold text-[#163E3E] mb-1.5">عملة الحساب *</label>
                         <select
+                            id="settings-currency"
+                            aria-label="عملة الحساب"
                             v-model="form.currency"
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         >
@@ -130,29 +132,44 @@ const submitNotifications = () => {
                             <option value="AED">درهم إماراتي (AED)</option>
                             <option value="USD">دولار أمريكي (USD)</option>
                         </select>
+                        <p v-if="form.errors.currency" class="text-xs text-rose-600 font-semibold mt-1">
+                            {{ form.errors.currency }}
+                        </p>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">رقم السجل التجاري <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
+                        <label for="settings-cr-number" class="block text-xs font-bold text-[#163E3E] mb-1.5">رقم السجل التجاري <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
                         <input
+                            id="settings-cr-number"
+                            aria-label="رقم السجل التجاري"
                             v-model="form.cr_number"
                             type="text"
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                         />
+                        <p v-if="form.errors.cr_number" class="text-xs text-rose-600 font-semibold mt-1">
+                            {{ form.errors.cr_number }}
+                        </p>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">الرقم الضريبي <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
+                        <label for="settings-tax-number" class="block text-xs font-bold text-[#163E3E] mb-1.5">الرقم الضريبي <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
                         <input
+                            id="settings-tax-number"
+                            aria-label="الرقم الضريبي"
                             v-model="form.tax_number"
                             type="text"
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                         />
+                        <p v-if="form.errors.tax_number" class="text-xs text-rose-600 font-semibold mt-1">
+                            {{ form.errors.tax_number }}
+                        </p>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">رقم هاتف المنشأة <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
+                        <label for="settings-phone" class="block text-xs font-bold text-[#163E3E] mb-1.5">رقم هاتف المنشأة <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
                         <input
+                            id="settings-phone"
+                            aria-label="رقم هاتف المنشأة"
                             v-model="form.phone"
                             type="tel"
                             placeholder="01XXXXXXXXX"
@@ -164,12 +181,17 @@ const submitNotifications = () => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">العنوان والمقر الرئيسي <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
+                        <label for="settings-address" class="block text-xs font-bold text-[#163E3E] mb-1.5">العنوان والمقر الرئيسي <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
                         <input
+                            id="settings-address"
+                            aria-label="العنوان والمقر الرئيسي"
                             v-model="form.address"
                             type="text"
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         />
+                        <p v-if="form.errors.address" class="text-xs text-rose-600 font-semibold mt-1">
+                            {{ form.errors.address }}
+                        </p>
                     </div>
                 </div>
 
@@ -195,8 +217,10 @@ const submitNotifications = () => {
                 </div>
 
                 <div class="space-y-4">
-                    <label class="flex items-start gap-3 p-4 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] cursor-pointer hover:bg-slate-100 transition">
+                    <label for="pref-auto-whatsapp-reminders" class="flex items-start gap-3 p-4 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] cursor-pointer hover:bg-slate-100 transition">
                         <input
+                            id="pref-auto-whatsapp-reminders"
+                            aria-label="تذكيرات الاستحقاق التلقائية قبل موعد الدفع"
                             type="checkbox"
                             v-model="prefsForm.auto_whatsapp_reminders"
                             class="w-4 h-4 mt-0.5 rounded text-[#163E3E] focus:ring-[#163E3E]"
@@ -209,8 +233,10 @@ const submitNotifications = () => {
                         </div>
                     </label>
 
-                    <label class="flex items-start gap-3 p-4 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] cursor-pointer hover:bg-slate-100 transition">
+                    <label for="pref-auto-instant-receipts" class="flex items-start gap-3 p-4 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] cursor-pointer hover:bg-slate-100 transition">
                         <input
+                            id="pref-auto-instant-receipts"
+                            aria-label="إصدار وإرسال سند قبض إلكتروني فوري"
                             type="checkbox"
                             v-model="prefsForm.auto_instant_receipts"
                             class="w-4 h-4 mt-0.5 rounded text-[#163E3E] focus:ring-[#163E3E]"

@@ -195,6 +195,7 @@ const submit = () => {
                 <button
                     @click="emit('close')"
                     type="button"
+                    aria-label="إغلاق النافذة"
                     class="p-1.5 text-[#5B6770] hover:text-[#163E3E] hover:bg-slate-100 rounded-xl transition cursor-pointer"
                 >
                     <X class="w-5 h-5" />
@@ -243,12 +244,14 @@ const submit = () => {
 
                 <!-- Unit Name -->
                 <div>
-                    <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
+                    <label for="unit-form-name" class="block text-xs font-bold text-[#163E3E] mb-1.5">
                         اسم الوحدة *
                     </label>
                     <input
+                        id="unit-form-name"
                         v-model="form.name"
                         type="text"
+                        aria-label="اسم الوحدة"
                         maxlength="255"
                         :placeholder="form.unit_type === 'apartment' ? 'مثال: شقة 101 (الدور الأول)' : form.unit_type === 'room' ? 'مثال: أوضة 1 (غرفة النوم الرئيسية)' : form.unit_type === 'bed' ? 'مثال: سرير أ (بجوار النافذة)' : 'مثال: محل رقم 1 (واجهة رئيسية)'"
                         required
@@ -264,12 +267,14 @@ const submit = () => {
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <!-- Unit Code -->
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
+                        <label for="unit-form-code" class="block text-xs font-bold text-[#163E3E] mb-1.5">
                             كود الوحدة <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span>
                         </label>
                         <input
+                            id="unit-form-code"
                             v-model="form.code"
                             type="text"
+                            aria-label="كود الوحدة"
                             maxlength="50"
                             placeholder="APT-101 / RM-1"
                             class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#163E3E] font-mono transition"
@@ -282,11 +287,13 @@ const submit = () => {
 
                     <!-- Unit Type Selector -->
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
+                        <label for="unit-form-type" class="block text-xs font-bold text-[#163E3E] mb-1.5">
                             نوع المستوى الهرمي *
                         </label>
                         <select
+                            id="unit-form-type"
                             v-model="form.unit_type"
+                            aria-label="نوع المستوى الهرمي"
                             :disabled="isTypeLocked"
                             class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#163E3E] transition disabled:opacity-75 disabled:cursor-not-allowed"
                             :class="form.errors.unit_type ? 'border-rose-400 bg-rose-50/20' : 'border-[#D6E0E7] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E]'"
@@ -313,11 +320,13 @@ const submit = () => {
 
                 <!-- 2. Room: Parent MUST be an Apartment -->
                 <div v-else-if="form.unit_type === 'room'">
-                    <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
+                    <label for="unit-form-room-parent" class="block text-xs font-bold text-[#163E3E] mb-1.5">
                         الشقة التابع لها (الوحدة الأب) *
                     </label>
                     <select
+                        id="unit-form-room-parent"
                         v-model="form.parent_unit_id"
+                        aria-label="الشقة التابع لها"
                         :disabled="isParentLocked"
                         required
                         class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#163E3E] transition disabled:opacity-75 disabled:cursor-not-allowed"
@@ -338,11 +347,13 @@ const submit = () => {
 
                 <!-- 3. Bed: Parent MUST be a Room -->
                 <div v-else-if="form.unit_type === 'bed'">
-                    <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
+                    <label for="unit-form-bed-parent" class="block text-xs font-bold text-[#163E3E] mb-1.5">
                         الأوضة التابع لها (الوحدة الأب) *
                     </label>
                     <select
+                        id="unit-form-bed-parent"
                         v-model="form.parent_unit_id"
+                        aria-label="الأوضة التابع لها"
                         :disabled="isParentLocked"
                         required
                         class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#163E3E] transition disabled:opacity-75 disabled:cursor-not-allowed"
@@ -367,6 +378,7 @@ const submit = () => {
                         id="is_rentable_checkbox"
                         v-model="form.is_rentable"
                         type="checkbox"
+                        aria-label="الوحدة قابلة للتأجير بشكل مستقل"
                         class="w-4 h-4 rounded text-[#163E3E] focus:ring-[#163E3E] border-[#D6E0E7]"
                     />
                     <label for="is_rentable_checkbox" class="text-xs font-bold text-[#163E3E] cursor-pointer">

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onUnmounted } from 'vue';
 import { useForm, usePage } from '@inertiajs/vue3';
 import { Coins, X, Check, MessageSquare, AlertTriangle, AlertOctagon, Upload, FileText, Trash2 } from 'lucide-vue-next';
 
@@ -64,6 +64,10 @@ const onFileChange = (e: Event) => {
     const target = e.target as HTMLInputElement;
     const file = target.files?.[0];
     if (file) {
+        if (receiptPreviewUrl.value) {
+            URL.revokeObjectURL(receiptPreviewUrl.value);
+            receiptPreviewUrl.value = null;
+        }
         form.receipt_image = file;
         if (file.type.startsWith('image/')) {
             receiptPreviewUrl.value = URL.createObjectURL(file);
@@ -83,6 +87,12 @@ const clearReceiptFile = () => {
         fileInputRef.value.value = '';
     }
 };
+
+onUnmounted(() => {
+    if (receiptPreviewUrl.value) {
+        URL.revokeObjectURL(receiptPreviewUrl.value);
+    }
+});
 
 const selectedRenter = computed(() => {
     if (!form.renter_id) return null;
@@ -177,6 +187,7 @@ const submit = () => {
                 <button
                     @click="emit('close')"
                     type="button"
+                    aria-label="إغلاق النافذة"
                     class="p-2 text-[#5B6770] hover:text-[#163E3E] hover:bg-slate-200/50 rounded-xl transition cursor-pointer"
                 >
                     <X class="w-5 h-5" />
@@ -216,6 +227,7 @@ const submit = () => {
                     <select
                         id="record_renter_id"
                         v-model="form.renter_id"
+                        aria-label="المستأجر أو الوحدة"
                         @change="onRenterChange"
                         required
                         class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
@@ -312,6 +324,7 @@ const submit = () => {
                                 v-model="form.amount"
                                 type="number"
                                 step="0.01"
+                                aria-label="المبلغ المقبوض"
                                 placeholder="0.00"
                                 required
                                 class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
@@ -335,6 +348,7 @@ const submit = () => {
                             id="record_paid_at"
                             v-model="form.paid_at"
                             type="date"
+                            aria-label="تاريخ التحصيل الفعلي"
                             required
                             class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                             :class="{ 'border-rose-500 bg-[#FFF5F5] ring-1 ring-rose-500': form.errors.paid_at }"
@@ -353,6 +367,7 @@ const submit = () => {
                             id="record_record_date"
                             v-model="form.record_date"
                             type="date"
+                            aria-label="تاريخ القيد والتسجيل"
                             class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                             :class="{ 'border-rose-500 bg-[#FFF5F5] ring-1 ring-rose-500': form.errors.record_date }"
                         />
@@ -372,6 +387,7 @@ const submit = () => {
                         <select
                             id="record_payment_method"
                             v-model="form.payment_method"
+                            aria-label="طريقة السداد"
                             required
                             class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                             :class="{ 'border-rose-500 bg-[#FFF5F5] ring-1 ring-rose-500': form.errors.payment_method }"
@@ -395,6 +411,7 @@ const submit = () => {
                             id="record_payment_reference"
                             v-model="form.reference"
                             type="text"
+                            aria-label="رقم المرجع أو الإيصال"
                             placeholder="REC-XXXXXX"
                             class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition font-mono text-right"
                             :class="{ 'border-rose-500 bg-[#FFF5F5] ring-1 ring-rose-500': form.errors.reference }"
@@ -465,6 +482,7 @@ const submit = () => {
                             id="record_receipt_image"
                             ref="fileInputRef"
                             type="file"
+                            aria-label="صورة إشعار التحويل أو الإيصال"
                             accept="image/jpeg,image/png,image/jpg,image/webp,application/pdf"
                             class="hidden"
                             @change="onFileChange"
@@ -493,6 +511,7 @@ const submit = () => {
                         id="record_notes"
                         v-model="form.notes"
                         rows="2"
+                        aria-label="ملاحظات أو تفاصيل التحويل"
                         placeholder="مثل: تحويل عبر إنستاباي أو إيداع بنكي..."
                         class="w-full p-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         :class="{ 'border-rose-500 bg-[#FFF5F5] ring-1 ring-rose-500': form.errors.notes }"
@@ -508,6 +527,9 @@ const submit = () => {
                     <input
                         type="checkbox"
                         v-model="form.send_whatsapp"
+                        aria-label="إرسال سند قبض إلكتروني فوري عبر WhatsApp للمستأجر"
+                        class="w-4 h-4 rounded text-[#163E3E] focus:ring-[#163E3E] border-[#D6E0E7]"
+                    />
                         class="w-4 h-4 rounded text-[#163E3E] focus:ring-[#163E3E] border-[#D6E0E7]"
                     />
                     <div class="flex items-center gap-2">

@@ -50,7 +50,6 @@ const isSeen = ref(false);
 const seenStorageKey = computed(() => `nookmate_notifications_seen_${currentWorkspace.value?.id || 'default'}`);
 
 function checkSeenStatus() {
-    if (isSeen.value) return;
     try {
         const raw = localStorage.getItem(seenStorageKey.value);
         if (!raw) {

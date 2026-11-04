@@ -223,7 +223,11 @@ class ReportService
             number_format((float) $charge->amount, 2, '.', ''),
             number_format($charge->paid_amount, 2, '.', ''),
             number_format($charge->outstanding_balance, 2, '.', ''),
-            $charge->is_fully_paid ? 'مسدد بالكامل' : ($charge->is_overdue ? 'متأخر' : 'مستحق'),
+            match (true) {
+                $charge->is_fully_paid => 'مسدد بالكامل',
+                $charge->is_overdue => 'متأخر',
+                default => 'مستحق',
+            },
         ]));
     }
 

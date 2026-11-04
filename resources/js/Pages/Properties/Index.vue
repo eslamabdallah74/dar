@@ -34,6 +34,7 @@ interface PropertyItem {
 
 const props = defineProps<{
     properties: PropertyItem[];
+    currency_symbol?: string;
     stats: {
         total_properties: number;
         total_units: number;
@@ -104,7 +105,7 @@ const filteredProperties = computed(() => {
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
                 <span class="text-xs font-semibold text-[#5B6770]">الإيراد الشهري المتوقع</span>
                 <div class="flex items-baseline justify-between">
-                    <span class="text-2xl font-bold text-[#163E3E] font-mono">{{ stats.total_monthly_revenue.toLocaleString() }} <span class="text-xs font-sans font-normal text-[#5B6770]">ج.م</span></span>
+                    <span class="text-2xl font-bold text-[#163E3E] font-mono">{{ stats.total_monthly_revenue.toLocaleString() }} <span class="text-xs font-sans font-normal text-[#5B6770]">{{ currency_symbol || 'ج.م' }}</span></span>
                     <span class="text-xs text-[#5B6770] font-medium">شهرياً</span>
                 </div>
             </div>
@@ -221,7 +222,7 @@ const filteredProperties = computed(() => {
                         <div>
                             <span class="text-[11px] text-[#5B6770] block">الإيراد الشهري</span>
                             <span class="text-sm font-bold text-[#163E3E] font-mono mt-0.5 block">
-                                {{ prop.monthly_revenue.toLocaleString() }} <span class="text-[10px] font-sans">ج.م</span>
+                                {{ prop.monthly_revenue.toLocaleString() }} <span class="text-[10px] font-sans">{{ currency_symbol || 'ج.م' }}</span>
                             </span>
                         </div>
                     </div>

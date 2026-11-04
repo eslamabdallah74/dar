@@ -54,11 +54,12 @@ class CorrectPaymentAction
             $this->obligationService->ensureChargesExistForActiveLeases($workspace, $renterId, $correctedPaidAt);
 
             $lockedCharges = $this->obligationService->lockPayableChargesForRenter($workspace, $renterId, $correctedPaidAt);
+            $currencySymbol = $workspace->currencySymbol();
             $totalCapacity = round($lockedCharges->sum(fn (RentCharge $charge) => $charge->outstanding_balance), 2);
 
             if ($correctedAmount > $totalCapacity) {
                 throw ValidationException::withMessages([
-                    'amount' => "المبلغ المصحح ({$correctedAmount} ج.م) يتجاوز إجمالي الالتزامات الإيجارية المؤهلة للسداد ({$totalCapacity} ج.م).",
+                    'amount' => "المبلغ المصحح ({$correctedAmount} {$currencySymbol}) يتجاوز إجمالي الالتزامات الإيجارية المؤهلة للسداد ({$totalCapacity} {$currencySymbol}).",
                 ]);
             }
 
@@ -66,7 +67,7 @@ class CorrectPaymentAction
 
             if ($unallocatedAmount > 0.00) {
                 throw ValidationException::withMessages([
-                    'amount' => "تعذر استيعاب كامل المبلغ المصحح ({$correctedAmount} ج.م): تبقى رصيد غير مخصص بقيمة {$unallocatedAmount} ج.م.",
+                    'amount' => "تعذر استيعاب كامل المبلغ المصحح ({$correctedAmount} {$currencySymbol}): تبقى رصيد غير مخصص بقيمة {$unallocatedAmount} {$currencySymbol}.",
                 ]);
             }
 

@@ -357,6 +357,11 @@ const submitPlanRequest = () => {
                     <span v-else>تسعير مخصص</span>
                 </div>
 
+                <div v-if="requestForm.errors.plan_id" class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold text-right flex items-center gap-2">
+                    <AlertCircle class="w-4 h-4 text-rose-600 shrink-0" />
+                    <span>{{ requestForm.errors.plan_id }}</span>
+                </div>
+
                 <div class="text-right">
                     <label for="req_notes" class="block text-xs font-semibold text-[#163E3E] mb-1.5">ملاحظات إضافية للإدارة (اختياري)</label>
                     <textarea

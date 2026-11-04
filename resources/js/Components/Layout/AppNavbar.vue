@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { router, usePage, Link } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import {
@@ -44,6 +44,89 @@ const workspaces = computed(() => (page.props.auth as any)?.workspaces ?? [
     { id: currentWorkspace.value.id, name: currentWorkspace.value.name, currency: currentWorkspace.value.currency, is_current: true }
 ]);
 const notifications = computed(() => (page.props.auth as any)?.notifications ?? { unread_count: 0, overdue_count: 0, expiring_count: 0, maintenance_count: 0 });
+
+// Notifications seen status and badge clearing
+const isSeen = ref(false);
+const seenStorageKey = computed(() => `nookmate_notifications_seen_${currentWorkspace.value?.id || 'default'}`);
+
+function checkSeenStatus() {
+    try {
+        const raw = localStorage.getItem(seenStorageKey.value);
+        if (!raw) {
+            isSeen.value = false;
+            return;
+        }
+        const stored = JSON.parse(raw);
+        const curOverdue = notifications.value.overdue_count || 0;
+        const curExpiring = notifications.value.expiring_count || 0;
+        const curMaintenance = notifications.value.maintenance_count || 0;
+
+        // If counts decreased, adjust stored thresholds so future increases still trigger hasNew
+        if ((stored.overdue ?? 0) > curOverdue || (stored.expiring ?? 0) > curExpiring || (stored.maintenance ?? 0) > curMaintenance) {
+            const adjustedOverdue = Math.min(stored.overdue ?? 0, curOverdue);
+            const adjustedExpiring = Math.min(stored.expiring ?? 0, curExpiring);
+            const adjustedMaintenance = Math.min(stored.maintenance ?? 0, curMaintenance);
+            try {
+                localStorage.setItem(seenStorageKey.value, JSON.stringify({
+                    overdue: adjustedOverdue,
+                    expiring: adjustedExpiring,
+                    maintenance: adjustedMaintenance,
+                }));
+            } catch {
+                // Ignore storage write error
+            }
+            stored.overdue = adjustedOverdue;
+            stored.expiring = adjustedExpiring;
+            stored.maintenance = adjustedMaintenance;
+        }
+
+        // If any category increased compared to what was last seen, show badge
+        const hasNew = (curOverdue > (stored.overdue ?? 0)) ||
+                       (curExpiring > (stored.expiring ?? 0)) ||
+                       (curMaintenance > (stored.maintenance ?? 0));
+
+        isSeen.value = !hasNew;
+    } catch {
+        isSeen.value = false;
+    }
+}
+
+watch([
+    () => notifications.value.overdue_count,
+    () => notifications.value.expiring_count,
+    () => notifications.value.maintenance_count,
+    () => currentWorkspace.value?.id,
+], () => {
+    checkSeenStatus();
+}, { immediate: true });
+
+function markNotificationsAsSeen() {
+    isSeen.value = true;
+    try {
+        localStorage.setItem(seenStorageKey.value, JSON.stringify({
+            overdue: notifications.value.overdue_count || 0,
+            expiring: notifications.value.expiring_count || 0,
+            maintenance: notifications.value.maintenance_count || 0,
+        }));
+    } catch {
+        // Ignore localStorage errors
+    }
+}
+
+function toggleNotifications() {
+    notificationsDropdownOpen.value = !notificationsDropdownOpen.value;
+    workspaceDropdownOpen.value = false;
+    userDropdownOpen.value = false;
+
+    if (notificationsDropdownOpen.value) {
+        markNotificationsAsSeen();
+    }
+}
+
+const unreadBadgeCount = computed(() => {
+    if (isSeen.value) return 0;
+    return notifications.value.unread_count || 0;
+});
 
 const userInitials = computed(() => {
     const name = user.value?.name || 'أ';
@@ -197,9 +280,9 @@ onUnmounted(() => {
             <!-- قائمة التنبيهات (في وضع العميل) -->
             <div v-if="!adminMode" class="relative dropdown-container">
                 <button
-                    @click.stop="notificationsDropdownOpen = !notificationsDropdownOpen; workspaceDropdownOpen = false; userDropdownOpen = false;"
+                    @click.stop="toggleNotifications"
                     type="button"
-                    class="flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-transparent px-1.5 text-[#163E3E] transition hover:border-[#D6E0E7] hover:bg-[#F8F4EA] sm:h-11 sm:px-2"
+                    class="flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-transparent px-1.5 text-[#163E3E] transition hover:border-[#D6E0E7] hover:bg-[#F8F4EA] sm:h-11 sm:px-2 cursor-pointer"
                     aria-label="مركز التنبيهات"
                     :aria-expanded="notificationsDropdownOpen"
                 >
@@ -207,10 +290,10 @@ onUnmounted(() => {
                         <ApplicationLogo size="sm" />
                     </span>
                     <span
-                        v-if="notifications.unread_count > 0"
-                        class="flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white"
+                        v-if="unreadBadgeCount > 0"
+                        class="flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white animate-in zoom-in-75 duration-200"
                     >
-                        {{ notifications.unread_count }}
+                        {{ unreadBadgeCount }}
                     </span>
                 </button>
 

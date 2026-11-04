@@ -150,8 +150,9 @@ class FinancialObligationService
         if (round($amount, 2) > $totalEligibleBalance) {
             $formattedTotal = number_format($totalEligibleBalance, 2);
             $formattedAmount = number_format($amount, 2);
+            $currencySymbol = $workspace->currencySymbol();
             throw ValidationException::withMessages([
-                'amount' => "مبلغ الدفعة المدخل ({$formattedAmount} ج.م) يتجاوز إجمالي الالتزامات الإيجارية المؤهلة للسداد حالياً ({$formattedTotal} ج.م).",
+                'amount' => "مبلغ الدفعة المدخل ({$formattedAmount} {$currencySymbol}) يتجاوز إجمالي الالتزامات الإيجارية المؤهلة للسداد حالياً ({$formattedTotal} {$currencySymbol}).",
             ]);
         }
 
@@ -195,9 +196,10 @@ class FinancialObligationService
 
         if ($isAdvancePayment && $earlierUnpaidCharges->isNotEmpty()) {
             $earlierArrearsTotal = $earlierUnpaidCharges->sum(fn (RentCharge $charge) => $charge->outstanding_balance);
+            $currencySymbol = $targetCharge->lease?->workspace?->currencySymbol() ?? 'ج.م';
 
             throw ValidationException::withMessages([
-                'rent_charge_id' => "لا يمكن سداد دفعة مقدمة للشهر القادم لوجود متأخرات إيجارية مستحقة بقيمة {$earlierArrearsTotal} ج.م يجب سدادها أولاً.",
+                'rent_charge_id' => "لا يمكن سداد دفعة مقدمة للشهر القادم لوجود متأخرات إيجارية مستحقة بقيمة {$earlierArrearsTotal} {$currencySymbol} يجب سدادها أولاً.",
             ]);
         }
     }

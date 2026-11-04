@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Leases;
 
+use App\Support\CurrentWorkspace;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreLeaseRequest extends FormRequest
 {
@@ -24,9 +26,17 @@ class StoreLeaseRequest extends FormRequest
      */
     public function rules(): array
     {
+        $workspaceId = app(CurrentWorkspace::class)->id();
+
         return [
-            'unit_id' => ['required', 'exists:units,id'],
-            'renter_id' => ['required', 'exists:renters,id'],
+            'unit_id' => [
+                'required',
+                Rule::exists('units', 'id')->where(fn ($query) => $workspaceId ? $query->where('workspace_id', $workspaceId) : $query),
+            ],
+            'renter_id' => [
+                'required',
+                Rule::exists('renters', 'id')->where(fn ($query) => $workspaceId ? $query->where('workspace_id', $workspaceId) : $query),
+            ],
             'starts_on' => ['required', 'date'],
             'ends_on' => ['required', 'date', 'after:starts_on'],
             'rent_amount' => ['required', 'numeric', 'min:1'],

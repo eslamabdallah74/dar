@@ -530,8 +530,6 @@ const submit = () => {
                         aria-label="إرسال سند قبض إلكتروني فوري عبر WhatsApp للمستأجر"
                         class="w-4 h-4 rounded text-[#163E3E] focus:ring-[#163E3E] border-[#D6E0E7]"
                     />
-                        class="w-4 h-4 rounded text-[#163E3E] focus:ring-[#163E3E] border-[#D6E0E7]"
-                    />
                     <div class="flex items-center gap-2">
                         <MessageSquare class="w-4 h-4 text-[#163E3E]" />
                         <span class="text-xs font-bold text-[#163E3E]">

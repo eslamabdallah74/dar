@@ -26,16 +26,16 @@ class StoreLeaseRequest extends FormRequest
      */
     public function rules(): array
     {
-        $workspaceId = app(CurrentWorkspace::class)->id();
+        $workspaceId = app(CurrentWorkspace::class)->id() ?? 0;
 
         return [
             'unit_id' => [
                 'required',
-                Rule::exists('units', 'id')->where(fn ($query) => $workspaceId ? $query->where('workspace_id', $workspaceId) : $query),
+                Rule::exists('units', 'id')->where('workspace_id', $workspaceId),
             ],
             'renter_id' => [
                 'required',
-                Rule::exists('renters', 'id')->where(fn ($query) => $workspaceId ? $query->where('workspace_id', $workspaceId) : $query),
+                Rule::exists('renters', 'id')->where('workspace_id', $workspaceId),
             ],
             'starts_on' => ['required', 'date'],
             'ends_on' => ['required', 'date', 'after:starts_on'],

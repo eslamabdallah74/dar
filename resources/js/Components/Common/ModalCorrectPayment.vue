@@ -109,6 +109,7 @@ const submit = () => {
                 <button
                     @click="emit('close')"
                     type="button"
+                    aria-label="إغلاق النافذة"
                     class="w-8 h-8 rounded-xl text-[#5B6770] hover:text-[#163E3E] hover:bg-[#E8F0F0] flex items-center justify-center transition cursor-pointer"
                 >
                     <X class="w-5 h-5" />
@@ -164,6 +165,7 @@ const submit = () => {
                                 type="number"
                                 step="0.01"
                                 min="0.01"
+                                aria-label="المبلغ المعدل"
                                 required
                                 class="w-full h-10 pl-10 pr-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs font-bold text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                                 :class="{ 'border-rose-500 bg-[#FFF5F5] ring-1 ring-rose-500': form.errors.amount }"
@@ -186,6 +188,7 @@ const submit = () => {
                             id="correct_paid_at"
                             v-model="form.paid_at"
                             type="date"
+                            aria-label="تاريخ التحصيل الفعلي"
                             required
                             class="w-full h-10 px-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                             :class="{ 'border-rose-500 bg-[#FFF5F5] ring-1 ring-rose-500': form.errors.paid_at }"
@@ -204,6 +207,7 @@ const submit = () => {
                             id="correct_record_date"
                             v-model="form.record_date"
                             type="date"
+                            aria-label="تاريخ القيد والتسجيل"
                             class="w-full h-10 px-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                             :class="{ 'border-rose-500 bg-[#FFF5F5] ring-1 ring-rose-500': form.errors.record_date }"
                         />
@@ -223,6 +227,7 @@ const submit = () => {
                         <select
                             id="correct_payment_method"
                             v-model="form.payment_method"
+                            aria-label="طريقة السداد"
                             required
                             class="w-full h-10 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                             :class="{ 'border-rose-500 bg-[#FFF5F5] ring-1 ring-rose-500': form.errors.payment_method }"
@@ -246,6 +251,7 @@ const submit = () => {
                             id="correct_reference"
                             v-model="form.reference"
                             type="text"
+                            aria-label="رقم المرجع أو الإيصال"
                             class="w-full h-10 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] font-mono focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                             :class="{ 'border-rose-500 bg-[#FFF5F5] ring-1 ring-rose-500': form.errors.reference }"
                         />
@@ -265,6 +271,7 @@ const submit = () => {
                         id="correct_reason"
                         v-model="form.reason"
                         rows="2"
+                        aria-label="سبب التعديل والتصحيح المالي"
                         required
                         placeholder="اذكر بوضوح سبب تعديل السند (مثال: تصحيح خطأ إدخال في المبلغ، تعديل تاريخ التحصيل، إلخ...)"
                         class="w-full p-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] placeholder:text-[#8A9AA7] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
@@ -285,6 +292,7 @@ const submit = () => {
                         id="correct_notes"
                         v-model="form.notes"
                         type="text"
+                        aria-label="ملاحظات السند العامة"
                         placeholder="أي ملاحظات إضافية على السند..."
                         class="w-full h-10 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         :class="{ 'border-rose-500 bg-[#FFF5F5] ring-1 ring-rose-500': form.errors.notes }"

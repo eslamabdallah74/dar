@@ -95,22 +95,27 @@ class SecurityDepositService
      */
     public function reversePayment(Workspace $workspace, Lease $lease, SecurityDepositPayment $payment, array $data, int $userId): SecurityDepositPayment
     {
-        if ($payment->is_reversed) {
-            throw ValidationException::withMessages([
-                'reversal_reason' => 'تم إلغاء هذه الدفعة مسبقاً ولا يمكن إلغاؤها مجدداً.',
-            ]);
-        }
-
-        if ($lease->security_deposit_status === 'settled') {
-            throw ValidationException::withMessages([
-                'reversal_reason' => 'لا يمكن إلغاء دفعات التأمين بعد اعتماد التسوية النهائية.',
-            ]);
-        }
-
         return DB::transaction(function () use ($lease, $payment, $data, $userId): SecurityDepositPayment {
+            $lockedPayment = SecurityDepositPayment::where('id', $payment->id)
+                ->where('lease_id', $lease->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($lockedPayment->is_reversed) {
+                throw ValidationException::withMessages([
+                    'reversal_reason' => 'تم إلغاء هذه الدفعة مسبقاً ولا يمكن إلغاؤها مجدداً.',
+                ]);
+            }
+
             $lockedLease = $this->lockLease($lease);
 
-            $totalAfterReversal = $lockedLease->total_deposit_received - (float) $payment->amount;
+            if ($lockedLease->security_deposit_status === 'settled') {
+                throw ValidationException::withMessages([
+                    'reversal_reason' => 'لا يمكن إلغاء دفعات التأمين بعد اعتماد التسوية النهائية.',
+                ]);
+            }
+
+            $totalAfterReversal = $lockedLease->total_deposit_received - (float) $lockedPayment->amount;
             $confirmedDeductionsAndRefunds = $lockedLease->total_deposit_deductions + $lockedLease->total_deposit_refunded;
 
             if ($totalAfterReversal < $confirmedDeductionsAndRefunds) {
@@ -119,7 +124,7 @@ class SecurityDepositService
                 ]);
             }
 
-            $payment->update([
+            $lockedPayment->update([
                 'is_reversed' => true,
                 'reversal_reason' => $data['reversal_reason'],
                 'reversed_at' => now(),
@@ -128,7 +133,7 @@ class SecurityDepositService
 
             $lockedLease->syncSecurityDepositStatus();
 
-            return $payment;
+            return $lockedPayment;
         });
     }
 
@@ -301,8 +306,9 @@ class SecurityDepositService
 
             $this->financialObligationService->removeDepositDeductionPayment($workspace, $deduction);
 
-            if ($deduction->attachment_path) {
-                $this->storage->delete($deduction->attachment_path);
+            $attachmentPath = $deduction->attachment_path;
+            if ($attachmentPath) {
+                DB::afterCommit(fn () => $this->storage->delete($attachmentPath));
             }
 
             $deduction->delete();
@@ -468,7 +474,7 @@ class SecurityDepositService
                 $this->settleDepositOnTermination($workspace, $lockedLease, $data, $uploadedFiles, $userId);
             }
 
-            $advanceRentPaid = $this->releaseFutureRentCharges($lockedLease);
+            $advanceRentPaid = $this->financialObligationService->releaseFutureRentCharges($lockedLease);
 
             $lockedLease->updateQuietly([
                 'status' => 'terminated',
@@ -494,6 +500,12 @@ class SecurityDepositService
             ]);
         }
 
+        if ($lockedLease->total_deposit_received <= 0 && (float) $lockedLease->security_deposit_amount <= 0) {
+            throw ValidationException::withMessages([
+                'settlement' => 'لا يوجد مبلغ تأمين مسجل أو مستلم لهذا العقد لتسويته.',
+            ]);
+        }
+
         $settlement = $lockedLease->securityDepositSettlement ?? SecurityDepositSettlement::create([
             'workspace_id' => $workspace->id,
             'lease_id' => $lockedLease->id,
@@ -513,7 +525,16 @@ class SecurityDepositService
         $totalReceived = $lockedLease->total_deposit_received;
         $totalDeductions = $lockedLease->total_deposit_deductions;
         $previouslyRefunded = $lockedLease->total_deposit_refunded;
-        $remainingRefundable = max(0.0, $totalReceived - $totalDeductions - $previouslyRefunded);
+        $availableFunds = round($totalReceived - $previouslyRefunded, 2);
+
+        if ($totalDeductions > $availableFunds) {
+            $currencySymbol = $workspace->currencySymbol();
+            throw ValidationException::withMessages([
+                'deductions' => "إجمالي الاستقطاعات ({$totalDeductions} {$currencySymbol}) يتجاوز رصيد التأمين المتاح للتسوية ({$availableFunds} {$currencySymbol}).",
+            ]);
+        }
+
+        $remainingRefundable = max(0.0, round($availableFunds - $totalDeductions, 2));
 
         $settlement->update([
             'settled_by' => $userId,
@@ -707,32 +728,6 @@ class SecurityDepositService
         ];
     }
 
-    /**
-     * Future rent charges are removed on termination, except the part already paid in advance,
-     * which is kept (shrunk to the paid amount) so it can be settled with the renter.
-     *
-     * @return float The advance rent paid for periods after the current month.
-     */
-    private function releaseFutureRentCharges(Lease $lockedLease): float
-    {
-        $futureCharges = $lockedLease->rentCharges()
-            ->where('period_start', '>', now()->endOfMonth())
-            ->get();
-
-        $advanceRentPaid = 0.0;
-        foreach ($futureCharges as $futureCharge) {
-            $allocatedAmount = (float) $futureCharge->allocations()->sum('amount');
-            if ($allocatedAmount > 0) {
-                $advanceRentPaid += $allocatedAmount;
-                $futureCharge->update(['amount' => $allocatedAmount]);
-            } else {
-                $futureCharge->delete();
-            }
-        }
-
-        return $advanceRentPaid;
-    }
-
     private function notesWithAdvanceRentWarning(?string $leaseNotes, float $advanceRentPaid, string $currencySymbol = 'ج.م'): ?string
     {
         if ($advanceRentPaid <= 0) {
@@ -885,7 +880,7 @@ class SecurityDepositService
     private function replaceAttachment(?string $previousPath, string $newPath): string
     {
         if ($previousPath) {
-            $this->storage->delete($previousPath);
+            DB::afterCommit(fn () => $this->storage->delete($previousPath));
         }
 
         return $newPath;
@@ -935,6 +930,10 @@ class SecurityDepositService
 
     private function lockLease(Lease $lease): Lease
     {
-        return Lease::withoutGlobalScopes()->where('id', $lease->id)->lockForUpdate()->firstOrFail();
+        return Lease::withoutGlobalScopes()
+            ->where('id', $lease->id)
+            ->where('workspace_id', $lease->workspace_id)
+            ->lockForUpdate()
+            ->firstOrFail();
     }
 }

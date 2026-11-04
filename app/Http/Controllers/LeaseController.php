@@ -119,9 +119,11 @@ class LeaseController extends Controller
         if ($conflictingLease) {
             $isSelf = $conflictingLease->unit_id === $unit->id;
             $conflictingUnit = Unit::withoutGlobalScopes()->find($conflictingLease->unit_id);
-            $unitLabel = $isSelf
-                ? 'الوحدة المحددة'
-                : ($conflictingUnit ? "الوحدة المرتبطة ({$conflictingUnit->name})" : 'وحدة في نفس الهيكل العقاري');
+            $unitLabel = match (true) {
+                $isSelf => 'الوحدة المحددة',
+                $conflictingUnit !== null => "الوحدة المرتبطة ({$conflictingUnit->name})",
+                default => 'وحدة في نفس الهيكل العقاري',
+            };
 
             return response()->json([
                 'has_conflict' => true,

@@ -128,6 +128,11 @@ class Expense extends Model
         return $this->payment_status === 'paid' || $this->paid_at !== null;
     }
 
+    public function isManual(): bool
+    {
+        return $this->origin === ExpenseOrigin::Manual->value || empty($this->origin);
+    }
+
     public function isRecorded(): bool
     {
         return in_array($this->status, ['recorded', 'applied'], true)

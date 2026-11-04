@@ -70,8 +70,12 @@ class SendRentRemindersCommand extends Command
                     continue;
                 }
 
-                $whatsAppService->queueRentDueReminder($charge);
-                $totalDispatched++;
+                try {
+                    $whatsAppService->queueRentDueReminder($charge);
+                    $totalDispatched++;
+                } catch (\Throwable $e) {
+                    Log::error("[SendRentRemindersCommand] Failed to queue reminder for charge #{$charge->id}: {$e->getMessage()}");
+                }
             }
         }
 

@@ -28,7 +28,7 @@ class StoreRenterRequest extends FormRequest
      */
     public function rules(): array
     {
-        $workspaceId = app(CurrentWorkspace::class)->id();
+        $workspaceId = app(CurrentWorkspace::class)->id() ?? 0;
 
         return [
             'name' => ['required', 'string', 'min:3', 'max:255'],
@@ -36,7 +36,7 @@ class StoreRenterRequest extends FormRequest
                 'required',
                 'string',
                 new EgyptianPhoneNumber,
-                Rule::unique('renters', 'phone')->where(fn ($query) => $workspaceId ? $query->where('workspace_id', $workspaceId) : $query),
+                Rule::unique('renters', 'phone')->where('workspace_id', $workspaceId),
             ],
             'email' => ['nullable', 'string', 'lowercase', 'email:rfc', 'max:255'],
             'national_id' => ['nullable', 'string', 'min:6', 'max:50', 'regex:/^[A-Za-z0-9\s\-]+$/'],

@@ -69,15 +69,15 @@ test('guest is redirected to admin login when visiting admin dashboard', functio
     $response->assertRedirect(route('admin.login'));
 });
 
-test('admin can view full central dashboard with platform data', function () {
+test('admin can view the dashboard summary without loading tab datasets', function () {
     $admin = User::factory()->create([
         'is_admin' => true,
     ]);
 
     $workspaceOwner = User::factory()->create();
     $workspace = Workspace::create([
-        'name' => 'Al-Rawda Portfolio',
-        'slug' => 'al-rawda-portfolio',
+        'name' => 'Al-Rawda Workspace',
+        'slug' => 'al-rawda-workspace',
         'owner_user_id' => $workspaceOwner->id,
         'currency' => 'EGP',
     ]);
@@ -108,12 +108,11 @@ test('admin can view full central dashboard with platform data', function () {
         ->has('operationalKpis')
         ->has('incomeChart')
         ->has('occupancySummary')
-        ->has('workspaces')
-        ->has('users')
-        ->has('properties')
-        ->has('leases')
-        ->has('payments')
-        ->has('plans')
+        ->has('tabCounts')
+        ->where('tabCounts.workspaces', 1)
+        ->where('tabCounts.properties', 1)
+        ->missing('tableData')
+        ->missing('workspaces')
     );
 });
 
@@ -323,11 +322,116 @@ test('admin dashboard identifies leases by contract number and payments by recei
     $lease = Lease::factory()->create(['workspace_id' => $workspace->id]);
     Payment::factory()->create(['workspace_id' => $workspace->id, 'reference' => 'REC-2026-0042', 'payment_method' => 'cash']);
 
-    $response = $this->actingAs($admin)->get(route('admin.dashboard'));
+    $response = $this->actingAs($admin)->get(route('admin.dashboard', ['tab' => 'leases']));
 
-    $response->assertOk()->assertInertia(fn (Assert $page) => $page
-        ->where('leases.0.lease_number', $lease->contract_number)
-        ->where('payments.0.payment_number', 'REC-2026-0042')
-        ->where('payments.0.method', 'cash')
-    );
+    $response->assertOk()->assertInertia(function (Assert $page) use ($lease): void {
+        $page->missing('tableData')->reloadOnly('tableData', fn (Assert $page) => $page
+            ->where('tableData.records.data.0.lease_number', $lease->contract_number)
+        );
+    });
+
+    $paymentResponse = $this->get(route('admin.dashboard', ['tab' => 'payments']));
+
+    $paymentResponse->assertOk()->assertInertia(function (Assert $page): void {
+        $page->reloadOnly('tableData', fn (Assert $page) => $page
+            ->where('tableData.records.data.0.payment_number', 'REC-2026-0042')
+            ->where('tableData.records.data.0.method', 'cash')
+        );
+    });
+});
+
+test('admin dashboard paginates and searches users on the server', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    for ($userIndex = 1; $userIndex <= 27; $userIndex++) {
+        User::factory()->create([
+            'name' => 'Dashboard User '.$userIndex,
+            'email' => 'dashboard-user-'.$userIndex.'@example.com',
+        ]);
+    }
+
+    $response = $this->actingAs($admin)->get(route('admin.dashboard', ['tab' => 'users', 'page' => 1]));
+
+    $response->assertOk()->assertInertia(function (Assert $page): void {
+        $page->reloadOnly('tableData', fn (Assert $page) => $page
+            ->where('tableData.records.total', 27)
+            ->where('tableData.records.per_page', 25)
+            ->has('tableData.records.data', 25)
+        );
+    });
+
+    $secondPageResponse = $this->get(route('admin.dashboard', ['tab' => 'users', 'page' => 2]));
+
+    $secondPageResponse->assertOk()->assertInertia(function (Assert $page): void {
+        $page->reloadOnly('tableData', fn (Assert $page) => $page
+            ->where('tableData.records.current_page', 2)
+            ->where('tableData.records.total', 27)
+            ->has('tableData.records.data', 2)
+        );
+    });
+
+    $searchResponse = $this->get(route('admin.dashboard', ['tab' => 'users', 'search' => 'Dashboard User 17']));
+
+    $searchResponse->assertOk()->assertInertia(function (Assert $page): void {
+        $page->reloadOnly('tableData', fn (Assert $page) => $page
+            ->where('tableData.records.total', 1)
+            ->where('tableData.records.data.0.name', 'Dashboard User 17')
+        );
+    });
+});
+
+test('admin dashboard rejects invalid tab and page query values', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    $tabResponse = $this->actingAs($admin)->get(route('admin.dashboard', ['tab' => 'unknown']));
+    $tabResponse->assertSessionHasErrors('tab');
+
+    $pageResponse = $this->get(route('admin.dashboard', ['tab' => 'users', 'page' => 0]));
+    $pageResponse->assertSessionHasErrors('page');
+});
+
+test('admin dashboard accurately counts parent units and active rentals for other workspaces when active_workspace_id is set in session', function (): void {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    $activeSessionWorkspace = Workspace::factory()->create(['name' => 'Session Workspace']);
+    $otherWorkspace = Workspace::factory()->create([
+        'name' => 'Other Workspace',
+        'parent_unit_limit' => 10,
+        'active_rental_limit' => 10,
+    ]);
+
+    $property = Property::factory()->create(['workspace_id' => $otherWorkspace->id]);
+
+    $parentUnits = Unit::factory()->count(5)->create([
+        'workspace_id' => $otherWorkspace->id,
+        'property_id' => $property->id,
+        'parent_unit_id' => null,
+    ]);
+
+    $targetUnit = $parentUnits->firstOrFail();
+
+    $renter = Renter::factory()->create(['workspace_id' => $otherWorkspace->id]);
+
+    Lease::factory()->create([
+        'workspace_id' => $otherWorkspace->id,
+        'unit_id' => $targetUnit->id,
+        'renter_id' => $renter->id,
+        'status' => 'active',
+        'starts_on' => now()->subMonth(),
+        'ends_on' => now()->addMonths(6),
+    ]);
+
+    $response = $this->actingAs($admin)
+        ->withSession(['active_workspace_id' => $activeSessionWorkspace->id])
+        ->get(route('admin.dashboard', ['tab' => 'workspaces']));
+
+    $response->assertOk()->assertInertia(function (Assert $page) use ($otherWorkspace): void {
+        $page->component('Admin/Dashboard')->reloadOnly('tableData', fn (Assert $page) => $page
+            ->where('tableData.records.data.0.id', $otherWorkspace->id)
+            ->where('tableData.records.data.0.created_parent_units_count', 5)
+            ->where('tableData.records.data.0.active_rented_parent_units_count', 1)
+            ->where('tableData.records.data.0.parent_unit_limit', 10)
+            ->where('tableData.records.data.0.active_rental_limit', 10)
+        );
+    });
 });

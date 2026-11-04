@@ -66,7 +66,7 @@ const defaultAdminNavLinks: NavItem[] = [
     { key: 'users', name: 'المستخدمون', icon: Users },
     { key: 'properties', name: 'العقارات والوحدات', icon: Home },
     { key: 'leases', name: 'العقود والمستأجرين', icon: FileText },
-    { key: 'financials', name: 'المالية والمدفوعات', icon: Coins },
+    { key: 'payments', name: 'المالية والمدفوعات', icon: Coins },
     { key: 'maintenance', name: 'طلبات الصيانة', icon: Wrench },
     { key: 'subscriptions', name: 'الباقات والاشتراكات', icon: Layers },
     { key: 'logs', name: 'رسائل واتساب والسجلات', icon: MessageSquare },
@@ -141,7 +141,7 @@ onUnmounted(() => {
                             </span>
                         </div>
                         <span class="text-[10px] text-[#F8F4EA]/80 font-medium mt-1 font-poppins truncate max-w-[145px]">
-                            {{ adminMode ? 'لوحة الإدارة المركزية' : 'اعثر على مساحتك' }}
+                            {{ adminMode ? 'لوحة الإدارة المركزية' : 'إدارة ممتلكاتك، بكل سهولة' }}
                         </span>
                     </div>
                 </Link>

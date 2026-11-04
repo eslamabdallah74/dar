@@ -104,12 +104,14 @@ const submitNotifications = () => {
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">اسم المنشأة / المحفظة *</label>
+                        <label for="workspace-name" class="block text-xs font-bold text-[#163E3E] mb-1.5">اسم مساحة العمل / المنشأة *</label>
                         <input
+                            id="workspace-name"
                             v-model="form.name"
                             type="text"
                             required
                             minlength="3"
+                            aria-label="اسم مساحة العمل أو المنشأة"
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         />
                         <p v-if="form.errors.name" class="text-xs text-rose-600 font-semibold mt-1">
@@ -221,14 +223,16 @@ const submitNotifications = () => {
                         </div>
                     </label>
 
-                    <label class="flex items-start gap-3 p-4 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] cursor-pointer hover:bg-slate-100 transition">
+                    <label for="weekly-summary-report" class="flex items-start gap-3 p-4 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] cursor-pointer hover:bg-slate-100 transition">
                         <input
+                            id="weekly-summary-report"
                             type="checkbox"
                             v-model="prefsForm.weekly_summary_report"
+                            aria-label="تقرير التحصيل الأسبوعي لمالك مساحة العمل"
                             class="w-4 h-4 mt-0.5 rounded text-[#163E3E] focus:ring-[#163E3E]"
                         />
                         <div>
-                            <span class="text-sm font-bold text-[#163E3E] block">تقرير التحصيل الأسبوعي لمالك المحفظة</span>
+                            <span class="text-sm font-bold text-[#163E3E] block">تقرير التحصيل الأسبوعي لمالك مساحة العمل</span>
                             <span class="text-xs text-[#5B6770] block mt-0.5">
                                 ملخص دوري كل صباح أحد بنسب الإشغال، المبالغ المحصلة والمتأخرات المعلقة
                             </span>

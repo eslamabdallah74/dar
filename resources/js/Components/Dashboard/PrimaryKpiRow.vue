@@ -17,7 +17,7 @@ interface KpiItem {
     count?: number;
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     kpis: {
         properties?: KpiItem;
         units?: KpiItem;
@@ -28,6 +28,13 @@ const props = defineProps<{
         properties_units?: KpiItem;
         collections?: KpiItem;
     };
+    disableLinks?: boolean;
+}>(), {
+    disableLinks: false,
+});
+
+const emit = defineEmits<{
+    (e: 'selectKpi', key: 'properties' | 'units' | 'occupancy' | 'collected'): void;
 }>();
 
 const propertiesKpi = computed(() => props.kpis.properties || {
@@ -63,9 +70,14 @@ const occupancyNumber = computed(() => {
 <template>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- كارت 1: إجمالي العقارات -->
-        <Link
-            :href="route('properties.index')"
-            class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs hover:border-[#163E3E]/50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between group cursor-pointer"
+        <component
+            :is="disableLinks ? 'div' : Link"
+            :href="disableLinks ? undefined : route('properties.index')"
+            :role="disableLinks ? 'button' : undefined"
+            :tabindex="disableLinks ? 0 : undefined"
+            @click="disableLinks && emit('selectKpi', 'properties')"
+            @keydown.enter="disableLinks && emit('selectKpi', 'properties')"
+            class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs hover:border-[#163E3E]/50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#163E3E]"
         >
             <div class="flex items-center justify-between">
                 <span class="text-xs font-semibold text-[#5B6770] group-hover:text-[#163E3E] transition-colors">
@@ -87,12 +99,17 @@ const occupancyNumber = computed(() => {
                     {{ propertiesKpi.subtitle }}
                 </p>
             </div>
-        </Link>
+        </component>
 
         <!-- كارت 2: الوحدات القابلة للتأجير -->
-        <Link
-            :href="route('properties.index')"
-            class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs hover:border-sky-500/50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between group cursor-pointer"
+        <component
+            :is="disableLinks ? 'div' : Link"
+            :href="disableLinks ? undefined : route('properties.index')"
+            :role="disableLinks ? 'button' : undefined"
+            :tabindex="disableLinks ? 0 : undefined"
+            @click="disableLinks && emit('selectKpi', 'units')"
+            @keydown.enter="disableLinks && emit('selectKpi', 'units')"
+            class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs hover:border-sky-500/50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600"
         >
             <div class="flex items-center justify-between">
                 <span class="text-xs font-semibold text-[#5B6770] group-hover:text-sky-700 transition-colors">
@@ -114,12 +131,17 @@ const occupancyNumber = computed(() => {
                     {{ unitsKpi.subtitle }}
                 </p>
             </div>
-        </Link>
+        </component>
 
         <!-- كارت 3: معدل الإشغال -->
-        <Link
-            :href="route('leases.index')"
-            class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs hover:border-emerald-500/50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between group cursor-pointer"
+        <component
+            :is="disableLinks ? 'div' : Link"
+            :href="disableLinks ? undefined : route('leases.index')"
+            :role="disableLinks ? 'button' : undefined"
+            :tabindex="disableLinks ? 0 : undefined"
+            @click="disableLinks && emit('selectKpi', 'occupancy')"
+            @keydown.enter="disableLinks && emit('selectKpi', 'occupancy')"
+            class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs hover:border-emerald-500/50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
         >
             <div class="flex items-center justify-between">
                 <span class="text-xs font-semibold text-[#5B6770] group-hover:text-emerald-700 transition-colors">
@@ -147,12 +169,17 @@ const occupancyNumber = computed(() => {
                     {{ occupancyKpi.subtitle }}
                 </p>
             </div>
-        </Link>
+        </component>
 
         <!-- كارت 4: الإيجارات المحصلة هذا الشهر -->
-        <Link
-            :href="route('payments.index')"
-            class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs hover:border-teal-500/50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between group cursor-pointer"
+        <component
+            :is="disableLinks ? 'div' : Link"
+            :href="disableLinks ? undefined : route('payments.index')"
+            :role="disableLinks ? 'button' : undefined"
+            :tabindex="disableLinks ? 0 : undefined"
+            @click="disableLinks && emit('selectKpi', 'collected')"
+            @keydown.enter="disableLinks && emit('selectKpi', 'collected')"
+            class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs hover:border-teal-500/50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
         >
             <div class="flex items-center justify-between">
                 <span class="text-xs font-semibold text-[#5B6770] group-hover:text-teal-700 transition-colors">
@@ -174,6 +201,6 @@ const occupancyNumber = computed(() => {
                     {{ collectedKpi.subtitle }}
                 </p>
             </div>
-        </Link>
+        </component>
     </div>
 </template>

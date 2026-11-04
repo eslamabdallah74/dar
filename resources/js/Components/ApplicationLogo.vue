@@ -16,7 +16,7 @@ const props = withDefaults(
         withText: false,
         withSlogan: false,
         dark: false,
-        alt: 'Nook Mate — اعثر على مساحتك واستأجر ما تحتاج إليه',
+        alt: 'Nook Mate — إدارة ممتلكاتك، بكل سهولة',
     }
 );
 
@@ -120,7 +120,7 @@ const titleSizeClass = computed(() => {
                 class="text-[11px] font-medium font-poppins mt-1"
                 :class="dark ? 'text-[#F8F4EA]/80' : 'text-[#163E3E]/80'"
             >
-                اعثر على مساحتك واستأجر ما تحتاج إليه
+                إدارة ممتلكاتك، بكل سهولة
             </span>
         </div>
     </div>

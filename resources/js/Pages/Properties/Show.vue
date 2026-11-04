@@ -55,10 +55,18 @@ const props = withDefaults(
             postal_code?: string;
             google_maps_url?: string;
             floors_count?: number;
+            floor_number?: string;
             total_area?: number | string;
+            commercial_activity?: string;
             year_built?: number;
             finishing_type?: string;
+            finishing_type_label?: string;
             amenities?: string[];
+            amenities_labels?: Array<{
+                id: string;
+                label: string;
+                icon?: string | null;
+            }>;
             electricity_meter_number?: string;
             water_meter_number?: string;
             gas_meter_number?: string;
@@ -124,6 +132,57 @@ const searchQuery = ref('');
 const statusFilter = ref<'all' | 'occupied' | 'vacant' | 'maintenance'>('all');
 const typeFilter = ref<string>('all');
 const activeTab = ref<'tree' | 'table'>('tree');
+
+const FINISHING_TYPE_LABELS: Record<string, string> = {
+    deluxe: 'الترا ديلوكس / فاخر جداً',
+    super_lux: 'سوبر لوكس',
+    lux: 'لوكس',
+    standard: 'تشطيب قياسي / عادي',
+    semi_finished: 'نصف تشطيب (محارة وحلوق)',
+    commercial: 'تشطيب تجاري / إداري',
+    unfinished: 'بدون تشطيب (على الطوب)',
+};
+
+const AMENITY_LABELS: Record<string, string> = {
+    elevator: 'مصعد كهربائي',
+    parking: 'موقف سيارات / جراج',
+    security_guard: 'حارس أمن / مشرف',
+    cctv: 'كاميرات مراقبة CCTV',
+    water_tank: 'خزان ومضخة مياه',
+    natural_gas: 'غاز طبيعي مركزي',
+    central_ac: 'تكييف مركزي',
+    fiber_internet: 'إنترنت ألياف ضوئية',
+    intercom: 'انتركم مرئي / صوتي',
+    fire_system: 'نظام إطفاء وإنذار حريق',
+    generator: 'مولد كهرباء طوارئ',
+    waste_chute: 'ممر ومجمع نفايات',
+};
+
+const finishingTypeLabel = computed(() => {
+    if (props.property.finishing_type_label) {
+        return props.property.finishing_type_label;
+    }
+    if (props.property.finishing_type) {
+        return FINISHING_TYPE_LABELS[props.property.finishing_type] || props.property.finishing_type;
+    }
+    return '';
+});
+
+const displayAmenities = computed(() => {
+    if (props.property.amenities_labels && props.property.amenities_labels.length > 0) {
+        return props.property.amenities_labels;
+    }
+    if (props.property.amenities && props.property.amenities.length > 0) {
+        return props.property.amenities.map((item) => {
+            const key = String(item);
+            return {
+                id: key,
+                label: AMENITY_LABELS[key] || key,
+            };
+        });
+    }
+    return [];
+});
 
 // Drawer actions
 const openUnitDetails = (unit: UnitItem) => {
@@ -412,9 +471,17 @@ const filteredUnits = computed(() => {
                                 <span class="text-[#5B6770]">البناء:</span>
                                 <span class="mr-1 font-bold text-[#163E3E]">{{ property.year_built }}</span>
                             </div>
-                            <div v-if="property.finishing_type">
+                            <div v-if="finishingTypeLabel">
                                 <span class="text-[#5B6770]">التشطيب:</span>
-                                <span class="mr-1 font-bold text-[#163E3E]">{{ property.finishing_type }}</span>
+                                <span class="mr-1 font-bold text-[#163E3E]">{{ finishingTypeLabel }}</span>
+                            </div>
+                            <div v-if="property.floor_number">
+                                <span class="text-[#5B6770]">الطابق:</span>
+                                <span class="mr-1 font-bold text-[#163E3E]">{{ property.floor_number }}</span>
+                            </div>
+                            <div v-if="property.commercial_activity">
+                                <span class="text-[#5B6770]">النشاط:</span>
+                                <span class="mr-1 font-bold text-[#163E3E]">{{ property.commercial_activity }}</span>
                             </div>
                         </div>
                     </div>
@@ -471,14 +538,14 @@ const filteredUnits = computed(() => {
                 </div>
 
                 <!-- شارات المرافق المتاحة -->
-                <div v-if="property.amenities && property.amenities.length > 0" class="flex flex-wrap items-center gap-2 border-t border-[#E2DDD2] pt-3">
+                <div v-if="displayAmenities.length > 0" class="flex flex-wrap items-center gap-2 border-t border-[#E2DDD2] pt-3">
                     <span class="text-xs font-bold text-[#5B6770]">المرافق والخدمات:</span>
                     <span
-                        v-for="amenity in property.amenities"
-                        :key="amenity"
+                        v-for="amenity in displayAmenities"
+                        :key="amenity.id"
                         class="rounded-md bg-[#EFECE2] px-2.5 py-1 text-[11px] font-bold text-[#18705A] border border-[#E2DDD2]"
                     >
-                        {{ amenity }}
+                        {{ amenity.label }}
                     </span>
                 </div>
             </div>

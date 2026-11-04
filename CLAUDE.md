@@ -185,7 +185,7 @@ Vue components must have a single root element.
 
 This section lives outside the `<laravel-boost-guidelines>` block so `php artisan boost:update` keeps it. Keep it identical in `AGENTS.md` and `CLAUDE.md`.
 
-CI (`.github/workflows/quality.yml`) runs the same checks on every push to `main` and every pull request; a change is not done until they pass locally:
+CI (`.github/workflows/quality.yml`) runs the same checks on every push to `production` and every pull request; a change is not done until they pass locally:
 
 ```bash
 composer quality      # Pint check, Rector dead-code check, PHPStan, Pest

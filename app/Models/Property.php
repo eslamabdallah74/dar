@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\FinishingType;
+use App\Enums\PropertyAmenity;
 use App\Enums\PropertyType;
 use App\Models\Concerns\BelongsToWorkspace;
 use App\Services\Storage\DocumentStorageService;
@@ -54,6 +56,7 @@ class Property extends Model
      */
     protected $casts = [
         'property_type' => PropertyType::class,
+        'finishing_type' => FinishingType::class,
         'amenities' => 'array',
         'images' => 'array',
         'floors_count' => 'integer',
@@ -91,6 +94,61 @@ class Property extends Model
     public function getTypeLabelAttribute(): string
     {
         return $this->property_type->label();
+    }
+
+    public function getFinishingTypeLabelAttribute(): ?string
+    {
+        return $this->finishing_type?->label();
+    }
+
+    /**
+     * @return array<int, array{id: string, label: string, icon: ?string}>
+     */
+    public function getAmenitiesLabelsAttribute(): array
+    {
+        if (! is_array($this->amenities)) {
+            return [];
+        }
+
+        $labels = [];
+        foreach ($this->amenities as $amenity) {
+            $formatted = $this->formatAmenityItem($amenity);
+            if ($formatted !== null) {
+                $labels[] = $formatted;
+            }
+        }
+
+        return $labels;
+    }
+
+    /**
+     * @return array{id: string, label: string, icon: ?string}|null
+     */
+    private function formatAmenityItem(mixed $amenity): ?array
+    {
+        if (is_array($amenity) && isset($amenity['id']) && is_string($amenity['id'])) {
+            $enum = PropertyAmenity::tryFrom($amenity['id']);
+            $label = isset($amenity['label']) && is_string($amenity['label']) ? $amenity['label'] : ($enum?->label() ?? $amenity['id']);
+            $icon = isset($amenity['icon']) && is_string($amenity['icon']) ? $amenity['icon'] : $enum?->icon();
+
+            return [
+                'id' => $amenity['id'],
+                'label' => $label,
+                'icon' => $icon,
+            ];
+        }
+
+        if (is_string($amenity) && $amenity !== '') {
+            $enum = PropertyAmenity::tryFrom($amenity);
+
+            return [
+                'id' => $amenity,
+                'label' => $enum?->label() ?? $amenity,
+                'icon' => $enum?->icon(),
+            ];
+        }
+
+        return null;
     }
 
     /**

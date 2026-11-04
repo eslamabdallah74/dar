@@ -28,6 +28,7 @@ interface RenterItem {
     gender?: 'male' | 'female' | null;
     gender_label?: string | null;
     active_unit: {
+        lease_id?: number;
         unit_name: string;
         property_name: string;
         rent_amount: number;
@@ -711,7 +712,7 @@ const submitRenter = () => {
                 name: r.name,
                 phone: r.phone,
                 active_lease: r.active_unit ? {
-                    id: 0,
+                    id: r.active_unit.lease_id || 0,
                     unit_name: r.active_unit.unit_name,
                     rent_amount: r.active_unit.rent_amount,
                 } : null,

@@ -39,6 +39,7 @@ class RenterResource extends JsonResource
             'gender' => $this->gender?->value,
             'gender_label' => $this->gender?->label(),
             'active_unit' => $activeLease ? [
+                'lease_id' => $activeLease->id,
                 'unit_name' => $activeLease->unit?->name,
                 'property_name' => $activeLease->unit?->property?->name,
                 'rent_amount' => (float) $activeLease->rent_amount,

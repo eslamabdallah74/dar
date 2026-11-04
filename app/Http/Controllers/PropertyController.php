@@ -51,6 +51,7 @@ class PropertyController extends Controller
 
         return Inertia::render('Properties/Index', [
             'properties' => $properties,
+            'currency_symbol' => $workspace->currencySymbol(),
             'stats' => [
                 'total_properties' => $properties->count(),
                 'total_units' => $totalUnitsCount,

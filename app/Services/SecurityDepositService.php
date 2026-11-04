@@ -161,10 +161,11 @@ class SecurityDepositService
 
             $availableForDeduction = $lockedLease->refundable_deposit_balance;
             $deductionsTotal = $this->sumDeductionAmounts($deductions);
+            $currencySymbol = $workspace->currencySymbol();
 
             if ($deductionsTotal > $availableForDeduction) {
                 throw ValidationException::withMessages([
-                    $errorKey => "إجمالي الخصومات المطلوبة ({$deductionsTotal} ج.م) يتجاوز الرصيد المتاح للخصم من مبلغ التأمين ({$availableForDeduction} ج.م).",
+                    $errorKey => "إجمالي الخصومات المطلوبة ({$deductionsTotal} {$currencySymbol}) يتجاوز الرصيد المتاح للخصم من مبلغ التأمين ({$availableForDeduction} {$currencySymbol}).",
                 ]);
             }
 
@@ -225,10 +226,11 @@ class SecurityDepositService
 
             $availableForDeduction = $lockedLease->refundable_deposit_balance + (float) $deduction->amount;
             $requestedAmount = (float) $data['amount'];
+            $currencySymbol = $lockedLease->workspace?->currencySymbol() ?? 'ج.م';
 
             if ($requestedAmount > $availableForDeduction) {
                 throw ValidationException::withMessages([
-                    'amount' => "مبلغ الخصم المطلوب ({$requestedAmount} ج.م) يتجاوز الرصيد المتاح للخصم ({$availableForDeduction} ج.م).",
+                    'amount' => "مبلغ الخصم المطلوب ({$requestedAmount} {$currencySymbol}) يتجاوز الرصيد المتاح للخصم ({$availableForDeduction} {$currencySymbol}).",
                 ]);
             }
 
@@ -297,10 +299,11 @@ class SecurityDepositService
 
             $refundableBalance = $lockedLease->refundable_deposit_balance;
             $refundAmount = (float) $data['amount'];
+            $currencySymbol = $workspace->currencySymbol();
 
             if ($refundAmount > $refundableBalance) {
                 throw ValidationException::withMessages([
-                    'amount' => "مبلغ الرد المطلوب ({$refundAmount} ج.م) يتجاوز الرصيد المتبقي القابل للرد ({$refundableBalance} ج.م).",
+                    'amount' => "مبلغ الرد المطلوب ({$refundAmount} {$currencySymbol}) يتجاوز الرصيد المتبقي القابل للرد ({$refundableBalance} {$currencySymbol}).",
                 ]);
             }
 
@@ -378,10 +381,11 @@ class SecurityDepositService
 
             $refundableBalance = $lockedLease->refundable_deposit_balance;
             $refundAmount = (float) $data['amount'];
+            $currencySymbol = $workspace->currencySymbol();
 
             if ($refundAmount > $refundableBalance) {
                 throw ValidationException::withMessages([
-                    'amount' => "المبلغ المطلوب صرفه ({$refundAmount} ج.م) يتجاوز الرصيد المستحق رده للمستأجر ({$refundableBalance} ج.م).",
+                    'amount' => "المبلغ المطلوب صرفه ({$refundAmount} {$currencySymbol}) يتجاوز الرصيد المستحق رده للمستأجر ({$refundableBalance} {$currencySymbol}).",
                 ]);
             }
 
@@ -442,7 +446,7 @@ class SecurityDepositService
 
             $lockedLease->updateQuietly([
                 'status' => 'terminated',
-                'notes' => $this->notesWithAdvanceRentWarning($lockedLease->notes, $advanceRentPaid),
+                'notes' => $this->notesWithAdvanceRentWarning($lockedLease->notes, $advanceRentPaid, $workspace->currencySymbol()),
             ]);
 
             $lockedLease->syncSecurityDepositStatus();
@@ -583,10 +587,11 @@ class SecurityDepositService
 
         if ($settlementType === 'partial_refund') {
             $newDeductionsTotal = $this->sumDeductionAmounts($submittedDeductions);
+            $currencySymbol = $workspace->currencySymbol();
 
             if ($newDeductionsTotal > $availableBalance) {
                 throw ValidationException::withMessages([
-                    'deductions' => "مجموع الخصومات ({$newDeductionsTotal} ج.م) يتجاوز الرصيد المتاح من مبلغ التأمين ({$availableBalance} ج.م).",
+                    'deductions' => "مجموع الخصومات ({$newDeductionsTotal} {$currencySymbol}) يتجاوز الرصيد المتاح من مبلغ التأمين ({$availableBalance} {$currencySymbol}).",
                 ]);
             }
         }
@@ -710,13 +715,13 @@ class SecurityDepositService
         return $advanceRentPaid;
     }
 
-    private function notesWithAdvanceRentWarning(?string $leaseNotes, float $advanceRentPaid): ?string
+    private function notesWithAdvanceRentWarning(?string $leaseNotes, float $advanceRentPaid, string $currencySymbol = 'ج.م'): ?string
     {
         if ($advanceRentPaid <= 0) {
             return $leaseNotes;
         }
 
-        $warning = '[تسوية دفعة مقدمة عند إنهاء العقد]: يوجد رصيد إيجار مدفوع مقدماً بقيمة '.number_format($advanceRentPaid, 2).' ج.م عن فترات مستقبلية يتطلب المراجعة والتسوية مع المستأجر.';
+        $warning = '[تسوية دفعة مقدمة عند إنهاء العقد]: يوجد رصيد إيجار مدفوع مقدماً بقيمة '.number_format($advanceRentPaid, 2).' '.$currencySymbol.' عن فترات مستقبلية يتطلب المراجعة والتسوية مع المستأجر.';
 
         return $leaseNotes ? $leaseNotes."\n".$warning : $warning;
     }

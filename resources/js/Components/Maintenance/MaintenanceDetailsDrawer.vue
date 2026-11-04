@@ -19,6 +19,7 @@ import {
     Loader2,
     MessageSquare,
     Paperclip,
+    Pencil,
     Plus,
     Receipt,
     Trash2,
@@ -268,6 +269,44 @@ const handleReverseExpensePayment = async () => {
         },
         onFinish: () => {
             isRecordingPayment.value = false;
+        },
+    });
+};
+
+// Handle inline cost recording and editing
+const isSavingCost = ref(false);
+const editingCost = ref(false);
+const costAmount = ref<number | string>('');
+
+watch(() => details.value?.expense?.amount, (newAmount) => {
+    costAmount.value = newAmount ?? '';
+}, { immediate: true });
+
+const handleSaveExpenseAmount = () => {
+    if (!details.value?.expense?.id || isSavingCost.value) return;
+    const num = Number(costAmount.value);
+    if (isNaN(num) || num < 0.5) {
+        toast.error('يرجى إدخال مبلغ صحيح لتكلفة الصيانة (0.5 كحد أدنى).');
+        return;
+    }
+
+    isSavingCost.value = true;
+    router.put(route('expenses.update', details.value.expense.id), {
+        amount: num,
+    }, {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
+            editingCost.value = false;
+            toast.success('تم حفظ تكلفة الصيانة بنجاح ويمكنك الآن إنهاء الطلب.');
+            loadDetails();
+            emit('updated');
+        },
+        onError: (err) => {
+            toast.fromErrors(err);
+        },
+        onFinish: () => {
+            isSavingCost.value = false;
         },
     });
 };
@@ -711,11 +750,23 @@ const close = () => {
                                 <!-- المبلغ المسجل أو تنبيه التسجيل -->
                                 <div v-if="details.expense?.has_amount" class="p-4 rounded-xl bg-white border border-emerald-200/80 space-y-3">
                                     <div class="flex items-center justify-between">
-                                        <div>
-                                            <span class="text-[#5B6770] text-[11px] block">تكلفة الصيانة المسجلة:</span>
-                                            <span class="text-xl font-bold font-mono text-emerald-800">
-                                                {{ details.expense?.amount?.toLocaleString('en-US') }} {{ currency }}
-                                            </span>
+                                        <div class="flex items-center gap-2.5">
+                                            <div>
+                                                <span class="text-[#5B6770] text-[11px] block">تكلفة الصيانة المسجلة:</span>
+                                                <span class="text-xl font-bold font-mono text-emerald-800">
+                                                    {{ details.expense?.amount?.toLocaleString('en-US') }} {{ currency }}
+                                                </span>
+                                            </div>
+                                            <button
+                                                v-if="!details.expense?.is_paid && !editingCost"
+                                                @click="editingCost = true"
+                                                type="button"
+                                                class="text-xs text-[#163E3E] hover:underline flex items-center gap-1 p-1 rounded-md hover:bg-slate-100 transition cursor-pointer"
+                                                title="تعديل التكلفة"
+                                            >
+                                                <Pencil class="w-3.5 h-3.5 text-[#5B6770]" />
+                                                <span>تعديل</span>
+                                            </button>
                                         </div>
 
                                         <div class="text-left space-y-1">
@@ -728,6 +779,42 @@ const close = () => {
                                             </span>
                                         </div>
                                     </div>
+
+                                    <!-- نموذج تعديل التكلفة السريع -->
+                                    <form v-if="editingCost" @submit.prevent="handleSaveExpenseAmount" class="flex items-center gap-2 pt-2 border-t border-slate-100">
+                                        <div class="relative flex-1">
+                                            <label for="maintenance_cost_edit_input" class="sr-only">تعديل تكلفة الصيانة</label>
+                                            <input
+                                                id="maintenance_cost_edit_input"
+                                                v-model="costAmount"
+                                                type="number"
+                                                step="0.01"
+                                                min="0.5"
+                                                placeholder="0.00"
+                                                required
+                                                class="w-full h-9 pl-12 pr-3 rounded-lg border border-[#D6E0E7] bg-white text-xs font-bold text-[#163E3E] text-right"
+                                                aria-label="تعديل تكلفة الصيانة"
+                                            />
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#5B6770]">
+                                                {{ currency }}
+                                            </span>
+                                        </div>
+                                        <button
+                                            type="submit"
+                                            :disabled="isSavingCost || !costAmount"
+                                            class="h-9 px-3 rounded-lg bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center gap-1 shadow-2xs disabled:opacity-50 cursor-pointer"
+                                        >
+                                            <Loader2 v-if="isSavingCost" class="w-3 h-3 animate-spin" />
+                                            <span>حفظ</span>
+                                        </button>
+                                        <button
+                                            @click="editingCost = false"
+                                            type="button"
+                                            class="h-9 px-2.5 rounded-lg border border-[#D6E0E7] text-xs font-medium text-[#5B6770] hover:bg-slate-50 cursor-pointer"
+                                        >
+                                            إلغاء
+                                        </button>
+                                    </form>
 
                                     <!-- إجراء السداد المالي -->
                                     <div class="pt-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
@@ -764,14 +851,41 @@ const close = () => {
                                     </div>
                                 </div>
 
-                                <div v-else class="p-4 rounded-xl bg-white border border-amber-200/80 space-y-2">
+                                <div v-else class="p-4 rounded-xl bg-white border border-amber-200/80 space-y-3">
                                     <div class="flex items-center gap-2 text-amber-900 font-bold">
                                         <AlertCircle class="w-4 h-4 text-amber-700 shrink-0" />
-                                        <span>لم تُسجل التكلفة الفعلية بعد</span>
+                                        <span>تسجيل تكلفة الصيانة الفعلية</span>
                                     </div>
                                     <p class="text-[11px] text-[#5B6770] leading-relaxed">
-                                        تم إنشاء بند المصروف تلقائياً بمبلغ فارغ لحفظ سلامة الحسابات. يرجى التوجه لصفحة المصروفات وإدخال قيمة فاتورة الصيانة حتى تتمكن من إنهاء الطلب.
+                                        سجّل قيمة فاتورة الإصلاح مباشرة هنا لربط المصروف وإتاحة إنهاء طلب الصيانة فوراً.
                                     </p>
+                                    <form @submit.prevent="handleSaveExpenseAmount" class="flex items-center gap-2 pt-1">
+                                        <div class="relative flex-1">
+                                            <label for="maintenance_cost_input" class="sr-only">تكلفة الصيانة</label>
+                                            <input
+                                                id="maintenance_cost_input"
+                                                v-model="costAmount"
+                                                type="number"
+                                                step="0.01"
+                                                min="0.5"
+                                                placeholder="0.00"
+                                                required
+                                                class="w-full h-10 pl-12 pr-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#163E3E] text-right focus:bg-white"
+                                                aria-label="تكلفة الصيانة"
+                                            />
+                                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#5B6770]">
+                                                {{ currency }}
+                                            </span>
+                                        </div>
+                                        <button
+                                            type="submit"
+                                            :disabled="isSavingCost || !costAmount"
+                                            class="h-10 px-4 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs disabled:opacity-50 cursor-pointer shrink-0"
+                                        >
+                                            <Loader2 v-if="isSavingCost" class="w-3.5 h-3.5 animate-spin" />
+                                            <span>حفظ التكلفة</span>
+                                        </button>
+                                    </form>
                                 </div>
 
                                 <div class="flex items-center justify-between pt-2">

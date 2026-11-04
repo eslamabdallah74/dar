@@ -42,13 +42,15 @@ const effectiveRenters = computed(() => {
     return (page.props as any)?.quickRenters ?? [];
 });
 
+const generateReference = () => 'REC-' + Math.floor(100000 + Math.random() * 900000);
+
 const form = useForm({
     renter_id: props.initialRenterId || '',
     amount: props.initialAmount || '',
     payment_method: 'bank_transfer',
     paid_at: new Date().toISOString().split('T')[0],
     record_date: new Date().toISOString().split('T')[0],
-    reference: 'REC-' + Math.floor(100000 + Math.random() * 900000),
+    reference: generateReference(),
     notes: '',
     send_whatsapp: true,
     rent_charge_id: props.initialRentChargeId || null,
@@ -96,6 +98,7 @@ watch(
     () => props.show,
     (isOpen) => {
         if (isOpen) {
+            form.reference = generateReference();
             if (props.initialRenterId) {
                 form.renter_id = props.initialRenterId;
             } else if (!form.renter_id && effectiveRenters.value.length > 0) {

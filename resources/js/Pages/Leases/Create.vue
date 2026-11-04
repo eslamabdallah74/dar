@@ -103,7 +103,7 @@ const form = useForm({
     renter_id: props.preselected_renter_id ? Number(props.preselected_renter_id) : (localRenters.value[0]?.id ?? ''),
     starts_on: todayDate,
     ends_on: nextYearDate,
-    rent_amount: 3200,
+    rent_amount: '' as unknown as number,
     security_deposit_amount: 0,
     billing_interval: 'monthly',
     contract_image: null as File | null,
@@ -791,11 +791,12 @@ const submitNewRenter = async () => {
                                 v-model="form.rent_amount"
                                 type="number"
                                 step="0.01"
+                                placeholder="0.00"
                                 required
                                 class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                             />
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#5B6770]">
-                                ج.م
+                                {{ currency || 'ج.م' }}
                             </span>
                         </div>
                     </div>
@@ -944,7 +945,7 @@ const submitNewRenter = async () => {
                             </div>
                             <div>
                                 <span class="text-[#5B6770] block">القيمة الإيجارية:</span>
-                                <span class="font-mono font-bold text-[#163E3E]">{{ conflictData.conflicting_lease.rent_amount }} ج.م</span>
+                                <span class="font-mono font-bold text-[#163E3E]">{{ conflictData.conflicting_lease.rent_amount }} {{ currency || 'ج.م' }}</span>
                             </div>
                         </div>
 

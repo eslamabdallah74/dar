@@ -50,7 +50,6 @@ const isSeen = ref(false);
 const seenStorageKey = computed(() => `nookmate_notifications_seen_${currentWorkspace.value?.id || 'default'}`);
 
 function checkSeenStatus() {
-    if (isSeen.value) return;
     try {
         const raw = localStorage.getItem(seenStorageKey.value);
         if (!raw) {
@@ -61,6 +60,25 @@ function checkSeenStatus() {
         const curOverdue = notifications.value.overdue_count || 0;
         const curExpiring = notifications.value.expiring_count || 0;
         const curMaintenance = notifications.value.maintenance_count || 0;
+
+        // If counts decreased, adjust stored thresholds so future increases still trigger hasNew
+        if ((stored.overdue ?? 0) > curOverdue || (stored.expiring ?? 0) > curExpiring || (stored.maintenance ?? 0) > curMaintenance) {
+            const adjustedOverdue = Math.min(stored.overdue ?? 0, curOverdue);
+            const adjustedExpiring = Math.min(stored.expiring ?? 0, curExpiring);
+            const adjustedMaintenance = Math.min(stored.maintenance ?? 0, curMaintenance);
+            try {
+                localStorage.setItem(seenStorageKey.value, JSON.stringify({
+                    overdue: adjustedOverdue,
+                    expiring: adjustedExpiring,
+                    maintenance: adjustedMaintenance,
+                }));
+            } catch {
+                // Ignore storage write error
+            }
+            stored.overdue = adjustedOverdue;
+            stored.expiring = adjustedExpiring;
+            stored.maintenance = adjustedMaintenance;
+        }
 
         // If any category increased compared to what was last seen, show badge
         const hasNew = (curOverdue > (stored.overdue ?? 0)) ||

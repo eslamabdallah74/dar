@@ -38,22 +38,37 @@ class CorrectPaymentAction
         return DB::transaction(function () use ($workspace, $payment, $data, $userId, $reason) {
             $lockedPayment = Payment::withoutGlobalScopes()
                 ->where('id', $payment->id)
+                ->where('workspace_id', $workspace->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            if (str_starts_with((string) $lockedPayment->reference, 'DEP-SETTLE-')) {
+                throw ValidationException::withMessages([
+                    'payment' => 'لا يمكن تعديل سند سداد ناتج عن تسوية تأمين تلقائية.',
+                ]);
+            }
+
             $renterId = (int) $lockedPayment->renter_id;
             $correctedAmount = isset($data['amount']) ? round((float) $data['amount'], 2) : (float) $lockedPayment->amount;
+
+            if ($correctedAmount < 0.5) {
+                throw ValidationException::withMessages([
+                    'amount' => 'يجب أن يكون المبلغ المصحح 0.50 على الأقل.',
+                ]);
+            }
+
             $correctedPaidAt = ! empty($data['paid_at']) ? Carbon::parse($data['paid_at']) : $lockedPayment->paid_at;
             $correctedRecordDate = ! empty($data['record_date']) ? Carbon::parse($data['record_date']) : $lockedPayment->created_at;
 
             $snapshotBeforeCorrection = $this->auditSnapshot($lockedPayment);
 
-            // Release the old allocations first so their amounts count as outstanding capacity again.
-            $lockedPayment->allocations()->delete();
-
             $this->obligationService->ensureChargesExistForActiveLeases($workspace, $renterId, $correctedPaidAt);
 
+            // Lock charges first to prevent concurrent allocations, then delete old allocations
             $lockedCharges = $this->obligationService->lockPayableChargesForRenter($workspace, $renterId, $correctedPaidAt);
+            $lockedPayment->allocations()->delete();
+            $lockedCharges->each(fn (RentCharge $charge) => $charge->refresh());
+
             $currencySymbol = $workspace->currencySymbol();
             $totalCapacity = round($lockedCharges->sum(fn (RentCharge $charge) => $charge->outstanding_balance), 2);
 

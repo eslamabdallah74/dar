@@ -22,21 +22,20 @@ class UpdateExpenseRequest extends FormRequest
      */
     public function rules(): array
     {
-        $workspaceId = app(CurrentWorkspace::class)->id();
+        $workspaceId = app(CurrentWorkspace::class)->id() ?? 0;
         $expense = $this->route('expense');
         $propertyId = $this->input('property_id') ?? ($expense instanceof Expense ? $expense->property_id : null);
+        $isManual = ! $expense instanceof Expense || $expense->isManual();
 
         return [
             'property_id' => [
                 'nullable',
-                Rule::exists('properties', 'id')->where(fn ($q) => $workspaceId ? $q->where('workspace_id', $workspaceId) : $q),
+                Rule::exists('properties', 'id')->where('workspace_id', $workspaceId),
             ],
             'unit_id' => [
                 'nullable',
                 Rule::exists('units', 'id')->where(function ($q) use ($workspaceId, $propertyId) {
-                    if ($workspaceId) {
-                        $q->where('workspace_id', $workspaceId);
-                    }
+                    $q->where('workspace_id', $workspaceId);
                     if ($propertyId) {
                         $q->where('property_id', $propertyId);
                     }
@@ -44,7 +43,9 @@ class UpdateExpenseRequest extends FormRequest
             ],
             'category' => ['sometimes', 'required', 'string', 'min:2', 'max:100'],
             'title' => ['nullable', 'string', 'min:3', 'max:255'],
-            'amount' => ['nullable', 'numeric', 'min:0.5', 'max:100000000'],
+            'amount' => $isManual
+                ? ['sometimes', 'required', 'numeric', 'min:0.5', 'max:100000000']
+                : ['nullable', 'numeric', 'min:0.5', 'max:100000000'],
             'expense_date' => ['sometimes', 'required', 'date'],
             'notes' => ['nullable', 'string'],
         ];

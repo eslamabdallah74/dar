@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onUnmounted } from 'vue';
 import { Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import {
@@ -157,6 +157,10 @@ const contractPreviewUrl = ref<string | null>(null);
 const onContractFileChange = (e: Event) => {
     const target = e.target as HTMLInputElement;
     if (target.files && target.files.length > 0) {
+        if (contractPreviewUrl.value) {
+            URL.revokeObjectURL(contractPreviewUrl.value);
+            contractPreviewUrl.value = null;
+        }
         const file = target.files[0];
         form.contract_image = file;
         if (file.type.startsWith('image/')) {
@@ -287,6 +291,10 @@ const onFrontFileChange = (e: Event) => {
     const target = e.target as HTMLInputElement;
     const file = target.files?.[0];
     if (file) {
+        if (idFrontPreview.value) {
+            URL.revokeObjectURL(idFrontPreview.value);
+            idFrontPreview.value = null;
+        }
         idFrontFile.value = file;
         idFrontPreview.value = URL.createObjectURL(file);
     }
@@ -307,6 +315,10 @@ const onBackFileChange = (e: Event) => {
     const target = e.target as HTMLInputElement;
     const file = target.files?.[0];
     if (file) {
+        if (idBackPreview.value) {
+            URL.revokeObjectURL(idBackPreview.value);
+            idBackPreview.value = null;
+        }
         idBackFile.value = file;
         idBackPreview.value = URL.createObjectURL(file);
     }
@@ -544,6 +556,21 @@ const submitNewRenter = async () => {
         isSubmittingRenter.value = false;
     }
 };
+
+onUnmounted(() => {
+    if (contractPreviewUrl.value) {
+        URL.revokeObjectURL(contractPreviewUrl.value);
+    }
+    if (idFrontPreview.value) {
+        URL.revokeObjectURL(idFrontPreview.value);
+    }
+    if (idBackPreview.value) {
+        URL.revokeObjectURL(idBackPreview.value);
+    }
+    if (phoneCheckTimer) {
+        clearTimeout(phoneCheckTimer);
+    }
+});
 </script>
 
 <template>
@@ -603,6 +630,9 @@ const submitNewRenter = async () => {
                                 {{ unitIndentation(depth) }}{{ unit.type_label ? '[' + unit.type_label + '] ' : '' }}{{ unit.name }} {{ unit.apartment_gender?.short_label ? '• ' + unit.apartment_gender.short_label : '' }} ({{ unit.availability_status || (unit.is_occupied ? 'مشغولة حالياً' : 'شاغرة') }})
                             </option>
                         </select>
+                        <p v-if="form.errors.unit_id" class="text-xs text-rose-600 font-semibold mt-1">
+                            {{ form.errors.unit_id }}
+                        </p>
                     </div>
                 </div>
 
@@ -735,11 +765,13 @@ const submitNewRenter = async () => {
                 <div v-else class="space-y-3">
                     <div>
                         <div class="flex items-center justify-between mb-1.5">
-                            <label class="block text-xs font-bold text-[#163E3E]">المستأجر المعتمد للعقد *</label>
+                            <label for="lease-renter-select" class="block text-xs font-bold text-[#163E3E]">المستأجر المعتمد للعقد *</label>
                             <span class="text-[11px] text-[#5B6770]">({{ localRenters.length }} مستأجر مسجل)</span>
                         </div>
                         <select
+                            id="lease-renter-select"
                             v-model="form.renter_id"
+                            aria-label="المستأجر المعتمد للعقد"
                             required
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         >
@@ -808,34 +840,46 @@ const submitNewRenter = async () => {
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">تاريخ بداية العقد *</label>
+                        <label for="lease-starts-on" class="block text-xs font-bold text-[#163E3E] mb-1.5">تاريخ بداية العقد *</label>
                         <input
+                            id="lease-starts-on"
                             v-model="form.starts_on"
                             type="date"
+                            aria-label="تاريخ بداية العقد"
                             required
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                         />
+                        <p v-if="form.errors.starts_on" class="text-xs text-rose-600 font-semibold mt-1">
+                            {{ form.errors.starts_on }}
+                        </p>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">تاريخ نهاية العقد *</label>
+                        <label for="lease-ends-on" class="block text-xs font-bold text-[#163E3E] mb-1.5">تاريخ نهاية العقد *</label>
                         <input
+                            id="lease-ends-on"
                             v-model="form.ends_on"
                             type="date"
+                            aria-label="تاريخ نهاية العقد"
                             required
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                         />
+                        <p v-if="form.errors.ends_on" class="text-xs text-rose-600 font-semibold mt-1">
+                            {{ form.errors.ends_on }}
+                        </p>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">القيمة الإيجارية الشهرية *</label>
+                        <label for="lease-rent-amount" class="block text-xs font-bold text-[#163E3E] mb-1.5">القيمة الإيجارية الشهرية *</label>
                         <div class="relative">
                             <input
+                                id="lease-rent-amount"
                                 v-model="form.rent_amount"
                                 type="number"
                                 step="0.01"
+                                aria-label="القيمة الإيجارية الشهرية"
                                 placeholder="0.00"
                                 required
                                 class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
@@ -844,18 +888,23 @@ const submitNewRenter = async () => {
                                 {{ currency || 'ج.م' }}
                             </span>
                         </div>
+                        <p v-if="form.errors.rent_amount" class="text-xs text-rose-600 font-semibold mt-1">
+                            {{ form.errors.rent_amount }}
+                        </p>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
+                        <label for="lease-security-deposit" class="block text-xs font-bold text-[#163E3E] mb-1.5">
                             مبلغ التأمين المسترد / الوديعة <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري — صفر في حال عدم طلبه)</span>
                         </label>
                         <div class="relative">
                             <input
+                                id="lease-security-deposit"
                                 v-model="form.security_deposit_amount"
                                 type="number"
                                 step="0.01"
                                 min="0"
+                                aria-label="مبلغ التأمين المسترد أو الوديعة"
                                 placeholder="0"
                                 class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                             />
@@ -863,6 +912,9 @@ const submitNewRenter = async () => {
                                 {{ currency || 'ج.م' }}
                             </span>
                         </div>
+                        <p v-if="form.errors.security_deposit_amount" class="text-xs text-rose-600 font-semibold mt-1">
+                            {{ form.errors.security_deposit_amount }}
+                        </p>
                         <p class="mt-1 text-[11px] text-[#5B6770]">
                             مبلغ تأمين مسترد للمستأجر عند نهاية العقد، لا يُحسب كإيراد إيجار.
                         </p>
@@ -925,9 +977,12 @@ const submitNewRenter = async () => {
                     @click="contractInputRef?.click()"
                     class="border-2 border-dashed border-[#D6E0E7] hover:border-[#163E3E] rounded-2xl p-6 text-center cursor-pointer bg-[#F8FAFC] hover:bg-[#E8F0F0]/30 transition group"
                 >
+                    <label for="lease-contract-image" class="sr-only">صورة أو ملف عقد الإيجار</label>
                     <input
+                        id="lease-contract-image"
                         ref="contractInputRef"
                         type="file"
+                        aria-label="صورة أو ملف عقد الإيجار"
                         accept="image/jpeg,image/png,image/jpg,image/webp,application/pdf"
                         class="hidden"
                         @change="onContractFileChange"
@@ -1077,10 +1132,12 @@ const submitNewRenter = async () => {
 
                     <!-- اسم المستأجر -->
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">اسم المستأجر بالكامل *</label>
+                        <label for="new-renter-name" class="block text-xs font-bold text-[#163E3E] mb-1.5">اسم المستأجر بالكامل *</label>
                         <input
+                            id="new-renter-name"
                             v-model="newRenter.name"
                             type="text"
+                            aria-label="اسم المستأجر بالكامل"
                             placeholder="مثال: أحمد عبد الله محمد"
                             required
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
@@ -1093,7 +1150,7 @@ const submitNewRenter = async () => {
                     <!-- رقم الهاتف مع الفحص الفوري والتنبيه الذكي -->
                     <div class="space-y-2">
                         <div class="flex items-center justify-between">
-                            <label class="block text-xs font-bold text-[#163E3E]">رقم الهاتف *</label>
+                            <label for="new-renter-phone" class="block text-xs font-bold text-[#163E3E]">رقم الهاتف *</label>
                             <span v-if="checkingPhone" class="inline-flex items-center gap-1 text-[11px] text-[#163E3E]">
                                 <Loader2 class="w-3 h-3 animate-spin" />
                                 <span>جاري التحقق من الرقم...</span>
@@ -1101,9 +1158,11 @@ const submitNewRenter = async () => {
                         </div>
                         <div class="relative">
                             <input
+                                id="new-renter-phone"
                                 v-model="newRenter.phone"
                                 @input="onPhoneInput"
                                 type="tel"
+                                aria-label="رقم الهاتف"
                                 placeholder="01XXXXXXXXX"
                                 required
                                 class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#163E3E] focus:bg-white focus:ring-1 transition text-right font-mono"
@@ -1198,12 +1257,14 @@ const submitNewRenter = async () => {
                     <!-- الرقم القومي والبريد -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
+                            <label for="new-renter-national-id" class="block text-xs font-bold text-[#163E3E] mb-1.5">
                                 الرقم القومي / الهوية <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span>
                             </label>
                             <input
+                                id="new-renter-national-id"
                                 v-model="newRenter.national_id"
                                 type="text"
+                                aria-label="الرقم القومي أو الهوية"
                                 placeholder="14 رقم"
                                 class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                             />
@@ -1213,12 +1274,14 @@ const submitNewRenter = async () => {
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
+                            <label for="new-renter-email" class="block text-xs font-bold text-[#163E3E] mb-1.5">
                                 البريد الإلكتروني <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span>
                             </label>
                             <input
+                                id="new-renter-email"
                                 v-model="newRenter.email"
                                 type="email"
+                                aria-label="البريد الإلكتروني"
                                 placeholder="name@example.com"
                                 class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                             />
@@ -1234,6 +1297,7 @@ const submitNewRenter = async () => {
                             id="modal_whatsapp_consent"
                             v-model="newRenter.whatsapp_consent"
                             type="checkbox"
+                            aria-label="الموافقة على استقبال إشعارات الاستحقاق وسندات القبض عبر WhatsApp تلقائياً"
                             class="w-4 h-4 rounded text-[#163E3E] focus:ring-[#163E3E] cursor-pointer"
                         />
                         <label for="modal_whatsapp_consent" class="text-xs font-semibold text-[#163E3E] cursor-pointer">
@@ -1253,9 +1317,12 @@ const submitNewRenter = async () => {
                         <div class="grid grid-cols-2 gap-3">
                             <!-- الوجه الأمامي -->
                             <div>
+                                <label for="new-renter-front-id" class="sr-only">صورة بطاقة الهوية - الوجه الأمامي</label>
                                 <input
+                                    id="new-renter-front-id"
                                     ref="frontInputRef"
                                     type="file"
+                                    aria-label="صورة بطاقة الهوية - الوجه الأمامي"
                                     accept="image/jpeg,image/png,image/jpg,image/webp"
                                     class="hidden"
                                     @change="onFrontFileChange"
@@ -1294,9 +1361,12 @@ const submitNewRenter = async () => {
 
                             <!-- الوجه الخلفي -->
                             <div>
+                                <label for="new-renter-back-id" class="sr-only">صورة بطاقة الهوية - الوجه الخلفي</label>
                                 <input
+                                    id="new-renter-back-id"
                                     ref="backInputRef"
                                     type="file"
+                                    aria-label="صورة بطاقة الهوية - الوجه الخلفي"
                                     accept="image/jpeg,image/png,image/jpg,image/webp"
                                     class="hidden"
                                     @change="onBackFileChange"

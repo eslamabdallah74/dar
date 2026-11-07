@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onUnmounted } from 'vue';
 import { Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
@@ -49,6 +49,7 @@ const props = defineProps<{
         overdue_count: number;
         whatsapp_opted_in: number;
     };
+    currency_symbol?: string;
 }>();
 
 const searchQuery = ref(typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('search') || '' : '');
@@ -79,6 +80,9 @@ const onFrontFileChange = (e: Event) => {
     const target = e.target as HTMLInputElement;
     const file = target.files?.[0];
     if (file) {
+        if (frontPreview.value) {
+            URL.revokeObjectURL(frontPreview.value);
+        }
         form.id_card_front = file;
         frontPreview.value = URL.createObjectURL(file);
     }
@@ -99,6 +103,9 @@ const onBackFileChange = (e: Event) => {
     const target = e.target as HTMLInputElement;
     const file = target.files?.[0];
     if (file) {
+        if (backPreview.value) {
+            URL.revokeObjectURL(backPreview.value);
+        }
         form.id_card_back = file;
         backPreview.value = URL.createObjectURL(file);
     }
@@ -114,6 +121,15 @@ const clearBackFile = () => {
         backInputRef.value.value = '';
     }
 };
+
+onUnmounted(() => {
+    if (frontPreview.value) {
+        URL.revokeObjectURL(frontPreview.value);
+    }
+    if (backPreview.value) {
+        URL.revokeObjectURL(backPreview.value);
+    }
+});
 
 const closeModal = () => {
     showAddModal.value = false;
@@ -251,6 +267,8 @@ const submitRenter = () => {
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-[#D6E0E7] shadow-2xs">
             <div class="relative flex-1 max-w-md">
                 <input
+                    id="renters-search-query"
+                    aria-label="ابحث بالاسم، الجوال أو رقم الهوية"
                     v-model="searchQuery"
                     type="text"
                     placeholder="ابحث بالاسم، الجوال أو رقم الهوية..."
@@ -372,7 +390,7 @@ const submitRenter = () => {
                             <!-- القيمة الشهرية -->
                             <td class="py-4 px-6 font-mono text-xs font-bold text-[#163E3E]">
                                 <span v-if="renter.active_unit">
-                                    {{ renter.active_unit.rent_amount.toLocaleString() }} ج.م
+                                    {{ (renter.active_unit.rent_amount ?? 0).toLocaleString() }} {{ currency_symbol || 'ج.م' }}
                                 </span>
                                 <span v-else class="text-[#5B6770] font-normal">—</span>
                             </td>
@@ -451,15 +469,17 @@ const submitRenter = () => {
                         <h3 class="text-base font-bold text-[#163E3E]">إضافة مستأجر جديد</h3>
                         <p class="text-xs text-[#5B6770] mt-0.5">تسجيل بيانات المستأجر وإرفاق صورة بطاقة الهوية</p>
                     </div>
-                    <button @click="closeModal" type="button" class="p-1.5 text-[#5B6770] hover:text-[#163E3E]">
+                    <button @click="closeModal" type="button" aria-label="إغلاق النافذة" class="p-1.5 text-[#5B6770] hover:text-[#163E3E]">
                         <X class="w-5 h-5" />
                     </button>
                 </div>
 
                 <form @submit.prevent="submitRenter" class="space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">اسم المستأجر *</label>
+                        <label for="add-renter-name" class="block text-xs font-bold text-[#163E3E] mb-1.5">اسم المستأجر *</label>
                         <input
+                            id="add-renter-name"
+                            aria-label="اسم المستأجر بالكامل"
                             v-model="form.name"
                             type="text"
                             placeholder="مثال: أحمد محمود علي"
@@ -474,8 +494,10 @@ const submitRenter = () => {
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-bold text-[#163E3E] mb-1.5">رقم الهاتف *</label>
+                            <label for="add-renter-phone" class="block text-xs font-bold text-[#163E3E] mb-1.5">رقم الهاتف *</label>
                             <input
+                                id="add-renter-phone"
+                                aria-label="رقم الهاتف"
                                 v-model="form.phone"
                                 type="tel"
                                 placeholder="01XXXXXXXXX"
@@ -491,8 +513,10 @@ const submitRenter = () => {
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-[#163E3E] mb-1.5">الرقم القومي / الهوية <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
+                            <label for="add-renter-national-id" class="block text-xs font-bold text-[#163E3E] mb-1.5">الرقم القومي / الهوية <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
                             <input
+                                id="add-renter-national-id"
+                                aria-label="الرقم القومي أو الهوية"
                                 v-model="form.national_id"
                                 type="text"
                                 placeholder="الرقم القومي (14 رقم)"
@@ -546,8 +570,10 @@ const submitRenter = () => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">البريد الإلكتروني <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
+                        <label for="add-renter-email" class="block text-xs font-bold text-[#163E3E] mb-1.5">البريد الإلكتروني <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
                         <input
+                            id="add-renter-email"
+                            aria-label="البريد الإلكتروني"
                             v-model="form.email"
                             type="email"
                             placeholder="name@example.com"
@@ -570,8 +596,10 @@ const submitRenter = () => {
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <!-- الوجه الأمامي -->
                             <div class="space-y-1.5">
-                                <span class="text-[11px] font-semibold text-[#5B6770]">الوجه الأمامي</span>
+                                <label for="add-renter-id-front" class="text-[11px] font-semibold text-[#5B6770] block">الوجه الأمامي</label>
                                 <input
+                                    id="add-renter-id-front"
+                                    aria-label="رفع صورة الوجه الأمامي لبطاقة الهوية"
                                     ref="frontInputRef"
                                     type="file"
                                     accept="image/jpeg,image/png,image/jpg,image/webp"
@@ -597,6 +625,7 @@ const submitRenter = () => {
                                             @click="clearFrontFile"
                                             class="p-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition"
                                             title="حذف الصورة"
+                                            aria-label="حذف الصورة"
                                         >
                                             <Trash2 class="w-4 h-4" />
                                         </button>
@@ -621,8 +650,10 @@ const submitRenter = () => {
 
                             <!-- الوجه الخلفي -->
                             <div class="space-y-1.5">
-                                <span class="text-[11px] font-semibold text-[#5B6770]">الوجه الخلفي</span>
+                                <label for="add-renter-id-back" class="text-[11px] font-semibold text-[#5B6770] block">الوجه الخلفي</label>
                                 <input
+                                    id="add-renter-id-back"
+                                    aria-label="رفع صورة الوجه الخلفي لبطاقة الهوية"
                                     ref="backInputRef"
                                     type="file"
                                     accept="image/jpeg,image/png,image/jpg,image/webp"
@@ -648,6 +679,7 @@ const submitRenter = () => {
                                             @click="clearBackFile"
                                             class="p-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition"
                                             title="حذف الصورة"
+                                            aria-label="حذف الصورة"
                                         >
                                             <Trash2 class="w-4 h-4" />
                                         </button>
@@ -672,8 +704,10 @@ const submitRenter = () => {
                         </div>
                     </div>
 
-                    <label class="flex items-center gap-3 p-3 rounded-xl bg-[#E8F0F0]/40 border border-[#163E3E]/20 cursor-pointer">
+                    <label for="add-renter-whatsapp-consent" class="flex items-center gap-3 p-3 rounded-xl bg-[#E8F0F0]/40 border border-[#163E3E]/20 cursor-pointer">
                         <input
+                            id="add-renter-whatsapp-consent"
+                            aria-label="موافقة المستأجر على استلام تذكيرات وسندات القبض عبر WhatsApp"
                             type="checkbox"
                             v-model="form.whatsapp_consent"
                             class="w-4 h-4 rounded text-[#163E3E] focus:ring-[#163E3E]"

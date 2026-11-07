@@ -11,6 +11,7 @@ use App\Models\RentCharge;
 use App\Models\SecurityDepositDeduction;
 use App\Models\Workspace;
 use Carbon\Carbon;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -25,7 +26,9 @@ class FinancialObligationService
     {
         $asOf = $this->startOfDayOrToday($asOf);
         $firstBillingMonth = $lease->starts_on->copy()->startOfMonth();
-        $lastContractMonth = $lease->ends_on->copy()->startOfMonth();
+        $lastContractMonth = $lease->ends_on->day < $lease->starts_on->day
+            ? $lease->ends_on->copy()->subMonth()->startOfMonth()
+            : $lease->ends_on->copy()->startOfMonth();
         $lastPermittedMonth = $asOf->copy()->addMonth()->startOfMonth();
         $lastBillingMonth = $lastContractMonth->lt($lastPermittedMonth) ? $lastContractMonth : $lastPermittedMonth;
         $dueDay = min(28, max(1, $lease->billing_anchor_day));
@@ -35,18 +38,22 @@ class FinancialObligationService
                 ? $lease->first_due_date->toDateString()
                 : $billingMonth->copy()->day($dueDay)->toDateString();
 
-            RentCharge::withoutGlobalScopes()->firstOrCreate(
-                [
-                    'lease_id' => $lease->id,
-                    'period_start' => $billingMonth->toDateString(),
-                ],
-                [
-                    'workspace_id' => $lease->workspace_id,
-                    'period_end' => $billingMonth->copy()->endOfMonth()->toDateString(),
-                    'due_date' => $dueDate,
-                    'amount' => $lease->rent_amount,
-                ]
-            );
+            try {
+                RentCharge::withoutGlobalScopes()->firstOrCreate(
+                    [
+                        'lease_id' => $lease->id,
+                        'period_start' => $billingMonth->toDateString(),
+                    ],
+                    [
+                        'workspace_id' => $lease->workspace_id,
+                        'period_end' => $billingMonth->copy()->endOfMonth()->toDateString(),
+                        'due_date' => $dueDate,
+                        'amount' => $lease->rent_amount,
+                    ]
+                );
+            } catch (UniqueConstraintViolationException) {
+                // Charge was created concurrently by another transaction/process
+            }
         }
 
         return $lease->rentCharges()->orderBy('due_date')->get();
@@ -292,6 +299,32 @@ class FinancialObligationService
             $payment->allocations()->delete();
             $payment->deleteQuietly();
         }
+    }
+
+    /**
+     * Future rent charges are removed on termination, except the part already paid in advance,
+     * which is kept (shrunk to the paid amount) so it can be settled with the renter.
+     *
+     * @return float The advance rent paid for periods after the current month.
+     */
+    public function releaseFutureRentCharges(Lease $lease): float
+    {
+        $futureCharges = $lease->rentCharges()
+            ->where('period_start', '>', now()->endOfMonth())
+            ->get();
+
+        $advanceRentPaid = 0.0;
+        foreach ($futureCharges as $futureCharge) {
+            $allocatedAmount = (float) $futureCharge->allocations()->sum('amount');
+            if ($allocatedAmount > 0) {
+                $advanceRentPaid += $allocatedAmount;
+                $futureCharge->update(['amount' => $allocatedAmount]);
+            } else {
+                $futureCharge->delete();
+            }
+        }
+
+        return $advanceRentPaid;
     }
 
     /**

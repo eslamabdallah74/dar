@@ -83,7 +83,11 @@ class LeaseDetailsService
                     'amount' => (float) $charge->amount,
                     'paid_amount' => $paidAmount,
                     'outstanding_balance' => $outstanding,
-                    'status' => $outstanding <= 0 ? 'paid' : ($charge->due_date < today() ? 'overdue' : 'pending'),
+                    'status' => match (true) {
+                        $outstanding <= 0 => 'paid',
+                        $charge->due_date < today() => 'overdue',
+                        default => 'pending',
+                    },
                 ];
             }),
             'currency' => $workspace->currency ?? 'EGP',
@@ -112,7 +116,7 @@ class LeaseDetailsService
             },
             'status' => $lease->status,
             'status_label' => match ($lease->status) {
-                'active' => $isPastEndDate ? 'انتهى موعده (يتطلب إجراء)' : ($isExpiringSoon ? 'ينتهي قريباً' : 'سارٍ'),
+                'active' => $lease->activeStatusLabel(),
                 'expired' => 'منتهي',
                 'draft' => 'مسودة',
                 'terminated' => 'منتهي ومسوّى',

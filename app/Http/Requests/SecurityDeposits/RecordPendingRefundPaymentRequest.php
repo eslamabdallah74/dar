@@ -6,6 +6,7 @@ namespace App\Http\Requests\SecurityDeposits;
 
 use App\Enums\PaymentMethod;
 use App\Http\Requests\Concerns\ResolvesRouteLease;
+use App\Support\CurrentWorkspace;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -17,7 +18,14 @@ class RecordPendingRefundPaymentRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return true;
+        $lease = $this->routeLease();
+        $workspaceId = app(CurrentWorkspace::class)->id();
+
+        if (! $lease || ! $workspaceId) {
+            return false;
+        }
+
+        return $lease->workspace_id === $workspaceId;
     }
 
     /**
@@ -46,7 +54,8 @@ class RecordPendingRefundPaymentRequest extends FormRequest
             $amount = (float) $this->input('amount');
 
             if ($amount > $refundableBalance) {
-                $v->errors()->add('amount', "المبلغ المطلوب صرفه ({$amount} ج.م) يتجاوز الرصيد المستحق رده للمستأجر ({$refundableBalance} ج.م).");
+                $currencySymbol = $lease->workspace?->currencySymbol() ?? 'ج.م';
+                $v->errors()->add('amount', "المبلغ المطلوب صرفه ({$amount} {$currencySymbol}) يتجاوز الرصيد المستحق رده للمستأجر ({$refundableBalance} {$currencySymbol}).");
             }
         });
     }

@@ -213,7 +213,7 @@ const canDelete = computed(() => {
                         <div class="flex items-center justify-between gap-3 p-3 bg-white rounded-xl border border-emerald-100">
                             <div class="flex items-center gap-3 min-w-0">
                                 <div class="w-10 h-10 rounded-xl bg-[#163E3E] text-white flex items-center justify-center font-bold text-sm shrink-0">
-                                    {{ unit.active_lease.renter_name.charAt(0) }}
+                                    {{ unit.active_lease.renter_name?.charAt(0) || 'م' }}
                                 </div>
                                 <div class="min-w-0">
                                     <Link

@@ -50,8 +50,16 @@ test('stress benchmark: processes and transforms 10,000 in-memory workspaces', f
     /** @var Collection<int, Workspace> $workspaces */
     $workspaces = collect();
     for ($i = 1; $i <= 10000; $i++) {
-        $parentLimit = ($i % 5 === 0) ? null : ($i % 3 === 0 ? 25 : 10);
-        $rentalLimit = ($i % 5 === 0) ? null : ($i % 3 === 0 ? 25 : 10);
+        $parentLimit = match (true) {
+            $i % 5 === 0 => null,
+            $i % 3 === 0 => 25,
+            default => 10,
+        };
+        $rentalLimit = match (true) {
+            $i % 5 === 0 => null,
+            $i % 3 === 0 => 25,
+            default => 10,
+        };
         $createdParents = $parentLimit ? min($parentLimit, $i % 12) : ($i % 50);
         $occupiedRentals = $rentalLimit ? min($rentalLimit, $i % 8) : ($i % 30);
 

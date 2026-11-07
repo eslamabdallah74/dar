@@ -95,6 +95,47 @@ const filteredUnits = computed(() => {
     return props.units.filter(u => u.property_id === Number(selectedPropertyId.value));
 });
 
+const hierarchicalUnits = computed(() => {
+    const unitsById = new Map(filteredUnits.value.map(unit => [unit.id, unit]));
+    const childrenByParentId = new Map<number | null, UnitOption[]>();
+
+    for (const unit of filteredUnits.value) {
+        const parentId = unit.parent_unit_id != null && unitsById.has(unit.parent_unit_id)
+            ? unit.parent_unit_id
+            : null;
+        const siblings = childrenByParentId.get(parentId) ?? [];
+        siblings.push(unit);
+        childrenByParentId.set(parentId, siblings);
+    }
+
+    const orderedUnits: Array<{ unit: UnitOption; depth: number }> = [];
+    const visitedUnitIds = new Set<number>();
+    const appendUnitAndChildren = (unit: UnitOption, depth: number): void => {
+        if (visitedUnitIds.has(unit.id)) return;
+
+        visitedUnitIds.add(unit.id);
+        orderedUnits.push({ unit, depth });
+
+        for (const childUnit of childrenByParentId.get(unit.id) ?? []) {
+            appendUnitAndChildren(childUnit, depth + 1);
+        }
+    };
+
+    for (const rootUnit of childrenByParentId.get(null) ?? []) {
+        appendUnitAndChildren(rootUnit, 0);
+    }
+
+    for (const unit of filteredUnits.value) {
+        appendUnitAndChildren(unit, 0);
+    }
+
+    return orderedUnits;
+});
+
+const unitIndentation = (depth: number): string => (
+    depth > 0 ? `${'│ '.repeat(depth - 1)}└─ ` : ''
+);
+
 const todayDate = new Date().toISOString().split('T')[0];
 const nextYearDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
@@ -565,11 +606,11 @@ onUnmounted(() => {
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label for="lease-property-select" class="block text-xs font-bold text-[#163E3E] mb-1.5">العقار / المبنى *</label>
+                        <label for="lease-property" class="block text-xs font-bold text-[#163E3E] mb-1.5">العقار / المبنى *</label>
                         <select
-                            id="lease-property-select"
+                            id="lease-property"
                             v-model="selectedPropertyId"
-                            aria-label="العقار أو المبنى"
+                            aria-label="العقار / المبنى"
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         >
                             <option v-for="p in properties" :key="p.id" :value="p.id">{{ p.name }}</option>
@@ -577,16 +618,16 @@ onUnmounted(() => {
                     </div>
 
                     <div>
-                        <label for="lease-unit-select" class="block text-xs font-bold text-[#163E3E] mb-1.5">الوحدة التأجيرية *</label>
+                        <label for="lease-unit" class="block text-xs font-bold text-[#163E3E] mb-1.5">الوحدة التأجيرية *</label>
                         <select
-                            id="lease-unit-select"
+                            id="lease-unit"
                             v-model="form.unit_id"
-                            aria-label="الوحدة التأجيرية"
                             required
+                            aria-label="الوحدة التأجيرية"
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         >
-                            <option v-for="u in filteredUnits" :key="u.id" :value="u.id">
-                                {{ u.parent_unit_id ? '  ↳ ' : '' }}{{ u.type_label ? '[' + u.type_label + '] ' : '' }}{{ u.name }} {{ u.apartment_gender?.short_label ? '• ' + u.apartment_gender.short_label : '' }} ({{ u.availability_status || (u.is_occupied ? 'مشغولة حالياً' : 'شاغرة') }})
+                            <option v-for="{ unit, depth } in hierarchicalUnits" :key="unit.id" :value="unit.id">
+                                {{ unitIndentation(depth) }}{{ unit.type_label ? '[' + unit.type_label + '] ' : '' }}{{ unit.name }} {{ unit.apartment_gender?.short_label ? '• ' + unit.apartment_gender.short_label : '' }} ({{ unit.availability_status || (unit.is_occupied ? 'مشغولة حالياً' : 'شاغرة') }})
                             </option>
                         </select>
                         <p v-if="form.errors.unit_id" class="text-xs text-rose-600 font-semibold mt-1">

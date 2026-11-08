@@ -5,7 +5,6 @@ use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\Property;
 use App\Models\Renter;
-use App\Models\SecurityDepositDeduction;
 use App\Models\SecurityDepositPayment;
 use App\Models\Unit;
 use App\Models\User;

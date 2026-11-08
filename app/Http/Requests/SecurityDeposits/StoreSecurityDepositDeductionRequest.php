@@ -83,9 +83,9 @@ class StoreSecurityDepositDeductionRequest extends FormRequest
             $deductions = $this->array('deductions');
             $editingDeduction = $this->route('deduction');
 
-            $availableForDeduction = (float) $lease->refundable_deposit_balance;
+            $availableForDeduction = round((float) $lease->refundable_deposit_balance, 2);
             if ($editingDeduction instanceof SecurityDepositDeduction) {
-                $availableForDeduction += (float) $editingDeduction->amount;
+                $availableForDeduction = round($availableForDeduction + (float) $editingDeduction->amount, 2);
             }
 
             $deductionsTotal = round(collect($deductions)->sum(fn (array $d): float => (float) ($d['amount'] ?? 0)), 2);

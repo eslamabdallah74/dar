@@ -79,7 +79,7 @@ class SettleSecurityDepositRequest extends FormRequest
                 ->when(! empty($submittedIds), fn ($q) => $q->whereNotIn('id', $submittedIds))
                 ->sum('amount');
 
-            $availableToDeduct = max(0.0, $totalReceived - $previouslyRefunded - $otherExistingDeductionsTotal);
+            $availableToDeduct = max(0.0, round($totalReceived - $previouslyRefunded - $otherExistingDeductionsTotal, 2));
             $submittedTotal = round(collect($submittedDeductions)->sum(fn (array $d): float => (float) ($d['amount'] ?? 0)), 2);
 
             if ($submittedTotal > $availableToDeduct) {

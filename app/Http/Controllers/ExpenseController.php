@@ -79,12 +79,16 @@ class ExpenseController extends Controller
         UpdateExpenseRequest $request,
         Expense $expense,
         MaintenanceExpenseService $expenseService
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         $workspace = $this->resolveWorkspace($request);
 
         abort_if($expense->workspace_id !== $workspace->id, 403, 'غير مصرح لك بتعديل هذا المصروف.');
 
         $expenseService->updateExpense($expense, $request->validated());
+
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'تم تحديث بيانات المصروف بنجاح']);
+        }
 
         return back()->with('success', 'تم تحديث بيانات المصروف بنجاح');
     }

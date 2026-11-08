@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Maintenance;
 
 use App\Models\MaintenanceRequest;
+use App\Support\CurrentWorkspace;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -13,7 +14,17 @@ class UpdateMaintenanceStatusRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $maintenance = $this->route('maintenance');
+        if (is_numeric($maintenance)) {
+            $maintenance = MaintenanceRequest::find($maintenance);
+        }
+
+        $workspaceId = app(CurrentWorkspace::class)->id();
+        if (! $maintenance instanceof MaintenanceRequest || ! $workspaceId) {
+            return false;
+        }
+
+        return $maintenance->workspace_id === $workspaceId;
     }
 
     /**

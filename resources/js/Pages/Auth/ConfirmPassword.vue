@@ -55,8 +55,8 @@ const submit = () => {
 
             <div class="pt-2">
                 <PrimaryButton
-                    class="w-full flex items-center justify-center gap-2 font-bold"
-                    :class="{ 'opacity-50': form.processing }"
+                    class="w-full font-bold"
+                    :loading="form.processing"
                     :disabled="form.processing"
                 >
                     <span v-if="form.processing">جاري التأكيد...</span>

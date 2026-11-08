@@ -1,0 +1,11 @@
+{
+    "Your password has been reset.": "تمت إعادة تعيين كلمة المرور بنجاح.",
+    "We have emailed your password reset link.": "تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.",
+    "Please wait before retrying.": "يرجى الانتظار قليلاً قبل إعادة المحاولة.",
+    "This password reset token is invalid.": "رمز أو رابط إعادة تعيين كلمة المرور غير صالح أو منتهي الصلاحية.",
+    "We can't find a user with that email address.": "لم نتمكن من العثور على مستخدم مسجل بهذا البريد الإلكتروني.",
+    "These credentials do not match our records.": "بيانات الاعتماد هذه غير متطابقة مع سجلاتنا.",
+    "The provided password is incorrect.": "كلمة المرور المدخلة غير صحيحة.",
+    "Too many login attempts. Please try again in :seconds seconds.": "محاولات تسجيل دخول كثيرة جداً. يرجى المحاولة مرة أخرى بعد :seconds ثانية."
+}
+

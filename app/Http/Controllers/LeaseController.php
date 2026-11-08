@@ -20,6 +20,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -97,9 +98,12 @@ class LeaseController extends Controller
         $workspace = $this->resolveWorkspace($request);
 
         $request->validate([
-            'unit_id' => 'required|exists:units,id',
-            'starts_on' => 'required|date',
-            'ends_on' => 'required|date|after:starts_on',
+            'unit_id' => [
+                'required',
+                Rule::exists('units', 'id')->where(fn ($query) => $query->where('workspace_id', $workspace->id)),
+            ],
+            'starts_on' => ['required', 'date'],
+            'ends_on' => ['required', 'date', 'after:starts_on'],
         ]);
 
         $unitId = (int) $request->input('unit_id');
@@ -115,9 +119,11 @@ class LeaseController extends Controller
         if ($conflictingLease) {
             $isSelf = $conflictingLease->unit_id === $unit->id;
             $conflictingUnit = Unit::withoutGlobalScopes()->find($conflictingLease->unit_id);
-            $unitLabel = $isSelf
-                ? 'الوحدة المحددة'
-                : ($conflictingUnit ? "الوحدة المرتبطة ({$conflictingUnit->name})" : 'وحدة في نفس الهيكل العقاري');
+            $unitLabel = match (true) {
+                $isSelf => 'الوحدة المحددة',
+                $conflictingUnit !== null => "الوحدة المرتبطة ({$conflictingUnit->name})",
+                default => 'وحدة في نفس الهيكل العقاري',
+            };
 
             return response()->json([
                 'has_conflict' => true,

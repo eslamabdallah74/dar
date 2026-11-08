@@ -21,20 +21,18 @@ class StoreExpenseRequest extends FormRequest
      */
     public function rules(): array
     {
-        $workspaceId = app(CurrentWorkspace::class)->id();
+        $workspaceId = app(CurrentWorkspace::class)->id() ?? 0;
         $propertyId = $this->input('property_id');
 
         return [
             'property_id' => [
                 'nullable',
-                Rule::exists('properties', 'id')->where(fn ($q) => $workspaceId ? $q->where('workspace_id', $workspaceId) : $q),
+                Rule::exists('properties', 'id')->where('workspace_id', $workspaceId),
             ],
             'unit_id' => [
                 'nullable',
                 Rule::exists('units', 'id')->where(function ($q) use ($workspaceId, $propertyId) {
-                    if ($workspaceId) {
-                        $q->where('workspace_id', $workspaceId);
-                    }
+                    $q->where('workspace_id', $workspaceId);
                     if ($propertyId) {
                         $q->where('property_id', $propertyId);
                     }

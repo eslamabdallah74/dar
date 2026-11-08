@@ -35,23 +35,10 @@
         padding-right: 0.75rem;
     }
 
-    /* Arabic typography: prevent tracking-tight from breaking cursive connections */
-    [dir="rtl"] h1,
-    [dir="rtl"] h2,
-    [dir="rtl"] h3,
-    [dir="rtl"] h4,
-    [dir="rtl"] h5,
-    [dir="rtl"] h6,
-    [dir="rtl"] p,
-    [dir="rtl"] span:not(.font-mono),
-    [dir="rtl"] a,
-    [dir="rtl"] button,
-    [dir="rtl"] label,
-    [dir="rtl"] input,
-    [dir="rtl"] select,
-    [dir="rtl"] textarea {
-        letter-spacing: 0 !important;
-    }
+/* Arabic typography: prevent tracking-tight from breaking cursive connections */
+html[dir="rtl"] body :is(h1, h2, h3, h4, h5, h6, p, span:not(.font-mono), a, button, label, input, select, textarea) {
+    letter-spacing: 0;
+}
 }
 
 /* Custom scrollbar for sidebar and smooth panels */
@@ -71,4 +58,29 @@
 .custom-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+/* Inertia global request progress bar (high specificity without !important) */
+html body #nprogress .bar {
+    background: #F7C33D;
+    height: 3px;
+    z-index: 99999;
+}
+
+html body #nprogress .peg {
+    box-shadow: 0 0 10px #F7C33D, 0 0 5px #F7C33D;
+}
+
+html body #nprogress .spinner {
+    z-index: 99999;
+}
+
+html body #nprogress .spinner-icon {
+    border-top-color: #F7C33D;
+    border-left-color: #F7C33D;
+}
+
+html[dir="rtl"] body #nprogress .spinner {
+    right: auto;
+    left: 15px;
 }

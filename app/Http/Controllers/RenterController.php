@@ -358,8 +358,16 @@ class RenterController extends Controller
                 'amount' => (float) $charge->amount,
                 'paid_amount' => $allocated,
                 'outstanding_balance' => $outstanding,
-                'status' => $isPaid ? 'paid' : ($isOverdue ? 'overdue' : 'pending'),
-                'status_label' => $isPaid ? 'مسدد بالكامل' : ($isOverdue ? 'متأخر' : 'مستحق قريباً'),
+                'status' => match (true) {
+                    $isPaid => 'paid',
+                    $isOverdue => 'overdue',
+                    default => 'pending',
+                },
+                'status_label' => match (true) {
+                    $isPaid => 'مسدد بالكامل',
+                    $isOverdue => 'متأخر',
+                    default => 'مستحق قريباً',
+                },
             ];
         })->values()->all();
     }
@@ -479,22 +487,29 @@ class RenterController extends Controller
      */
     private function documentRows(Renter $renter): array
     {
-        return $renter->documents->map(fn (RenterDocument $document): array => [
-            'id' => $document->id,
-            'title' => $document->title ?: ($document->original_filename ?: 'مستند'),
-            'original_filename' => $document->original_filename ?? 'document',
-            'document_type' => $document->document_type,
-            'document_type_label' => match ($document->document_type) {
-                'national_id' => 'بطاقة هوية وطنية',
-                'passport' => 'جواز سفر',
-                'employment_letter' => 'خطاب تعريف بالعمل / الراتب',
-                'other' => 'عقد / مستند آخر',
-                default => $document->document_type,
-            },
-            'file_size' => $document->file_size ? round($document->file_size / 1024, 1).' كيلوبايت' : null,
-            'created_at' => $document->created_at?->format('d/m/Y H:i') ?? '',
-            'download_url' => route('renters.documents.download', [$renter->id, $document->id]),
-        ])->values()->all();
+        return $renter->documents->map(function (RenterDocument $document) use ($renter): array {
+            $title = $document->title;
+            if (empty($title)) {
+                $title = $document->original_filename ?: 'مستند';
+            }
+
+            return [
+                'id' => $document->id,
+                'title' => $title,
+                'original_filename' => $document->original_filename ?? 'document',
+                'document_type' => $document->document_type,
+                'document_type_label' => match ($document->document_type) {
+                    'national_id' => 'بطاقة هوية وطنية',
+                    'passport' => 'جواز سفر',
+                    'employment_letter' => 'خطاب تعريف بالعمل / الراتب',
+                    'other' => 'عقد / مستند آخر',
+                    default => $document->document_type,
+                },
+                'file_size' => $document->file_size ? round($document->file_size / 1024, 1).' كيلوبايت' : null,
+                'created_at' => $document->created_at?->format('d/m/Y H:i') ?? '',
+                'download_url' => route('renters.documents.download', [$renter->id, $document->id]),
+            ];
+        })->values()->all();
     }
 
     private function unitTypeLabel(?string $unitType): string

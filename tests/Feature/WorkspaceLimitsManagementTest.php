@@ -583,14 +583,19 @@ test('scenario 14: unlimited rental limits work correctly', function (): void {
 
 test('scenario 15: super admin can view all workspaces with limit details and open workspace details page', function (): void {
     // Admin dashboard listing
-    $dashboardResponse = $this->actingAs($this->adminUser)->get(route('admin.dashboard'));
+    $dashboardResponse = $this->actingAs($this->adminUser)
+        ->get(route('admin.dashboard', ['tab' => 'workspaces']));
+
     $dashboardResponse->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('Admin/Dashboard')
-            ->has('workspaces.0.parent_unit_limit')
-            ->has('workspaces.0.active_rental_limit')
-            ->has('workspaces.0.created_parent_units_count')
-            ->has('workspaces.0.active_rented_parent_units_count')
+            ->missing('tableData')
+            ->reloadOnly('tableData', fn (Assert $page) => $page
+                ->where('tableData.records.data.0.parent_unit_limit', $this->workspace->parent_unit_limit)
+                ->where('tableData.records.data.0.active_rental_limit', $this->workspace->active_rental_limit)
+                ->where('tableData.records.data.0.created_parent_units_count', 0)
+                ->where('tableData.records.data.0.active_rented_parent_units_count', 0)
+            )
         );
 
     // Workspace show page

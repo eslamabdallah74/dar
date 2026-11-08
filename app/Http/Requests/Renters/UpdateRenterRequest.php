@@ -29,7 +29,7 @@ class UpdateRenterRequest extends FormRequest
      */
     public function rules(): array
     {
-        $workspaceId = app(CurrentWorkspace::class)->id();
+        $workspaceId = app(CurrentWorkspace::class)->id() ?? 0;
         $renter = $this->route('renter');
         $renterId = $renter instanceof Renter ? $renter->id : $renter;
 
@@ -40,7 +40,7 @@ class UpdateRenterRequest extends FormRequest
                 'string',
                 new EgyptianPhoneNumber,
                 Rule::unique('renters', 'phone')
-                    ->where(fn ($query) => $workspaceId ? $query->where('workspace_id', $workspaceId) : $query)
+                    ->where('workspace_id', $workspaceId)
                     ->ignore($renterId),
             ],
             'email' => ['nullable', 'string', 'lowercase', 'email:rfc', 'max:255'],

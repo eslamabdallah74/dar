@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onUnmounted } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import {
     ArrowLeft,
@@ -129,7 +129,11 @@ const imagePreviewUrl = ref<string | null>(null);
 
 function handleImageChange(event: Event) {
     const target = event.target as HTMLInputElement;
-    if (target.files && target.files[0]) {
+    if (target.files?.[0]) {
+        if (imagePreviewUrl.value) {
+            URL.revokeObjectURL(imagePreviewUrl.value);
+            imagePreviewUrl.value = null;
+        }
         const file = target.files[0];
         form.cover_image_file = file;
         imagePreviewUrl.value = URL.createObjectURL(file);
@@ -137,9 +141,18 @@ function handleImageChange(event: Event) {
 }
 
 function removeImage() {
+    if (imagePreviewUrl.value) {
+        URL.revokeObjectURL(imagePreviewUrl.value);
+    }
     form.cover_image_file = null;
     imagePreviewUrl.value = null;
 }
+
+onUnmounted(() => {
+    if (imagePreviewUrl.value) {
+        URL.revokeObjectURL(imagePreviewUrl.value);
+    }
+});
 
 // Auto Unit Generator State
 const autoGenEnabled = ref(true);
@@ -894,6 +907,7 @@ function submit() {
                                 <span class="mt-1 text-xs text-[#7A8C83]">PNG, JPG, WEBP حتى 5 ميجابايت</span>
                                 <input
                                     type="file"
+                                    aria-label="صورة العقار الرئيسية"
                                     accept="image/*"
                                     class="hidden"
                                     @change="handleImageChange"

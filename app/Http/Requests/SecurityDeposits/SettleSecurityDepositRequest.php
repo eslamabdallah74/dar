@@ -76,10 +76,11 @@ class SettleSecurityDepositRequest extends FormRequest
             $submittedIds = collect($submittedDeductions)->pluck('id')->filter()->all();
 
             $otherExistingDeductionsTotal = (float) $lease->securityDepositDeductions()
+                ->where('status', '!=', 'confirmed')
                 ->when(! empty($submittedIds), fn ($q) => $q->whereNotIn('id', $submittedIds))
                 ->sum('amount');
 
-            $availableToDeduct = max(0.0, $totalReceived - $previouslyRefunded - $otherExistingDeductionsTotal);
+            $availableToDeduct = max(0.0, round($totalReceived - $previouslyRefunded - $otherExistingDeductionsTotal, 2));
             $submittedTotal = round(collect($submittedDeductions)->sum(fn (array $d): float => (float) ($d['amount'] ?? 0)), 2);
 
             if ($submittedTotal > $availableToDeduct) {

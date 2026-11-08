@@ -212,7 +212,7 @@ const submitPlanRequest = () => {
                     <Sparkles class="w-5 h-5 text-[#163E3E]" />
                     <h2 class="text-lg font-bold text-[#163E3E]">باقات Nook Mate المتاحة</h2>
                 </div>
-                <span class="text-xs text-[#5B6770]">اختر الخطة المناسبة لحجم محفظتك العقارية لطلب تفعيلها</span>
+                <span class="text-xs text-[#5B6770]">اختر الخطة المناسبة لاحتياجات مساحة عملك لطلب تفعيلها</span>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -355,6 +355,11 @@ const submitPlanRequest = () => {
                     <span v-if="selectedPlanToUpgrade.price > 0">{{ selectedPlanToUpgrade.price }} ج.م / شهرياً</span>
                     <span v-else-if="selectedPlanToUpgrade.slug === 'trial'">0 ج.م (تجربة مجانية)</span>
                     <span v-else>تسعير مخصص</span>
+                </div>
+
+                <div v-if="requestForm.errors.plan_id" class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold text-right flex items-center gap-2">
+                    <AlertCircle class="w-4 h-4 text-rose-600 shrink-0" />
+                    <span>{{ requestForm.errors.plan_id }}</span>
                 </div>
 
                 <div class="text-right">

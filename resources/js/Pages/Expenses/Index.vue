@@ -33,9 +33,9 @@ interface ExpenseItem {
     unit_name: string;
     notes: string;
     recorder_name: string;
-    origin: 'manual' | 'maintenance' | string;
+    origin: string;
     origin_label: string;
-    status: 'pending_amount' | 'ready' | 'recorded' | string;
+    status: string;
     status_label: string;
     is_pending_amount: boolean;
     maintenance_request_id?: number | null;
@@ -92,10 +92,12 @@ const editForm = useForm({
 
 const filteredExpenses = computed(() => {
     return props.expenses.filter(e => {
-        const matchesSearch = (e.notes && e.notes.includes(searchQuery.value))
-            || (e.title && e.title.includes(searchQuery.value))
-            || (e.category && e.category.includes(searchQuery.value))
-            || (e.property_name && e.property_name.includes(searchQuery.value));
+        const matchesSearch = Boolean(
+            e.notes?.includes(searchQuery.value)
+            || e.title?.includes(searchQuery.value)
+            || e.category?.includes(searchQuery.value)
+            || e.property_name?.includes(searchQuery.value),
+        );
 
         const matchesCat = selectedCategory.value === 'all'
             || e.category === selectedCategory.value;
@@ -121,7 +123,7 @@ const submitAdd = () => {
 
 const openEditModal = (expense: ExpenseItem) => {
     editingExpense.value = expense;
-    editForm.amount = expense.amount !== null ? expense.amount : '';
+    editForm.amount = expense.amount ?? '';
     editForm.category = expense.category;
     editForm.expense_date = expense.raw_date || new Date().toISOString().split('T')[0];
     editForm.notes = expense.notes;
@@ -285,9 +287,12 @@ const handleReversePayment = async (expense: ExpenseItem) => {
         <div class="flex flex-col gap-3 bg-white p-4 rounded-2xl border border-[#D6E0E7] shadow-2xs">
             <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <div class="relative flex-1 max-w-md">
+                    <label for="expenses-search-query" class="sr-only">ابحث في المصروفات</label>
                     <input
+                        id="expenses-search-query"
                         v-model="searchQuery"
                         type="text"
+                        aria-label="ابحث ببيان المصروف أو الفئة أو العقار"
                         placeholder="ابحث ببيان المصروف أو الفئة أو العقار..."
                         class="w-full h-10 pr-10 pl-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] placeholder:text-[#5B6770] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                     />
@@ -510,39 +515,47 @@ const handleReversePayment = async (expense: ExpenseItem) => {
             <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-6 z-10 animate-in fade-in zoom-in-95" dir="rtl">
                 <div class="flex items-center justify-between pb-4 border-b border-[#D6E0E7] mb-5">
                     <h3 class="text-base font-bold text-[#163E3E]">تسجيل مصروف يدوي جديد</h3>
-                    <button @click="showAddModal = false" type="button" class="p-1.5 text-[#5B6770] hover:text-[#163E3E]">
+                    <button @click="showAddModal = false" type="button" aria-label="إغلاق النافذة" class="p-1.5 text-[#5B6770] hover:text-[#163E3E]">
                         <X class="w-5 h-5" />
                     </button>
                 </div>
 
                 <form @submit.prevent="submitAdd" class="space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">العقار المعني <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
+                        <label for="add-expense-property" class="block text-xs font-bold text-[#163E3E] mb-1.5">العقار المعني <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
                         <select
+                            id="add-expense-property"
                             v-model="addForm.property_id"
+                            aria-label="العقار المعني"
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         >
                             <option value="">مصروف عام للمنشأة (غير مخصص لعقار)</option>
                             <option v-for="p in properties" :key="p.id" :value="p.id">{{ p.name }}</option>
                         </select>
+                        <p v-if="addForm.errors.property_id" class="text-xs text-rose-600 mt-1">{{ addForm.errors.property_id }}</p>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">عنوان أو بيان المصروف *</label>
+                        <label for="add-expense-title" class="block text-xs font-bold text-[#163E3E] mb-1.5">عنوان أو بيان المصروف *</label>
                         <input
+                            id="add-expense-title"
                             v-model="addForm.title"
                             type="text"
+                            aria-label="عنوان أو بيان المصروف"
                             placeholder="مثال: فاتورة كهرباء، صيانة مضخة مياه..."
                             required
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                         />
+                        <p v-if="addForm.errors.title" class="text-xs text-rose-600 mt-1">{{ addForm.errors.title }}</p>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-bold text-[#163E3E] mb-1.5">فئة المصروف *</label>
+                            <label for="add-expense-category" class="block text-xs font-bold text-[#163E3E] mb-1.5">فئة المصروف *</label>
                             <select
+                                id="add-expense-category"
                                 v-model="addForm.category"
+                                aria-label="فئة المصروف"
                                 required
                                 class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                             >
@@ -552,42 +565,52 @@ const handleReversePayment = async (expense: ExpenseItem) => {
                                 <option value="حراسة وأمن">حراسة وأمن</option>
                                 <option value="أخرى">أخرى</option>
                             </select>
+                            <p v-if="addForm.errors.category" class="text-xs text-rose-600 mt-1">{{ addForm.errors.category }}</p>
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-[#163E3E] mb-1.5">المبلغ المدفوع *</label>
+                            <label for="add-expense-amount" class="block text-xs font-bold text-[#163E3E] mb-1.5">المبلغ المدفوع *</label>
                             <div class="relative">
                                 <input
+                                    id="add-expense-amount"
                                     v-model="addForm.amount"
                                     type="number"
                                     step="0.01"
+                                    aria-label="المبلغ المدفوع"
                                     placeholder="0.00"
                                     required
                                     class="w-full h-11 pl-10 pr-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                                 />
                                 <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-[#5B6770]">{{ currency_symbol }}</span>
                             </div>
+                            <p v-if="addForm.errors.amount" class="text-xs text-rose-600 mt-1">{{ addForm.errors.amount }}</p>
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">تاريخ المصروف *</label>
+                        <label for="add-expense-date" class="block text-xs font-bold text-[#163E3E] mb-1.5">تاريخ المصروف *</label>
                         <input
+                            id="add-expense-date"
                             v-model="addForm.expense_date"
                             type="date"
+                            aria-label="تاريخ المصروف"
                             required
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                         />
+                        <p v-if="addForm.errors.expense_date" class="text-xs text-rose-600 mt-1">{{ addForm.errors.expense_date }}</p>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">ملاحظات وتفاصيل إضافية <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
+                        <label for="add-expense-notes" class="block text-xs font-bold text-[#163E3E] mb-1.5">ملاحظات وتفاصيل إضافية <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span></label>
                         <textarea
+                            id="add-expense-notes"
                             v-model="addForm.notes"
+                            aria-label="ملاحظات وتفاصيل إضافية"
                             rows="2"
                             placeholder="اكتب أية تفاصيل أو رقم فاتورة..."
                             class="w-full p-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         ></textarea>
+                        <p v-if="addForm.errors.notes" class="text-xs text-rose-600 mt-1">{{ addForm.errors.notes }}</p>
                     </div>
 
                     <div class="pt-4 flex items-center justify-end gap-3 border-t border-[#D6E0E7]">
@@ -624,26 +647,29 @@ const handleReversePayment = async (expense: ExpenseItem) => {
                             مرتبط بطلب الصيانة: <strong class="text-[#163E3E]">{{ editingExpense.title }}</strong>
                         </p>
                     </div>
-                    <button @click="editingExpense = null" type="button" class="p-1.5 text-[#5B6770] hover:text-[#163E3E]">
+                    <button @click="editingExpense = null" type="button" aria-label="إغلاق النافذة" class="p-1.5 text-[#5B6770] hover:text-[#163E3E]">
                         <X class="w-5 h-5" />
                     </button>
                 </div>
 
                 <form @submit.prevent="submitEdit" class="space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">المبلغ الفعلي (التكلفة) *</label>
+                        <label for="edit-expense-amount" class="block text-xs font-bold text-[#163E3E] mb-1.5">المبلغ الفعلي (التكلفة) *</label>
                         <div class="relative">
                             <input
+                                id="edit-expense-amount"
                                 v-model="editForm.amount"
                                 type="number"
                                 step="0.01"
                                 min="0.01"
+                                aria-label="المبلغ الفعلي (التكلفة)"
                                 placeholder="أدخل التكلفة الفعلية..."
                                 required
                                 class="w-full h-11 pl-10 pr-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                             />
                             <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-[#5B6770]">{{ currency_symbol }}</span>
                         </div>
+                        <p v-if="editForm.errors.amount" class="text-xs text-rose-600 mt-1">{{ editForm.errors.amount }}</p>
                         <p v-if="editingExpense.origin === 'maintenance'" class="text-[11px] text-[#5B6770] mt-1">
                             عند إدخال المبلغ سيدخل المصروف مباشرة في الحسابات المالية، ويصبح بالإمكان إنهاء طلب الصيانة من صفحة الصيانة.
                         </p>
@@ -651,9 +677,11 @@ const handleReversePayment = async (expense: ExpenseItem) => {
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-bold text-[#163E3E] mb-1.5">الفئة</label>
+                            <label for="edit-expense-category" class="block text-xs font-bold text-[#163E3E] mb-1.5">الفئة</label>
                             <select
+                                id="edit-expense-category"
                                 v-model="editForm.category"
+                                aria-label="الفئة"
                                 class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                             >
                                 <option value="صيانة وتشغيل">صيانة وتشغيل</option>
@@ -662,27 +690,34 @@ const handleReversePayment = async (expense: ExpenseItem) => {
                                 <option value="حراسة وأمن">حراسة وأمن</option>
                                 <option value="أخرى">أخرى</option>
                             </select>
+                            <p v-if="editForm.errors.category" class="text-xs text-rose-600 mt-1">{{ editForm.errors.category }}</p>
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-[#163E3E] mb-1.5">تاريخ المصروف</label>
+                            <label for="edit-expense-date" class="block text-xs font-bold text-[#163E3E] mb-1.5">تاريخ المصروف</label>
                             <input
+                                id="edit-expense-date"
                                 v-model="editForm.expense_date"
                                 type="date"
+                                aria-label="تاريخ المصروف"
                                 required
                                 class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
                             />
+                            <p v-if="editForm.errors.expense_date" class="text-xs text-rose-600 mt-1">{{ editForm.errors.expense_date }}</p>
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">ملاحظات وبيان الفاتورة</label>
+                        <label for="edit-expense-notes" class="block text-xs font-bold text-[#163E3E] mb-1.5">ملاحظات وبيان الفاتورة</label>
                         <textarea
+                            id="edit-expense-notes"
                             v-model="editForm.notes"
+                            aria-label="ملاحظات وبيان الفاتورة"
                             rows="2"
                             placeholder="مثال: فاتورة فني السباكة وقطع الغيار..."
                             class="w-full p-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         ></textarea>
+                        <p v-if="editForm.errors.notes" class="text-xs text-rose-600 mt-1">{{ editForm.errors.notes }}</p>
                     </div>
 
                     <div class="pt-4 flex items-center justify-end gap-3 border-t border-[#D6E0E7]">

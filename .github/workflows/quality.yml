@@ -2,7 +2,7 @@ name: Quality gate
 
 on:
   push:
-    branches: [main]
+    branches: [production]
   pull_request:
 
 concurrency:
@@ -86,7 +86,7 @@ jobs:
       - name: Tests (Pest)
         env:
           DB_PASSWORD: ''
-        run: composer test
+        run: composer test -- --profile
 
   frontend:
     name: Frontend (ESLint, vue-tsc)

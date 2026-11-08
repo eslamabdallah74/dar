@@ -8,7 +8,7 @@ import GlobalToast from '@/Components/Common/GlobalToast.vue';
 withDefaults(defineProps<{
     imageBackground?: boolean;
 }>(), {
-    imageBackground: false,
+    imageBackground: true,
 });
 </script>
 
@@ -20,7 +20,7 @@ withDefaults(defineProps<{
     >
         <div v-if="imageBackground" class="pointer-events-none fixed inset-0 z-0">
             <img
-                src="/images/login-register-bg.png"
+                src="/images/login-register-bg.webp"
                 alt=""
                 aria-hidden="true"
                 class="h-full w-full object-cover object-[68%_center]"
@@ -54,13 +54,13 @@ withDefaults(defineProps<{
                         <div dir="ltr" class="flex items-center gap-1 font-montserrat text-2xl font-black tracking-tight text-white sm:text-3xl">
                             <span>Nook</span><span class="text-[#F7C33D]">Mate</span>
                         </div>
-                        <p class="text-xs font-medium text-[#F8F4EA]/80 sm:text-sm font-poppins">اعثر على مساحتك واستأجر ما تحتاج إليه</p>
+                        <p class="text-xs font-medium text-[#F8F4EA]/80 sm:text-sm font-poppins">إدارة ممتلكاتك، بكل سهولة</p>
                     </div>
                 </Link>
             </div>
 
             <div
-                class="w-full max-w-md overflow-hidden rounded-2xl shadow-2xl backdrop-blur-xl"
+                class="guest-auth-card w-full max-w-md overflow-hidden rounded-2xl shadow-2xl backdrop-blur-xl"
                 :class="imageBackground
                     ? 'border border-white/20 bg-slate-950/80 p-4 shadow-black/40 sm:p-7'
                     : 'border border-[#163E3E] bg-[#163E3E]/90 p-6 shadow-black/80 sm:p-8'"
@@ -72,7 +72,7 @@ withDefaults(defineProps<{
                 class="text-center text-xs font-medium font-poppins"
                 :class="imageBackground ? 'mt-3 text-[#F8F4EA]/80 sm:mt-4' : 'mt-8 text-[#F8F4EA]/60'"
             >
-                Nook Mate • اعثر على مساحتك واستأجر ما تحتاج إليه
+                Nook Mate • إدارة ممتلكاتك، بكل سهولة
             </div>
         </div>
 
@@ -81,3 +81,9 @@ withDefaults(defineProps<{
         <ConfirmDialog />
     </div>
 </template>
+
+<style scoped>
+.guest-auth-card :deep(label) {
+    color: #F8F4EA;
+}
+</style>

@@ -44,8 +44,8 @@ const verificationLinkSent = computed(
         <form @submit.prevent="submit" class="space-y-4">
             <div>
                 <PrimaryButton
-                    class="w-full flex items-center justify-center gap-2 font-bold"
-                    :class="{ 'opacity-50': form.processing }"
+                    class="w-full font-bold"
+                    :loading="form.processing"
                     :disabled="form.processing"
                 >
                     <span v-if="form.processing">جاري الإرسال...</span>

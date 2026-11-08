@@ -161,7 +161,10 @@ class DocumentStorageService
             abort(404, 'الملف المطلوب غير موجود في وحدة التخزين.');
         }
 
-        $resolvedMime = $mimeType ?: Storage::disk($targetDisk)->mimeType($path) ?: 'application/octet-stream';
+        $resolvedMime = $mimeType;
+        if (empty($resolvedMime)) {
+            $resolvedMime = Storage::disk($targetDisk)->mimeType($path) ?: 'application/octet-stream';
+        }
         $displayFilename = $filename ?: basename($path);
 
         return Storage::disk($targetDisk)->response($path, $displayFilename, [

@@ -230,12 +230,12 @@ test('Scenario C: No refund with 1,000 deposit and 1,000 valid deductions', func
 
 /*
 |--------------------------------------------------------------------------
-| Scenario D: Invalid deduction
-| Deposit: 1,000 EGP | Existing: 700 EGP | Attempted: 400 EGP
-| Total 1,100 > 1,000 -> Rejected!
+| Scenario D: Omitted confirmed deductions do not limit settlement
+| Deposit: 1,000 EGP | Existing confirmed (omitted): 700 EGP | Submitted: 400 EGP
+| The omitted deduction is removed, so the settlement is accepted.
 |--------------------------------------------------------------------------
 */
-test('Scenario D: Invalid deduction exceeding available deposit is strictly rejected', function () {
+test('Scenario D: Omitted confirmed deductions do not reduce settlement availability', function () {
     $lease = createLeaseWithDeposit($this, 1000.0);
 
     // Record pre-existing deduction of 700 EGP
@@ -259,7 +259,7 @@ test('Scenario D: Invalid deduction exceeding available deposit is strictly reje
     $lease->refresh();
     expect($lease->total_deposit_deductions)->toBe(700.0);
 
-    // Also attempt via settlement route with total exceeding available
+    $omittedDeduction = $lease->securityDepositDeductions()->firstOrFail();
     $settleResponse = $this->actingAs($this->user)->post(route('leases.security-deposit.settle', $lease->id), [
         'deductions' => [
             [
@@ -270,8 +270,12 @@ test('Scenario D: Invalid deduction exceeding available deposit is strictly reje
         ],
     ]);
 
-    $settleResponse->assertSessionHasErrors(['deductions']);
-    expect($lease->security_deposit_status)->not->toBe('settled');
+    $settleResponse->assertSessionHasNoErrors();
+    $lease->refresh();
+
+    expect($lease->security_deposit_status)->toBe('settled')
+        ->and($lease->total_deposit_deductions)->toBe(400.0);
+    $this->assertDatabaseMissing('security_deposit_deductions', ['id' => $omittedDeduction->id]);
 });
 
 /*
@@ -353,14 +357,14 @@ test('Business Rules: Unauthorized users cannot access or alter other workspace 
 
     $lease = createLeaseWithDeposit($this, 1000.0);
 
-    // Other user attempts deduction on this lease
+    // Other user attempts deduction on this lease: with tenant scoping active, foreign lease is not accessible
     $response = $this->actingAs($otherUser)->post(route('leases.security-deposit.deduction', $lease->id), [
         'category' => 'unit_damage',
         'amount' => 200.00,
         'description' => 'محاولة اختراق',
     ]);
 
-    $response->assertForbidden();
+    expect(in_array($response->status(), [403, 404], true))->toBeTrue();
 });
 
 /*

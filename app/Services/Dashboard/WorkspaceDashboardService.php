@@ -193,7 +193,7 @@ class WorkspaceDashboardService
             'is_empty_workspace' => ($totalProperties === 0 && $totalBillableUnits === 0),
             'header' => [
                 'greeting' => ((now()->hour >= 5 && now()->hour < 12) ? 'صباح الخير' : 'مساء الخير').'، '.($user->name ?: 'عزيزي المالك').' 👋',
-                'subtitle' => 'اليوم '.now()->translatedFormat('l، d F Y').' • نظرة عامة على محفظتك العقارية والعمليات التشغيلية',
+                'subtitle' => 'اليوم '.now()->translatedFormat('l، d F Y').' • نظرة عامة على مساحة عملك والعمليات التشغيلية',
             ],
             'checklist' => $onboarding,
             'top_kpis' => [

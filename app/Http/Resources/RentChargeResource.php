@@ -26,7 +26,12 @@ class RentChargeResource extends JsonResource
         $isOverdue = ! $isPaid && $this->due_date->isPast() && ! $this->due_date->isToday();
         $isPartial = ! $isPaid && $allocated > 0;
 
-        $status = $isPaid ? 'paid' : ($isOverdue ? 'overdue' : ($isPartial ? 'partially_paid' : 'unpaid'));
+        $status = match (true) {
+            $isPaid => 'paid',
+            $isOverdue => 'overdue',
+            $isPartial => 'partially_paid',
+            default => 'unpaid',
+        };
         $statusLabel = match ($status) {
             'paid' => 'مسدد بالكامل',
             'overdue' => 'متأخر',

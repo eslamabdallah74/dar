@@ -28,12 +28,12 @@ class StorePaymentRequest extends FormRequest
      */
     public function rules(): array
     {
-        $workspaceId = app(CurrentWorkspace::class)->id();
+        $workspaceId = app(CurrentWorkspace::class)->id() ?? 0;
 
         return [
             'renter_id' => [
                 'required',
-                Rule::exists('renters', 'id')->where(fn ($query) => $workspaceId ? $query->where('workspace_id', $workspaceId) : $query),
+                Rule::exists('renters', 'id')->where('workspace_id', $workspaceId),
             ],
             'amount' => ['required', 'numeric', 'min:0.5', 'max:100000000'],
             'payment_method' => ['required', Rule::in(PaymentMethod::values())],
@@ -44,7 +44,7 @@ class StorePaymentRequest extends FormRequest
             'receipt_image' => ['nullable', 'file', 'mimes:jpeg,png,jpg,webp,pdf', 'max:5120'],
             'rent_charge_id' => [
                 'nullable',
-                Rule::exists('rent_charges', 'id')->where(fn ($query) => $workspaceId ? $query->where('workspace_id', $workspaceId) : $query),
+                Rule::exists('rent_charges', 'id')->where('workspace_id', $workspaceId),
                 function (string $attribute, mixed $value, \Closure $fail) {
                     if (is_numeric($value) && $this->filled('renter_id')) {
                         $charge = RentCharge::withoutGlobalScopes()->with('lease')->find((int) $value);

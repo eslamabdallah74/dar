@@ -385,7 +385,7 @@ const openTerminateWorkflow = () => {
         terminateForm.deductions = [];
         showTerminateWithSettlementModal.value = true;
     } else {
-        terminateLeaseWithoutDeposit();
+        void terminateLeaseWithoutDeposit();
     }
 };
 

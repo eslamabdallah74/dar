@@ -48,31 +48,46 @@ class StoreSecurityDepositPaymentRequest extends FormRequest
     {
         $validator->after(function (Validator $v): void {
             $lease = $this->routeLease();
-            if (! $lease instanceof Lease) {
-                return;
-            }
-
-            if ($lease->security_deposit_status === 'settled') {
-                $v->errors()->add('amount', 'لا يمكن تسجيل دفعات تأمين لعقد تمت تسوية تأمينه بالكامل.');
-            } elseif ((float) $lease->security_deposit_amount <= 0) {
-                $v->errors()->add('amount', 'هذا العقد لا يتطلب سداد مبلغ تأمين.');
-            } elseif ((float) $lease->outstanding_deposit_amount <= 0) {
-                $v->errors()->add('amount', 'تم سداد مبلغ التأمين المتفق عليه بالكامل بالفعل.');
-            } else {
-                $amount = $this->float('amount');
-                $outstanding = (float) $lease->outstanding_deposit_amount;
-                if ($amount > $outstanding) {
-                    $formattedOutstanding = number_format($outstanding);
-                    $formattedAgreed = number_format((float) $lease->security_deposit_amount);
-                    $currency = $lease->workspace->currency ?? 'ج.م';
-
-                    $v->errors()->add(
-                        'amount',
-                        "لا يمكن سداد مبلغ أكبر من قيمة التأمين المستحقة ({$formattedOutstanding} {$currency} متبقية من إجمالي تأمين {$formattedAgreed} {$currency})."
-                    );
-                }
+            if ($lease instanceof Lease) {
+                $this->validateDepositPayment($v, $lease);
             }
         });
+    }
+
+    private function validateDepositPayment(Validator $validator, Lease $lease): void
+    {
+        if ($lease->security_deposit_status === 'settled') {
+            $validator->errors()->add('amount', 'لا يمكن تسجيل دفعات تأمين لعقد تمت تسوية تأمينه بالكامل.');
+
+            return;
+        }
+
+        $depositRequired = round((float) $lease->security_deposit_amount, 2);
+        if ($depositRequired <= 0) {
+            $validator->errors()->add('amount', 'هذا العقد لا يتطلب سداد مبلغ تأمين.');
+
+            return;
+        }
+
+        $outstanding = round((float) $lease->outstanding_deposit_amount, 2);
+        if ($outstanding <= 0) {
+            $validator->errors()->add('amount', 'تم سداد مبلغ التأمين المتفق عليه بالكامل بالفعل.');
+
+            return;
+        }
+
+        $rawAmount = $this->input('amount');
+        $amount = is_numeric($rawAmount) ? round((float) $rawAmount, 2) : 0.0;
+        if ($amount > $outstanding) {
+            $formattedOutstanding = number_format($outstanding);
+            $formattedAgreed = number_format($depositRequired);
+            $currency = $lease->workspace->currency ?? 'ج.م';
+
+            $validator->errors()->add(
+                'amount',
+                "لا يمكن سداد مبلغ أكبر من قيمة التأمين المستحقة ({$formattedOutstanding} {$currency} متبقية من إجمالي تأمين {$formattedAgreed} {$currency})."
+            );
+        }
     }
 
     /**

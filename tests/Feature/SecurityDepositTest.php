@@ -318,6 +318,67 @@ test('security deposit service locks lease and rejects payment exceeding freshly
     expect($lease->refresh()->total_deposit_received)->toBe(6000.0);
 });
 
+test('exact remaining deposit with fractional cent amounts can be paid without float precision errors', function () {
+    $lease = Lease::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'unit_id' => $this->unit->id,
+        'renter_id' => $this->renter->id,
+        'rent_amount' => 5000.00,
+        'security_deposit_amount' => 5000.00,
+        'security_deposit_status' => 'due',
+    ]);
+
+    // Pay 1,253.97 (leaving 3,746.03 which in IEEE 754 produces 3746.0299999999997)
+    $this->actingAs($this->user)->post(route('leases.security-deposit.payment', $lease->id), [
+        'amount' => 1253.97,
+        'payment_method' => 'cash',
+    ])->assertSessionHasNoErrors();
+
+    expect($lease->refresh()->outstanding_deposit_amount)->toBe(3746.03);
+
+    // Paying exact remaining 3746.03 must succeed via HTTP form request
+    $this->actingAs($this->user)->post(route('leases.security-deposit.payment', $lease->id), [
+        'amount' => 3746.03,
+        'payment_method' => 'cash',
+    ])->assertSessionHasNoErrors();
+
+    $refreshedLease = $lease->refresh();
+    expect($refreshedLease->total_deposit_received)->toBe(5000.0)
+        ->and($refreshedLease->outstanding_deposit_amount)->toBe(0.0)
+        ->and($refreshedLease->security_deposit_status)->toBe('held');
+});
+
+test('security deposit service allows paying exact remaining deposit with float residues', function () {
+    $lease = Lease::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'unit_id' => $this->unit->id,
+        'renter_id' => $this->renter->id,
+        'rent_amount' => 5000.00,
+        'security_deposit_amount' => 5000.00,
+        'security_deposit_status' => 'due',
+    ]);
+
+    $service = app(SecurityDepositService::class);
+
+    $service->recordPayment($this->workspace, $lease, [
+        'amount' => 1253.97,
+        'payment_method' => 'cash',
+    ], $this->user->id);
+
+    expect($lease->refresh()->outstanding_deposit_amount)->toBe(3746.03);
+
+    // Recording exact remainder of 3746.03 must succeed and not throw ValidationException
+    $service->recordPayment($this->workspace, $lease, [
+        'amount' => 3746.03,
+        'payment_method' => 'cash',
+    ], $this->user->id);
+
+    $refreshedLease = $lease->refresh();
+    expect($refreshedLease->total_deposit_received)->toBe(5000.0)
+        ->and($refreshedLease->outstanding_deposit_amount)->toBe(0.0)
+        ->and($refreshedLease->security_deposit_status)->toBe('held');
+});
+
 /*
 |--------------------------------------------------------------------------
 | Requirement 6: Lease settlement with full refund when no issues exist
@@ -692,6 +753,65 @@ test('13. deposit payment reversal follows an auditable process without deleting
         ->and($payment->reversed_by)->toBe($this->user->id)
         ->and($lease->total_deposit_received)->toBe(0.0)
         ->and($lease->security_deposit_status)->toBe('due');
+});
+
+test('reversing a payment that leaves exact balance for confirmed deductions succeeds without float error', function () {
+    $lease = Lease::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'unit_id' => $this->unit->id,
+        'renter_id' => $this->renter->id,
+        'rent_amount' => 5000.00,
+        'security_deposit_amount' => 5000.00,
+        'security_deposit_status' => 'due',
+    ]);
+
+    $payment1 = SecurityDepositPayment::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'recorded_by' => $this->user->id,
+        'amount' => 1253.97,
+        'paid_at' => now(),
+        'payment_method' => 'cash',
+        'reference' => 'DEP-PART-1',
+    ]);
+
+    $payment2 = SecurityDepositPayment::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'recorded_by' => $this->user->id,
+        'amount' => 3746.03,
+        'paid_at' => now(),
+        'payment_method' => 'cash',
+        'reference' => 'DEP-PART-2',
+    ]);
+
+    $settlement = SecurityDepositSettlement::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'status' => 'under_review',
+        'settled_by' => $this->user->id,
+        'total_received' => 5000.00,
+        'total_deductions' => 3746.03,
+        'total_refunded' => 0.00,
+        'refundable_balance' => 1253.97,
+    ]);
+
+    SecurityDepositDeduction::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'settlement_id' => $settlement->id,
+        'recorded_by' => $this->user->id,
+        'amount' => 3746.03,
+        'status' => 'confirmed',
+    ]);
+
+    // Reversing payment1 (1253.97) leaves exactly 3746.03, which covers the deduction of 3746.03
+    $response = $this->actingAs($this->user)->post(route('leases.security-deposit.payment.reverse', [$lease->id, $payment1->id]), [
+        'reversal_reason' => 'إلغاء دفعة زائدة لتسوية الحساب بدقة',
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    expect($payment1->refresh()->is_reversed)->toBeTrue();
 });
 
 /*
@@ -1203,4 +1323,58 @@ test('settling with null deductions key removes all existing confirmed deduction
     $lease->refresh();
     expect((float) $lease->total_deposit_deductions)->toBe(0.0)
         ->and((float) $lease->refundable_deposit_balance)->toBe(5000.0);
+});
+
+test('replacing an omitted confirmed deduction with a higher deduction within received deposit succeeds', function () {
+    $lease = Lease::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'unit_id' => $this->unit->id,
+        'renter_id' => $this->renter->id,
+        'rent_amount' => 5000.00,
+        'security_deposit_amount' => 10000.00,
+        'security_deposit_status' => 'held',
+    ]);
+
+    SecurityDepositPayment::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'amount' => 10000.00,
+    ]);
+
+    $existingDeduction = SecurityDepositDeduction::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'amount' => 5000.00,
+        'status' => 'confirmed',
+    ]);
+
+    // Omit existing 5,000 deduction and submit a new 8,000 deduction
+    $response = $this->actingAs($this->user)->post(route('leases.security-deposit.settle', $lease->id), [
+        'inspection_category' => 'major_damage',
+        'inspection_notes' => 'استبدال بند الخصم القديم ببند أضرار شامل',
+        'deductions' => [
+            [
+                'category' => 'fixture_damage',
+                'description' => 'أضرار شاملة بديلة',
+                'amount' => 8000.00,
+            ],
+        ],
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    $response->assertRedirect();
+
+    $this->assertDatabaseMissing('security_deposit_deductions', [
+        'id' => $existingDeduction->id,
+    ]);
+
+    $this->assertDatabaseHas('security_deposit_deductions', [
+        'lease_id' => $lease->id,
+        'amount' => 8000.00,
+        'status' => 'confirmed',
+    ]);
+
+    $lease->refresh();
+    expect((float) $lease->total_deposit_deductions)->toBe(8000.0)
+        ->and((float) $lease->refundable_deposit_balance)->toBe(2000.0);
 });

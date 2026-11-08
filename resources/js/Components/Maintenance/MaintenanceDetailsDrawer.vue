@@ -180,7 +180,7 @@ watch(() => [props.isOpen, props.maintenanceId], ([isOpen, id]) => {
         uploadError.value = null;
         noteError.value = null;
         newNote.value = '';
-        loadDetails();
+        void loadDetails();
     }
 }, { immediate: true });
 
@@ -189,7 +189,7 @@ const handleStatusTransition = (newStatus: 'in_progress' | 'completed' | 'pendin
     if (!details.value || isTransitioning.value) return;
 
     if (newStatus === 'completed' && !details.value.can_be_completed) {
-        confirmDialog.notice({
+        void confirmDialog.notice({
             title: 'سجّل تكلفة الصيانة أولاً',
             message: 'لا يمكن إنهاء طلب الصيانة قبل تسجيل تكلفته من صفحة المصروفات.',
         });
@@ -204,7 +204,7 @@ const handleStatusTransition = (newStatus: 'in_progress' | 'completed' | 'pendin
         preserveScroll: true,
         preserveState: true,
         onSuccess: () => {
-            loadDetails();
+            void loadDetails();
             emit('updated');
         },
         onFinish: () => {
@@ -235,7 +235,7 @@ const handleRecordExpensePayment = async () => {
         preserveScroll: true,
         preserveState: true,
         onSuccess: () => {
-            loadDetails();
+            void loadDetails();
             emit('updated');
         },
         onFinish: () => {
@@ -264,7 +264,7 @@ const handleReverseExpensePayment = async () => {
         preserveScroll: true,
         preserveState: true,
         onSuccess: () => {
-            loadDetails();
+            void loadDetails();
             emit('updated');
         },
         onFinish: () => {
@@ -285,7 +285,7 @@ watch(() => details.value?.expense?.amount, (newAmount) => {
 const handleSaveExpenseAmount = () => {
     if (!details.value?.expense?.id || isSavingCost.value) return;
     const num = Number(costAmount.value);
-    if (isNaN(num) || num < 0.5) {
+    if (Number.isNaN(num) || num < 0.5) {
         toast.error('يرجى إدخال مبلغ صحيح لتكلفة الصيانة (0.5 كحد أدنى).');
         return;
     }
@@ -299,7 +299,7 @@ const handleSaveExpenseAmount = () => {
         onSuccess: () => {
             editingCost.value = false;
             toast.success('تم حفظ تكلفة الصيانة بنجاح ويمكنك الآن إنهاء الطلب.');
-            loadDetails();
+            void loadDetails();
             emit('updated');
         },
         onError: (err) => {

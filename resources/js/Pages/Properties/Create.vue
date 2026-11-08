@@ -129,7 +129,7 @@ const imagePreviewUrl = ref<string | null>(null);
 
 function handleImageChange(event: Event) {
     const target = event.target as HTMLInputElement;
-    if (target.files && target.files[0]) {
+    if (target.files?.[0]) {
         if (imagePreviewUrl.value) {
             URL.revokeObjectURL(imagePreviewUrl.value);
             imagePreviewUrl.value = null;

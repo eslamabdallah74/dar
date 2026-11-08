@@ -248,7 +248,7 @@ const runConflictCheck = async () => {
 watch(
     () => [form.unit_id, form.starts_on, form.ends_on],
     () => {
-        runConflictCheck();
+        void runConflictCheck();
     },
     { immediate: true }
 );
@@ -399,7 +399,7 @@ const onPhoneInput = () => {
     renterErrors.value.phone = '';
     if (phoneCheckTimer) clearTimeout(phoneCheckTimer);
     phoneCheckTimer = setTimeout(() => {
-        checkPhoneExistence();
+        void checkPhoneExistence();
     }, 300);
 };
 
@@ -530,7 +530,7 @@ const submitNewRenter = async () => {
                     renterErrors.value[key] = Array.isArray(msgs) ? msgs[0] : (msgs as string);
                 }
                 if (data.errors.phone) {
-                    checkPhoneExistence();
+                    void checkPhoneExistence();
                 }
             } else {
                 renterModalError.value = data.message || 'حدث خطأ أثناء حفظ بيانات المستأجر';

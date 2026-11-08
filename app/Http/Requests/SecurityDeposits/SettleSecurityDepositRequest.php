@@ -76,6 +76,7 @@ class SettleSecurityDepositRequest extends FormRequest
             $submittedIds = collect($submittedDeductions)->pluck('id')->filter()->all();
 
             $otherExistingDeductionsTotal = (float) $lease->securityDepositDeductions()
+                ->where('status', '!=', 'confirmed')
                 ->when(! empty($submittedIds), fn ($q) => $q->whereNotIn('id', $submittedIds))
                 ->sum('amount');
 

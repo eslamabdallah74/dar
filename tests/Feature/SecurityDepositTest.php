@@ -1324,3 +1324,57 @@ test('settling with null deductions key removes all existing confirmed deduction
     expect((float) $lease->total_deposit_deductions)->toBe(0.0)
         ->and((float) $lease->refundable_deposit_balance)->toBe(5000.0);
 });
+
+test('replacing an omitted confirmed deduction with a higher deduction within received deposit succeeds', function () {
+    $lease = Lease::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'unit_id' => $this->unit->id,
+        'renter_id' => $this->renter->id,
+        'rent_amount' => 5000.00,
+        'security_deposit_amount' => 10000.00,
+        'security_deposit_status' => 'held',
+    ]);
+
+    SecurityDepositPayment::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'amount' => 10000.00,
+    ]);
+
+    $existingDeduction = SecurityDepositDeduction::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'amount' => 5000.00,
+        'status' => 'confirmed',
+    ]);
+
+    // Omit existing 5,000 deduction and submit a new 8,000 deduction
+    $response = $this->actingAs($this->user)->post(route('leases.security-deposit.settle', $lease->id), [
+        'inspection_category' => 'major_damage',
+        'inspection_notes' => 'استبدال بند الخصم القديم ببند أضرار شامل',
+        'deductions' => [
+            [
+                'category' => 'fixture_damage',
+                'description' => 'أضرار شاملة بديلة',
+                'amount' => 8000.00,
+            ],
+        ],
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    $response->assertRedirect();
+
+    $this->assertDatabaseMissing('security_deposit_deductions', [
+        'id' => $existingDeduction->id,
+    ]);
+
+    $this->assertDatabaseHas('security_deposit_deductions', [
+        'lease_id' => $lease->id,
+        'amount' => 8000.00,
+        'status' => 'confirmed',
+    ]);
+
+    $lease->refresh();
+    expect((float) $lease->total_deposit_deductions)->toBe(8000.0)
+        ->and((float) $lease->refundable_deposit_balance)->toBe(2000.0);
+});

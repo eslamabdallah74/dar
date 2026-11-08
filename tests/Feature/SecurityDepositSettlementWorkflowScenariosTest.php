@@ -5,6 +5,7 @@ use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\Property;
 use App\Models\Renter;
+use App\Models\SecurityDepositDeduction;
 use App\Models\SecurityDepositPayment;
 use App\Models\Unit;
 use App\Models\User;
@@ -259,9 +260,17 @@ test('Scenario D: Invalid deduction exceeding available deposit is strictly reje
     $lease->refresh();
     expect($lease->total_deposit_deductions)->toBe(700.0);
 
-    // Also attempt via settlement route with total exceeding available
+    $existingDeduction = SecurityDepositDeduction::where('lease_id', $lease->id)->firstOrFail();
+
+    // Also attempt via settlement route with total exceeding available (700 existing + 400 new = 1100 > 1000)
     $settleResponse = $this->actingAs($this->user)->post(route('leases.security-deposit.settle', $lease->id), [
         'deductions' => [
+            [
+                'id' => $existingDeduction->id,
+                'category' => 'unit_damage',
+                'amount' => 700.00,
+                'description' => 'تلف في أرضيات الباركيه',
+            ],
             [
                 'category' => 'cleaning',
                 'amount' => 400.00,

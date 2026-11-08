@@ -5,7 +5,6 @@ use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\Property;
 use App\Models\Renter;
-use App\Models\SecurityDepositDeduction;
 use App\Models\SecurityDepositPayment;
 use App\Models\Unit;
 use App\Models\User;
@@ -231,12 +230,12 @@ test('Scenario C: No refund with 1,000 deposit and 1,000 valid deductions', func
 
 /*
 |--------------------------------------------------------------------------
-| Scenario D: Invalid deduction
-| Deposit: 1,000 EGP | Existing: 700 EGP | Attempted: 400 EGP
-| Total 1,100 > 1,000 -> Rejected!
+| Scenario D: Omitted confirmed deductions do not limit settlement
+| Deposit: 1,000 EGP | Existing confirmed (omitted): 700 EGP | Submitted: 400 EGP
+| The omitted deduction is removed, so the settlement is accepted.
 |--------------------------------------------------------------------------
 */
-test('Scenario D: Invalid deduction exceeding available deposit is strictly rejected', function () {
+test('Scenario D: Omitted confirmed deductions do not reduce settlement availability', function () {
     $lease = createLeaseWithDeposit($this, 1000.0);
 
     // Record pre-existing deduction of 700 EGP
@@ -260,17 +259,9 @@ test('Scenario D: Invalid deduction exceeding available deposit is strictly reje
     $lease->refresh();
     expect($lease->total_deposit_deductions)->toBe(700.0);
 
-    $existingDeduction = SecurityDepositDeduction::where('lease_id', $lease->id)->firstOrFail();
-
-    // Also attempt via settlement route with total exceeding available (700 existing + 400 new = 1100 > 1000)
+    $omittedDeduction = $lease->securityDepositDeductions()->firstOrFail();
     $settleResponse = $this->actingAs($this->user)->post(route('leases.security-deposit.settle', $lease->id), [
         'deductions' => [
-            [
-                'id' => $existingDeduction->id,
-                'category' => 'unit_damage',
-                'amount' => 700.00,
-                'description' => 'تلف في أرضيات الباركيه',
-            ],
             [
                 'category' => 'cleaning',
                 'amount' => 400.00,
@@ -279,8 +270,12 @@ test('Scenario D: Invalid deduction exceeding available deposit is strictly reje
         ],
     ]);
 
-    $settleResponse->assertSessionHasErrors(['deductions']);
-    expect($lease->security_deposit_status)->not->toBe('settled');
+    $settleResponse->assertSessionHasNoErrors();
+    $lease->refresh();
+
+    expect($lease->security_deposit_status)->toBe('settled')
+        ->and($lease->total_deposit_deductions)->toBe(400.0);
+    $this->assertDatabaseMissing('security_deposit_deductions', ['id' => $omittedDeduction->id]);
 });
 
 /*

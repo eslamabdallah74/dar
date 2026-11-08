@@ -86,8 +86,12 @@ class ProcessLeaseExpirationsCommand extends Command
                 continue;
             }
 
-            $whatsAppService->queueLeaseRenewalAlert($lease, $diffInDays);
-            $dispatchedCount++;
+            try {
+                $whatsAppService->queueLeaseRenewalAlert($lease, $diffInDays);
+                $dispatchedCount++;
+            } catch (\Throwable $e) {
+                Log::error("[ProcessLeaseExpirationsCommand] Failed to queue renewal alert for lease #{$lease->id}: {$e->getMessage()}");
+            }
         }
 
         $summary = sprintf(

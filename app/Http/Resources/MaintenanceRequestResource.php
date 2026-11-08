@@ -64,9 +64,11 @@ class MaintenanceRequestResource extends JsonResource
                 'payment_status' => $expense->payment_status ?? 'unpaid',
                 'is_paid' => $isPaid,
                 'paid_at' => $expense->paid_at?->format('d/m/Y'),
-                'status_label' => ! $hasAmount
-                    ? 'بانتظار تسجيل التكلفة'
-                    : ($isPaid ? 'تم دفع المصروف' : 'التكلفة مسجلة — غير مدفوعة'),
+                'status_label' => match (true) {
+                    ! $hasAmount => 'بانتظار تسجيل التكلفة',
+                    $isPaid => 'تم دفع المصروف',
+                    default => 'التكلفة مسجلة — غير مدفوعة',
+                },
                 'is_pending_amount' => $expense->isPendingAmount(),
                 'is_ready' => $expense->isReady(),
                 'is_recorded' => $expense->isRecorded(),

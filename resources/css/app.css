@@ -35,23 +35,10 @@
         padding-right: 0.75rem;
     }
 
-    /* Arabic typography: prevent tracking-tight from breaking cursive connections */
-    [dir="rtl"] h1,
-    [dir="rtl"] h2,
-    [dir="rtl"] h3,
-    [dir="rtl"] h4,
-    [dir="rtl"] h5,
-    [dir="rtl"] h6,
-    [dir="rtl"] p,
-    [dir="rtl"] span:not(.font-mono),
-    [dir="rtl"] a,
-    [dir="rtl"] button,
-    [dir="rtl"] label,
-    [dir="rtl"] input,
-    [dir="rtl"] select,
-    [dir="rtl"] textarea {
-        letter-spacing: 0 !important;
-    }
+/* Arabic typography: prevent tracking-tight from breaking cursive connections */
+html[dir="rtl"] body :is(h1, h2, h3, h4, h5, h6, p, span:not(.font-mono), a, button, label, input, select, textarea) {
+    letter-spacing: 0;
+}
 }
 
 /* Custom scrollbar for sidebar and smooth panels */

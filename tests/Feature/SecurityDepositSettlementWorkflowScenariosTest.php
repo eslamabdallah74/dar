@@ -5,6 +5,7 @@ use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\Property;
 use App\Models\Renter;
+use App\Models\SecurityDepositDeduction;
 use App\Models\SecurityDepositPayment;
 use App\Models\Unit;
 use App\Models\User;
@@ -357,14 +358,14 @@ test('Business Rules: Unauthorized users cannot access or alter other workspace 
 
     $lease = createLeaseWithDeposit($this, 1000.0);
 
-    // Other user attempts deduction on this lease
+    // Other user attempts deduction on this lease: with tenant scoping active, foreign lease is not accessible
     $response = $this->actingAs($otherUser)->post(route('leases.security-deposit.deduction', $lease->id), [
         'category' => 'unit_damage',
         'amount' => 200.00,
         'description' => 'محاولة اختراق',
     ]);
 
-    $response->assertForbidden();
+    expect(in_array($response->status(), [403, 404], true))->toBeTrue();
 });
 
 /*

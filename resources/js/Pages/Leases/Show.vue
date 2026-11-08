@@ -38,6 +38,7 @@ import {
     Clock,
     Coins,
     FileCheck,
+    Loader2,
     RotateCcw,
     ShieldAlert,
     ShieldCheck,
@@ -763,8 +764,11 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
                     </div>
 
                     <div class="pt-3 border-t border-[#D6E0E7] flex justify-end gap-2">
-                        <button @click="showRecordPaymentModal = false" type="button" class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold cursor-pointer">إلغاء</button>
-                        <button type="submit" :disabled="paymentForm.processing" class="h-10 px-4 rounded-xl bg-[#163E3E] text-white text-xs font-bold cursor-pointer">تأكيد تسجيل الدفعة</button>
+                        <button :disabled="paymentForm.processing" @click="showRecordPaymentModal = false" type="button" class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold disabled:opacity-50 cursor-pointer">إلغاء</button>
+                        <button :disabled="paymentForm.processing" type="submit" class="h-10 px-4 rounded-xl bg-[#163E3E] text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 cursor-pointer">
+                            <Loader2 v-if="paymentForm.processing" class="w-3.5 h-3.5 animate-spin" />
+                            <span>{{ paymentForm.processing ? 'جارٍ التسجيل...' : 'تأكيد تسجيل الدفعة' }}</span>
+                        </button>
                     </div>
                 </form>
             </div>
@@ -799,8 +803,11 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
                     </div>
 
                     <div class="pt-3 border-t border-[#D6E0E7] flex justify-end gap-2">
-                        <button @click="showStartSettlementModal = false" type="button" class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold cursor-pointer">إلغاء</button>
-                        <button type="submit" class="h-10 px-4 rounded-xl bg-[#163E3E] text-white text-xs font-bold cursor-pointer">بدء التسوية</button>
+                        <button :disabled="settlementForm.processing" @click="showStartSettlementModal = false" type="button" class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold disabled:opacity-50 cursor-pointer">إلغاء</button>
+                        <button :disabled="settlementForm.processing" type="submit" class="h-10 px-4 rounded-xl bg-[#163E3E] text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 cursor-pointer">
+                            <Loader2 v-if="settlementForm.processing" class="w-3.5 h-3.5 animate-spin" />
+                            <span>{{ settlementForm.processing ? 'جارٍ البدء...' : 'بدء التسوية' }}</span>
+                        </button>
                     </div>
                 </form>
             </div>
@@ -883,8 +890,11 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
                     </div>
 
                     <div class="pt-3 border-t border-[#D6E0E7] flex justify-end gap-2">
-                        <button @click="showRecordRefundModal = false" type="button" class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold cursor-pointer">إلغاء</button>
-                        <button type="submit" class="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer">توثيق الرد الفعلي</button>
+                        <button :disabled="refundForm.processing" @click="showRecordRefundModal = false" type="button" class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold disabled:opacity-50 cursor-pointer">إلغاء</button>
+                        <button :disabled="refundForm.processing" type="submit" class="h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 cursor-pointer">
+                            <Loader2 v-if="refundForm.processing" class="w-3.5 h-3.5 animate-spin" />
+                            <span>{{ refundForm.processing ? 'جارٍ التوثيق...' : 'توثيق الرد الفعلي' }}</span>
+                        </button>
                     </div>
                 </form>
             </div>
@@ -1196,8 +1206,11 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
                     </div>
 
                     <div class="pt-3 border-t border-[#D6E0E7] flex justify-end gap-2">
-                        <button @click="showReversePaymentModal = false" type="button" class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold cursor-pointer">إلغاء</button>
-                        <button type="submit" class="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer">تأكيد عكس الدفعة</button>
+                        <button :disabled="reversePaymentForm.processing" @click="showReversePaymentModal = false" type="button" class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold disabled:opacity-50 cursor-pointer">إلغاء</button>
+                        <button :disabled="reversePaymentForm.processing" type="submit" class="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 cursor-pointer">
+                            <Loader2 v-if="reversePaymentForm.processing" class="w-3.5 h-3.5 animate-spin" />
+                            <span>{{ reversePaymentForm.processing ? 'جارٍ الإلغاء...' : 'تأكيد عكس الدفعة' }}</span>
+                        </button>
                     </div>
                 </form>
             </div>
@@ -1245,7 +1258,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
                             aria-label="تاريخ نهاية العقد الجديد"
                             v-model="extendForm.ends_on"
                             type="date"
-                            :min="lease.ends_on"
+                            :min="lease.raw_ends_on"
                             required
                             class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right font-mono"
                         />

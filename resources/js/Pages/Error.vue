@@ -77,11 +77,11 @@ function reloadPage() {
         <header class="w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
             <Link href="/" class="flex items-center gap-3 group">
                 <div class="w-10 h-10 rounded-xl bg-[#163E3E] p-2 flex items-center justify-center shadow-md transition-transform group-hover:scale-105">
-                    <ApplicationLogo size="sm" alt="Nookmat" />
+                    <ApplicationLogo size="sm" alt="Nook Mate" />
                 </div>
                 <div>
                     <span class="font-extrabold text-xl text-[#163E3E] tracking-tight">نوك مات</span>
-                    <span class="text-xs text-[#5B6770] block">Nookmat Financial & Rental Platform</span>
+                    <span class="text-xs text-[#5B6770] block">Nook Mate Financial & Rental Platform</span>
                 </div>
             </Link>
 

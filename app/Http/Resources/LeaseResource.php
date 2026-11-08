@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Enums\SecurityDepositStatus;
 use App\Models\Lease;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -55,17 +56,14 @@ class LeaseResource extends JsonResource
             },
             'security_deposit_amount' => (float) $this->security_deposit_amount,
             'security_deposit_status' => $this->security_deposit_status,
-            'security_deposit_status_label' => match ($this->security_deposit_status) {
-                'not_required' => 'غير مطلوب',
-                'due' => 'مستحق الدفع',
-                'partially_received' => 'مدفوع جزئياً',
-                'held' => 'محتجز قيد العقد',
-                'under_review' => 'قيد المراجعة',
-                'settled' => 'تمت التسوية',
-            },
+            'security_deposit_status_label' => SecurityDepositStatus::from((string) $this->security_deposit_status)->label(),
             'status' => $this->status,
             'status_label' => match ($this->status) {
-                'active' => $isPastEndDate ? 'انتهى موعده (يتطلب إجراء)' : ($isExpiringSoon ? 'ينتهي قريباً' : 'سارٍ'),
+                'active' => $this->resource instanceof Lease ? $this->resource->activeStatusLabel() : match (true) {
+                    $isPastEndDate => 'انتهى موعده (يتطلب إجراء)',
+                    $isExpiringSoon => 'ينتهي قريباً',
+                    default => 'سارٍ',
+                },
                 'expired' => 'منتهي',
                 'draft' => 'مسودة',
                 'terminated' => 'منتهي ومسوّى',

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
+import { useToast } from '@/composables/useToast';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
 import UnitDrawer from '@/Components/Common/UnitDrawer.vue';
@@ -235,14 +236,25 @@ const handleDeleteUnit = (unit: UnitItem) => {
     showDeleteModal.value = true;
 };
 
+const toast = useToast();
+
 const confirmDeleteUnit = () => {
     if (!unitToDelete.value) return;
     isDeleting.value = true;
     router.delete(route('properties.units.destroy', [props.property.id, unitToDelete.value.id]), {
-        onFinish: () => {
-            isDeleting.value = false;
+        onSuccess: () => {
             showDeleteModal.value = false;
             unitToDelete.value = null;
+        },
+        onError: (errors) => {
+            if (errors.unit) {
+                toast.error(errors.unit);
+            } else {
+                toast.fromErrors(errors);
+            }
+        },
+        onFinish: () => {
+            isDeleting.value = false;
         },
     });
 };

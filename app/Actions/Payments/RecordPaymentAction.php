@@ -47,12 +47,14 @@ class RecordPaymentAction
         );
 
         $payment = DB::transaction(function () use ($workspace, $data, $userId, $renterId, $amount, $targetChargeId, $paidAt, $recordDate) {
+            $currencySymbol = $workspace->currencySymbol();
+
             // Re-check the balance under row locks so concurrent payments cannot overpay the same charges.
             $lockedCharges = $this->obligationService->lockPayableChargesForRenter($workspace, $renterId, $paidAt);
             $lockedOutstandingBalance = round($lockedCharges->sum(fn (RentCharge $charge) => $charge->outstanding_balance), 2);
             if ($amount > $lockedOutstandingBalance) {
                 throw ValidationException::withMessages([
-                    'amount' => "تعذر إتمام العملية: المبلغ المطلوب ({$amount} ج.م) يتجاوز الرصيد المستحق المتبقي ({$lockedOutstandingBalance} ج.م) نظراً لتسجيل سداد متزامن.",
+                    'amount' => "تعذر إتمام العملية: المبلغ المطلوب ({$amount} {$currencySymbol}) يتجاوز الرصيد المستحق المتبقي ({$lockedOutstandingBalance} {$currencySymbol}) نظراً لتسجيل سداد متزامن.",
                 ]);
             }
 
@@ -73,7 +75,7 @@ class RecordPaymentAction
             // Rule 4.3: the whole amount must be absorbed by eligible obligations.
             if ($unallocatedAmount > 0.00) {
                 throw ValidationException::withMessages([
-                    'amount' => "لم يتم استيعاب كامل مبلغ الدفعة: تبقى مبلغ {$unallocatedAmount} ج.م غير مخصص لأي التزام إيجاري مؤهل.",
+                    'amount' => "لم يتم استيعاب كامل مبلغ الدفعة: تبقى مبلغ {$unallocatedAmount} {$currencySymbol} غير مخصص لأي التزام إيجاري مؤهل.",
                 ]);
             }
 

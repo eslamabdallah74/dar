@@ -6,6 +6,7 @@ use App\Models\MessageLog;
 use App\Services\WhatsAppService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -106,8 +107,11 @@ class WhatsAppController extends Controller
         $workspace = $this->resolveWorkspace($request);
 
         $validated = $request->validate([
-            'renter_id' => 'required|exists:renters,id',
-            'template_id' => 'required|string',
+            'renter_id' => [
+                'required',
+                Rule::exists('renters', 'id')->where('workspace_id', $workspace->id),
+            ],
+            'template_id' => ['required', 'string'],
         ]);
 
         $renter = $workspace->renters()->findOrFail((int) $validated['renter_id']);

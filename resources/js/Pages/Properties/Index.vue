@@ -48,7 +48,7 @@ const selectedType = ref('all');
 
 const filteredProperties = computed(() => {
     return props.properties.filter(p => {
-        const matchesSearch = p.name.includes(searchQuery.value) || (p.address && p.address.includes(searchQuery.value));
+        const matchesSearch = p.name.includes(searchQuery.value) || Boolean(p.address?.includes(searchQuery.value));
         const matchesType = selectedType.value === 'all' || p.property_type === selectedType.value;
         return matchesSearch && matchesType;
     });

@@ -271,19 +271,14 @@ class Lease extends Model
             return SecurityDepositStatus::NotRequired->value;
         }
 
-        if ($settlement?->status === SecurityDepositStatus::UnderReview->value || in_array($this->status, ['expired', 'terminated'], true)) {
-            return SecurityDepositStatus::UnderReview->value;
-        }
+        $isUnderReview = $settlement?->status === SecurityDepositStatus::UnderReview->value || in_array($this->status, ['expired', 'terminated'], true);
+        $totalReceived = $isUnderReview ? 0.0 : round($this->total_deposit_received, 2);
 
-        $totalReceived = round($this->total_deposit_received, 2);
-        if ($totalReceived <= 0) {
-            return SecurityDepositStatus::Due->value;
-        }
-
-        if ($totalReceived < $depositRequired) {
-            return SecurityDepositStatus::PartiallyReceived->value;
-        }
-
-        return SecurityDepositStatus::Held->value;
+        return match (true) {
+            $isUnderReview => SecurityDepositStatus::UnderReview->value,
+            $totalReceived <= 0 => SecurityDepositStatus::Due->value,
+            $totalReceived < $depositRequired => SecurityDepositStatus::PartiallyReceived->value,
+            default => SecurityDepositStatus::Held->value,
+        };
     }
 }

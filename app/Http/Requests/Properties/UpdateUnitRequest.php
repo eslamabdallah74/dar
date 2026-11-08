@@ -22,19 +22,11 @@ class UpdateUnitRequest extends FormRequest
         $unit = $this->route('unit');
         $workspaceId = app(CurrentWorkspace::class)->id();
 
-        if (! $property instanceof Property || ! $workspaceId) {
+        if (! $property instanceof Property || ! $workspaceId || $property->workspace_id !== $workspaceId) {
             return false;
         }
 
-        if ($property->workspace_id !== $workspaceId) {
-            return false;
-        }
-
-        if ($unit instanceof Unit && $unit->property_id !== $property->id) {
-            return false;
-        }
-
-        return true;
+        return ! ($unit instanceof Unit && $unit->property_id !== $property->id);
     }
 
     /**

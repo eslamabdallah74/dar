@@ -33,9 +33,9 @@ interface ExpenseItem {
     unit_name: string;
     notes: string;
     recorder_name: string;
-    origin: 'manual' | 'maintenance' | string;
+    origin: string;
     origin_label: string;
-    status: 'pending_amount' | 'ready' | 'recorded' | string;
+    status: string;
     status_label: string;
     is_pending_amount: boolean;
     maintenance_request_id?: number | null;
@@ -92,10 +92,12 @@ const editForm = useForm({
 
 const filteredExpenses = computed(() => {
     return props.expenses.filter(e => {
-        const matchesSearch = (e.notes && e.notes.includes(searchQuery.value))
-            || (e.title && e.title.includes(searchQuery.value))
-            || (e.category && e.category.includes(searchQuery.value))
-            || (e.property_name && e.property_name.includes(searchQuery.value));
+        const matchesSearch = Boolean(
+            e.notes?.includes(searchQuery.value)
+            || e.title?.includes(searchQuery.value)
+            || e.category?.includes(searchQuery.value)
+            || e.property_name?.includes(searchQuery.value),
+        );
 
         const matchesCat = selectedCategory.value === 'all'
             || e.category === selectedCategory.value;
@@ -121,7 +123,7 @@ const submitAdd = () => {
 
 const openEditModal = (expense: ExpenseItem) => {
     editingExpense.value = expense;
-    editForm.amount = expense.amount !== null ? expense.amount : '';
+    editForm.amount = expense.amount ?? '';
     editForm.category = expense.category;
     editForm.expense_date = expense.raw_date || new Date().toISOString().split('T')[0];
     editForm.notes = expense.notes;

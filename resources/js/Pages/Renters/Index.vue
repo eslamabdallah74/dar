@@ -142,7 +142,7 @@ const filteredRenters = computed(() => {
     return props.renters.filter(r => {
         const matchesSearch = r.name.includes(searchQuery.value)
             || r.phone.includes(searchQuery.value)
-            || (r.national_id && r.national_id.includes(searchQuery.value));
+            || Boolean(r.national_id?.includes(searchQuery.value));
 
         const matchesStatus = statusFilter.value === 'all'
             || (statusFilter.value === 'regular' && r.status === 'regular')

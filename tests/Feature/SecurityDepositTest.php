@@ -318,6 +318,67 @@ test('security deposit service locks lease and rejects payment exceeding freshly
     expect($lease->refresh()->total_deposit_received)->toBe(6000.0);
 });
 
+test('exact remaining deposit with fractional cent amounts can be paid without float precision errors', function () {
+    $lease = Lease::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'unit_id' => $this->unit->id,
+        'renter_id' => $this->renter->id,
+        'rent_amount' => 5000.00,
+        'security_deposit_amount' => 5000.00,
+        'security_deposit_status' => 'due',
+    ]);
+
+    // Pay 1,253.97 (leaving 3,746.03 which in IEEE 754 produces 3746.0299999999997)
+    $this->actingAs($this->user)->post(route('leases.security-deposit.payment', $lease->id), [
+        'amount' => 1253.97,
+        'payment_method' => 'cash',
+    ])->assertSessionHasNoErrors();
+
+    expect($lease->refresh()->outstanding_deposit_amount)->toBe(3746.03);
+
+    // Paying exact remaining 3746.03 must succeed via HTTP form request
+    $this->actingAs($this->user)->post(route('leases.security-deposit.payment', $lease->id), [
+        'amount' => 3746.03,
+        'payment_method' => 'cash',
+    ])->assertSessionHasNoErrors();
+
+    $refreshedLease = $lease->refresh();
+    expect($refreshedLease->total_deposit_received)->toBe(5000.0)
+        ->and($refreshedLease->outstanding_deposit_amount)->toBe(0.0)
+        ->and($refreshedLease->security_deposit_status)->toBe('held');
+});
+
+test('security deposit service allows paying exact remaining deposit with float residues', function () {
+    $lease = Lease::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'unit_id' => $this->unit->id,
+        'renter_id' => $this->renter->id,
+        'rent_amount' => 5000.00,
+        'security_deposit_amount' => 5000.00,
+        'security_deposit_status' => 'due',
+    ]);
+
+    $service = app(SecurityDepositService::class);
+
+    $service->recordPayment($this->workspace, $lease, [
+        'amount' => 1253.97,
+        'payment_method' => 'cash',
+    ], $this->user->id);
+
+    expect($lease->refresh()->outstanding_deposit_amount)->toBe(3746.03);
+
+    // Recording exact remainder of 3746.03 must succeed and not throw ValidationException
+    $service->recordPayment($this->workspace, $lease, [
+        'amount' => 3746.03,
+        'payment_method' => 'cash',
+    ], $this->user->id);
+
+    $refreshedLease = $lease->refresh();
+    expect($refreshedLease->total_deposit_received)->toBe(5000.0)
+        ->and($refreshedLease->outstanding_deposit_amount)->toBe(0.0)
+        ->and($refreshedLease->security_deposit_status)->toBe('held');
+});
+
 /*
 |--------------------------------------------------------------------------
 | Requirement 6: Lease settlement with full refund when no issues exist

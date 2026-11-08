@@ -43,14 +43,14 @@ class SecurityDepositService
                 ]);
             }
 
-            $depositRequired = (float) $lockedLease->security_deposit_amount;
+            $depositRequired = round((float) $lockedLease->security_deposit_amount, 2);
             if ($depositRequired <= 0) {
                 throw ValidationException::withMessages([
                     'amount' => 'هذا العقد لا يتطلب سداد مبلغ تأمين.',
                 ]);
             }
 
-            $outstanding = (float) $lockedLease->outstanding_deposit_amount;
+            $outstanding = round((float) $lockedLease->outstanding_deposit_amount, 2);
             if ($outstanding <= 0) {
                 throw ValidationException::withMessages([
                     'amount' => 'تم سداد مبلغ التأمين المتفق عليه بالكامل بالفعل.',
@@ -58,7 +58,7 @@ class SecurityDepositService
             }
 
             $rawAmount = $data['amount'] ?? 0;
-            $amount = is_numeric($rawAmount) ? (float) $rawAmount : 0.0;
+            $amount = is_numeric($rawAmount) ? round((float) $rawAmount, 2) : 0.0;
             if ($amount > $outstanding) {
                 $formattedOutstanding = number_format($outstanding);
                 $formattedAgreed = number_format($depositRequired);
@@ -255,8 +255,8 @@ class SecurityDepositService
         return DB::transaction(function () use ($lease, $deduction, $data, $attachmentFile): SecurityDepositDeduction {
             $lockedLease = $this->lockLease($lease);
 
-            $availableForDeduction = $lockedLease->refundable_deposit_balance + (float) $deduction->amount;
-            $requestedAmount = (float) $data['amount'];
+            $availableForDeduction = round($lockedLease->refundable_deposit_balance + (float) $deduction->amount, 2);
+            $requestedAmount = round((float) $data['amount'], 2);
             $currencySymbol = $lockedLease->workspace?->currencySymbol() ?? 'ج.م';
 
             if ($requestedAmount > $availableForDeduction) {
@@ -655,7 +655,7 @@ class SecurityDepositService
         $lockedLease->unsetRelation('securityDepositRefunds');
         $totalDeductions = $lockedLease->total_deposit_deductions;
         $previouslyRefunded = $lockedLease->total_deposit_refunded;
-        $remainingRefundable = max(0.0, $totalReceived - $totalDeductions - $previouslyRefunded);
+        $remainingRefundable = max(0.0, round($totalReceived - $totalDeductions - $previouslyRefunded, 2));
 
         $settlement->update([
             'settled_by' => $userId,

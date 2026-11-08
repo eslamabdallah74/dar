@@ -115,8 +115,8 @@ class SecurityDepositService
                 ]);
             }
 
-            $totalAfterReversal = $lockedLease->total_deposit_received - (float) $lockedPayment->amount;
-            $confirmedDeductionsAndRefunds = $lockedLease->total_deposit_deductions + $lockedLease->total_deposit_refunded;
+            $totalAfterReversal = round($lockedLease->total_deposit_received - (float) $lockedPayment->amount, 2);
+            $confirmedDeductionsAndRefunds = round($lockedLease->total_deposit_deductions + $lockedLease->total_deposit_refunded, 2);
 
             if ($totalAfterReversal < $confirmedDeductionsAndRefunds) {
                 throw ValidationException::withMessages([

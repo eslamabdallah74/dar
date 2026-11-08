@@ -755,6 +755,65 @@ test('13. deposit payment reversal follows an auditable process without deleting
         ->and($lease->security_deposit_status)->toBe('due');
 });
 
+test('reversing a payment that leaves exact balance for confirmed deductions succeeds without float error', function () {
+    $lease = Lease::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'unit_id' => $this->unit->id,
+        'renter_id' => $this->renter->id,
+        'rent_amount' => 5000.00,
+        'security_deposit_amount' => 5000.00,
+        'security_deposit_status' => 'due',
+    ]);
+
+    $payment1 = SecurityDepositPayment::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'recorded_by' => $this->user->id,
+        'amount' => 1253.97,
+        'paid_at' => now(),
+        'payment_method' => 'cash',
+        'reference' => 'DEP-PART-1',
+    ]);
+
+    $payment2 = SecurityDepositPayment::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'recorded_by' => $this->user->id,
+        'amount' => 3746.03,
+        'paid_at' => now(),
+        'payment_method' => 'cash',
+        'reference' => 'DEP-PART-2',
+    ]);
+
+    $settlement = SecurityDepositSettlement::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'status' => 'under_review',
+        'settled_by' => $this->user->id,
+        'total_received' => 5000.00,
+        'total_deductions' => 3746.03,
+        'total_refunded' => 0.00,
+        'refundable_balance' => 1253.97,
+    ]);
+
+    SecurityDepositDeduction::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'lease_id' => $lease->id,
+        'settlement_id' => $settlement->id,
+        'recorded_by' => $this->user->id,
+        'amount' => 3746.03,
+        'status' => 'confirmed',
+    ]);
+
+    // Reversing payment1 (1253.97) leaves exactly 3746.03, which covers the deduction of 3746.03
+    $response = $this->actingAs($this->user)->post(route('leases.security-deposit.payment.reverse', [$lease->id, $payment1->id]), [
+        'reversal_reason' => 'إلغاء دفعة زائدة لتسوية الحساب بدقة',
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    expect($payment1->refresh()->is_reversed)->toBeTrue();
+});
+
 /*
 |--------------------------------------------------------------------------
 | Requirement 15: Workspace Isolation

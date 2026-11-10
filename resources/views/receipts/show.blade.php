@@ -202,9 +202,13 @@
 </head>
 <body>
     <div class="actions-bar no-print">
+        @if(!($isPublicGuest ?? false))
         <a href="{{ url()->previous() }}" class="btn btn-outline">
             <span>← العودة للنظام</span>
         </a>
+        @else
+        <div></div>
+        @endif
         <div style="display: flex; gap: 10px;">
             <button onclick="window.print()" class="btn btn-primary">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

@@ -9,8 +9,12 @@ use App\Models\Renter;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Queue;
+use Tests\TestCase;
+
+uses(TestCase::class, DatabaseTransactions::class);
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -175,7 +179,7 @@ test('check overdue command scans past due unpaid charges and notifies renter', 
         'amount' => 5000,
     ]);
 
-    expect(Artisan::call('dar:check-overdue'))->toBe(0);
+    expect(Artisan::call('dar:check-overdue', ['--workspace' => $this->workspace->id]))->toBe(0);
 
     $charge->refresh();
     expect($charge->is_overdue)->toBeTrue()

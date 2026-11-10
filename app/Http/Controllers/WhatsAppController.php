@@ -34,6 +34,7 @@ class WhatsAppController extends Controller
                         default => $log->template_name,
                     },
                     'status' => $log->status,
+                    'error_message' => $log->error_message,
                     'status_label' => match ($log->status) {
                         'delivered' => 'تم التسليم والقراءة',
                         'sent' => 'تم الإرسال',
@@ -95,7 +96,7 @@ class WhatsAppController extends Controller
             ],
             'connection' => [
                 'is_connected' => $hasCredentials,
-                'sender_number' => config('services.whatsapp.phone_number') ?? ($hasCredentials ? '+20 10 1234 5678' : 'غير مهيأ'),
+                'sender_number' => config('services.whatsapp.phone_number') ?? ($hasCredentials ? 'حساب Meta الرسمي المعتمد' : 'غير مهيأ'),
                 'provider' => 'WhatsApp Cloud API الرسمية (Meta)',
                 'status_label' => $hasCredentials ? 'متصل ونشط' : 'بانتظار ضبط مفاتيح الربط (WHATSAPP_API_TOKEN)',
             ],
@@ -115,20 +116,52 @@ class WhatsAppController extends Controller
         ]);
 
         $renter = $workspace->renters()->findOrFail((int) $validated['renter_id']);
+        $currencySymbol = $workspace->currencySymbol();
 
-        $log = $whatsAppService->send(
-            workspaceId: $workspace->id,
-            renterId: $renter->id,
-            phone: $renter->phone,
-            templateName: $validated['template_id'],
-            parameters: [
+        $parameters = match ($validated['template_id']) {
+            'payment_receipt_instant_ar' => [
                 'renter_name' => $renter->name,
-                'unit' => 'الوحدة',
-                'amount' => '5,000',
+                'amount' => "1,500 {$currencySymbol}",
+                'receipt_no' => 'REC-TEST-'.rand(100, 999),
+                'link' => url('/'),
+            ],
+            'rent_due_reminder_ar' => [
+                'renter_name' => $renter->name,
+                'unit' => 'الوحدة التجريبية',
+                'amount' => "5,000 {$currencySymbol}",
                 'due_date' => now()->addDays(3)->format('d/m/Y'),
             ],
-            deduplicationKey: 'manual_test_'.time().'_'.$renter->id
-        );
+            'overdue_notice_ar' => [
+                'renter_name' => $renter->name,
+                'unit' => 'الوحدة التجريبية',
+                'due_date' => now()->subDays(5)->format('d/m/Y'),
+                'amount' => "5,000 {$currencySymbol}",
+            ],
+            'contract_renewal_ar' => [
+                'renter_name' => $renter->name,
+                'unit' => 'الوحدة التجريبية',
+                'end_date' => now()->addDays(30)->format('d/m/Y'),
+            ],
+            default => [
+                'renter_name' => $renter->name,
+                'unit' => 'الوحدة التجريبية',
+                'amount' => "5,000 {$currencySymbol}",
+                'due_date' => now()->addDays(3)->format('d/m/Y'),
+            ],
+        };
+
+        try {
+            $log = $whatsAppService->send(
+                workspaceId: $workspace->id,
+                renterId: $renter->id,
+                phone: $renter->phone,
+                templateName: $validated['template_id'],
+                parameters: $parameters,
+                deduplicationKey: 'manual_test_'.time().'_'.$renter->id
+            );
+        } catch (\Throwable $e) {
+            return back()->with('warning', 'تعذر إتمام الإرسال: '.$e->getMessage());
+        }
 
         if ($log && in_array($log->status, ['sent', 'delivered'], true)) {
             return back()->with('success', 'تم إرسال رسالة WhatsApp بنجاح عبر بوابة Meta Cloud API');

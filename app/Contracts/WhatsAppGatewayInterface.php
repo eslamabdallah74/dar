@@ -13,7 +13,7 @@ interface WhatsAppGatewayInterface
      *
      * @param  string  $toPhone  International format
      * @param  string  $templateName  Template identifier registered on Meta
-     * @param  array<string, mixed>  $parameters  Key-value replacements for template body variables
+     * @param  array<array-key, mixed>  $parameters  Key-value replacements for template body variables
      * @return array{success: bool, provider_message_id: ?string, status: string, error_message: ?string}
      */
     public function sendTemplate(string $toPhone, string $templateName, array $parameters = []): array;

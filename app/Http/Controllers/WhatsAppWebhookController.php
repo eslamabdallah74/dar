@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\MessageLog;
+use App\Models\Renter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -56,6 +57,10 @@ class WhatsAppWebhookController extends Controller
 
         foreach ($this->deliveryStatuses($request->all()) as $statusItem) {
             $this->applyDeliveryStatus($statusItem);
+        }
+
+        foreach ($this->inboundMessages($request->all()) as $messageItem) {
+            $this->applyInboundMessage($messageItem);
         }
 
         return response()->json(['status' => 'EVENT_RECEIVED']);
@@ -125,5 +130,135 @@ class WhatsAppWebhookController extends Controller
         $log->update($updates);
 
         Log::info("[WhatsApp Webhook Status Updated] ID: {$providerMessageId} -> {$mappedStatus}");
+    }
+
+    /**
+     * Meta nests inbound messages as entry[].changes[].value.messages[].
+     *
+     * @param  array<string, mixed>  $payload
+     * @return iterable<int, array<string, mixed>>
+     */
+    private function inboundMessages(array $payload): iterable
+    {
+        $entries = is_array($payload['entry'] ?? null) ? $payload['entry'] : [];
+
+        foreach ($entries as $entry) {
+            if (is_array($entry)) {
+                yield from $this->extractEntryMessages($entry);
+            }
+        }
+    }
+
+    /**
+     * @param  array<mixed, mixed>  $entry
+     * @return iterable<int, array<string, mixed>>
+     */
+    private function extractEntryMessages(array $entry): iterable
+    {
+        $changes = is_array($entry['changes'] ?? null) ? $entry['changes'] : [];
+
+        foreach ($changes as $change) {
+            if (! is_array($change) || ! is_array($change['value'] ?? null)) {
+                continue;
+            }
+
+            $messages = is_array($change['value']['messages'] ?? null) ? $change['value']['messages'] : [];
+            foreach ($messages as $message) {
+                if (is_array($message)) {
+                    /** @var array<string, mixed> $typedMessage */
+                    $typedMessage = $message;
+                    yield $typedMessage;
+                }
+            }
+        }
+    }
+
+    /**
+     * Extract plain text content from a Meta inbound message item.
+     *
+     * @param  array<string, mixed>  $messageItem
+     */
+    private function extractInboundText(array $messageItem): string
+    {
+        $messageType = is_string($messageItem['type'] ?? null) ? $messageItem['type'] : '';
+
+        if ($messageType === 'text' && is_array($messageItem['text'] ?? null)) {
+            $body = $messageItem['text']['body'] ?? '';
+
+            return is_string($body) ? trim($body) : '';
+        }
+
+        if ($messageType === 'button' && is_array($messageItem['button'] ?? null)) {
+            $text = $messageItem['button']['text'] ?? '';
+
+            return is_string($text) ? trim($text) : '';
+        }
+
+        return '';
+    }
+
+    /**
+     * Handle incoming renter replies such as STOP / UNSUBSCRIBE for compliance.
+     *
+     * @param  array<string, mixed>  $messageItem
+     */
+    private function applyInboundMessage(array $messageItem): void
+    {
+        $senderPhone = is_string($messageItem['from'] ?? null) ? $messageItem['from'] : '';
+        $textBody = $this->extractInboundText($messageItem);
+
+        if (empty($senderPhone) || empty($textBody)) {
+            return;
+        }
+
+        $normalized = (string) preg_replace('/\D+/', '', $senderPhone);
+        $upperText = mb_strtoupper($textBody, 'UTF-8');
+
+        $optOutKeywords = [
+            'STOP', 'UNSUBSCRIBE', 'CANCEL', 'QUIT', 'END',
+            'توقف', 'الغاء', 'إلغاء', 'خروج', 'ايقاف', 'إيقاف',
+        ];
+
+        $optInKeywords = [
+            'START', 'UNSTOP', 'YES',
+            'بدء', 'تفعيل', 'اشتراك', 'استمرار',
+        ];
+
+        if (in_array($upperText, $optOutKeywords, true)) {
+            $this->applyRenterOptOut($senderPhone, $normalized);
+        } elseif (in_array($upperText, $optInKeywords, true)) {
+            $this->applyRenterOptIn($senderPhone, $normalized);
+        }
+    }
+
+    private function applyRenterOptOut(string $senderPhone, string $normalized): void
+    {
+        $affected = Renter::withoutGlobalScopes()
+            ->where(function ($query) use ($normalized, $senderPhone) {
+                $query->where('phone', 'like', "%{$normalized}%")
+                    ->orWhere('phone', 'like', "%{$senderPhone}%");
+            })
+            ->whereNull('whatsapp_opted_out_at')
+            ->update([
+                'whatsapp_opted_out_at' => now(),
+            ]);
+
+        Log::info("[WhatsApp Inbound Opt-Out] Processed opt-out for sender: {$senderPhone} (Updated: {$affected} renters)");
+    }
+
+    private function applyRenterOptIn(string $senderPhone, string $normalized): void
+    {
+        $affected = Renter::withoutGlobalScopes()
+            ->where(function ($query) use ($normalized, $senderPhone) {
+                $query->where('phone', 'like', "%{$normalized}%")
+                    ->orWhere('phone', 'like', "%{$senderPhone}%");
+            })
+            ->whereNotNull('whatsapp_opted_out_at')
+            ->update([
+                'whatsapp_opted_out_at' => null,
+                'whatsapp_opt_in_at' => now(),
+            ]);
+
+        Log::info("[WhatsApp Inbound Opt-In] Processed re-opt-in for sender: {$senderPhone} (Updated: {$affected} renters)");
     }
 }

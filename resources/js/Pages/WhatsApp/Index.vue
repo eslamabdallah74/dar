@@ -30,6 +30,7 @@ interface LogItem {
     template_name: string;
     status: string;
     status_label: string;
+    error_message?: string | null;
     scheduled_at: string;
     sent_at: string;
 }
@@ -250,6 +251,9 @@ const sendTestMessage = () => {
                                 </td>
                                 <td class="py-4 px-6">
                                     <StatusBadge :status="log.status" :label="log.status_label" size="sm" />
+                                    <p v-if="log.status === 'failed' && log.error_message" class="text-[11px] text-rose-600 mt-1 max-w-xs truncate" :title="log.error_message">
+                                        {{ log.error_message }}
+                                    </p>
                                 </td>
                             </tr>
                         </tbody>

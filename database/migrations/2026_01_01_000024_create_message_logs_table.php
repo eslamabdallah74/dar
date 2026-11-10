@@ -11,12 +11,11 @@ return new class extends Migration
         Schema::create('message_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('workspace_id')->constrained()->restrictOnDelete();
-            $table->foreignId('renter_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('renter_id')->constrained()->restrictOnDelete();
             $table->foreignId('lease_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('rent_charge_id')->nullable()->constrained()->nullOnDelete();
             $table->string('recipient_phone', 20);
             $table->string('template_name', 100);
-            $table->json('payload_parameters')->nullable();
             $table->timestamp('scheduled_at')->index();
             $table->timestamp('sent_at')->nullable();
             $table->string('status', 50)->default('pending')->index();

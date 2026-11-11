@@ -65,7 +65,7 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * @return array{id: int, name: string, email: string, locale: string, is_admin: bool, role_key: string, role: string}|null
+     * @return array{id: int, name: string, email: string, is_admin: bool, role_key: string, role: string}|null
      */
     private function transformUser(?User $user): ?array
     {
@@ -79,7 +79,6 @@ class HandleInertiaRequests extends Middleware
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
-            'locale' => $user->locale,
             'is_admin' => $isAdmin,
             'role_key' => $isAdmin ? 'admin' : 'owner',
             'role' => $isAdmin ? __('roles.admin') : __('roles.owner'),

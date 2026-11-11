@@ -9,10 +9,10 @@ use App\Services\WhatsAppService;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Queue;
 
-test('set user locale middleware sets app locale for authenticated user', function () {
-    $user = User::factory()->create(['locale' => 'en']);
+test('set user locale middleware sets app locale from session for authenticated user', function () {
+    $user = User::factory()->create();
 
-    $response = $this->actingAs($user)->get('/');
+    $response = $this->actingAs($user)->withSession(['locale' => 'en'])->get('/');
     $response->assertOk();
 
     expect(App::getLocale())->toBe('en');
@@ -27,31 +27,35 @@ test('set user locale middleware falls back to session or ar default for guests'
     expect(App::getLocale())->toBe('en');
 });
 
-test('locale switch endpoint updates user locale and session', function () {
-    $user = User::factory()->create(['locale' => 'ar']);
+test('locale switch endpoint updates session locale', function () {
+    $user = User::factory()->create();
 
     $response = $this->actingAs($user)->post(route('user.locale'), [
         'locale' => 'en',
     ]);
 
     $response->assertRedirect();
-    $fresh = $user->fresh();
-    expect($fresh)->toBeInstanceOf(User::class)
-        ->and($fresh?->locale)->toBe('en')
-        ->and(session('locale'))->toBe('en');
+    expect(session('locale'))->toBe('en');
+});
+
+test('locale switch endpoint works for guest users too', function () {
+    $response = $this->post(route('user.locale'), [
+        'locale' => 'en',
+    ]);
+
+    $response->assertRedirect();
+    expect(session('locale'))->toBe('en');
 });
 
 test('locale switch endpoint rejects unsupported locales', function () {
-    $user = User::factory()->create(['locale' => 'ar']);
+    $user = User::factory()->create();
 
     $response = $this->actingAs($user)->post(route('user.locale'), [
         'locale' => 'fr',
     ]);
 
     $response->assertSessionHasErrors(['locale']);
-    $fresh = $user->fresh();
-    expect($fresh)->toBeInstanceOf(User::class)
-        ->and($fresh?->locale)->toBe('ar');
+    expect(session('locale'))->toBeNull();
 });
 
 test('whatsapp service resolves template suffix dynamically based on workspace setting', function () {
@@ -107,12 +111,12 @@ test('settings controller updates workspace whatsapp message language preference
 });
 
 test('handle inertia requests shares locale and dir', function () {
-    $userAr = User::factory()->create(['locale' => 'ar']);
+    $userAr = User::factory()->create();
     $workspaceAr = Workspace::factory()->create(['owner_user_id' => $userAr->id]);
     $workspaceAr->users()->attach($userAr->id, ['role' => 'owner']);
 
     $responseAr = $this->actingAs($userAr)
-        ->withSession(['current_workspace_id' => $workspaceAr->id])
+        ->withSession(['current_workspace_id' => $workspaceAr->id, 'locale' => 'ar'])
         ->get(route('dashboard'));
     $responseAr->assertOk();
     $responseAr->assertInertia(fn ($page) => $page
@@ -120,12 +124,12 @@ test('handle inertia requests shares locale and dir', function () {
         ->where('dir', 'rtl')
     );
 
-    $userEn = User::factory()->create(['locale' => 'en']);
+    $userEn = User::factory()->create();
     $workspaceEn = Workspace::factory()->create(['owner_user_id' => $userEn->id]);
     $workspaceEn->users()->attach($userEn->id, ['role' => 'owner']);
 
     $responseEn = $this->actingAs($userEn)
-        ->withSession(['current_workspace_id' => $workspaceEn->id])
+        ->withSession(['current_workspace_id' => $workspaceEn->id, 'locale' => 'en'])
         ->get(route('dashboard'));
     $responseEn->assertOk();
     $responseEn->assertInertia(fn ($page) => $page

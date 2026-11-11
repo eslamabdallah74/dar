@@ -77,10 +77,6 @@ Route::post('/user/locale', function (Request $request) {
     $locale = $validated['locale'];
     $request->session()->put('locale', $locale);
 
-    if ($request->user()) {
-        $request->user()->update(['locale' => $locale]);
-    }
-
     return back();
 })->name('user.locale');
 

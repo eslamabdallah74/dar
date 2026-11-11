@@ -22,6 +22,7 @@ use App\Support\CurrentWorkspace;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 Route::get('/', function () {
@@ -66,6 +67,22 @@ Route::get('/sitemap.xml', function () {
         'Cache-Control' => 'public, max-age=3600',
     ]);
 });
+
+Route::post('/user/locale', function (Request $request) {
+    $validated = $request->validate([
+        'locale' => ['required', 'string', Rule::in(['ar', 'en'])],
+    ]);
+
+    /** @var string $locale */
+    $locale = $validated['locale'];
+    $request->session()->put('locale', $locale);
+
+    if ($request->user()) {
+        $request->user()->update(['locale' => $locale]);
+    }
+
+    return back();
+})->name('user.locale');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/workspaces/switch', function (Request $request) {

@@ -25,6 +25,7 @@ class WorkspaceFactory extends Factory
             'parent_unit_limit' => 1,
             'active_rental_limit' => 1,
             'rent_reminder_days_before' => 5,
+            'whatsapp_message_language' => 'ar',
         ];
     }
 

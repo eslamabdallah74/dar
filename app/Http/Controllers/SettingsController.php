@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\WhatsAppMessageLanguage;
 use App\Rules\EgyptianPhoneNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -30,6 +32,9 @@ class SettingsController extends Controller
                 'due_reminder_days_before' => (int) ($workspace->rent_reminder_days_before ?? 2),
                 'overdue_warning_days_after' => (int) ($workspace->overdue_warning_days_after ?? 5),
                 'weekly_summary_report' => (bool) $workspace->weekly_summary_report,
+                'whatsapp_message_language' => $workspace->whatsapp_message_language instanceof WhatsAppMessageLanguage
+                    ? $workspace->whatsapp_message_language->value
+                    : (string) ($workspace->whatsapp_message_language ?? 'ar'),
             ],
         ]);
     }
@@ -50,6 +55,7 @@ class SettingsController extends Controller
             'due_reminder_days_before' => 'nullable|integer|min:0|max:30',
             'overdue_warning_days_after' => 'nullable|integer|min:0|max:60',
             'weekly_summary_report' => 'nullable|boolean',
+            'whatsapp_message_language' => ['nullable', 'string', Rule::in(['ar', 'en'])],
         ], [
             'name.min' => 'يجب ألا يقل اسم المنشأة عن 3 أحرف.',
         ]);
@@ -63,6 +69,6 @@ class SettingsController extends Controller
 
         $workspace->update($updates);
 
-        return back()->with('success', 'تم حفظ إعدادات وتفضيلات المنشأة بنجاح');
+        return back()->with('success', __('workspace.settings_saved'));
     }
 }

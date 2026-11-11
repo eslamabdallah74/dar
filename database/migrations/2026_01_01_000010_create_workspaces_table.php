@@ -31,6 +31,7 @@ return new class extends Migration
             $table->boolean('auto_instant_receipts')->default(true);
             $table->unsignedTinyInteger('overdue_warning_days_after')->default(5);
             $table->boolean('weekly_summary_report')->default(true);
+            $table->string('whatsapp_message_language', 10)->default('ar');
             $table->timestamps();
         });
     }

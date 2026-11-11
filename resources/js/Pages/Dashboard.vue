@@ -260,7 +260,7 @@ function submitPlanChangeRequest() {
 
 <template>
     <AppLayout
-        title="الرئيسية — Nook Mate لإدارة العقارات"
+        :title="`${$t('nav.dashboard')} — Nook Mate`"
         active-tab="dashboard"
     >
         <!-- قسم الترحيب الرئيسي (Welcome Hero Section) -->
@@ -280,20 +280,20 @@ function submitPlanChangeRequest() {
                         <button
                             type="button"
                             @click="addProperty"
-                            class="h-11 px-5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-sm font-bold transition shadow-xs flex items-center justify-center gap-2"
+                            class="h-11 px-5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-sm font-bold transition shadow-xs flex items-center justify-center gap-2 cursor-pointer"
                         >
                             <Plus class="h-4 w-4 stroke-[2.5]" />
-                            <span>إضافة عقار جديد</span>
+                            <span>{{ $t('dashboard.add_property') }}</span>
                         </button>
 
                         <!-- زر تسجيل دفعة السريع -->
                         <button
                             @click="handleRecordPayment()"
                             type="button"
-                            class="h-11 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F8FAFC] text-[#163E3E] text-sm font-semibold transition shadow-2xs flex items-center justify-center gap-2"
+                            class="h-11 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F8FAFC] text-[#163E3E] text-sm font-semibold transition shadow-2xs flex items-center justify-center gap-2 cursor-pointer"
                         >
                             <Coins class="h-4 w-4 text-[#163E3E]" />
-                            <span>تسجيل دفعة</span>
+                            <span>{{ $t('dashboard.record_payment') }}</span>
                         </button>
                     </div>
                 </div>
@@ -305,7 +305,7 @@ function submitPlanChangeRequest() {
                 />
 
                 <!-- بطاقة باقة المنشأة الحالية وطلب التغيير -->
-                <div class="rounded-2xl border border-[#D6E0E7] bg-white p-4 sm:p-5 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4" dir="rtl">
+                <div class="rounded-2xl border border-[#D6E0E7] bg-white p-4 sm:p-5 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div class="flex items-start sm:items-center gap-3.5">
                         <div class="w-11 h-11 rounded-2xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center shrink-0">
                             <Crown class="w-6 h-6" />

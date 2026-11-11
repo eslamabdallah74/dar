@@ -61,10 +61,10 @@ const sendTestMessage = () => {
 
 <template>
     <AppLayout
-        title="تذكيرات WhatsApp — Nook Mate"
+        :title="`${$t('whatsapp.title')} — Nook Mate`"
         active-tab="whatsapp"
-        header-title="تذكيرات وإشعارات WhatsApp"
-        header-subtitle="إدارة قوالب الرسائل التلقائية، سندات القبض الفورية وسجل الرسائل المرسلة"
+        :header-title="$t('whatsapp.title')"
+        :header-subtitle="$t('whatsapp.subtitle')"
         breadcrumb="WhatsApp"
     >
         <template #actions>
@@ -74,39 +74,37 @@ const sendTestMessage = () => {
                 class="h-11 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold transition shadow-xs flex items-center gap-2 cursor-pointer"
             >
                 <Send class="h-4 w-4" />
-                <span>إرسال رسالة تجريبية</span>
+                <span>{{ $t('whatsapp.test_send') }}</span>
             </button>
         </template>
 
         <!-- كروت مؤشرات WhatsApp (4 KPIs) -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
-                <span class="text-xs font-semibold text-[#5B6770]">إجمالي الرسائل المرسلة</span>
+                <span class="text-xs font-semibold text-[#5B6770]">{{ $t('whatsapp.stats_sent') }}</span>
                 <div class="flex items-baseline justify-between">
                     <span class="text-2xl font-bold text-[#163E3E] font-mono">{{ stats.total_sent }}</span>
-                    <span class="text-xs text-[#163E3E] font-medium">إشعار وتذكير</span>
                 </div>
             </div>
 
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
-                <span class="text-xs font-semibold text-[#5B6770]">نسبة التسليم والقراءة</span>
+                <span class="text-xs font-semibold text-[#5B6770]">{{ $t('whatsapp.stats_delivered_rate') }}</span>
                 <div class="flex items-baseline justify-between">
                     <span class="text-2xl font-bold text-emerald-700 font-mono">{{ stats.delivered_rate }}%</span>
                 </div>
             </div>
 
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
-                <span class="text-xs font-semibold text-[#5B6770]">القوالب النشطة تلقائياً</span>
+                <span class="text-xs font-semibold text-[#5B6770]">{{ $t('whatsapp.stats_active_templates') }}</span>
                 <div class="flex items-baseline justify-between">
                     <span class="text-2xl font-bold text-[#163E3E] font-mono">{{ stats.active_templates }}</span>
-                    <span class="text-xs text-[#5B6770]">قوالب معتمدة</span>
                 </div>
             </div>
 
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
-                <span class="text-xs font-semibold text-[#5B6770]">متوسط سرعة الإرسال</span>
+                <span class="text-xs font-semibold text-[#5B6770]">{{ stats.delivered_rate > 0 ? (stats.delivered_rate + '%') : '—' }}</span>
                 <div class="flex items-baseline justify-between">
-                    <span class="text-2xl font-bold text-[#163E3E] font-mono">1.2 <span class="text-xs font-sans font-normal text-[#5B6770]">ثانية</span></span>
+                    <span class="text-xs font-semibold text-emerald-700 font-mono">{{ connection.status_label }}</span>
                 </div>
             </div>
         </div>

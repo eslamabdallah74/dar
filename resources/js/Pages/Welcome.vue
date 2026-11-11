@@ -2,6 +2,8 @@
 import { ref } from 'vue';
 import { Head, Link } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import LanguageSwitcher from '@/Components/Common/LanguageSwitcher.vue';
+import { useLocale } from '@/composables/useLocale';
 
 defineProps<{
     canLogin?: boolean;
@@ -9,6 +11,8 @@ defineProps<{
     laravelVersion?: string;
     phpVersion?: string;
 }>();
+
+const { dir, isRtl } = useLocale();
 
 // FAQ Accordion State
 const activeFaq = ref<number | null>(0);
@@ -22,14 +26,14 @@ const mobileMenuOpen = ref(false);
 
 <template>
     <Head>
-        <title>Nook Mate — إدارة ممتلكاتك، بكل سهولة</title>
-        <meta name="description" content="Nook Mate — إدارة ممتلكاتك، بكل سهولة. منصة سحابية لإدارة وتأجير العقارات والشقق والغرف والأسرة بنظام الصناديق المتداخلة." />
-        <meta property="og:title" content="Nook Mate — إدارة ممتلكاتك، بكل سهولة" />
-        <meta property="og:description" content="أدر عقاراتك، وحداتك، غرفك وأسرتك مع تذكيرات واتساب التلقائية وسندات القبض الفورية." />
+        <title>{{ isRtl ? 'Nook Mate — إدارة ممتلكاتك، بكل سهولة' : 'Nook Mate — Smart Rental & Property Management' }}</title>
+        <meta name="description" :content="isRtl ? 'Nook Mate — إدارة ممتلكاتك، بكل سهولة. منصة سحابية لإدارة وتأجير العقارات والشقق والغرف والأسرة بنظام الصناديق المتداخلة.' : 'Nook Mate — Smart property and rental management platform for apartments, rooms, and student housing.'" />
+        <meta property="og:title" :content="isRtl ? 'Nook Mate — إدارة ممتلكاتك، بكل سهولة' : 'Nook Mate — Smart Rental & Property Management'" />
+        <meta property="og:description" :content="isRtl ? 'أدر عقاراتك، وحداتك، غرفك وأسرتك مع تذكيرات واتساب التلقائية وسندات القبض الفورية.' : 'Manage properties, units, and leases with automated WhatsApp reminders and instant receipts.'" />
         <meta property="og:image" content="/images/logo.png" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Nook Mate — إدارة ممتلكاتك، بكل سهولة" />
-        <meta name="twitter:description" content="منصة سحابية متكاملة لإدارة وتأجير العقارات، عقود الإيجار، وسندات القبض مع تذكيرات واتساب." />
+        <meta name="twitter:title" :content="isRtl ? 'Nook Mate — إدارة ممتلكاتك، بكل سهولة' : 'Nook Mate — Smart Rental & Property Management'" />
+        <meta name="twitter:description" :content="isRtl ? 'منصة سحابية متكاملة لإدارة وتأجير العقارات، عقود الإيجار، وسندات القبض مع تذكيرات واتساب.' : 'Comprehensive cloud platform for property management, leases, and receipts with WhatsApp automation.'" />
         <meta name="twitter:image" content="/images/logo.png" />
 
         <!-- Structured Data (JSON-LD) -->
@@ -143,7 +147,7 @@ const mobileMenuOpen = ref(false);
         </component>
     </Head>
 
-    <div class="min-h-screen bg-[#F8F4EA] text-[#334155] font-sans selection:bg-[#F7C33D] selection:text-[#163E3E]" dir="rtl">
+    <div class="min-h-screen bg-[#F8F4EA] text-[#334155] font-sans selection:bg-[#F7C33D] selection:text-[#163E3E]" :dir="dir">
         <!-- ========================================== -->
         <!-- 1. NAVIGATION BAR (Nav)                    -->
         <!-- ========================================== -->
@@ -156,34 +160,36 @@ const mobileMenuOpen = ref(false);
                             <div class="w-12 h-12 rounded-2xl bg-white flex items-center justify-center p-1.5 shadow-md border border-[#E2DDD2] group-hover:scale-105 group-hover:shadow-lg transition-all shrink-0">
                                 <ApplicationLogo size="sm" alt="Nook Mate" />
                             </div>
-                            <div class="flex flex-col text-right">
+                            <div class="flex flex-col text-start">
                                 <div dir="ltr" class="flex items-center gap-1.5 tracking-tight font-black text-2xl font-montserrat">
                                     <span class="text-[#163E3E]">Nook</span><span class="text-[#F7C33D]">Mate</span>
                                 </div>
-                                <span class="text-[10px] font-medium text-[#5B6770] font-poppins -mt-0.5">إدارة ممتلكاتك، بكل سهولة</span>
+                                <span class="text-[10px] font-medium text-[#5B6770] font-poppins -mt-0.5">{{ $t('nav.tagline') }}</span>
                             </div>
                         </Link>
 
                         <!-- Desktop Navigation Links -->
                         <nav class="hidden md:flex items-center gap-7 text-[15px] font-semibold text-[#5B6770]">
-                            <a href="#concept" class="hover:text-[#163E3E] transition-colors">نظام الصناديق المتداخلة</a>
-                            <a href="#features" class="hover:text-[#163E3E] transition-colors">المميزات</a>
-                            <a href="#how-it-works" class="hover:text-[#163E3E] transition-colors">كيف يعمل</a>
-                            <a href="#pricing" class="hover:text-[#163E3E] transition-colors">الأسعار</a>
-                            <a href="#faq" class="hover:text-[#163E3E] transition-colors">الأسئلة الشائعة</a>
-                            <a href="#contact" class="hover:text-[#163E3E] transition-colors">تواصل معنا</a>
+                            <a href="#concept" class="hover:text-[#163E3E] transition-colors">{{ isRtl ? 'نظام الصناديق المتداخلة' : 'Nested Units' }}</a>
+                            <a href="#features" class="hover:text-[#163E3E] transition-colors">{{ isRtl ? 'المميزات' : 'Features' }}</a>
+                            <a href="#how-it-works" class="hover:text-[#163E3E] transition-colors">{{ isRtl ? 'كيف يعمل' : 'How it works' }}</a>
+                            <a href="#pricing" class="hover:text-[#163E3E] transition-colors">{{ isRtl ? 'الأسعار' : 'Pricing' }}</a>
+                            <a href="#faq" class="hover:text-[#163E3E] transition-colors">{{ isRtl ? 'الأسئلة الشائعة' : 'FAQ' }}</a>
+                            <a href="#contact" class="hover:text-[#163E3E] transition-colors">{{ isRtl ? 'تواصل معنا' : 'Contact Us' }}</a>
                         </nav>
                     </div>
 
-                    <!-- Auth Actions -->
+                    <!-- Auth Actions & Language Switcher -->
                     <div class="hidden sm:flex items-center gap-4">
+                        <LanguageSwitcher variant="navbar" />
+
                         <template v-if="$page.props.auth?.user">
                             <Link
                                 :href="route('dashboard')"
                                 class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#163E3E] text-white font-bold text-sm shadow-sm hover:bg-[#102F2F] transition"
                             >
-                                <span>لوحة التحكم</span>
-                                <svg class="w-4 h-4 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <span>{{ $t('nav.dashboard') }}</span>
+                                <svg class="w-4 h-4" :class="isRtl ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M5 12h14M12 5l7 7-7 7"/>
                                 </svg>
                             </Link>
@@ -194,24 +200,26 @@ const mobileMenuOpen = ref(false);
                                 :href="route('login')"
                                 class="px-4 py-2.5 rounded-xl text-sm font-bold text-[#163E3E] hover:bg-[#163E3E]/10 transition"
                             >
-                                تسجيل الدخول
+                                {{ $t('auth.login_btn') }}
                             </Link>
                             <Link
                                 v-if="canRegister"
                                 :href="route('register')"
                                 class="px-5 py-2.5 rounded-xl text-sm font-bold bg-[#163E3E] text-white hover:bg-[#102F2F] shadow-sm hover:shadow transition"
                             >
-                                ابدأ مجانًا
+                                {{ $t('auth.register_btn') }}
                             </Link>
                         </template>
                     </div>
 
                     <!-- Mobile Hamburger Button -->
-                    <div class="flex sm:hidden">
+                    <div class="flex items-center gap-2 sm:hidden">
+                        <LanguageSwitcher variant="navbar" />
                         <button
                             @click="mobileMenuOpen = !mobileMenuOpen"
                             type="button"
                             class="p-2 rounded-lg text-[#5B6770] hover:text-[#163E3E] hover:bg-white/60 focus:outline-none"
+                            aria-label="Toggle navigation menu"
                         >
                             <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path v-if="!mobileMenuOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -223,14 +231,14 @@ const mobileMenuOpen = ref(false);
 
                 <!-- Mobile Menu Dropdown -->
                 <div v-show="mobileMenuOpen" class="sm:hidden border-t border-[#E2DDD2] py-4 space-y-3">
-                    <a @click="mobileMenuOpen = false" href="#concept" class="block px-3 py-2 text-base font-semibold text-[#5B6770] hover:bg-white/60 rounded-lg">نظام الصناديق المتداخلة</a>
-                    <a @click="mobileMenuOpen = false" href="#features" class="block px-3 py-2 text-base font-semibold text-[#5B6770] hover:bg-white/60 rounded-lg">المميزات</a>
-                    <a @click="mobileMenuOpen = false" href="#how-it-works" class="block px-3 py-2 text-base font-semibold text-[#5B6770] hover:bg-white/60 rounded-lg">كيف يعمل</a>
-                    <a @click="mobileMenuOpen = false" href="#pricing" class="block px-3 py-2 text-base font-semibold text-[#5B6770] hover:bg-white/60 rounded-lg">الأسعار</a>
-                    <a @click="mobileMenuOpen = false" href="#faq" class="block px-3 py-2 text-base font-semibold text-[#5B6770] hover:bg-white/60 rounded-lg">الأسئلة الشائعة</a>
+                    <a @click="mobileMenuOpen = false" href="#concept" class="block px-3 py-2 text-base font-semibold text-[#5B6770] hover:bg-white/60 rounded-lg">{{ isRtl ? 'نظام الصناديق المتداخلة' : 'Nested Units' }}</a>
+                    <a @click="mobileMenuOpen = false" href="#features" class="block px-3 py-2 text-base font-semibold text-[#5B6770] hover:bg-white/60 rounded-lg">{{ isRtl ? 'المميزات' : 'Features' }}</a>
+                    <a @click="mobileMenuOpen = false" href="#how-it-works" class="block px-3 py-2 text-base font-semibold text-[#5B6770] hover:bg-white/60 rounded-lg">{{ isRtl ? 'كيف يعمل' : 'How it works' }}</a>
+                    <a @click="mobileMenuOpen = false" href="#pricing" class="block px-3 py-2 text-base font-semibold text-[#5B6770] hover:bg-white/60 rounded-lg">{{ isRtl ? 'الأسعار' : 'Pricing' }}</a>
+                    <a @click="mobileMenuOpen = false" href="#faq" class="block px-3 py-2 text-base font-semibold text-[#5B6770] hover:bg-white/60 rounded-lg">{{ isRtl ? 'الأسئلة الشائعة' : 'FAQ' }}</a>
                     <div class="pt-3 border-t border-[#E2DDD2] flex flex-col gap-2">
-                        <Link v-if="canLogin" :href="route('login')" class="w-full text-center py-2.5 text-sm font-bold text-[#163E3E] bg-white rounded-xl">تسجيل الدخول</Link>
-                        <Link v-if="canRegister" :href="route('register')" class="w-full text-center py-2.5 text-sm font-bold text-white bg-[#163E3E] rounded-xl">ابدأ مجانًا</Link>
+                        <Link v-if="canLogin" :href="route('login')" class="w-full text-center py-2.5 text-sm font-bold text-[#163E3E] bg-white rounded-xl">{{ $t('auth.login_btn') }}</Link>
+                        <Link v-if="canRegister" :href="route('register')" class="w-full text-center py-2.5 text-sm font-bold text-white bg-[#163E3E] rounded-xl">{{ $t('auth.register_btn') }}</Link>
                     </div>
                 </div>
             </div>

@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { router, usePage, Link } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import LanguageSwitcher from '@/Components/Common/LanguageSwitcher.vue';
 import {
     Building2,
     Check,
@@ -198,18 +199,18 @@ onUnmounted(() => {
                 <button
                     @click.stop="workspaceDropdownOpen = !workspaceDropdownOpen; notificationsDropdownOpen = false; userDropdownOpen = false;"
                     type="button"
-                    class="flex h-10 w-10 shrink-0 items-center justify-center gap-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-right shadow-2xs transition hover:border-[#163E3E] hover:bg-white sm:h-11 sm:w-auto sm:justify-start sm:px-3.5"
-                    aria-label="تغيير مساحة العمل"
+                    class="flex h-10 w-10 shrink-0 items-center justify-center gap-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-start shadow-2xs transition hover:border-[#163E3E] hover:bg-white sm:h-11 sm:w-auto sm:justify-start sm:px-3.5"
+                    :aria-label="$t('nav.switch_workspace')"
                     :aria-expanded="workspaceDropdownOpen"
                 >
                     <div class="w-6 h-6 rounded-lg bg-[#163E3E]/10 text-[#163E3E] flex items-center justify-center shrink-0">
                         <Building2 class="w-3.5 h-3.5" />
                     </div>
-                    <div class="hidden min-w-[90px] max-w-[140px] flex-col truncate text-right leading-tight sm:flex">
+                    <div class="hidden min-w-[90px] max-w-[140px] flex-col truncate text-start leading-tight sm:flex">
                         <span class="truncate text-xs font-bold text-[#163E3E] transition-colors">
                             {{ currentWorkspace.name }}
                         </span>
-                        <span class="text-[10px] text-[#5B6770]">مساحة العمل الحالية</span>
+                        <span class="text-[10px] text-[#5B6770]">{{ $t('nav.current_workspace') }}</span>
                     </div>
                     <ChevronDown class="hidden h-3.5 w-3.5 text-[#5B6770] transition-transform duration-200 sm:block" :class="{ 'rotate-180': workspaceDropdownOpen }" />
                 </button>
@@ -217,10 +218,10 @@ onUnmounted(() => {
                 <!-- قائمة مساحات العمل المنسدلة -->
                 <div
                     v-if="workspaceDropdownOpen"
-                    class="absolute right-0 top-13 w-64 rounded-2xl bg-white border border-[#D6E0E7] shadow-xl p-2 z-50 animate-in fade-in zoom-in-95"
+                    class="absolute start-0 top-13 w-64 rounded-2xl bg-white border border-[#D6E0E7] shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 text-start"
                 >
                     <div class="px-3 py-2 border-b border-[#D6E0E7] text-[11px] font-bold text-[#5B6770]">
-                        مساحات العمل المصرح لك بالدخول إليها
+                        {{ $t('nav.workspaces_list') }}
                     </div>
 
                     <div class="py-1 space-y-1 max-h-56 overflow-y-auto">
@@ -229,7 +230,7 @@ onUnmounted(() => {
                             :key="ws.id"
                             @click="switchWorkspace(ws.id)"
                             type="button"
-                            class="w-full px-3 py-2.5 rounded-xl flex items-center justify-between text-right text-xs font-semibold transition cursor-pointer"
+                            class="w-full px-3 py-2.5 rounded-xl flex items-center justify-between text-start text-xs font-semibold transition cursor-pointer"
                             :class="ws.is_current ? 'bg-[#163E3E] text-white' : 'hover:bg-[#F8F4EA] text-[#163E3E]'"
                         >
                             <div class="flex items-center gap-2 truncate">
@@ -363,13 +364,16 @@ onUnmounted(() => {
                 </div>
             </div>
 
+            <!-- زر تبديل اللغة (Language Switcher) -->
+            <LanguageSwitcher variant="navbar" />
+
             <!-- قائمة المستخدم (User Profile Menu Dropdown) -->
             <div class="relative dropdown-container">
                 <button
                     @click.stop="userDropdownOpen = !userDropdownOpen; workspaceDropdownOpen = false; notificationsDropdownOpen = false;"
                     type="button"
                     class="flex h-10 shrink-0 items-center gap-2 rounded-xl border border-[#D6E0E7] bg-white px-2.5 shadow-2xs transition hover:border-[#163E3E] sm:h-11 sm:gap-2.5 sm:px-3"
-                    aria-label="قائمة المستخدم"
+                    :aria-label="$t('nav.profile')"
                     :aria-expanded="userDropdownOpen"
                 >
                     <div
@@ -378,9 +382,9 @@ onUnmounted(() => {
                     >
                         {{ userInitials }}
                     </div>
-                    <div class="hidden sm:flex flex-col text-right leading-tight max-w-[110px] truncate">
+                    <div class="hidden sm:flex flex-col text-start leading-tight max-w-[110px] truncate">
                         <span class="text-xs font-bold text-[#163E3E] truncate">{{ user.name }}</span>
-                        <span class="text-[10px] text-[#5B6770] truncate">{{ adminMode ? 'مدير النظام المركزي' : (user.role || 'مالك المنشأة') }}</span>
+                        <span class="text-[10px] text-[#5B6770] truncate">{{ adminMode ? $t('nav.admin_dashboard') : (user.role || $t('roles.owner')) }}</span>
                     </div>
                     <ChevronDown class="w-3.5 h-3.5 text-[#5B6770] transition-transform duration-200" :class="{ 'rotate-180': userDropdownOpen }" />
                 </button>
@@ -388,7 +392,7 @@ onUnmounted(() => {
                 <!-- القائمة المنسدلة للمستخدم -->
                 <div
                     v-if="userDropdownOpen"
-                    class="absolute left-0 top-13 w-56 rounded-2xl bg-white border border-[#D6E0E7] shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 text-right"
+                    class="absolute end-0 top-13 w-56 rounded-2xl bg-white border border-[#D6E0E7] shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 text-start"
                 >
                     <div class="px-3 py-2 border-b border-[#D6E0E7] mb-1">
                         <div class="text-xs font-bold text-[#163E3E]">{{ user.name }}</div>
@@ -404,7 +408,7 @@ onUnmounted(() => {
                             class="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-[#163E3E] hover:bg-[#F8F4EA] transition"
                         >
                             <UserIcon class="w-4 h-4 text-[#5B6770]" />
-                            <span>الملف الشخصي والحساب</span>
+                            <span>{{ $t('nav.profile') }}</span>
                         </Link>
 
                         <Link
@@ -415,7 +419,7 @@ onUnmounted(() => {
                             class="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-[#163E3E] font-bold hover:bg-[#F8F4EA] transition"
                         >
                             <ShieldCheck class="w-4 h-4 text-[#F7C33D]" />
-                            <span>لوحة الإدارة المركزية</span>
+                            <span>{{ $t('nav.admin_dashboard') }}</span>
                         </Link>
 
                         <Link
@@ -426,16 +430,18 @@ onUnmounted(() => {
                             class="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-emerald-700 hover:bg-emerald-50 transition"
                         >
                             <ExternalLink class="w-4 h-4" />
-                            <span>الانتقال لتطبيق العميل</span>
+                            <span>{{ $t('nav.switch_to_app') }}</span>
                         </Link>
+
+                        <div class="my-1 border-t border-[#D6E0E7]"></div>
 
                         <button
                             @click="handleLogout"
                             type="button"
-                            class="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-rose-600 hover:bg-rose-50 transition cursor-pointer border-t border-[#D6E0E7] mt-1 pt-2"
+                            class="w-full px-3 py-2 rounded-xl flex items-center gap-2.5 text-rose-600 hover:bg-rose-50 transition text-start cursor-pointer"
                         >
                             <LogOut class="w-4 h-4" />
-                            <span>تسجيل الخروج {{ adminMode ? 'الإداري' : '' }}</span>
+                            <span>{{ $t('nav.logout') }}</span>
                         </button>
                     </div>
                 </div>

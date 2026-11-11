@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { Link } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import LanguageSwitcher from '@/Components/Common/LanguageSwitcher.vue';
+import { useLocale } from '@/composables/useLocale';
 import {
     BarChart3,
     Building2,
@@ -44,39 +47,42 @@ const emit = defineEmits<{
     (e: 'selectTab', tab: string): void;
 }>();
 
+const { t } = useI18n();
+const { isRtl } = useLocale();
+
 // روابط تطبيق المستأجرين الافتراضية
-const defaultTenantNavLinks: NavItem[] = [
-    { key: 'dashboard', name: 'الرئيسية', icon: LayoutDashboard, routeName: 'dashboard' },
-    { key: 'properties', name: 'العقارات والوحدات', icon: Building2, routeName: 'properties.index' },
-    { key: 'renters', name: 'المستأجرون', icon: Users, routeName: 'renters.index' },
-    { key: 'leases', name: 'العقود', icon: FileText, routeName: 'leases.index' },
-    { key: 'payments', name: 'المدفوعات', icon: Coins, routeName: 'payments.index' },
-    { key: 'expenses', name: 'المصروفات', icon: Coins, routeName: 'expenses.index' },
-    { key: 'reports', name: 'التقارير المالية', icon: BarChart3, routeName: 'reports.index' },
-    { key: 'maintenance', name: 'الصيانة', icon: Wrench, routeName: 'maintenance.index' },
-    { key: 'whatsapp', name: 'رسائل واتساب', icon: MessageSquare, routeName: 'whatsapp.index', badge: 'تلقائي' },
-    { key: 'subscription', name: 'الاشتراك', icon: Layers, routeName: 'subscription.index' },
-    { key: 'settings', name: 'الإعدادات', icon: Settings, routeName: 'settings.index' },
-];
+const defaultTenantNavLinks = computed<NavItem[]>(() => [
+    { key: 'dashboard', name: t('nav.dashboard'), icon: LayoutDashboard, routeName: 'dashboard' },
+    { key: 'properties', name: t('nav.properties'), icon: Building2, routeName: 'properties.index' },
+    { key: 'renters', name: t('nav.renters'), icon: Users, routeName: 'renters.index' },
+    { key: 'leases', name: t('nav.leases'), icon: FileText, routeName: 'leases.index' },
+    { key: 'payments', name: t('nav.payments'), icon: Coins, routeName: 'payments.index' },
+    { key: 'expenses', name: t('nav.expenses'), icon: Coins, routeName: 'expenses.index' },
+    { key: 'reports', name: t('nav.reports'), icon: BarChart3, routeName: 'reports.index' },
+    { key: 'maintenance', name: t('nav.maintenance'), icon: Wrench, routeName: 'maintenance.index' },
+    { key: 'whatsapp', name: t('nav.whatsapp'), icon: MessageSquare, routeName: 'whatsapp.index', badge: t('nav.auto_badge') },
+    { key: 'subscription', name: t('nav.subscription'), icon: Layers, routeName: 'subscription.index' },
+    { key: 'settings', name: t('nav.settings'), icon: Settings, routeName: 'settings.index' },
+]);
 
 // روابط الإدارة المركزية الافتراضية
-const defaultAdminNavLinks: NavItem[] = [
-    { key: 'overview', name: 'نظرة عامة', icon: LayoutDashboard },
-    { key: 'workspaces', name: 'مساحات العمل', icon: Building2 },
-    { key: 'users', name: 'المستخدمون', icon: Users },
-    { key: 'properties', name: 'العقارات والوحدات', icon: Home },
-    { key: 'leases', name: 'العقود والمستأجرين', icon: FileText },
-    { key: 'payments', name: 'المالية والمدفوعات', icon: Coins },
-    { key: 'maintenance', name: 'طلبات الصيانة', icon: Wrench },
-    { key: 'subscriptions', name: 'الباقات والاشتراكات', icon: Layers },
-    { key: 'logs', name: 'رسائل واتساب والسجلات', icon: MessageSquare },
-];
+const defaultAdminNavLinks = computed<NavItem[]>(() => [
+    { key: 'overview', name: t('nav.admin_overview'), icon: LayoutDashboard },
+    { key: 'workspaces', name: t('nav.admin_workspaces'), icon: Building2 },
+    { key: 'users', name: t('nav.admin_users'), icon: Users },
+    { key: 'properties', name: t('nav.properties'), icon: Home },
+    { key: 'leases', name: t('nav.leases'), icon: FileText },
+    { key: 'payments', name: t('nav.payments'), icon: Coins },
+    { key: 'maintenance', name: t('nav.maintenance'), icon: Wrench },
+    { key: 'subscriptions', name: t('nav.admin_subscriptions'), icon: Layers },
+    { key: 'logs', name: t('nav.admin_logs'), icon: MessageSquare },
+]);
 
 const navLinks = computed(() => {
     if (props.customNavLinks && props.customNavLinks.length > 0) {
         return props.customNavLinks;
     }
-    return props.adminMode ? defaultAdminNavLinks : defaultTenantNavLinks;
+    return props.adminMode ? defaultAdminNavLinks.value : defaultTenantNavLinks.value;
 });
 
 const isLinkActive = (linkKey: string, routeName?: string) => {
@@ -117,8 +123,9 @@ onUnmounted(() => {
     <aside
         class="w-[240px] bg-[#163E3E] text-white p-6 flex flex-col justify-between shrink-0 h-screen select-none transition-all duration-300 z-50 lg:z-30 overflow-y-auto custom-scrollbar"
         :class="[
-            'fixed inset-y-0 right-0 lg:sticky lg:top-0',
-            mobileOpen ? 'translate-x-0 shadow-2xl' : 'translate-x-full lg:translate-x-0'
+            'fixed inset-y-0 lg:sticky lg:top-0',
+            isRtl ? 'right-0' : 'left-0',
+            mobileOpen ? 'translate-x-0 shadow-2xl' : (isRtl ? 'translate-x-full lg:translate-x-0' : '-translate-x-full lg:translate-x-0')
         ]"
     >
         <!-- الجزء العلوي: الشعار + الروابط -->
@@ -130,18 +137,18 @@ onUnmounted(() => {
                         <ApplicationLogo size="sm" alt="Nook Mate" />
                     </div>
                     <!-- اسم Nook Mate وشعار المنصة -->
-                    <div class="flex flex-col text-right">
+                    <div class="flex flex-col text-start">
                         <div class="flex items-center gap-1.5">
                             <span dir="ltr" class="whitespace-nowrap text-xl font-black text-white tracking-tight leading-none font-montserrat">Nook <span class="text-[#F7C33D]">Mate</span></span>
                             <span
                                 v-if="adminMode"
                                 class="px-1.5 py-0.5 rounded text-[9px] font-black bg-[#F7C33D] text-[#163E3E] uppercase tracking-wider"
                             >
-                                إشراف
+                                {{ isRtl ? 'إشراف' : 'Admin' }}
                             </span>
                         </div>
                         <span class="text-[10px] text-[#F8F4EA]/80 font-medium mt-1 font-poppins truncate max-w-[145px]">
-                            {{ adminMode ? 'لوحة الإدارة المركزية' : 'إدارة ممتلكاتك، بكل سهولة' }}
+                            {{ adminMode ? $t('nav.admin_dashboard') : $t('nav.tagline') }}
                         </span>
                     </div>
                 </Link>
@@ -228,16 +235,19 @@ onUnmounted(() => {
             </nav>
         </div>
 
-        <!-- الجزء السفلي: انتقال التطبيق + حساب المستخدم -->
+        <!-- الجزء السفلي: انتقال التطبيق + حساب المستخدم + تبديل اللغة -->
         <div class="space-y-4 pt-6 border-t border-white/10">
+            <!-- Language Switcher in sidebar -->
+            <LanguageSwitcher variant="sidebar" />
+
             <!-- رابط انتقال لتطبيق المستأجرين في وضع الأدمن -->
             <div v-if="adminMode" class="w-full rounded-xl bg-[#102F2F] p-3 border border-white/5 space-y-2">
-                <div class="text-[11px] font-medium text-[#F8F4EA]/80">التحويل السريع:</div>
+                <div class="text-[11px] font-medium text-[#F8F4EA]/80">{{ $t('nav.switch_to_app') }}:</div>
                 <Link
                     :href="route('dashboard')"
                     class="flex items-center justify-between text-xs font-bold text-white bg-white/10 hover:bg-white/20 p-2 rounded-lg transition"
                 >
-                    <span>تطبيق العملاء</span>
+                    <span>{{ $t('nav.switch_to_app') }}</span>
                     <ExternalLink class="w-3.5 h-3.5 text-[#F7C33D]" />
                 </Link>
             </div>
@@ -247,21 +257,22 @@ onUnmounted(() => {
                 <button
                     @click.stop="userMenuOpen = !userMenuOpen"
                     type="button"
-                    class="w-full flex items-center justify-between p-2 rounded-xl hover:bg-white/10 transition text-right group cursor-pointer"
+                    class="w-full flex items-center justify-between p-2 rounded-xl hover:bg-white/10 transition text-start group cursor-pointer"
+                    :aria-label="$t('nav.profile')"
                 >
                     <div class="flex items-center gap-2.5">
                         <div
                             class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs"
                             :class="adminMode ? 'bg-[#F7C33D] text-[#163E3E] font-black' : 'bg-[#F7C33D] text-[#163E3E] font-bold'"
                         >
-                            {{ userName?.charAt(0) || 'أ' }}
+                            {{ userName?.charAt(0) || 'U' }}
                         </div>
-                        <div class="flex flex-col text-right">
+                        <div class="flex flex-col text-start">
                             <span class="text-xs font-semibold text-white truncate max-w-[110px] leading-tight">
-                                {{ userName || 'مدير النظام' }}
+                                {{ userName || (adminMode ? $t('roles.admin') : $t('roles.owner')) }}
                             </span>
                             <span class="text-[10px] text-[#F8F4EA]/70 leading-tight">
-                                {{ userRole || (adminMode ? 'مدير النظام' : 'مالك الحساب') }}
+                                {{ userRole || (adminMode ? $t('roles.admin') : $t('roles.owner')) }}
                             </span>
                         </div>
                     </div>
@@ -271,7 +282,7 @@ onUnmounted(() => {
                 <!-- نافذة خيارات المستخدم -->
                 <div
                     v-if="userMenuOpen"
-                    class="absolute bottom-12 right-0 w-48 rounded-xl bg-[#102F2F] border border-white/10 py-1.5 shadow-2xl z-50 text-right animate-in fade-in zoom-in-95"
+                    class="absolute bottom-12 end-0 w-48 rounded-xl bg-[#102F2F] border border-white/10 py-1.5 shadow-2xl z-50 text-start animate-in fade-in zoom-in-95"
                 >
                     <Link
                         v-if="!adminMode"
@@ -279,7 +290,7 @@ onUnmounted(() => {
                         class="flex items-center gap-2 px-3 py-2 text-xs font-medium text-[#F8F4EA]/90 hover:bg-white/10 hover:text-white transition"
                     >
                         <User class="h-4 w-4" />
-                        <span>الملف الشخصي</span>
+                        <span>{{ $t('nav.profile') }}</span>
                     </Link>
 
                     <Link
@@ -288,7 +299,7 @@ onUnmounted(() => {
                         class="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#F7C33D] hover:bg-white/10 transition"
                     >
                         <Shield class="h-4 w-4" />
-                        <span>لوحة الإدارة المركزية</span>
+                        <span>{{ $t('nav.admin_dashboard') }}</span>
                     </Link>
 
                     <Link
@@ -297,7 +308,7 @@ onUnmounted(() => {
                         class="flex items-center gap-2 px-3 py-2 text-xs font-medium text-emerald-300 hover:bg-white/10 transition"
                     >
                         <ExternalLink class="h-4 w-4" />
-                        <span>الانتقال للتطبيق</span>
+                        <span>{{ $t('nav.switch_to_app') }}</span>
                     </Link>
 
                     <div class="my-1 border-t border-white/10"></div>
@@ -305,10 +316,10 @@ onUnmounted(() => {
                         :href="adminMode ? route('admin.logout') : route('logout')"
                         method="post"
                         as="button"
-                        class="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition text-right cursor-pointer"
+                        class="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition text-start cursor-pointer"
                     >
                         <LogOut class="h-4 w-4" />
-                        <span>تسجيل الخروج</span>
+                        <span>{{ $t('nav.logout') }}</span>
                     </Link>
                 </div>
             </div>

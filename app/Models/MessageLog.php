@@ -20,6 +20,7 @@ class MessageLog extends Model
         'rent_charge_id',
         'recipient_phone',
         'template_name',
+        'payload_parameters',
         'scheduled_at',
         'sent_at',
         'status',
@@ -35,6 +36,7 @@ class MessageLog extends Model
     protected function casts(): array
     {
         return [
+            'payload_parameters' => 'array',
             'scheduled_at' => 'datetime',
             'sent_at' => 'datetime',
             'attempts' => 'integer',

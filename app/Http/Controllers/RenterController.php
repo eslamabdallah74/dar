@@ -81,8 +81,9 @@ class RenterController extends Controller
                 'gender_label' => $renter->gender?->label(),
                 'id_card_front_url' => $renter->id_card_front_url,
                 'id_card_back_url' => $renter->id_card_back_url,
-                'whatsapp_opted_in' => (bool) $renter->whatsapp_opt_in_at,
+                'whatsapp_opted_in' => $renter->hasConsentedToWhatsApp(),
                 'whatsapp_opt_in_date' => $renter->whatsapp_opt_in_at?->format('d/m/Y'),
+                'whatsapp_opted_out_date' => $renter->whatsapp_opted_out_at?->format('d/m/Y'),
                 'notes' => $renter->notes,
                 'created_at' => $renter->created_at?->format('d/m/Y'),
             ],
@@ -242,6 +243,19 @@ class RenterController extends Controller
             $validated['id_card_back'] = $path;
         } else {
             unset($validated['id_card_back']);
+        }
+
+        if (array_key_exists('whatsapp_consent', $validated)) {
+            $wantsConsent = (bool) $validated['whatsapp_consent'];
+            if ($wantsConsent !== $renter->hasConsentedToWhatsApp()) {
+                if ($wantsConsent) {
+                    $validated['whatsapp_opt_in_at'] = now();
+                    $validated['whatsapp_opted_out_at'] = null;
+                } elseif ($renter->whatsapp_opt_in_at !== null) {
+                    $validated['whatsapp_opted_out_at'] = now();
+                }
+            }
+            unset($validated['whatsapp_consent']);
         }
 
         $renter->update($validated);

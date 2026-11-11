@@ -10,6 +10,7 @@ use App\Http\Controllers\OnlinePaymentController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PropertyController;
+use App\Http\Controllers\PublicReceiptController;
 use App\Http\Controllers\RenterController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SecurityDepositController;
@@ -231,6 +232,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
 // Meta WhatsApp Cloud API Official Webhooks
 Route::get('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'verify'])->name('webhooks.whatsapp.verify');
 Route::post('/webhooks/whatsapp', [WhatsAppWebhookController::class, 'handle'])->name('webhooks.whatsapp.handle');
+
+// Public Cryptographically Signed Guest Receipts (for WhatsApp / SMS Links)
+Route::get('/p/receipts/{payment}', [PublicReceiptController::class, 'show'])
+    ->middleware('signed')
+    ->name('public.receipts.show');
+Route::get('/p/deposits/{payment}', [PublicReceiptController::class, 'showDeposit'])
+    ->middleware('signed')
+    ->name('public.deposits.show');
 
 // Payment Gateway Official Webhook
 Route::post('/webhooks/payments', [OnlinePaymentController::class, 'webhook'])->name('webhooks.payments');

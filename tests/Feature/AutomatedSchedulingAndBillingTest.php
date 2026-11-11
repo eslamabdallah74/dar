@@ -175,7 +175,7 @@ test('check overdue command scans past due unpaid charges and notifies renter', 
         'amount' => 5000,
     ]);
 
-    expect(Artisan::call('dar:check-overdue'))->toBe(0);
+    expect(Artisan::call('dar:check-overdue', ['--workspace' => $this->workspace->id]))->toBe(0);
 
     $charge->refresh();
     expect($charge->is_overdue)->toBeTrue()

@@ -56,7 +56,7 @@ class RenterResource extends JsonResource
                 default => 'بدون عقد نشط',
             },
             'total_paid' => $totalPaid,
-            'whatsapp_opted_in' => (bool) $this->whatsapp_opt_in_at,
+            'whatsapp_opted_in' => $this->hasConsentedToWhatsApp(),
             'created_at' => $this->created_at?->format('d/m/Y'),
         ];
     }

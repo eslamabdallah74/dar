@@ -48,6 +48,12 @@ class ProcessOverdueChargesCommand extends Command
         $totalSkipped = 0;
 
         foreach ($workspaces as $workspace) {
+            if (! $workspace->auto_whatsapp_reminders) {
+                $this->line("Skipping workspace [{$workspace->name}] (#{$workspace->id}): automatic reminders disabled.");
+
+                continue;
+            }
+
             $overdueGraceDays = (int) ($workspace->overdue_warning_days_after ?? 5);
             $thresholdDate = $evalDate->copy()->subDays($overdueGraceDays)->toDateString();
 

@@ -6,7 +6,6 @@ use App\Enums\QueueName;
 use App\Enums\WhatsAppMessageLanguage;
 use App\Models\Lease;
 use App\Models\Unit;
-use App\Models\Workspace;
 use App\Services\WhatsAppService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -71,10 +70,7 @@ class LeaseExpiryReminderJob extends BaseJob
         $unitNumber = $unit instanceof Unit ? $unit->name : 'الوحدة';
         $endDateStr = $endsOn->format('d/m/Y');
 
-        $workspace = $lease->workspace;
-        $notificationLang = ($workspace instanceof Workspace && $workspace->whatsapp_message_language instanceof WhatsAppMessageLanguage)
-            ? $workspace->whatsapp_message_language->value
-            : 'ar';
+        $notificationLang = ($lease->workspace->whatsapp_message_language ?? WhatsAppMessageLanguage::Arabic)->value;
 
         $mailSubject = (string) app('translator')->get(
             'notifications.lease_expiry_subject',

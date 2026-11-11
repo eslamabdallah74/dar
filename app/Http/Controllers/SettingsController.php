@@ -32,9 +32,7 @@ class SettingsController extends Controller
                 'due_reminder_days_before' => (int) ($workspace->rent_reminder_days_before ?? 2),
                 'overdue_warning_days_after' => (int) ($workspace->overdue_warning_days_after ?? 5),
                 'weekly_summary_report' => (bool) $workspace->weekly_summary_report,
-                'whatsapp_message_language' => $workspace->whatsapp_message_language instanceof WhatsAppMessageLanguage
-                    ? $workspace->whatsapp_message_language->value
-                    : (string) ($workspace->whatsapp_message_language ?? 'ar'),
+                'whatsapp_message_language' => ($workspace->whatsapp_message_language ?? WhatsAppMessageLanguage::Arabic)->value,
             ],
         ]);
     }

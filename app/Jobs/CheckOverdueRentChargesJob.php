@@ -61,9 +61,7 @@ class CheckOverdueRentChargesJob extends BaseJob
                 $dueDate = $charge->due_date->format('d/m/Y');
 
                 $workspace = $lease->workspace;
-                $notificationLang = ($workspace instanceof Workspace && $workspace->whatsapp_message_language instanceof WhatsAppMessageLanguage)
-                    ? $workspace->whatsapp_message_language->value
-                    : 'ar';
+                $notificationLang = ($workspace->whatsapp_message_language ?? WhatsAppMessageLanguage::Arabic)->value;
 
                 $mailSubject = (string) app('translator')->get(
                     'notifications.overdue_notice_subject',

@@ -135,11 +135,7 @@ class WhatsAppService
     {
         $workspace = Workspace::withoutGlobalScopes()->find($workspaceId);
 
-        if ($workspace !== null && $workspace->whatsapp_message_language !== null) {
-            return $workspace->whatsapp_message_language;
-        }
-
-        return WhatsAppMessageLanguage::Arabic;
+        return $workspace->whatsapp_message_language ?? WhatsAppMessageLanguage::Arabic;
     }
 
     /**

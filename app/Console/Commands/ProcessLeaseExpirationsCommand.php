@@ -89,17 +89,12 @@ class ProcessLeaseExpirationsCommand extends Command
     protected function milestoneDueForLease(Lease $lease, Carbon $evalDate, array $milestones): ?int
     {
         $workspace = $lease->workspace;
-        if ($workspace && ! $workspace->auto_whatsapp_reminders) {
-            return null;
-        }
-
         $diffInDays = (int) $evalDate->diffInDays(Carbon::parse($lease->ends_on), false);
-        if (! in_array($diffInDays, $milestones, true)) {
-            return null;
-        }
-
         $renter = $lease->renter;
-        if (! $renter || empty($renter->phone) || $renter->whatsapp_opted_out_at !== null) {
+
+        if (($workspace && ! $workspace->auto_whatsapp_reminders)
+            || ! in_array($diffInDays, $milestones, true)
+            || ! $renter || empty($renter->phone) || $renter->whatsapp_opted_out_at !== null) {
             return null;
         }
 

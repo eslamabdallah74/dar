@@ -9,12 +9,8 @@ use App\Models\Renter;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Workspace;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Queue;
-use Tests\TestCase;
-
-uses(TestCase::class, DatabaseTransactions::class);
 
 beforeEach(function () {
     $this->user = User::factory()->create();

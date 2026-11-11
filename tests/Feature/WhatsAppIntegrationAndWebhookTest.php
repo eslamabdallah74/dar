@@ -5,14 +5,14 @@ use App\Models\Payment;
 use App\Models\Renter;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\WhatsApp\MetaApiException;
 use App\Services\WhatsApp\MetaCloudApiGateway;
 use App\Services\WhatsAppService;
 use App\Support\CurrentWorkspace;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\URL;
 use Inertia\Testing\AssertableInertia as Assert;
-use Tests\TestCase;
-
-uses(TestCase::class);
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -260,6 +260,58 @@ test('meta webhook processes inbound STOP and marks renter opted out', function 
     expect($this->renter->whatsapp_opted_out_at)->not->toBeNull();
 });
 
+test('meta webhook processes inbound STOP for Egyptian renter stored in local format', function () {
+    $egyptianRenter = Renter::create([
+        'workspace_id' => $this->workspace->id,
+        'name' => 'محمد أحمد',
+        'phone' => '01012345678',
+        'whatsapp_opt_in_at' => now(),
+    ]);
+
+    $payload = [
+        'entry' => [
+            [
+                'changes' => [
+                    [
+                        'value' => [
+                            'messages' => [
+                                [
+                                    'from' => '201012345678',
+                                    'id' => 'wamid.INBOUND_EGY_1',
+                                    'type' => 'text',
+                                    'text' => [
+                                        'body' => 'STOP',
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ];
+
+    $content = json_encode($payload, JSON_THROW_ON_ERROR);
+    $signature = 'sha256='.hash_hmac('sha256', $content, 'test_meta_app_secret_abc');
+
+    $response = $this->call(
+        'POST',
+        route('webhooks.whatsapp.handle'),
+        [],
+        [],
+        [],
+        [
+            'HTTP_X_HUB_SIGNATURE_256' => $signature,
+            'CONTENT_TYPE' => 'application/json',
+        ],
+        $content
+    );
+
+    $response->assertStatus(200);
+    $egyptianRenter->refresh();
+    expect($egyptianRenter->whatsapp_opted_out_at)->not->toBeNull();
+});
+
 test('meta webhook processes inbound START and marks renter opted in', function () {
     $this->renter->update(['whatsapp_opted_out_at' => now()]);
 
@@ -406,6 +458,20 @@ test('renter update endpoint toggles whatsapp consent and updates opt in or out 
     expect($renter->whatsapp_opted_out_at)->toBeNull()
         ->and($renter->whatsapp_opt_in_at)->not->toBeNull()
         ->and($renter->hasConsentedToWhatsApp())->toBeTrue();
+
+    // 3. Updating renter name without changing consent preserves original opt_in timestamp
+    $originalOptInAt = $renter->whatsapp_opt_in_at;
+    $response = $this->actingAs($this->user)->put(route('renters.update', $renter->id), [
+        'name' => 'طارق الزهراني المعدل',
+        'phone' => '01011223344',
+        'national_id' => '1099887766',
+        'whatsapp_consent' => true,
+    ]);
+
+    $response->assertSessionHas('success');
+    $renter->refresh();
+    expect($renter->name)->toBe('طارق الزهراني المعدل')
+        ->and($renter->whatsapp_opt_in_at?->timestamp)->toBe($originalOptInAt?->timestamp);
 });
 
 test('renter profile page passes correct whatsapp consent status and timestamps', function () {
@@ -435,4 +501,42 @@ test('renter profile page passes correct whatsapp consent status and timestamps'
             ->where('renter.whatsapp_opted_in', false)
             ->has('renter.whatsapp_opted_out_date')
         );
+});
+
+test('meta gateway rethrows MetaApiException on server 5xx temporary outage', function () {
+    Http::fake([
+        'https://graph.facebook.com/*' => Http::response(['error' => ['message' => 'Internal service error']], 503),
+    ]);
+
+    config([
+        'services.whatsapp.token' => 'mock_token',
+        'services.whatsapp.phone_number_id' => 'mock_phone_id',
+    ]);
+
+    $gateway = new MetaCloudApiGateway;
+
+    expect(fn () => $gateway->sendTemplate('0501234567', 'rent_due_reminder_ar', []))
+        ->toThrow(MetaApiException::class);
+});
+
+test('migration down handles message logs with null renter_id without integrity failure', function () {
+    DB::table('message_logs')->insert([
+        'workspace_id' => $this->workspace->id,
+        'renter_id' => null,
+        'recipient_phone' => '+966500000000',
+        'template_name' => 'rent_due_reminder',
+        'deduplication_key' => 'null_renter_test_'.uniqid(),
+        'status' => 'pending',
+        'scheduled_at' => now(),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $migration = require database_path('migrations/2026_11_10_120000_update_message_logs_for_payload_and_nullable_renter.php');
+    $migration->down();
+
+    // Re-run up to restore schema for subsequent tests
+    $migration->up();
+
+    expect(DB::table('message_logs')->whereNull('renter_id')->count())->toBe(0);
 });

@@ -211,7 +211,6 @@ class WhatsAppWebhookController extends Controller
             return;
         }
 
-        $normalized = (string) preg_replace('/\D+/', '', $senderPhone);
         $upperText = mb_strtoupper($textBody, 'UTF-8');
 
         $optOutKeywords = [
@@ -225,18 +224,56 @@ class WhatsAppWebhookController extends Controller
         ];
 
         if (in_array($upperText, $optOutKeywords, true)) {
-            $this->applyRenterOptOut($senderPhone, $normalized);
+            $this->applyRenterOptOut($senderPhone);
         } elseif (in_array($upperText, $optInKeywords, true)) {
-            $this->applyRenterOptIn($senderPhone, $normalized);
+            $this->applyRenterOptIn($senderPhone);
         }
     }
 
-    private function applyRenterOptOut(string $senderPhone, string $normalized): void
+    /**
+     * Resolve national, local, and international variants of a sender's phone number.
+     *
+     * @return array<int, string>
+     */
+    private function resolvePhoneVariants(string $senderPhone): array
     {
+        $cleaned = (string) preg_replace('/\D+/', '', $senderPhone);
+        if ($cleaned === '') {
+            return $senderPhone !== '' ? [$senderPhone] : [];
+        }
+
+        $variants = [$senderPhone, $cleaned, '+'.$cleaned];
+
+        // Egyptian international: 201xxxxxxxxx (12 digits) -> local 01xxxxxxxxx
+        if (str_starts_with($cleaned, '201') && strlen($cleaned) === 12) {
+            $variants[] = '0'.substr($cleaned, 2);
+            $variants[] = substr($cleaned, 2);
+        }
+
+        // Saudi international: 9665xxxxxxxx (12 digits) -> local 05xxxxxxxx
+        if (str_starts_with($cleaned, '9665') && strlen($cleaned) === 12) {
+            $variants[] = '0'.substr($cleaned, 3);
+            $variants[] = substr($cleaned, 3);
+        }
+
+        if (str_starts_with($senderPhone, '+')) {
+            $variants[] = substr($senderPhone, 1);
+        }
+
+        $filtered = array_filter($variants, fn (string $v): bool => $v !== '');
+
+        return array_values(array_unique($filtered));
+    }
+
+    private function applyRenterOptOut(string $senderPhone): void
+    {
+        $variants = $this->resolvePhoneVariants($senderPhone);
+
         $affected = Renter::withoutGlobalScopes()
-            ->where(function ($query) use ($normalized, $senderPhone) {
-                $query->where('phone', 'like', "%{$normalized}%")
-                    ->orWhere('phone', 'like', "%{$senderPhone}%");
+            ->where(function ($query) use ($variants) {
+                foreach ($variants as $variant) {
+                    $query->orWhere('phone', 'like', "%{$variant}%");
+                }
             })
             ->whereNull('whatsapp_opted_out_at')
             ->update([
@@ -246,12 +283,15 @@ class WhatsAppWebhookController extends Controller
         Log::info("[WhatsApp Inbound Opt-Out] Processed opt-out for sender: {$senderPhone} (Updated: {$affected} renters)");
     }
 
-    private function applyRenterOptIn(string $senderPhone, string $normalized): void
+    private function applyRenterOptIn(string $senderPhone): void
     {
+        $variants = $this->resolvePhoneVariants($senderPhone);
+
         $affected = Renter::withoutGlobalScopes()
-            ->where(function ($query) use ($normalized, $senderPhone) {
-                $query->where('phone', 'like', "%{$normalized}%")
-                    ->orWhere('phone', 'like', "%{$senderPhone}%");
+            ->where(function ($query) use ($variants) {
+                foreach ($variants as $variant) {
+                    $query->orWhere('phone', 'like', "%{$variant}%");
+                }
             })
             ->whereNotNull('whatsapp_opted_out_at')
             ->update([

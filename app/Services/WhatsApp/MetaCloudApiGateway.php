@@ -84,9 +84,9 @@ class MetaCloudApiGateway implements WhatsAppGatewayInterface
 
             Log::error("[WhatsApp Meta Template Error] Status: {$response->status()} - Response: ".$response->body());
 
-            // If server-side 5xx temporary outage from Meta, throw to let the Queue retry
+            // If server-side 5xx temporary outage from Meta, throw dedicated exception to let Queue retry
             if ($response->serverError()) {
-                throw new \RuntimeException("Meta Cloud API temporary server error ({$response->status()}): {$response->body()}");
+                throw new MetaApiException("Meta Cloud API temporary server error ({$response->status()}): {$response->body()}");
             }
 
             return [
@@ -95,10 +95,10 @@ class MetaCloudApiGateway implements WhatsAppGatewayInterface
                 'status' => 'failed',
                 'error_message' => $response->json('error.message') ?? 'HTTP error: '.$response->status(),
             ];
-        } catch (ConnectionException $e) {
-            Log::error('[WhatsApp Gateway Connection Exception] '.$e->getMessage());
+        } catch (ConnectionException|MetaApiException $e) {
+            Log::error('[WhatsApp Gateway Transient Exception] '.$e->getMessage());
 
-            // Re-throw network connection timeouts so the queue worker retries with backoff
+            // Re-throw network timeouts and 5xx so the queue worker retries with backoff
             throw $e;
         } catch (Throwable $e) {
             Log::error('[WhatsApp Gateway Exception] '.$e->getMessage());
@@ -120,28 +120,31 @@ class MetaCloudApiGateway implements WhatsAppGatewayInterface
      */
     protected function buildBodyParameters(string $templateName, array $parameters): array
     {
+        $renterName = $parameters['renter_name'] ?? $parameters[0] ?? '';
+        $unitName = $parameters['unit'] ?? $parameters[1] ?? '';
+
         $orderedValues = match ($templateName) {
             'payment_receipt_instant_ar' => [
-                $parameters['renter_name'] ?? $parameters[0] ?? '',
+                $renterName,
                 $parameters['amount'] ?? $parameters[1] ?? '',
                 $parameters['receipt_no'] ?? $parameters[2] ?? '',
                 $parameters['link'] ?? $parameters[3] ?? '',
             ],
             'rent_due_reminder_ar' => [
-                $parameters['renter_name'] ?? $parameters[0] ?? '',
-                $parameters['unit'] ?? $parameters[1] ?? '',
+                $renterName,
+                $unitName,
                 $parameters['amount'] ?? $parameters[2] ?? '',
                 $parameters['due_date'] ?? $parameters[3] ?? '',
             ],
             'overdue_notice_ar' => [
-                $parameters['renter_name'] ?? $parameters[0] ?? '',
-                $parameters['unit'] ?? $parameters[1] ?? '',
+                $renterName,
+                $unitName,
                 $parameters['due_date'] ?? $parameters[2] ?? '',
                 $parameters['amount'] ?? $parameters[3] ?? '',
             ],
             'contract_renewal_ar' => [
-                $parameters['renter_name'] ?? $parameters[0] ?? '',
-                $parameters['unit'] ?? $parameters[1] ?? '',
+                $renterName,
+                $unitName,
                 $parameters['end_date'] ?? $parameters[2] ?? '',
             ],
             default => array_values($parameters),
@@ -158,22 +161,14 @@ class MetaCloudApiGateway implements WhatsAppGatewayInterface
      */
     public function formatPhoneNumber(string $phone): string
     {
-        // Strip non-digits
-        $cleaned = preg_replace('/\D+/', '', $phone) ?? '';
+        $cleaned = (string) preg_replace('/\D+/', '', $phone);
 
-        // Normalize Egyptian local mobile: 010... -> 2010... (11 digits starting with 01)
         if (str_starts_with($cleaned, '01') && strlen($cleaned) === 11) {
-            return '2'.$cleaned;
-        }
-
-        // Normalize Saudi local mobile: 05... -> 9665... (10 digits starting with 05)
-        if (str_starts_with($cleaned, '05') && strlen($cleaned) === 10) {
-            return '966'.substr($cleaned, 1);
-        }
-
-        // Strip leading 00 international prefix: 00966... -> 966...
-        if (str_starts_with($cleaned, '00')) {
-            return substr($cleaned, 2);
+            $cleaned = '2'.$cleaned;
+        } elseif (str_starts_with($cleaned, '05') && strlen($cleaned) === 10) {
+            $cleaned = '966'.substr($cleaned, 1);
+        } elseif (str_starts_with($cleaned, '00')) {
+            $cleaned = substr($cleaned, 2);
         }
 
         return $cleaned;

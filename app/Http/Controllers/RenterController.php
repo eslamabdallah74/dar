@@ -246,11 +246,14 @@ class RenterController extends Controller
         }
 
         if (array_key_exists('whatsapp_consent', $validated)) {
-            if ($validated['whatsapp_consent']) {
-                $validated['whatsapp_opt_in_at'] = now();
-                $validated['whatsapp_opted_out_at'] = null;
-            } else {
-                $validated['whatsapp_opted_out_at'] = now();
+            $wantsConsent = (bool) $validated['whatsapp_consent'];
+            if ($wantsConsent !== $renter->hasConsentedToWhatsApp()) {
+                if ($wantsConsent) {
+                    $validated['whatsapp_opt_in_at'] = now();
+                    $validated['whatsapp_opted_out_at'] = null;
+                } elseif ($renter->whatsapp_opt_in_at !== null) {
+                    $validated['whatsapp_opted_out_at'] = now();
+                }
             }
             unset($validated['whatsapp_consent']);
         }

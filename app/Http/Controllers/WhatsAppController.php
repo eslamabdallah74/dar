@@ -12,6 +12,10 @@ use Inertia\Response;
 
 class WhatsAppController extends Controller
 {
+    private const DEFAULT_TEST_UNIT_NAME = 'الوحدة التجريبية';
+
+    private const DATE_DISPLAY_FORMAT = 'd/m/Y';
+
     public function index(Request $request): Response
     {
         $workspace = $this->resolveWorkspace($request);
@@ -122,31 +126,25 @@ class WhatsAppController extends Controller
             'payment_receipt_instant_ar' => [
                 'renter_name' => $renter->name,
                 'amount' => "1,500 {$currencySymbol}",
-                'receipt_no' => 'REC-TEST-'.rand(100, 999),
+                'receipt_no' => 'REC-TEST-'.random_int(100, 999),
                 'link' => url('/'),
-            ],
-            'rent_due_reminder_ar' => [
-                'renter_name' => $renter->name,
-                'unit' => 'الوحدة التجريبية',
-                'amount' => "5,000 {$currencySymbol}",
-                'due_date' => now()->addDays(3)->format('d/m/Y'),
-            ],
-            'overdue_notice_ar' => [
-                'renter_name' => $renter->name,
-                'unit' => 'الوحدة التجريبية',
-                'due_date' => now()->subDays(5)->format('d/m/Y'),
-                'amount' => "5,000 {$currencySymbol}",
             ],
             'contract_renewal_ar' => [
                 'renter_name' => $renter->name,
-                'unit' => 'الوحدة التجريبية',
-                'end_date' => now()->addDays(30)->format('d/m/Y'),
+                'unit' => self::DEFAULT_TEST_UNIT_NAME,
+                'end_date' => now()->addDays(30)->format(self::DATE_DISPLAY_FORMAT),
+            ],
+            'overdue_notice_ar' => [
+                'renter_name' => $renter->name,
+                'unit' => self::DEFAULT_TEST_UNIT_NAME,
+                'due_date' => now()->subDays(5)->format(self::DATE_DISPLAY_FORMAT),
+                'amount' => "5,000 {$currencySymbol}",
             ],
             default => [
                 'renter_name' => $renter->name,
-                'unit' => 'الوحدة التجريبية',
+                'unit' => self::DEFAULT_TEST_UNIT_NAME,
                 'amount' => "5,000 {$currencySymbol}",
-                'due_date' => now()->addDays(3)->format('d/m/Y'),
+                'due_date' => now()->addDays(3)->format(self::DATE_DISPLAY_FORMAT),
             ],
         };
 
@@ -167,10 +165,8 @@ class WhatsAppController extends Controller
             return back()->with('success', 'تم إرسال رسالة WhatsApp بنجاح عبر بوابة Meta Cloud API');
         }
 
-        if ($log && $log->status === 'failed') {
-            return back()->with('warning', 'فشل الإرسال: '.$log->error_message);
-        }
+        $errorMessage = $log->error_message ?? 'تعذر إتمام الإرسال';
 
-        return back()->with('info', 'تمت معالجة طلب الإرسال بنجاح');
+        return back()->with('warning', 'فشل الإرسال: '.$errorMessage);
     }
 }

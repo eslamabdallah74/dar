@@ -15,9 +15,6 @@ use App\Models\Workspace;
 use App\Models\WorkspaceMember;
 use App\Support\CurrentWorkspace;
 use Inertia\Testing\AssertableInertia as Assert;
-use Tests\TestCase;
-
-uses(TestCase::class);
 
 test('renter profile shows the lease ledger, deposits, payments, messages and documents of the renter', function () {
     $user = User::factory()->create();

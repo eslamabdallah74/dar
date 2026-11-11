@@ -34,30 +34,21 @@ Route::get('/', function () {
 });
 
 Route::get('/sitemap.xml', function () {
-    $baseUrl = url('/');
+    $baseUrl = 'https://nookmate.net';
     $now = now()->toAtomString();
 
     $xml = '<?xml version="1.0" encoding="UTF-8"?>';
     $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">';
     $xml .= '<url>';
-    $xml .= '<loc>'.$baseUrl.'</loc>';
+    $xml .= '<loc>'.$baseUrl.'/</loc>';
     $xml .= '<lastmod>'.$now.'</lastmod>';
     $xml .= '<changefreq>daily</changefreq>';
     $xml .= '<priority>1.0</priority>';
     $xml .= '<image:image>';
     $xml .= '<image:loc>'.$baseUrl.'/images/logo.png</image:loc>';
     $xml .= '<image:title>Nook Mate — Find Your Spot. Rent the Space You Need.</image:title>';
+    $xml .= '<image:caption>منصة ذكية متكاملة لإدارة وتأجير العقارات السكنية والمشتركة بنظام الصناديق المتداخلة</image:caption>';
     $xml .= '</image:image>';
-    $xml .= '</url>';
-    $xml .= '<url>';
-    $xml .= '<loc>'.$baseUrl.'/login</loc>';
-    $xml .= '<changefreq>monthly</changefreq>';
-    $xml .= '<priority>0.8</priority>';
-    $xml .= '</url>';
-    $xml .= '<url>';
-    $xml .= '<loc>'.$baseUrl.'/register</loc>';
-    $xml .= '<changefreq>monthly</changefreq>';
-    $xml .= '<priority>0.9</priority>';
     $xml .= '</url>';
     $xml .= '</urlset>';
 

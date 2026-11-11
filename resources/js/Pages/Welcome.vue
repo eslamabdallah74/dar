@@ -22,14 +22,14 @@ const mobileMenuOpen = ref(false);
 
 <template>
     <Head>
-        <title>Nook Mate — إدارة ممتلكاتك، بكل سهولة</title>
-        <meta name="description" content="Nook Mate — إدارة ممتلكاتك، بكل سهولة. منصة سحابية لإدارة وتأجير العقارات والشقق والغرف والأسرة بنظام الصناديق المتداخلة." />
-        <meta property="og:title" content="Nook Mate — إدارة ممتلكاتك، بكل سهولة" />
-        <meta property="og:description" content="أدر عقاراتك، وحداتك، غرفك وأسرتك مع تذكيرات واتساب التلقائية وسندات القبض الفورية." />
+        <title>Nook Mate — Find Your Spot. Rent the Space You Need.</title>
+        <meta name="description" head-key="description" content="Nook Mate — Find Your Spot. Rent the Space You Need. منصة سحابية متكاملة لإدارة وتأجير العقارات السكنية والشقق والغرف والأسرة بنظام الصناديق المتداخلة مع تذكيرات واتساب وسندات قبض فورية." />
+        <meta property="og:title" head-key="og:title" content="Nook Mate — Find Your Spot. Rent the Space You Need." />
+        <meta property="og:description" head-key="og:description" content="أدر عقاراتك، وحداتك، غرفك وأسرتك مع تذكيرات واتساب التلقائية وسندات القبض الفورية." />
         <meta property="og:image" content="/images/logo.png" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Nook Mate — إدارة ممتلكاتك، بكل سهولة" />
-        <meta name="twitter:description" content="منصة سحابية متكاملة لإدارة وتأجير العقارات، عقود الإيجار، وسندات القبض مع تذكيرات واتساب." />
+        <meta name="twitter:title" head-key="twitter:title" content="Nook Mate — إدارة ممتلكاتك، بكل سهولة" />
+        <meta name="twitter:description" head-key="twitter:description" content="منصة سحابية متكاملة لإدارة وتأجير العقارات، عقود الإيجار، وسندات القبض مع تذكيرات واتساب." />
         <meta name="twitter:image" content="/images/logo.png" />
 
         <!-- Structured Data (JSON-LD) -->
@@ -244,7 +244,10 @@ const mobileMenuOpen = ref(false);
                 <img
                     src="/images/banner.webp"
                     alt="منصة Nook Mate لإدارة العقارات على الحاسوب والهاتف"
+                    width="1983"
+                    height="793"
                     fetchpriority="high"
+                    decoding="async"
                     class="block aspect-[16/9] w-full object-cover object-[76%_center] lg:aspect-[1983/793] lg:object-fill"
                 />
 

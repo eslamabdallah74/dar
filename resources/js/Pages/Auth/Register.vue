@@ -6,7 +6,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, CheckCircle2, Lock, Mail, Sparkles, User } from 'lucide-vue-next';
+import { ArrowLeft, CheckCircle2, Lock, Mail, ShieldCheck, Sparkles, User } from 'lucide-vue-next';
 
 interface PlanOption {
     id: number;
@@ -70,12 +70,20 @@ const submit = () => {
 
 <template>
     <GuestLayout image-background>
-        <Head title="إنشاء حساب جديد — Nook Mate" />
+        <Head>
+            <title>إنشاء حساب جديد | Nook Mate</title>
+            <meta
+                name="description"
+                head-key="description"
+                content="أنشئ حسابك المجاني في Nook Mate وابدأ إدارة عقاراتك، وحداتك السكنية، وغرفك بنظام الصناديق المتداخلة مع تذكيرات واتساب فورية."
+            />
+            <meta name="robots" head-key="robots" content="noindex, follow" />
+        </Head>
 
         <div class="mb-3 text-center sm:mb-6">
-            <h1 class="text-2xl font-bold text-white">ابدأ بأول عقار لك</h1>
+            <h1 class="text-2xl font-bold text-white">إنشاء حساب جديد في Nook Mate</h1>
             <p class="mt-1.5 text-xs text-zinc-300 font-medium">
-                أنشئ حسابك، ثم أضف عقارك الأول مباشرة من لوحة التحكم.
+                ابدأ مساحة عملك المجانية الآن وأضف عقارك الأول وتابع عقودك ومستأجريك بكل سهولة.
             </p>
         </div>
 
@@ -218,5 +226,24 @@ const submit = () => {
                 </Link>
             </div>
         </form>
+
+        <!-- ميزات مساحة عمل Nook Mate (Platform Features & Guarantees) -->
+        <div class="mt-6 border-t border-white/10 pt-4 text-right">
+            <h2 class="text-xs font-bold text-zinc-200 mb-2">مميزات البدء مع Nook Mate:</h2>
+            <ul class="space-y-1.5 text-[11px] text-zinc-300">
+                <li class="flex items-center gap-1.5">
+                    <CheckCircle2 class="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                    <span>تجهيز فوري لمساحة عملك وإمكانية إضافة عقارك الأول بضغطة زر.</span>
+                </li>
+                <li class="flex items-center gap-1.5">
+                    <CheckCircle2 class="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                    <span>إرسال إشعارات الاستحقاق وسندات القبض المباشرة عبر واتساب.</span>
+                </li>
+                <li class="flex items-center gap-1.5">
+                    <ShieldCheck class="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                    <span>حماية متقدمة لبيانات العقود وأرشيف المستأجرين مع نسخ احتياطي دوري.</span>
+                </li>
+            </ul>
+        </div>
     </GuestLayout>
 </template>

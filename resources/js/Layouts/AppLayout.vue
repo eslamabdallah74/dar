@@ -21,7 +21,7 @@ const props = withDefaults(
         customNavLinks?: any[];
     }>(),
     {
-        title: 'Nook Mate — Find Your Spot. Rent the Space You Need.',
+        title: '',
         adminMode: false,
     }
 );
@@ -36,6 +36,19 @@ const page = usePage();
 const mobileOpen = ref(false);
 const newActionOpen = ref(false);
 const recordPaymentOpen = ref(false);
+
+const resolvedTitle = computed(() => {
+    if (props.title) {
+        return props.title;
+    }
+    if (props.headerTitle) {
+        return props.headerTitle;
+    }
+    if (props.breadcrumb) {
+        return props.breadcrumb;
+    }
+    return props.adminMode ? 'لوحة الإدارة المركزية' : 'لوحة التحكم';
+});
 
 const user = computed(() => (page.props.auth as any)?.user ?? { name: 'أحمد حسن', email: 'test@example.com', role: 'مالك المنشأة' });
 const quickRenters = computed(() => (page.props as any)?.quickRenters ?? []);
@@ -72,7 +85,9 @@ function handleNewAction() {
 
 <template>
     <div class="min-h-screen bg-[#F8F4EA] text-[#163E3E] flex font-sans antialiased select-auto" dir="rtl">
-        <Head :title="title" />
+        <Head :title="resolvedTitle">
+            <meta name="robots" head-key="robots" content="noindex, nofollow" />
+        </Head>
 
         <!-- 1. الشريط الجانبي الرئيسي (App Sidebar) -->
         <AppSidebar

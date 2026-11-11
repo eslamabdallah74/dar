@@ -30,7 +30,10 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="دخول لوحة الإدارة المركزية — Nook Mate" />
+        <Head>
+            <title>دخول لوحة الإدارة المركزية | Nook Mate</title>
+            <meta name="robots" head-key="robots" content="noindex, nofollow" />
+        </Head>
 
         <div class="mb-6 text-center space-y-2">
             <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400/10 border border-amber-400/20 text-amber-300 text-xs font-bold">

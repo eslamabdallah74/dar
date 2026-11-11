@@ -841,12 +841,6 @@ parameters:
 			path: database/seeders/AdminUserSeeder.php
 
 		-
-			message: '#^Part \$appName \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: tests/Feature/DarNavigationAndPagesTest.php
-
-		-
 			message: '#^Cannot access offset ''allocations'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 4

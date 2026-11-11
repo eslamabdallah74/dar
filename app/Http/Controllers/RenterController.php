@@ -194,7 +194,7 @@ class RenterController extends Controller
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'تمت إضافة المستأجر بنجاح',
+                'message' => __('renters.created'),
                 'renter' => [
                     'id' => $renter->id,
                     'name' => $renter->name,
@@ -206,7 +206,7 @@ class RenterController extends Controller
             ], 201);
         }
 
-        return back()->with('success', 'تمت إضافة المستأجر بنجاح');
+        return back()->with('success', __('renters.created'));
     }
 
     public function update(
@@ -246,7 +246,7 @@ class RenterController extends Controller
 
         $renter->update($validated);
 
-        return back()->with('success', 'تم تحديث بيانات المستأجر بنجاح');
+        return back()->with('success', __('renters.updated'));
     }
 
     public function storeDocument(
@@ -402,16 +402,16 @@ class RenterController extends Controller
         return $renter->messageLogs->map(fn (MessageLog $messageLog): array => [
             'id' => $messageLog->id,
             'template' => match ($messageLog->template_name) {
-                'rent_due_reminder_ar' => 'تذكير استحقاق الإيجار',
-                'payment_receipt_instant_ar' => 'إشعار استلام دفعة وسند قبض',
-                default => 'إشعار عام',
+                'rent_due_reminder_ar', 'rent_due_reminder_en' => __('whatsapp.templates.rent_due_reminder_short'),
+                'payment_receipt_instant_ar', 'payment_receipt_instant_en' => __('whatsapp.templates.payment_receipt_instant_notice'),
+                default => __('whatsapp.templates.general_notice'),
             },
             'status' => $messageLog->status,
             'status_label' => match ($messageLog->status) {
-                'delivered' => 'تم التسليم',
-                'sent' => 'تم الإرسال',
-                'pending' => 'معلق',
-                'failed' => 'فشل الإرسال',
+                'delivered' => __('whatsapp.statuses.delivered_short'),
+                'sent' => __('whatsapp.statuses.sent'),
+                'pending' => __('whatsapp.statuses.pending_short'),
+                'failed' => __('whatsapp.statuses.failed'),
                 default => $messageLog->status,
             },
             'sent_at' => $messageLog->sent_at?->format('d/m/Y H:i') ?? '—',

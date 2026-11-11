@@ -3,9 +3,11 @@
 return [
     'templates' => [
         'rent_due_reminder' => 'Rent Due Reminder',
+        'rent_due_reminder_short' => 'Rent Due Reminder',
         'rent_due_reminder_trigger' => 'Automatically before the due date',
         'rent_due_reminder_sample' => 'Hello {renter_name}, this is a reminder that the rent installment for unit {unit} in the amount of {amount} is due on {due_date}. Thank you.',
         'payment_receipt_instant' => 'Instant Digital Payment Receipt',
+        'payment_receipt_instant_notice' => 'Payment Receipt Notice',
         'payment_receipt_instant_trigger' => 'Immediately upon recording a new payment',
         'payment_receipt_instant_sample' => 'Dear {renter_name}, payment of {amount} has been received successfully. Receipt #{receipt_no}. View your receipt at: {link}',
         'overdue_notice' => 'Overdue Rent Notice',
@@ -14,11 +16,14 @@ return [
         'contract_renewal' => 'Lease Renewal Alert',
         'contract_renewal_trigger' => 'Before lease expiration',
         'contract_renewal_sample' => 'Hello {renter_name}, your lease for unit {unit} will expire on {end_date}. Please contact us if you wish to renew.',
+        'general_notice' => 'General Notice',
     ],
     'statuses' => [
         'delivered' => 'Delivered & Read',
+        'delivered_short' => 'Delivered',
         'sent' => 'Sent',
         'pending' => 'Scheduled',
+        'pending_short' => 'Pending',
         'failed' => 'Failed',
     ],
     'connection' => [

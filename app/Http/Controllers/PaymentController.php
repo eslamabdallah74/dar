@@ -118,7 +118,7 @@ class PaymentController extends Controller
 
         // Redirect to receipts tab so the newly recorded transaction is immediately visible to the user
         return redirect()->route('payments.index', ['tab' => 'receipts'])
-            ->with('success', 'تم تسجيل الدفعة وإصدار سند القبض بنجاح وترحيلها إلى سجل المقبوضات.');
+            ->with('success', __('payments.created'));
     }
 
     public function update(
@@ -137,7 +137,7 @@ class PaymentController extends Controller
         );
 
         return redirect()->route('payments.index', ['tab' => 'receipts'])
-            ->with('success', 'تم تصحيح الدفعة وإعادة تسوية وتوزيع الالتزامات الإيجارية بنجاح مع توثيق السجل الرقابي.');
+            ->with('success', __('payments.corrected'));
     }
 
     public function showReceipt(Request $request, Payment $payment): View

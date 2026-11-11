@@ -33,7 +33,7 @@ class SecurityDepositController extends Controller
     public function recordPayment(StoreSecurityDepositPaymentRequest $request, Lease $lease): RedirectResponse
     {
         $workspace = $this->resolveWorkspace($request);
-        abort_if($lease->workspace_id !== $workspace->id, 403, 'غير مصرح لك بإدارة هذا العقد.');
+        abort_if($lease->workspace_id !== $workspace->id, 403, __('deposits.unauthorized_lease'));
 
         $this->securityDepositService->recordPayment(
             $workspace,
@@ -42,7 +42,7 @@ class SecurityDepositController extends Controller
             $this->authenticatedUser($request)->id
         );
 
-        return back()->with('success', 'تم تسجيل استلام دفعة التأمين بنجاح');
+        return back()->with('success', __('deposits.payment_recorded'));
     }
 
     /**
@@ -61,7 +61,7 @@ class SecurityDepositController extends Controller
             $this->authenticatedUser($request)->id
         );
 
-        return back()->with('success', 'تم عكس دفعة التأمين وتوثيق العملية في سجل التدقيق بنجاح');
+        return back()->with('success', __('deposits.payment_reversed'));
     }
 
     /**
@@ -79,7 +79,7 @@ class SecurityDepositController extends Controller
             $this->authenticatedUser($request)->id
         );
 
-        return back()->with('success', 'تم بدء مرحلة فحص الوحدة وتسوية التأمين بنجاح');
+        return back()->with('success', __('deposits.settlement_started'));
     }
 
     /**
@@ -105,8 +105,8 @@ class SecurityDepositController extends Controller
         $deductionCount = count($validated['deductions']);
 
         return back()->with('success', $deductionCount === 1
-            ? 'تم تسجيل بند الخصم بنجاح'
-            : "تم تسجيل {$deductionCount} بنود خصم بنجاح");
+            ? __('deposits.deduction_recorded')
+            : __('deposits.deductions_recorded', ['count' => $deductionCount]));
     }
 
     /**
@@ -130,7 +130,7 @@ class SecurityDepositController extends Controller
             $this->authenticatedUser($request)->id
         );
 
-        return back()->with('success', 'تم تعديل بند الخصم بنجاح');
+        return back()->with('success', __('deposits.deduction_updated'));
     }
 
     /**
@@ -143,7 +143,7 @@ class SecurityDepositController extends Controller
 
         $this->securityDepositService->deleteDeduction($workspace, $lease, $deduction);
 
-        return back()->with('success', 'تم إلغاء بند الخصم بنجاح');
+        return back()->with('success', __('deposits.deduction_deleted'));
     }
 
     /**
@@ -161,7 +161,7 @@ class SecurityDepositController extends Controller
             $this->authenticatedUser($request)->id
         );
 
-        return back()->with('success', 'تم توثيق رد مبلغ التأمين إلى المستأجر بنجاح');
+        return back()->with('success', __('deposits.refund_recorded'));
     }
 
     /**
@@ -170,7 +170,7 @@ class SecurityDepositController extends Controller
     public function settle(SettleSecurityDepositRequest $request, Lease $lease): RedirectResponse
     {
         $workspace = $this->resolveWorkspace($request);
-        abort_if($lease->workspace_id !== $workspace->id, 403, 'غير مصرح لك بإدارة هذا العقد.');
+        abort_if($lease->workspace_id !== $workspace->id, 403, __('deposits.unauthorized_lease'));
 
         $this->securityDepositService->settle(
             $workspace,
@@ -180,7 +180,7 @@ class SecurityDepositController extends Controller
             $this->authenticatedUser($request)->id
         );
 
-        return back()->with('success', 'تم اعتماد وإغلاق تسوية التأمين نهائياً بنجاح');
+        return back()->with('success', __('deposits.settled'));
     }
 
     /**
@@ -198,7 +198,7 @@ class SecurityDepositController extends Controller
             $this->authenticatedUser($request)->id
         );
 
-        return redirect()->route('leases.show', $lease->id)->with('success', 'تم توثيق صرف مبلغ التأمين للمستأجر بنجاح وتحديث حالة الصرف.');
+        return redirect()->route('leases.show', $lease->id)->with('success', __('deposits.refund_disbursed'));
     }
 
     /**
@@ -207,10 +207,10 @@ class SecurityDepositController extends Controller
     public function showStatement(Request $request, Lease $lease): View
     {
         $workspace = $this->resolveWorkspace($request);
-        abort_if($lease->workspace_id !== $workspace->id, 403, 'غير مصرح لك بعرض هذا البيان.');
+        abort_if($lease->workspace_id !== $workspace->id, 403, __('deposits.unauthorized_statement'));
 
         $settlement = $lease->securityDepositSettlement;
-        abort_if($settlement === null, 404, 'لا توجد تسوية تأمين مسجلة لهذا العقد.');
+        abort_if($settlement === null, 404, __('deposits.no_settlement'));
 
         $lease->load([
             'renter',
@@ -262,30 +262,30 @@ class SecurityDepositController extends Controller
             }
 
             fwrite($handle, "\xEF\xBB\xBF");
-            $this->writeCsvRow($handle, ['تسوية مبلغ التأمين', 'دار']);
-            $this->writeCsvRow($handle, ['رقم العقد', $lease->contract_number]);
+            $this->writeCsvRow($handle, [__('deposits.csv_settlement_title'), 'دار']);
+            $this->writeCsvRow($handle, [__('deposits.csv_contract_number'), $lease->contract_number]);
             $unit = $lease->unit;
-            $this->writeCsvRow($handle, ['العقار', $unit?->property->name ?? '—']);
-            $this->writeCsvRow($handle, ['الوحدة', $unit instanceof Unit ? $unit->name : '—']);
-            $this->writeCsvRow($handle, ['المستأجر', $lease->renter->name ?? '—']);
-            $this->writeCsvRow($handle, ['هاتف المستأجر', $lease->renter->phone ?? '—']);
+            $this->writeCsvRow($handle, [__('deposits.csv_property'), $unit?->property->name ?? '—']);
+            $this->writeCsvRow($handle, [__('deposits.csv_unit'), $unit instanceof Unit ? $unit->name : '—']);
+            $this->writeCsvRow($handle, [__('deposits.csv_renter'), $lease->renter->name ?? '—']);
+            $this->writeCsvRow($handle, [__('deposits.csv_renter_phone'), $lease->renter->phone ?? '—']);
             $this->writeCsvRow($handle, []);
-            $this->writeCsvRow($handle, ['ملخص التسوية', 'القيمة']);
-            $this->writeCsvRow($handle, ['قرار التسوية', $settlement->settlement_type_label ?? '—']);
-            $this->writeCsvRow($handle, ['حالة صرف المبلغ', $settlement->refund_status_label]);
-            $this->writeCsvRow($handle, ['التأمين المستلم', (float) $settlement->total_received]);
-            $this->writeCsvRow($handle, ['إجمالي الخصومات', (float) $settlement->total_deductions]);
-            $this->writeCsvRow($handle, ['المبلغ المستحق رده', (float) $settlement->total_refunded + (float) $settlement->refundable_balance]);
-            $this->writeCsvRow($handle, ['المردود فعلياً', (float) $settlement->total_refunded]);
-            $this->writeCsvRow($handle, ['المتبقي للصرف', (float) $settlement->refundable_balance]);
-            $this->writeCsvRow($handle, ['المحتفظ به', (float) $settlement->total_deductions]);
-            $this->writeCsvRow($handle, ['نتيجة الفحص', $this->inspectionCategoryLabel($settlement->inspection_category)]);
-            $this->writeCsvRow($handle, ['ملاحظات الفحص', $settlement->inspection_notes ?? '—']);
-            $this->writeCsvRow($handle, ['سبب الاحتفاظ', $settlement->retention_reason ?? '—']);
-            $this->writeCsvRow($handle, ['ملاحظات التسوية', $settlement->notes ?? '—']);
-            $this->writeCsvRow($handle, ['تاريخ اعتماد التسوية', $settlement->settled_at?->format('Y-m-d H:i') ?? '—']);
+            $this->writeCsvRow($handle, [__('deposits.csv_summary'), __('deposits.csv_value')]);
+            $this->writeCsvRow($handle, [__('deposits.csv_decision'), $settlement->settlement_type_label ?? '—']);
+            $this->writeCsvRow($handle, [__('deposits.csv_refund_status'), $settlement->refund_status_label]);
+            $this->writeCsvRow($handle, [__('deposits.csv_received'), (float) $settlement->total_received]);
+            $this->writeCsvRow($handle, [__('deposits.csv_deductions'), (float) $settlement->total_deductions]);
+            $this->writeCsvRow($handle, [__('deposits.csv_due_refund'), (float) $settlement->total_refunded + (float) $settlement->refundable_balance]);
+            $this->writeCsvRow($handle, [__('deposits.csv_refunded'), (float) $settlement->total_refunded]);
+            $this->writeCsvRow($handle, [__('deposits.csv_remaining_refund'), (float) $settlement->refundable_balance]);
+            $this->writeCsvRow($handle, [__('deposits.csv_retained'), (float) $settlement->total_deductions]);
+            $this->writeCsvRow($handle, [__('deposits.csv_inspection_result'), $this->inspectionCategoryLabel($settlement->inspection_category)]);
+            $this->writeCsvRow($handle, [__('deposits.csv_inspection_notes'), $settlement->inspection_notes ?? '—']);
+            $this->writeCsvRow($handle, [__('deposits.csv_retention_reason'), $settlement->retention_reason ?? '—']);
+            $this->writeCsvRow($handle, [__('deposits.csv_settlement_notes'), $settlement->notes ?? '—']);
+            $this->writeCsvRow($handle, [__('deposits.csv_settled_at'), $settlement->settled_at?->format('Y-m-d H:i') ?? '—']);
             $this->writeCsvRow($handle, []);
-            $this->writeCsvRow($handle, ['بنود الخصم', 'التصنيف', 'سبب الخصم', 'ملاحظات', 'التاريخ', 'المبلغ']);
+            $this->writeCsvRow($handle, [__('deposits.csv_deduction_items'), __('deposits.csv_category'), __('deposits.csv_reason'), __('deposits.csv_notes'), __('deposits.csv_date'), __('deposits.csv_amount')]);
 
             foreach ($lease->securityDepositDeductions as $deduction) {
                 $this->writeCsvRow($handle, [
@@ -299,11 +299,11 @@ class SecurityDepositController extends Controller
             }
 
             $this->writeCsvRow($handle, []);
-            $this->writeCsvRow($handle, ['عمليات رد المبلغ', 'طريقة الرد', 'التاريخ', 'المرجع', 'الملاحظات', 'المبلغ']);
+            $this->writeCsvRow($handle, [__('deposits.csv_refund_operations'), __('deposits.csv_refund_method'), __('deposits.csv_date'), __('deposits.csv_reference'), __('deposits.csv_notes'), __('deposits.csv_amount')]);
 
             foreach ($lease->securityDepositRefunds as $refund) {
                 $this->writeCsvRow($handle, [
-                    'رد للمستأجر',
+                    __('deposits.csv_refund_to_renter'),
                     $this->paymentMethodLabel($refund->payment_method),
                     $refund->refunded_at->format('Y-m-d'),
                     $refund->reference ?? '—',
@@ -335,29 +335,19 @@ class SecurityDepositController extends Controller
 
     private function inspectionCategoryLabel(string $category): string
     {
-        return match ($category) {
-            'no_issues' => 'لا توجد ملاحظات أو أضرار',
-            'unit_damage' => 'تلفيات في الوحدة',
-            'maintenance' => 'إصلاحات وصيانة',
-            'unpaid_dues' => 'مستحقات غير مدفوعة',
-            'cleaning' => 'تنظيف الوحدة',
-            'other' => 'أخرى',
-            'furniture_damage' => 'تلف أثاث أو أجهزة',
-            'fixture_damage' => 'تلف تركيبات ومرافق',
-            'missing_items' => 'مفقودات ومحتويات ناقصة',
-            'other_damage' => 'أضرار موثقة أخرى',
-            default => $category,
-        };
+        $translated = __('deposits.inspection_categories.'.$category);
+
+        return is_string($translated) && $translated !== 'deposits.inspection_categories.'.$category
+            ? $translated
+            : $category;
     }
 
     private function paymentMethodLabel(string $method): string
     {
-        return match ($method) {
-            'cash' => 'نقدي',
-            'bank_transfer' => 'تحويل بنكي',
-            'cheque' => 'شيك',
-            'other' => 'أخرى',
-            default => $method,
-        };
+        $translated = __('deposits.payment_methods.'.$method);
+
+        return is_string($translated) && $translated !== 'deposits.payment_methods.'.$method
+            ? $translated
+            : $method;
     }
 }

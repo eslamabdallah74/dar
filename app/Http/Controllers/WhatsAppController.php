@@ -27,18 +27,18 @@ class WhatsAppController extends Controller
                     'renter_name' => $log->renter->name ?? 'مستأجر',
                     'recipient_phone' => $log->recipient_phone,
                     'template_name' => match ($log->template_name) {
-                        'rent_due_reminder_ar' => 'تذكير موعد استحقاق الإيجار',
-                        'payment_receipt_instant_ar' => 'سند قبض إلكتروني فوري',
-                        'overdue_notice_ar' => 'إشعار متأخرات سداد',
-                        'contract_renewal_ar' => 'تنبيه قرب انتهاء العقد',
+                        'rent_due_reminder_ar', 'rent_due_reminder_en' => __('whatsapp.templates.rent_due_reminder'),
+                        'payment_receipt_instant_ar', 'payment_receipt_instant_en' => __('whatsapp.templates.payment_receipt_instant'),
+                        'overdue_notice_ar', 'overdue_notice_en' => __('whatsapp.templates.overdue_notice'),
+                        'contract_renewal_ar', 'contract_renewal_en' => __('whatsapp.templates.contract_renewal'),
                         default => $log->template_name,
                     },
                     'status' => $log->status,
                     'status_label' => match ($log->status) {
-                        'delivered' => 'تم التسليم والقراءة',
-                        'sent' => 'تم الإرسال',
-                        'pending' => 'مجدول',
-                        'failed' => 'فشل الإرسال',
+                        'delivered' => __('whatsapp.statuses.delivered'),
+                        'sent' => __('whatsapp.statuses.sent'),
+                        'pending' => __('whatsapp.statuses.pending'),
+                        'failed' => __('whatsapp.statuses.failed'),
                         default => $log->status,
                     },
                     'scheduled_at' => $log->scheduled_at->format('d/m/Y H:i'),
@@ -49,30 +49,30 @@ class WhatsAppController extends Controller
         $templates = [
             [
                 'id' => 'rent_due_reminder_ar',
-                'title' => 'تذكير موعد استحقاق الإيجار',
-                'trigger' => 'تلقائياً قبل 3 أيام من تاريخ الاستحقاق',
-                'sample' => 'مرحباً {اسم_المستأجر}، نود تذكيركم بأن القسط الإيجاري للوحدة {الوحدة} بقيمة {المبلغ} ج.م مستحق في {تاريخ_الاستحقاق}. شكراً لتعاونكم.',
+                'title' => __('whatsapp.templates.rent_due_reminder'),
+                'trigger' => __('whatsapp.templates.rent_due_reminder_trigger'),
+                'sample' => __('whatsapp.templates.rent_due_reminder_sample'),
                 'active' => true,
             ],
             [
                 'id' => 'payment_receipt_instant_ar',
-                'title' => 'سند قبض إلكتروني فوري',
-                'trigger' => 'فور تسجيل دفعة جديدة في النظام',
-                'sample' => 'عزيزي {اسم_المستأجر}، تم استلام مبلغ {المبلغ} ج.م بنجاح، سند قبض رقم {رقم_السند}. يمكنكم الاطلاع على الإيصال عبر الرابط التالي: {رابط_السند}',
+                'title' => __('whatsapp.templates.payment_receipt_instant'),
+                'trigger' => __('whatsapp.templates.payment_receipt_instant_trigger'),
+                'sample' => __('whatsapp.templates.payment_receipt_instant_sample'),
                 'active' => true,
             ],
             [
                 'id' => 'overdue_notice_ar',
-                'title' => 'إشعار متأخرات سداد الإيجار',
-                'trigger' => 'بعد مرور 5 أيام على موعد الاستحقاق',
-                'sample' => 'عزيزي {اسم_المستأجر}، نلفت عنايتكم لتأخر سداد قسط الإيجار للوحدة {الوحدة} المستحق بتاريخ {تاريخ_الاستحقاق}. يرجى المبادرة بالسداد تجنباً للإجراءات النظامية.',
+                'title' => __('whatsapp.templates.overdue_notice'),
+                'trigger' => __('whatsapp.templates.overdue_notice_trigger'),
+                'sample' => __('whatsapp.templates.overdue_notice_sample'),
                 'active' => true,
             ],
             [
                 'id' => 'contract_renewal_ar',
-                'title' => 'تنبيه تجديد عقد الإيجار',
-                'trigger' => 'قبل 30 يوماً من انتهاء العقد',
-                'sample' => 'مرحباً {اسم_المستأجر}، نود إشعاركم بأن عقد إيجاركم للوحدة {الوحدة} ينتهي في {تاريخ_الانتهاء}. يرجى التواصل معنا في حال رغبتكم بالتجديد.',
+                'title' => __('whatsapp.templates.contract_renewal'),
+                'trigger' => __('whatsapp.templates.contract_renewal_trigger'),
+                'sample' => __('whatsapp.templates.contract_renewal_sample'),
                 'active' => true,
             ],
         ];
@@ -95,9 +95,9 @@ class WhatsAppController extends Controller
             ],
             'connection' => [
                 'is_connected' => $hasCredentials,
-                'sender_number' => config('services.whatsapp.phone_number') ?? ($hasCredentials ? '+20 10 1234 5678' : 'غير مهيأ'),
-                'provider' => 'WhatsApp Cloud API الرسمية (Meta)',
-                'status_label' => $hasCredentials ? 'متصل ونشط' : 'بانتظار ضبط مفاتيح الربط (WHATSAPP_API_TOKEN)',
+                'sender_number' => config('services.whatsapp.phone_number') ?? ($hasCredentials ? '+20 10 1234 5678' : __('whatsapp.connection.unconfigured')),
+                'provider' => __('whatsapp.connection.provider'),
+                'status_label' => $hasCredentials ? __('whatsapp.connection.connected') : __('whatsapp.connection.disconnected'),
             ],
         ]);
     }
@@ -131,13 +131,13 @@ class WhatsAppController extends Controller
         );
 
         if ($log && in_array($log->status, ['sent', 'delivered'], true)) {
-            return back()->with('success', 'تم إرسال رسالة WhatsApp بنجاح عبر بوابة Meta Cloud API');
+            return back()->with('success', __('whatsapp.messages.test_sent_success'));
         }
 
         if ($log && $log->status === 'failed') {
-            return back()->with('warning', 'فشل الإرسال: '.$log->error_message);
+            return back()->with('warning', __('whatsapp.messages.test_sent_failed', ['error' => $log->error_message ?? '']));
         }
 
-        return back()->with('info', 'تمت معالجة طلب الإرسال بنجاح');
+        return back()->with('info', __('whatsapp.messages.test_sent_processed'));
     }
 }

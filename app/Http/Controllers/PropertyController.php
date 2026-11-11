@@ -224,10 +224,10 @@ class PropertyController extends Controller
         });
 
         if ($request->input('after_save') === 'index') {
-            return redirect()->route('properties.index')->with('success', 'تمت إضافة العقار وتجهيز وحداته بنجاح');
+            return redirect()->route('properties.index')->with('success', __('properties.created'));
         }
 
-        return redirect()->route('properties.show', $property->id)->with('success', 'تم إنشاء العقار بنجاح وتجهيز وحداته');
+        return redirect()->route('properties.show', $property->id)->with('success', __('properties.created_single'));
     }
 
     public function update(
@@ -258,10 +258,10 @@ class PropertyController extends Controller
         $property->update($validated);
 
         if ($request->header('referer')) {
-            return back()->with('success', 'تم تحديث بيانات العقار بنجاح');
+            return back()->with('success', __('properties.updated'));
         }
 
-        return redirect()->route('properties.show', $property->id)->with('success', 'تم تحديث بيانات العقار بنجاح');
+        return redirect()->route('properties.show', $property->id)->with('success', __('properties.updated'));
     }
 
     public function storeUnit(StoreUnitRequest $request, Property $property, WorkspaceLimitService $limitService): RedirectResponse
@@ -300,7 +300,7 @@ class PropertyController extends Controller
             ]);
         });
 
-        return back()->with('success', 'تمت إضافة الوحدة بنجاح');
+        return back()->with('success', __('properties.unit_created'));
     }
 
     public function updateUnit(UpdateUnitRequest $request, Property $property, Unit $unit, WorkspaceLimitService $limitService): RedirectResponse
@@ -340,7 +340,7 @@ class PropertyController extends Controller
             ]);
         });
 
-        return back()->with('success', 'تم تعديل بيانات الوحدة بنجاح');
+        return back()->with('success', __('properties.unit_updated'));
     }
 
     public function destroyUnit(Request $request, Property $property, Unit $unit): RedirectResponse
@@ -364,7 +364,7 @@ class PropertyController extends Controller
 
         $unit->delete();
 
-        return back()->with('success', 'تم حذف الوحدة بنجاح');
+        return back()->with('success', __('properties.unit_deleted'));
     }
 
     /**

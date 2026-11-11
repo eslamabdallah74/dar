@@ -26,7 +26,7 @@ class DashboardController extends Controller
 
         if (! $workspace) {
             $workspace = Workspace::create([
-                'name' => 'عقارات النور',
+                'name' => __('workspace.default_name'),
                 'slug' => 'workspace-'.$user->id,
                 'owner_user_id' => $user->id,
                 'currency' => 'EGP',

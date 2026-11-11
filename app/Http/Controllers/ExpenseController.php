@@ -72,7 +72,7 @@ class ExpenseController extends Controller
             'status' => 'recorded',
         ]);
 
-        return back()->with('success', 'تم تسجيل المصروف بنجاح');
+        return back()->with('success', __('expenses.created'));
     }
 
     public function update(
@@ -87,10 +87,10 @@ class ExpenseController extends Controller
         $expenseService->updateExpense($expense, $request->validated());
 
         if ($request->wantsJson()) {
-            return response()->json(['message' => 'تم تحديث بيانات المصروف بنجاح']);
+            return response()->json(['message' => __('expenses.updated')]);
         }
 
-        return back()->with('success', 'تم تحديث بيانات المصروف بنجاح');
+        return back()->with('success', __('expenses.updated'));
     }
 
     public function recordPayment(Request $request, Expense $expense): RedirectResponse|JsonResponse
@@ -99,7 +99,7 @@ class ExpenseController extends Controller
         abort_if($expense->workspace_id !== $workspace->id, 403, 'غير مصرح لك بسداد هذا المصروف.');
 
         if ($expense->amount === null || (float) $expense->amount <= 0) {
-            return back()->withErrors(['amount' => 'لا يمكن تسجيل سداد مصروف لم تُسجل قيمته بعد.'])->with('error', 'لا يمكن تسجيل سداد مصروف لم تُسجل قيمته بعد.');
+            return back()->withErrors(['amount' => __('expenses.cannot_pay_zero')])->with('error', __('expenses.cannot_pay_zero'));
         }
 
         DB::transaction(function () use ($expense, $request, $workspace) {
@@ -126,10 +126,10 @@ class ExpenseController extends Controller
         });
 
         if ($request->wantsJson()) {
-            return response()->json(['message' => 'تم تسجيل سداد المصروف بنجاح']);
+            return response()->json(['message' => __('expenses.paid')]);
         }
 
-        return back()->with('success', 'تم تسجيل سداد المصروف بنجاح');
+        return back()->with('success', __('expenses.paid'));
     }
 
     public function reversePayment(Request $request, Expense $expense): RedirectResponse|JsonResponse
@@ -159,10 +159,10 @@ class ExpenseController extends Controller
         });
 
         if ($request->wantsJson()) {
-            return response()->json(['message' => 'تم إلغاء سداد المصروف بنجاح']);
+            return response()->json(['message' => __('expenses.reversed')]);
         }
 
-        return back()->with('success', 'تم إلغاء سداد المصروف بنجاح');
+        return back()->with('success', __('expenses.reversed'));
     }
 
     public function destroy(Request $request, Expense $expense): RedirectResponse|JsonResponse
@@ -173,21 +173,21 @@ class ExpenseController extends Controller
         if ($expense->maintenance_request_id !== null) {
             if ($request->wantsJson()) {
                 return response()->json([
-                    'message' => 'لا يمكن حذف مصروف مرتبط بطلب صيانة نشط لمنع كسر العلاقة المالية للطلب.',
+                    'message' => __('expenses.cannot_delete_linked'),
                 ], 422);
             }
 
             return back()->withErrors([
-                'expense' => 'لا يمكن حذف مصروف مرتبط بطلب صيانة نشط لمنع كسر العلاقة المالية للطلب.',
-            ])->with('error', 'لا يمكن حذف مصروف مرتبط بطلب صيانة نشط لمنع كسر العلاقة المالية للطلب.');
+                'expense' => __('expenses.cannot_delete_linked'),
+            ])->with('error', __('expenses.cannot_delete_linked'));
         }
 
         $expense->delete();
 
         if ($request->wantsJson()) {
-            return response()->json(['message' => 'تم حذف المصروف بنجاح']);
+            return response()->json(['message' => __('expenses.deleted')]);
         }
 
-        return back()->with('success', 'تم حذف المصروف بنجاح');
+        return back()->with('success', __('expenses.deleted'));
     }
 }

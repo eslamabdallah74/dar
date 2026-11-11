@@ -137,3 +137,19 @@ test('first test example has active unlimited enterprise subscription', function
             ->has('plans', 6)
         );
 });
+
+test('database seeder does not seed demo data in production environment', function () {
+    app()['env'] = 'production';
+
+    $this->artisan('db:seed', ['--force' => true]);
+
+    $adminEmail = config('admin.email');
+    if (! is_string($adminEmail) || $adminEmail === '') {
+        $adminEmail = 'admin@dar.rent';
+    }
+
+    expect(User::where('email', $adminEmail)->exists())->toBeTrue()
+        ->and(Plan::count())->toBe(6)
+        ->and(User::where('email', 'test@example.com')->exists())->toBeFalse()
+        ->and(Workspace::where('slug', 'al-nour-real-estate')->exists())->toBeFalse();
+});

@@ -4,15 +4,7 @@ import { Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
 import ResourceTableHeading from '@/Components/Common/ResourceTableHeading.vue';
-import {
-    CheckCheck,
-    Clock,
-    MessageCircle,
-    MessageSquare,
-    Send,
-    X,
-    Zap,
-} from 'lucide-vue-next';
+import { Clock, MessageSquare, Send, X, Zap } from 'lucide-vue-next';
 
 interface TemplateItem {
     id: string;
@@ -86,33 +78,6 @@ const sendTestMessage = () => {
             </button>
         </template>
 
-        <!-- بطاقة حالة الاتصال الرسمية بالـ WhatsApp Business API -->
-        <div class="rounded-3xl border border-emerald-300 bg-emerald-50/70 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-2xs">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                    <MessageCircle class="w-6 h-6 stroke-[2.2]" />
-                </div>
-                <div>
-                    <div class="flex items-center gap-2">
-                        <h3 class="text-base font-bold text-emerald-950">حساب WhatsApp Business معتمد ونشط</h3>
-                        <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-200/80 text-emerald-900 border border-emerald-300">
-                            {{ connection.status_label }}
-                        </span>
-                    </div>
-                    <p class="text-xs text-emerald-800 mt-1">
-                        رقم الإرسال الرسمي: <span class="font-mono font-bold" dir="ltr">{{ connection.sender_number }}</span> • المزود: {{ connection.provider }}
-                    </p>
-                </div>
-            </div>
-
-            <div class="flex items-center gap-2 shrink-0">
-                <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-900 bg-white/80 px-3 py-1.5 rounded-xl border border-emerald-200">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span>الخدمة التلقائية تعمل 24/7</span>
-                </span>
-            </div>
-        </div>
-
         <!-- كروت مؤشرات WhatsApp (4 KPIs) -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
@@ -127,9 +92,6 @@ const sendTestMessage = () => {
                 <span class="text-xs font-semibold text-[#5B6770]">نسبة التسليم والقراءة</span>
                 <div class="flex items-baseline justify-between">
                     <span class="text-2xl font-bold text-emerald-700 font-mono">{{ stats.delivered_rate }}%</span>
-                    <span class="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md font-semibold">
-                        موثوقية فائقة
-                    </span>
                 </div>
             </div>
 
@@ -145,9 +107,6 @@ const sendTestMessage = () => {
                 <span class="text-xs font-semibold text-[#5B6770]">متوسط سرعة الإرسال</span>
                 <div class="flex items-baseline justify-between">
                     <span class="text-2xl font-bold text-[#163E3E] font-mono">1.2 <span class="text-xs font-sans font-normal text-[#5B6770]">ثانية</span></span>
-                    <span class="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md font-semibold">
-                        فوري
-                    </span>
                 </div>
             </div>
         </div>
@@ -169,33 +128,22 @@ const sendTestMessage = () => {
                     class="rounded-3xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-3.5 flex flex-col justify-between hover:border-[#163E3E]/40 transition"
                 >
                     <div class="space-y-3">
-                        <div class="flex items-center justify-between">
+                        <div class="flex items-center justify-between gap-3">
                             <h3 class="text-sm font-bold text-[#163E3E] flex items-center gap-2">
                                 <MessageSquare class="w-4 h-4 text-[#163E3E]" />
                                 <span>{{ tpl.title }}</span>
                             </h3>
-                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                مفعل تلقائياً
-                            </span>
                         </div>
 
                         <div class="text-xs text-[#5B6770] flex items-center gap-1.5">
                             <Clock class="w-3.5 h-3.5 text-[#5B6770]" />
-                            <span>وقت الإطلاق: {{ tpl.trigger }}</span>
+                            <span>{{ tpl.trigger }}</span>
                         </div>
 
                         <!-- نص المعاينة للرسالة -->
                         <div class="p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] text-xs text-[#163E3E] leading-relaxed font-sans">
                             {{ tpl.sample }}
                         </div>
-                    </div>
-
-                    <div class="pt-2 flex items-center justify-between text-xs text-[#5B6770] border-t border-slate-100">
-                        <span>متغيرات ذكية: {اسم_المستأجر}، {المبلغ}، {الوحدة}</span>
-                        <span class="text-emerald-700 font-bold flex items-center gap-1">
-                            <CheckCheck class="w-4 h-4" />
-                            <span>معتمد من Meta</span>
-                        </span>
                     </div>
                 </div>
             </div>

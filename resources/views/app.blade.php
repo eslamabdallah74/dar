@@ -51,10 +51,10 @@
 
         <!-- Primary Meta Tags -->
         <meta name="title" content="{{ $pageTitle }}">
-        <meta name="description" content="{{ $pageDescription }}">
+        <meta name="description" inertia="description" content="{{ $pageDescription }}">
         <meta name="keywords" content="Nook Mate, Find Your Spot, Rent the Space You Need, Rent by Bed, Rent by Room, Flat, إدارة عقارات, نظام لإدارة الإيجار, برنامج لإدارة الأملاك, عقود الإيجار, سند قبض إلكتروني, تذكير إيجار واتساب, سكن مشترك, إدارة شقق">
         <meta name="author" content="Nook Mate">
-        <meta name="robots" content="{{ $robotsDirective }}">
+        <meta name="robots" inertia="robots" content="{{ $robotsDirective }}">
         <link rel="canonical" href="{{ $canonicalUrl }}">
 
         <!-- Favicons & Mobile Icons -->
@@ -71,8 +71,8 @@
         <meta property="og:type" content="website">
         <meta property="og:site_name" content="{{ $appName }}">
         <meta property="og:url" content="{{ $canonicalUrl }}">
-        <meta property="og:title" content="{{ $pageTitle }}">
-        <meta property="og:description" content="{{ $pageDescription }}">
+        <meta property="og:title" inertia="og:title" content="{{ $pageTitle }}">
+        <meta property="og:description" inertia="og:description" content="{{ $pageDescription }}">
         <meta property="og:image" content="{{ asset('images/logo.png') }}">
         <meta property="og:image:secure_url" content="{{ asset('images/logo.png') }}">
         <meta property="og:image:type" content="image/png">
@@ -84,8 +84,8 @@
 
         <!-- Twitter / X -->
         <meta name="twitter:card" content="summary_large_image">
-        <meta name="twitter:title" content="{{ $pageTitle }}">
-        <meta name="twitter:description" content="{{ $pageDescription }}">
+        <meta name="twitter:title" inertia="twitter:title" content="{{ $pageTitle }}">
+        <meta name="twitter:description" inertia="twitter:description" content="{{ $pageDescription }}">
         <meta name="twitter:image" content="{{ asset('images/logo.png') }}">
         <meta name="twitter:image:alt" content="شعار Nook Mate">
 

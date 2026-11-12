@@ -22,10 +22,8 @@ export default defineConfig({
         rollupOptions: {
             output: {
                 manualChunks(id) {
-                    if (id.includes('node_modules')) {
-                        if (id.includes('vue') || id.includes('@inertiajs')) {
-                            return 'vendor-core';
-                        }
+                    if (/[\/]node_modules[\/](vue|@vue|@inertiajs)[\/]/.test(id)) {
+                        return 'vendor-core';
                     }
                 },
             },

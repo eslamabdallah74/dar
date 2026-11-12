@@ -14,8 +14,8 @@ it('renders landing page with optimized performance and SEO headers', function (
 
     // Verify unique title & description
     expect($content)->toContain('<title inertia>'.$appName.' — Find Your Spot. Rent the Space You Need.</title>')
-        ->toContain('name="description" content="'.$appName.' — Find Your Spot. Rent the Space You Need. منصة سحابية متكاملة لإدارة وتأجير العقارات السكنية والشقق والغرف والأسرة بنظام الصناديق المتداخلة مع تذكيرات واتساب وسندات قبض فورية."')
-        ->toContain('name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"');
+        ->toContain('name="description" inertia="description" content="'.$appName.' — Find Your Spot. Rent the Space You Need. منصة سحابية متكاملة لإدارة وتأجير العقارات السكنية والشقق والغرف والأسرة بنظام الصناديق المتداخلة مع تذكيرات واتساب وسندات قبض فورية."')
+        ->toContain('name="robots" inertia="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"');
 
     // Verify LCP banner preload discovery
     expect($content)->toContain('rel="preload" as="image"')
@@ -37,8 +37,8 @@ it('renders login page with unique metadata, noindex directive, and descriptive 
 
     // Verify distinct title and description on initial server HTML
     expect($content)->toContain('<title inertia>تسجيل الدخول | '.$appName.'</title>')
-        ->toContain('name="description" content="سجّل الدخول إلى مساحة عملك في '.$appName.' لإدارة العقارات والمستأجرين وعقود الإيجار والتحصيلات."')
-        ->toContain('name="robots" content="noindex, follow"');
+        ->toContain('name="description" inertia="description" content="سجّل الدخول إلى مساحة عملك في '.$appName.' لإدارة العقارات والمستأجرين وعقود الإيجار والتحصيلات."')
+        ->toContain('name="robots" inertia="robots" content="noindex, follow"');
 });
 
 it('renders register page with unique metadata, noindex directive, and descriptive H1', function () {
@@ -51,8 +51,8 @@ it('renders register page with unique metadata, noindex directive, and descripti
 
     // Verify distinct title and description on initial server HTML
     expect($content)->toContain('<title inertia>إنشاء حساب جديد | '.$appName.'</title>')
-        ->toContain('name="description" content="أنشئ حسابك المجاني في '.$appName.' وابدأ إدارة عقاراتك ووحداتك السكنية وتذكيرات واتساب فوراً."')
-        ->toContain('name="robots" content="noindex, follow"');
+        ->toContain('name="description" inertia="description" content="أنشئ حسابك المجاني في '.$appName.' وابدأ إدارة عقاراتك ووحداتك السكنية وتذكيرات واتساب فوراً."')
+        ->toContain('name="robots" inertia="robots" content="noindex, follow"');
 });
 
 it('serves a valid sitemap.xml excluding auth routes and dashboard paths', function () {

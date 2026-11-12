@@ -85,7 +85,8 @@ function handleNewAction() {
 
 <template>
     <div class="min-h-screen bg-[#F8F4EA] text-[#163E3E] flex font-sans antialiased select-auto" dir="rtl">
-        <Head :title="resolvedTitle">
+        <Head>
+            <title>{{ resolvedTitle }}</title>
             <meta name="robots" head-key="robots" content="noindex, nofollow" />
         </Head>
 

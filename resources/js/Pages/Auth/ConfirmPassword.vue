@@ -25,7 +25,9 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head :title="`${$t('auth.confirm_password_title')} — Nook Mate`" />
+        <Head>
+            <title>{{ `${$t('auth.confirm_password_title')} — Nook Mate` }}</title>
+        </Head>
 
         <div class="mb-6 text-center">
             <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">

@@ -71,11 +71,14 @@ class WhatsAppService
                 $phone,
                 $templateName,
                 $deduplicationKey,
-                $leaseId,
-                $rentChargeId
+                ['lease_id' => $leaseId, 'rent_charge_id' => $rentChargeId]
             );
 
-            $langEnum = $this->resolveWorkspaceLanguage($workspaceId);
+            $langEnum = match (true) {
+                str_ends_with($templateName, WhatsAppMessageLanguage::English->templateSuffix()) => WhatsAppMessageLanguage::English,
+                str_ends_with($templateName, WhatsAppMessageLanguage::Arabic->templateSuffix()) => WhatsAppMessageLanguage::Arabic,
+                default => $this->resolveWorkspaceLanguage($workspaceId),
+            };
 
             // Execute via Gateway
             $result = $this->gateway->sendTemplate($phone, $templateName, $parameters, $langEnum->metaLanguageCode());
@@ -98,6 +101,9 @@ class WhatsAppService
         return $renter !== null && $renter->whatsapp_opted_out_at !== null;
     }
 
+    /**
+     * @param  array{lease_id?: int|null, rent_charge_id?: int|null}  $context
+     */
     private function findOrCreatePendingLog(
         ?MessageLog $existing,
         int $workspaceId,
@@ -105,14 +111,13 @@ class WhatsAppService
         string $phone,
         string $templateName,
         string $deduplicationKey,
-        ?int $leaseId,
-        ?int $rentChargeId
+        array $context = []
     ): MessageLog {
         $log = $existing ?? new MessageLog([
             'workspace_id' => $workspaceId,
             'renter_id' => $renterId,
-            'lease_id' => $leaseId,
-            'rent_charge_id' => $rentChargeId,
+            'lease_id' => $context['lease_id'] ?? null,
+            'rent_charge_id' => $context['rent_charge_id'] ?? null,
             'recipient_phone' => $phone,
             'template_name' => $templateName,
             'deduplication_key' => $deduplicationKey,

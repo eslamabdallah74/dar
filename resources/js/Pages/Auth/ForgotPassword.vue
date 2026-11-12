@@ -49,7 +49,9 @@ const handleTryAgain = () => {
 
 <template>
     <GuestLayout>
-        <Head :title="`${$t('auth.reset_password')} — Nook Mate`" />
+        <Head>
+            <title>{{ `${$t('auth.reset_password')} — Nook Mate` }}</title>
+        </Head>
 
         <!-- 1. Success State: When email is sent successfully -->
         <div v-if="isSent && !showFormAgain" class="space-y-6 py-2 text-center">

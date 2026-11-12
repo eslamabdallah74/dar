@@ -7,7 +7,7 @@ export type MessageSchema = typeof en;
 const getInitialLocale = (): 'ar' | 'en' => {
     if (typeof document !== 'undefined') {
         const pageEl = document.getElementById('app');
-        if (pageEl && pageEl.dataset.page) {
+        if (pageEl?.dataset.page) {
             try {
                 const parsed = JSON.parse(pageEl.dataset.page);
                 if (parsed.props?.locale && (parsed.props.locale === 'ar' || parsed.props.locale === 'en')) {

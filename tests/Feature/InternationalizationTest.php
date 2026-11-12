@@ -1,5 +1,6 @@
 <?php
 
+use App\Contracts\WhatsAppGatewayInterface;
 use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\Payment;
 use App\Models\Renter;
@@ -8,6 +9,10 @@ use App\Models\Workspace;
 use App\Services\WhatsAppService;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Queue;
+
+afterEach(function () {
+    App::setLocale('ar');
+});
 
 test('set user locale middleware sets app locale from session for authenticated user', function () {
     $user = User::factory()->create();
@@ -135,5 +140,37 @@ test('handle inertia requests shares locale and dir', function () {
     $responseEn->assertInertia(fn ($page) => $page
         ->where('locale', 'en')
         ->where('dir', 'ltr')
+    );
+});
+
+test('whatsapp service send derives language code from template suffix', function () {
+    $gateway = Mockery::mock(WhatsAppGatewayInterface::class);
+    $gateway->shouldReceive('sendTemplate')
+        ->with('01012345678', 'payment_receipt_instant_en', [], 'en_US')
+        ->once()
+        ->andReturn([
+            'success' => true,
+            'status' => 'sent',
+            'provider_message_id' => 'msg_test_123',
+            'error_message' => null,
+        ]);
+
+    $this->instance(WhatsAppGatewayInterface::class, $gateway);
+    $service = app(WhatsAppService::class);
+
+    $user = User::factory()->create();
+    $workspaceAr = Workspace::factory()->create([
+        'owner_user_id' => $user->id,
+        'whatsapp_message_language' => 'ar',
+    ]);
+    $renter = Renter::factory()->create(['workspace_id' => $workspaceAr->id, 'phone' => '01012345678']);
+
+    $service->send(
+        workspaceId: $workspaceAr->id,
+        renterId: $renter->id,
+        phone: '01012345678',
+        templateName: 'payment_receipt_instant_en',
+        parameters: [],
+        deduplicationKey: 'test_key_1'
     );
 });

@@ -33,7 +33,9 @@ const submit = () => {
 
 <template>
     <GuestLayout image-background>
-        <Head :title="`${$t('auth.login_title')} — Nook Mate`" />
+        <Head>
+            <title>{{ `${$t('auth.login_title')} — Nook Mate` }}</title>
+        </Head>
 
         <div class="mb-3 text-center sm:mb-6">
             <h1 class="text-2xl font-bold text-white">{{ $t('auth.login_title') }}</h1>

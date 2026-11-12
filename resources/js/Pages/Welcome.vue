@@ -189,7 +189,7 @@ const mobileMenuOpen = ref(false);
                                 class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#163E3E] text-white font-bold text-sm shadow-sm hover:bg-[#102F2F] transition"
                             >
                                 <span>{{ $t('nav.dashboard') }}</span>
-                                <svg class="w-4 h-4" :class="isRtl ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <svg aria-hidden="true" class="w-4 h-4" :class="isRtl ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M5 12h14M12 5l7 7-7 7"/>
                                 </svg>
                             </Link>
@@ -221,7 +221,7 @@ const mobileMenuOpen = ref(false);
                             class="p-2 rounded-lg text-[#5B6770] hover:text-[#163E3E] hover:bg-white/60 focus:outline-none"
                             aria-label="Toggle navigation menu"
                         >
-                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg aria-hidden="true" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path v-if="!mobileMenuOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                                 <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>

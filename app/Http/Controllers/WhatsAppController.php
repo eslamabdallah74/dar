@@ -12,9 +12,10 @@ use Inertia\Response;
 
 class WhatsAppController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, WhatsAppService $whatsAppService): Response
     {
         $workspace = $this->resolveWorkspace($request);
+        $suffix = $whatsAppService->resolveTemplateSuffix($workspace->id);
 
         $logs = $workspace->messageLogs()
             ->with('renter')
@@ -48,28 +49,28 @@ class WhatsAppController extends Controller
 
         $templates = [
             [
-                'id' => 'rent_due_reminder_ar',
+                'id' => "rent_due_reminder{$suffix}",
                 'title' => __('whatsapp.templates.rent_due_reminder'),
                 'trigger' => __('whatsapp.templates.rent_due_reminder_trigger'),
                 'sample' => __('whatsapp.templates.rent_due_reminder_sample'),
                 'active' => true,
             ],
             [
-                'id' => 'payment_receipt_instant_ar',
+                'id' => "payment_receipt_instant{$suffix}",
                 'title' => __('whatsapp.templates.payment_receipt_instant'),
                 'trigger' => __('whatsapp.templates.payment_receipt_instant_trigger'),
                 'sample' => __('whatsapp.templates.payment_receipt_instant_sample'),
                 'active' => true,
             ],
             [
-                'id' => 'overdue_notice_ar',
+                'id' => "overdue_notice{$suffix}",
                 'title' => __('whatsapp.templates.overdue_notice'),
                 'trigger' => __('whatsapp.templates.overdue_notice_trigger'),
                 'sample' => __('whatsapp.templates.overdue_notice_sample'),
                 'active' => true,
             ],
             [
-                'id' => 'contract_renewal_ar',
+                'id' => "contract_renewal{$suffix}",
                 'title' => __('whatsapp.templates.contract_renewal'),
                 'trigger' => __('whatsapp.templates.contract_renewal_trigger'),
                 'sample' => __('whatsapp.templates.contract_renewal_sample'),

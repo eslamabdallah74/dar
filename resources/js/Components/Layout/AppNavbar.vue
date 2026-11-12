@@ -246,9 +246,9 @@ onUnmounted(() => {
             <!-- شارة الإدارة المركزية (في وضع الأدمن) -->
             <div v-else class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#F7C33D]/40 bg-[#FEF7E6] shadow-2xs sm:h-11 sm:w-auto sm:justify-start sm:gap-2.5 sm:px-3.5">
                 <ShieldCheck class="w-5 h-5 text-[#163E3E] shrink-0" />
-                <div class="hidden flex-col text-right leading-tight sm:flex">
-                    <span class="text-xs font-black text-[#163E3E]">لوحة الإدارة المركزية</span>
-                    <span class="hidden xl:block text-[10px] text-[#163E3E]/80 font-medium">سلطة الإشراف والتحكم الكامل</span>
+                <div class="hidden flex-col text-start leading-tight sm:flex">
+                    <span class="text-xs font-black text-[#163E3E]">{{ $t('nav.admin_panel') }}</span>
+                    <span class="hidden xl:block text-[10px] text-[#163E3E]/80 font-medium">{{ $t('nav.admin_subtitle') }}</span>
                 </div>
             </div>
 

@@ -30,7 +30,11 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="تعيين كلمة المرور الجديدة — Nook Mate" />
+        <Head>
+            <title>تعيين كلمة المرور الجديدة | Nook Mate</title>
+            <meta name="description" head-key="description" content="تعيين كلمة مرور جديدة لحسابك في منصة Nook Mate." />
+            <meta name="robots" head-key="robots" content="noindex, follow" />
+        </Head>
 
         <div class="mb-6 text-center">
             <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">

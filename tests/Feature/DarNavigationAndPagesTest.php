@@ -281,15 +281,15 @@ test('sitemap xml endpoint returns valid xml with public links and logo', functi
     expect($response->getContent())
         ->toContain('<loc>')
         ->toContain('/images/logo.png')
-        ->toContain('/login')
-        ->toContain('/register');
+        ->not->toContain('/login')
+        ->not->toContain('/register');
 });
 
 test('landing page loads successfully with seo tags and logo image', function () {
     $response = $this->get('/');
     $response->assertOk();
     $response->assertSee('images/logo.png');
-    $appName = config('app.name');
+    $appName = config()->string('app.name', 'Nook Mate');
     $response->assertSee("{$appName} — Find Your Spot. Rent the Space You Need.");
 });
 

@@ -23,6 +23,9 @@ withDefaults(defineProps<{
                 src="/images/login-register-bg.webp"
                 alt=""
                 aria-hidden="true"
+                width="1672"
+                height="941"
+                decoding="async"
                 class="h-full w-full object-cover object-[68%_center]"
             />
             <div class="absolute inset-0 bg-[#163E3E]/60 backdrop-blur-2xs"></div>

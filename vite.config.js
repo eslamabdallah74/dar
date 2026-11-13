@@ -17,4 +17,16 @@ export default defineConfig({
             },
         }),
     ],
+    build: {
+        target: 'es2022',
+        rollupOptions: {
+            output: {
+                manualChunks(id) {
+                    if (/[\/]node_modules[\/](vue|@vue|@inertiajs)[\/]/.test(id)) {
+                        return 'vendor-core';
+                    }
+                },
+            },
+        },
+    },
 });

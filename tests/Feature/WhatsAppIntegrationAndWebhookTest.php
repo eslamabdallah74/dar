@@ -9,6 +9,7 @@ use App\Services\WhatsApp\MetaApiException;
 use App\Services\WhatsApp\MetaCloudApiGateway;
 use App\Services\WhatsAppService;
 use App\Support\CurrentWorkspace;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\URL;
@@ -211,6 +212,8 @@ test('whatsapp index displays real stats and connection status without faking de
         ->where('stats.total_sent', 1)
         ->where('stats.delivered_rate', 50)
         ->where('stats.active_templates', 4)
+        ->where('templates.0.title', 'تذكير بموعد الإيجار')
+        ->where('templates.0.sample', "تذكير بموعد الإيجار\nمرحباً {اسم_المستأجر}،\nنود تذكيركم بأن دفعة الإيجار للوحدة {الوحدة} مستحقة بتاريخ {تاريخ_الاستحقاق} بمبلغ {المبلغ}.\nيُرجى السداد في الموعد المحدد.\nشكراً لتعاونكم.\nNoot Mate")
         ->has('connection')
     );
 });
@@ -392,6 +395,34 @@ test('meta gateway normalizes egyptian and saudi phone numbers', function () {
     expect($gateway->formatPhoneNumber('0501234567'))->toBe('966501234567')
         ->and($gateway->formatPhoneNumber('+966501234567'))->toBe('966501234567')
         ->and($gateway->formatPhoneNumber('00966501234567'))->toBe('966501234567');
+});
+
+test('meta gateway sends rent due date before the amount', function () {
+    Http::preventStrayRequests();
+    Http::fake([
+        'https://graph.facebook.com/*' => Http::response(['messages' => [['id' => 'wamid.test']]]),
+    ]);
+
+    config([
+        'services.whatsapp.token' => 'mock_token',
+        'services.whatsapp.phone_number_id' => 'mock_phone_id',
+    ]);
+
+    $gateway = new MetaCloudApiGateway;
+    $gateway->sendTemplate('01012345678', 'rent_due_reminder_ar', [
+        'renter_name' => 'أحمد محمود',
+        'unit' => 'شقة 101',
+        'due_date' => '01/12/2026',
+        'amount' => '5,000.00 ج.م',
+    ]);
+
+    Http::assertSent(fn (Request $request) => $request->url() === 'https://graph.facebook.com/v21.0/mock_phone_id/messages'
+        && $request->data()['template']['components'][0]['parameters'] === [
+            ['type' => 'text', 'text' => 'أحمد محمود'],
+            ['type' => 'text', 'text' => 'شقة 101'],
+            ['type' => 'text', 'text' => '01/12/2026'],
+            ['type' => 'text', 'text' => '5,000.00 ج.م'],
+        ]);
 });
 
 test('whatsapp service saves payload parameters into message log', function () {

@@ -213,8 +213,9 @@ class WhatsAppService
             return;
         }
 
-        $dueDateStr = $charge->due_date->format('Y-m-d');
-        $deduplicationKey = "{$dedupPrefix}_{$charge->id}_{$dueDateStr}";
+        $dueDate = $charge->due_date;
+        $dueDateStr = $dueDate->format('d/m/Y');
+        $deduplicationKey = "{$dedupPrefix}_{$charge->id}_".$dueDate->format('Y-m-d');
         $currency = $lease->workspace?->currencySymbol() ?? 'ج.م';
         $formattedAmount = number_format($charge->outstanding_balance, 2).' '.$currency;
 

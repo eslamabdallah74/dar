@@ -397,11 +397,13 @@ test('rent due WhatsApp reminder names the leased unit', function () {
         'lease_id' => $this->lease->id,
         'period_start' => now()->startOfMonth()->toDateString(),
         'period_end' => now()->endOfMonth()->toDateString(),
-        'due_date' => now()->addDays(2)->toDateString(),
+        'due_date' => '2026-12-01',
         'amount' => 5000.00,
     ]);
 
     app(WhatsAppService::class)->queueRentDueReminder($charge);
 
-    Queue::assertPushed(SendWhatsAppMessageJob::class, fn (SendWhatsAppMessageJob $job) => $job->parameters['unit'] === $this->unit->name);
+    Queue::assertPushed(SendWhatsAppMessageJob::class, fn (SendWhatsAppMessageJob $job) => $job->parameters['unit'] === $this->unit->name
+        && $job->parameters['due_date'] === '01/12/2026'
+        && $job->deduplicationKey === "rent_due_{$charge->id}_2026-12-01");
 });

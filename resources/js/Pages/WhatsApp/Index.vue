@@ -186,13 +186,13 @@ const sendTestMessage = () => {
                         </div>
 
                         <!-- نص المعاينة للرسالة -->
-                        <div class="p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] text-xs text-[#163E3E] leading-relaxed font-sans">
+                        <div class="p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] text-xs text-[#163E3E] leading-relaxed font-sans whitespace-pre-line">
                             {{ tpl.sample }}
                         </div>
                     </div>
 
                     <div class="pt-2 flex items-center justify-between text-xs text-[#5B6770] border-t border-slate-100">
-                        <span>متغيرات ذكية: {اسم_المستأجر}، {المبلغ}، {الوحدة}</span>
+                        <span>متغيرات ذكية: {اسم_المستأجر}، {الوحدة}، {تاريخ_الاستحقاق}، {المبلغ}</span>
                         <span class="text-emerald-700 font-bold flex items-center gap-1">
                             <CheckCheck class="w-4 h-4" />
                             <span>معتمد من Meta</span>

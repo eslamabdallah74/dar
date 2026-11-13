@@ -133,8 +133,8 @@ class MetaCloudApiGateway implements WhatsAppGatewayInterface
             'rent_due_reminder_ar' => [
                 $renterName,
                 $unitName,
-                $parameters['amount'] ?? $parameters[2] ?? '',
-                $parameters['due_date'] ?? $parameters[3] ?? '',
+                $parameters['due_date'] ?? $parameters[2] ?? '',
+                $parameters['amount'] ?? $parameters[3] ?? '',
             ],
             'overdue_notice_ar' => [
                 $renterName,

@@ -84,7 +84,7 @@ const filteredItems = computed(() => {
                 <div>
                     <div class="flex items-center gap-2">
                         <h3 class="text-base font-bold text-[#163E3E]">
-                            {{ title || 'الاستحقاقات القادمة ومواعيد التحصيل' }}
+                            {{ title || $t('dashboard.upcoming_collections_title') }}
                         </h3>
                         <span
                             v-if="safeItems.length > 0"
@@ -94,18 +94,18 @@ const filteredItems = computed(() => {
                         </span>
                     </div>
                     <p class="text-xs text-[#5B6770] font-medium mt-0.5">
-                        دفعات الإيجار المستحقة أو التي اقترب موعد سدادها
+                        {{ $t('dashboard.upcoming_collections_desc') }}
                     </p>
                 </div>
 
                 <!-- شريط البحث السريع داخل الاستحقاقات -->
                 <div v-if="safeItems.length > 0" class="relative w-full sm:w-60">
-                    <Search class="w-3.5 h-3.5 text-[#8E9CA6] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <Search class="w-3.5 h-3.5 text-[#8E9CA6] absolute start-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                         v-model="searchQuery"
                         type="text"
-                        placeholder="ابحث عن مستأجر أو وحدة..."
-                        class="w-full h-9 pr-9 pl-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] placeholder-[#8E9CA6] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition outline-hidden"
+                        :placeholder="$t('dashboard.search_dues_placeholder')"
+                        class="w-full h-9 ps-9 pe-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] placeholder-[#8E9CA6] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition outline-hidden"
                     />
                 </div>
             </div>
@@ -118,9 +118,9 @@ const filteredItems = computed(() => {
                 <div class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center shadow-2xs">
                     <CheckCircle2 class="h-6 w-6 stroke-[2]" />
                 </div>
-                <h4 class="text-sm font-bold text-emerald-950">لا توجد استحقاقات إيجار قادمة حالياً</h4>
+                <h4 class="text-sm font-bold text-emerald-950">{{ $t('dashboard.no_upcoming_dues_title') }}</h4>
                 <p class="text-xs text-emerald-800 font-medium leading-relaxed max-w-sm">
-                    جميع الإيجارات مسددة بالكامل، ولا توجد مطالبات معلقة تستحق السداد في الأيام القادمة.
+                    {{ $t('dashboard.no_upcoming_dues_desc') }}
                 </p>
             </div>
 
@@ -129,34 +129,34 @@ const filteredItems = computed(() => {
                 v-else-if="filteredItems.length === 0"
                 class="my-6 py-8 px-4 rounded-xl border border-dashed border-[#D6E0E7] bg-[#F8FAFC] text-center space-y-2"
             >
-                <p class="text-xs text-[#5B6770] font-medium">لا توجد نتائج مطابقة لـ "{{ searchQuery }}"</p>
+                <p class="text-xs text-[#5B6770] font-medium">{{ $t('dashboard.no_search_results', { query: searchQuery }) }}</p>
                 <button
                     @click="searchQuery = ''"
                     type="button"
                     class="text-xs text-[#163E3E] font-bold hover:underline"
                 >
-                    مسح البحث
+                    {{ $t('dashboard.clear_search') }}
                 </button>
             </div>
 
             <!-- جدول الاستحقاقات الحقيقية -->
             <div v-else class="overflow-x-auto mt-2">
-                <table class="w-full text-right text-sm">
+                <table class="w-full text-start text-sm">
                     <thead>
                         <tr class="border-b border-[#E8EFF4] text-[11px] font-bold text-[#5B6770]">
-                            <th class="pb-3 pr-2 cursor-pointer hover:text-[#163E3E] transition select-none" @click="toggleSort('tenant')">
-                                <ResourceTableHeading :href="route('renters.index')" @click.stop>المستأجر</ResourceTableHeading>
+                            <th class="pb-3 pe-2 cursor-pointer hover:text-[#163E3E] transition select-none" @click="toggleSort('tenant')">
+                                <ResourceTableHeading :href="route('renters.index')" @click.stop>{{ $t('dashboard.tenant') }}</ResourceTableHeading>
                             </th>
                             <th class="pb-3 cursor-pointer hover:text-[#163E3E] transition select-none" @click="toggleSort('unit')">
-                                <ResourceTableHeading :href="route('properties.index')" @click.stop>العقار والوحدة</ResourceTableHeading>
+                                <ResourceTableHeading :href="route('properties.index')" @click.stop>{{ $t('dashboard.property_and_unit') }}</ResourceTableHeading>
                             </th>
                             <th class="pb-3 cursor-pointer hover:text-[#163E3E] transition select-none" @click="toggleSort('due_date')">
-                                <span class="inline-flex items-center gap-1">تاريخ الاستحقاق ↕</span>
+                                <span class="inline-flex items-center gap-1">{{ $t('dashboard.due_date') }} ↕</span>
                             </th>
                             <th class="pb-3 cursor-pointer hover:text-[#163E3E] transition select-none" @click="toggleSort('amount')">
-                                <span class="inline-flex items-center gap-1">المبلغ المطلوب ↕</span>
+                                <span class="inline-flex items-center gap-1">{{ $t('dashboard.amount_due') }} ↕</span>
                             </th>
-                            <th class="pb-3 pl-2 text-start sm:text-left">إجراء فوري</th>
+                            <th class="pb-3 ps-2 text-start">{{ $t('dashboard.quick_action') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-[#E8EFF4]">
@@ -166,7 +166,7 @@ const filteredItems = computed(() => {
                             class="hover:bg-[#F8FAFC] transition group"
                         >
                             <!-- المستأجر -->
-                            <td class="py-3.5 pr-2">
+                            <td class="py-3.5 pe-2">
                                 <div class="flex items-center gap-3">
                                     <div class="w-8 h-8 rounded-lg bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center font-bold text-xs shrink-0">
                                         {{ item.tenant.charAt(0) }}
@@ -217,29 +217,29 @@ const filteredItems = computed(() => {
                             </td>
 
                             <!-- الإجراءات السريعة -->
-                            <td class="py-3.5 pl-2 text-start sm:text-left whitespace-nowrap">
+                            <td class="py-3.5 ps-2 text-start whitespace-nowrap">
                                 <div class="flex items-center justify-end gap-1.5">
                                     <!-- زر إرسال واتساب المباشر -->
                                     <button
                                         v-if="item.phone"
                                         @click="emit('sendWhatsApp', item)"
                                         type="button"
-                                        class="h-8 px-2.5 rounded-lg border border-emerald-200 bg-emerald-50/80 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                                        title="إرسال تذكير رسمي عبر واتساب"
+                                        class="h-8 px-2.5 rounded-lg border border-emerald-200 bg-emerald-50/80 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap"
+                                        :title="$t('dashboard.send_whatsapp_reminder_tooltip')"
                                     >
                                         <MessageCircle class="h-3.5 w-3.5 text-emerald-700" />
-                                        <span class="hidden md:inline">واتساب</span>
+                                        <span class="hidden md:inline">{{ $t('dashboard.whatsapp_action') }}</span>
                                     </button>
 
                                     <!-- زر تسجيل الدفعة السريع -->
                                     <button
                                         @click="emit('recordPayment', item)"
                                         type="button"
-                                        class="h-8 px-3 rounded-lg bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-                                        title="تسجيل دفعة سداد لهذا المستحق"
+                                        class="h-8 px-3 rounded-lg bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap"
+                                        :title="$t('dashboard.record_payment_tooltip')"
                                     >
                                         <Coins class="h-3.5 w-3.5" />
-                                        <span>سداد</span>
+                                        <span>{{ $t('dashboard.pay_action') }}</span>
                                     </button>
                                 </div>
                             </td>

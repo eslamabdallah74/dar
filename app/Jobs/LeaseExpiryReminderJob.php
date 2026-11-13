@@ -3,7 +3,9 @@
 namespace App\Jobs;
 
 use App\Enums\QueueName;
+use App\Enums\WhatsAppMessageLanguage;
 use App\Models\Lease;
+use App\Models\Unit;
 use App\Services\WhatsAppService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -33,7 +35,7 @@ class LeaseExpiryReminderJob extends BaseJob
 
         $leases = Lease::withoutGlobalScopes()
             ->where('status', 'active')
-            ->with(['renter', 'unit'])
+            ->with(['renter', 'unit', 'workspace'])
             ->get();
 
         $dispatchedCount = 0;
@@ -43,22 +45,8 @@ class LeaseExpiryReminderJob extends BaseJob
             $diffInDays = (int) $today->diffInDays($endsOn, false);
 
             if (in_array($diffInDays, $milestones, true)) {
-                // Queue WhatsApp message
                 $whatsAppService->queueLeaseRenewalAlert($lease, $diffInDays);
-
-                // Queue Email if available
-                $renter = $lease->renter;
-                if ($renter && ! empty($renter->email)) {
-                    $unitNumber = $lease->unit->name ?? 'الوحدة';
-                    $endDateStr = $endsOn->format('d/m/Y');
-
-                    dispatch(new EmailNotificationJob(
-                        recipient: $renter->email,
-                        mailSubject: "تنبيه قرب موعد انتهاء عقد الإيجار - وحدة {$unitNumber}",
-                        contentBody: "عزيزي المستأجر {$renter->name}،\n\nنود إحاطتكم بأن عقد إيجاركم للوحدة ({$unitNumber}) سينتهي بعد {$diffInDays} يوماً بتاريخ {$endDateStr}.\n\nفي حال رغبتكم بتجديد العقد، يرجى التواصل مع إدارة العقار لاتخاذ الإجراءات اللازمة.\n\nمع خالص الشكر والتقدير."
-                    ));
-                }
-
+                $this->sendEmailReminder($lease, $endsOn, $diffInDays);
                 $dispatchedCount++;
             }
         }
@@ -67,6 +55,44 @@ class LeaseExpiryReminderJob extends BaseJob
             '[LeaseExpiryReminderJob] Processed %d lease expiry alerts for %s.',
             $dispatchedCount,
             $this->checkDateString
+        ));
+    }
+
+    private function sendEmailReminder(Lease $lease, Carbon $endsOn, int $diffInDays): void
+    {
+        $renter = $lease->renter;
+
+        if (! $renter || empty($renter->email)) {
+            return;
+        }
+
+        $unit = $lease->unit;
+        $unitNumber = $unit instanceof Unit ? $unit->name : 'الوحدة';
+        $endDateStr = $endsOn->format('d/m/Y');
+
+        $notificationLang = ($lease->workspace->whatsapp_message_language ?? WhatsAppMessageLanguage::Arabic)->value;
+
+        $mailSubject = (string) app('translator')->get(
+            'notifications.lease_expiry_subject',
+            ['unit' => $unitNumber],
+            $notificationLang
+        );
+
+        $contentBody = (string) app('translator')->get(
+            'notifications.lease_expiry_body',
+            [
+                'name' => $renter->name,
+                'unit' => $unitNumber,
+                'days' => (string) $diffInDays,
+                'date' => $endDateStr,
+            ],
+            $notificationLang
+        );
+
+        dispatch(new EmailNotificationJob(
+            recipient: $renter->email,
+            mailSubject: $mailSubject,
+            contentBody: $contentBody
         ));
     }
 }

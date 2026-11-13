@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
 import { Building2, Check, House, X } from 'lucide-vue-next';
+import { useLocale } from '@/composables/useLocale';
 
 defineProps<{
     show: boolean;
@@ -10,17 +11,19 @@ const emit = defineEmits<{
     (event: 'close'): void;
 }>();
 
+const { isRtl } = useLocale();
+
 const propertyTypes = [
     {
         value: 'building',
-        title: 'عمارة',
-        description: 'أضف عمارة ثم أنشئ الشقق الموجودة بداخلها.',
+        title: 'properties.type_building',
+        description: 'property_wizard.building_option',
         icon: Building2,
     },
     {
         value: 'apartment',
-        title: 'شقة',
-        description: 'أضف شقة مستقلة، ثم أجّرها كاملة أو قسّمها إلى أوض وسراير.',
+        title: 'properties.type_apartment',
+        description: 'property_wizard.apartment_option',
         icon: House,
     },
 ] as const;
@@ -54,10 +57,10 @@ function closeDrawer() {
 </script>
 
 <template>
-    <div v-if="show" class="fixed inset-0 z-50" dir="rtl">
+    <div v-if="show" class="fixed inset-0 z-50" >
         <button
             type="button"
-            aria-label="إغلاق"
+            :aria-label="$t('common.close')"
             class="absolute inset-0 h-full w-full bg-[#10251D]/45 backdrop-blur-[2px]"
             @click="closeDrawer"
         ></button>
@@ -66,21 +69,22 @@ function closeDrawer() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="property-drawer-title"
-            class="absolute inset-y-0 right-0 flex w-full max-w-xl flex-col bg-white shadow-2xl"
+            class="absolute inset-y-0 flex w-full max-w-xl flex-col bg-white shadow-2xl"
+            :class="isRtl ? 'right-0' : 'left-0'"
         >
             <header class="flex items-start justify-between gap-5 border-b border-[#E3EAE6] px-5 py-5 sm:px-8 sm:py-7">
                 <div>
-                    <span class="mb-2 block text-xs font-bold text-[#18705A]">خطوة ١ من ٢</span>
+                    <span class="mb-2 block text-xs font-bold text-[#18705A]">{{ $t('property_wizard.step_counter', { current: 1, total: 2 }) }}</span>
                     <h2 id="property-drawer-title" class="text-xl font-extrabold text-[#18372E] sm:text-2xl">
-                        إضافة عقار جديد
+                        {{ $t('properties.add_property') }}
                     </h2>
                     <p class="mt-2 max-w-md text-sm leading-6 text-[#65766F]">
-                        ابدأ بإضافة العمارة أو الشقة، ويمكنك تنظيم الوحدات بداخلها لاحقًا.
+                        {{ $t('property_wizard.drawer_description') }}
                     </p>
                 </div>
                 <button
                     type="button"
-                    aria-label="إغلاق"
+                    :aria-label="$t('common.close')"
                     class="grid size-10 shrink-0 place-items-center rounded-xl border border-[#E3EAE6] text-[#65766F] transition hover:bg-[#F3F7F4] hover:text-[#18372E]"
                     @click="closeDrawer"
                 >
@@ -93,7 +97,7 @@ function closeDrawer() {
                     <section aria-labelledby="property-type-title" class="space-y-3">
                         <div class="flex items-center gap-3">
                             <span class="grid size-8 place-items-center rounded-full bg-[#E8F2ED] text-sm font-bold text-[#18705A]">١</span>
-                            <h3 id="property-type-title" class="text-sm font-bold text-[#18372E]">اختار نوع العقار</h3>
+                            <h3 id="property-type-title" class="text-sm font-bold text-[#18372E]">{{ $t('property_wizard.property_type') }}</h3>
                         </div>
 
                         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -102,7 +106,7 @@ function closeDrawer() {
                                 :key="type.value"
                                 type="button"
                                 :aria-pressed="form.property_type === type.value"
-                                class="relative flex min-h-40 flex-col items-start rounded-2xl border p-4 text-right transition sm:p-5"
+                                class="relative flex min-h-40 flex-col items-start rounded-2xl border p-4 text-start transition sm:p-5"
                                 :class="form.property_type === type.value
                                     ? 'border-[#18705A] bg-[#EFF7F2] ring-1 ring-[#18705A]'
                                     : 'border-[#DFE8E2] bg-white hover:border-[#9BBEAD] hover:bg-[#F8FBF9]'"
@@ -114,11 +118,11 @@ function closeDrawer() {
                                 >
                                     <component :is="type.icon" class="size-6" :stroke-width="1.8" />
                                 </span>
-                                <span class="text-base font-extrabold text-[#18372E]">{{ type.title }}</span>
-                                <span class="mt-1 text-xs leading-5 text-[#65766F]">{{ type.description }}</span>
+                                <span class="text-base font-extrabold text-[#18372E]">{{ $t(type.title) }}</span>
+                                <span class="mt-1 text-xs leading-5 text-[#65766F]">{{ $t(type.description) }}</span>
                                 <span
                                     v-if="form.property_type === type.value"
-                                    class="absolute left-4 top-4 grid size-6 place-items-center rounded-full bg-[#18705A] text-white"
+                                    class="absolute start-4 top-4 grid size-6 place-items-center rounded-full bg-[#18705A] text-white"
                                 >
                                     <Check class="size-4" :stroke-width="2.5" />
                                 </span>
@@ -130,11 +134,11 @@ function closeDrawer() {
                     <section aria-labelledby="property-details-title" class="space-y-4">
                         <div class="flex items-center gap-3">
                             <span class="grid size-8 place-items-center rounded-full bg-[#E8F2ED] text-sm font-bold text-[#18705A]">٢</span>
-                            <h3 id="property-details-title" class="text-sm font-bold text-[#18372E]">بيانات العقار</h3>
+                            <h3 id="property-details-title" class="text-sm font-bold text-[#18372E]">{{ $t('property_wizard.step_details') }}</h3>
                         </div>
 
                         <div>
-                            <label for="property-name" class="mb-2 block text-sm font-bold text-[#29483D]">اسم العقار <span class="text-rose-600">*</span></label>
+                            <label for="property-name" class="mb-2 block text-sm font-bold text-[#29483D]">{{ $t('property_wizard.property_name') }} <span class="text-rose-600">*</span></label>
                             <input
                                 id="property-name"
                                 v-model="form.name"
@@ -143,20 +147,20 @@ function closeDrawer() {
                                 maxlength="255"
                                 required
                                 autofocus
-                                :placeholder="form.property_type === 'building' ? 'مثال: عمارة النور' : 'مثال: شقة 101'"
+                                :placeholder="form.property_type === 'building' ? $t('property_wizard.example_building') : $t('property_wizard.example_apartment')"
                                 class="h-12 w-full rounded-xl border border-[#D8E4DC] bg-[#FBFCFB] px-4 text-sm text-[#18372E] outline-none transition placeholder:text-[#98A79F] focus:border-[#18705A] focus:bg-white focus:ring-2 focus:ring-[#18705A]/15"
                             />
                             <p v-if="form.errors.name" class="mt-1.5 text-xs font-medium text-rose-600">{{ form.errors.name }}</p>
                         </div>
 
                         <div>
-                            <label for="property-address" class="mb-2 block text-sm font-bold text-[#29483D]">العنوان <span class="font-normal text-[#829189]">(اختياري)</span></label>
+                            <label for="property-address" class="mb-2 block text-sm font-bold text-[#29483D]">{{ $t('property_wizard.address') }} <span class="font-normal text-[#829189]">({{ $t('property_wizard.optional') }})</span></label>
                             <input
                                 id="property-address"
                                 v-model="form.address"
                                 type="text"
                                 maxlength="500"
-                                placeholder="حي المعادي، شارع النصر"
+                                :placeholder="$t('property_wizard.address_placeholder')"
                                 class="h-12 w-full rounded-xl border border-[#D8E4DC] bg-[#FBFCFB] px-4 text-sm text-[#18372E] outline-none transition placeholder:text-[#98A79F] focus:border-[#18705A] focus:bg-white focus:ring-2 focus:ring-[#18705A]/15"
                             />
                             <p v-if="form.errors.address" class="mt-1.5 text-xs font-medium text-rose-600">{{ form.errors.address }}</p>
@@ -171,7 +175,7 @@ function closeDrawer() {
                         class="inline-flex min-h-12 items-center justify-center rounded-xl bg-[#176B55] px-4 text-sm font-bold text-white transition hover:bg-[#105742] disabled:cursor-not-allowed disabled:opacity-60"
                         @click="submit('continue')"
                     >
-                        {{ form.processing ? 'جاري الحفظ...' : 'حفظ والمتابعة لإضافة الوحدات' }}
+                        {{ form.processing ? $t('property_wizard.saving') : $t('property_wizard.save_continue_units') }}
                     </button>
                     <button
                         type="button"
@@ -179,7 +183,7 @@ function closeDrawer() {
                         class="inline-flex min-h-12 items-center justify-center rounded-xl border border-[#D8E4DC] bg-white px-4 text-sm font-bold text-[#29483D] transition hover:bg-[#F5F8F6] disabled:cursor-not-allowed disabled:opacity-60"
                         @click="submit('index')"
                     >
-                        حفظ والعودة للعقارات
+                        {{ $t('property_wizard.save_back_to_properties') }}
                     </button>
                 </footer>
             </form>

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { router, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { useLocale } from '@/composables/useLocale';
 import PrimaryKpiRow from '@/Components/Dashboard/PrimaryKpiRow.vue';
 import RentalIncomeChart from '@/Components/Dashboard/RentalIncomeChart.vue';
 import OccupancySummaryCard from '@/Components/Dashboard/OccupancySummaryCard.vue';
@@ -256,21 +257,45 @@ function submitPlanChangeRequest() {
         },
     });
 }
+
+const { dir, isRtl, t } = useLocale();
+
+const greetingText = computed(() => {
+    const hour = new Date().getHours();
+    const isMorning = hour >= 5 && hour < 12;
+    const key = isMorning ? 'dashboard.greeting_morning' : 'dashboard.greeting_evening';
+    const name = props.user?.name || t('dashboard.dear_owner');
+    return t(key, { name });
+});
+
+const subtitleText = computed(() => {
+    try {
+        const dateFormatted = new Intl.DateTimeFormat(isRtl.value ? 'ar-EG' : 'en-US', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+        }).format(new Date());
+        return t('dashboard.subtitle_date', { date: dateFormatted });
+    } catch {
+        return props.header?.subtitle || '';
+    }
+});
 </script>
 
 <template>
     <AppLayout
-        title="الرئيسية — Nook Mate لإدارة العقارات"
+        :title="`${$t('nav.dashboard')} — Nook Mate`"
         active-tab="dashboard"
     >
         <!-- قسم الترحيب الرئيسي (Welcome Hero Section) -->
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[#E8EFF4]">
                     <div>
                         <h1 class="text-2xl sm:text-3xl font-black text-[#163E3E] tracking-tight">
-                            {{ header?.greeting || 'مرحباً، أهلاً بك في Nook Mate 👋' }}
+                            {{ greetingText }}
                         </h1>
                         <p class="text-xs sm:text-sm text-[#5B6770] font-medium mt-1">
-                            {{ header?.subtitle }}
+                            {{ subtitleText }}
                         </p>
                     </div>
 
@@ -280,20 +305,20 @@ function submitPlanChangeRequest() {
                         <button
                             type="button"
                             @click="addProperty"
-                            class="h-11 px-5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-sm font-bold transition shadow-xs flex items-center justify-center gap-2"
+                            class="h-11 px-5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-sm font-bold transition shadow-xs flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
                         >
                             <Plus class="h-4 w-4 stroke-[2.5]" />
-                            <span>إضافة عقار جديد</span>
+                            <span>{{ $t('dashboard.add_property') }}</span>
                         </button>
 
                         <!-- زر تسجيل دفعة السريع -->
                         <button
                             @click="handleRecordPayment()"
                             type="button"
-                            class="h-11 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F8FAFC] text-[#163E3E] text-sm font-semibold transition shadow-2xs flex items-center justify-center gap-2"
+                            class="h-11 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F8FAFC] text-[#163E3E] text-sm font-semibold transition shadow-2xs flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
                         >
                             <Coins class="h-4 w-4 text-[#163E3E]" />
-                            <span>تسجيل دفعة</span>
+                            <span>{{ $t('dashboard.record_payment') }}</span>
                         </button>
                     </div>
                 </div>
@@ -305,17 +330,17 @@ function submitPlanChangeRequest() {
                 />
 
                 <!-- بطاقة باقة المنشأة الحالية وطلب التغيير -->
-                <div class="rounded-2xl border border-[#D6E0E7] bg-white p-4 sm:p-5 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4" dir="rtl">
+                <div class="rounded-2xl border border-[#D6E0E7] bg-white p-4 sm:p-5 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div class="flex items-start sm:items-center gap-3.5">
                         <div class="w-11 h-11 rounded-2xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center shrink-0">
                             <Crown class="w-6 h-6" />
                         </div>
                         <div class="space-y-1">
                             <div class="flex flex-wrap items-center gap-2">
-                                <span class="text-xs font-bold text-[#5B6770]">باقتك الحالية:</span>
+                                <span class="text-xs font-bold text-[#5B6770]">{{ $t('dashboard.current_plan_label') }}</span>
                                 <h3 class="text-sm font-extrabold text-[#163E3E]">{{ workspace?.plan_name }}</h3>
                                 <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E8F0F0] text-[#163E3E]">
-                                    {{ workspace?.units_limit ? `سعة حتى ${workspace.units_limit} عقارات رئيسية` : 'سعة غير محدودة' }}
+                                    {{ workspace?.units_limit ? $t('dashboard.capacity_up_to', { limit: workspace.units_limit }) : $t('dashboard.unlimited_capacity') }}
                                 </span>
                             </div>
 
@@ -323,15 +348,15 @@ function submitPlanChangeRequest() {
                             <div v-if="workspace?.plan_request_status === 'pending' && workspace?.requested_plan" class="flex items-center gap-1.5 text-xs text-amber-800 font-semibold pt-0.5">
                                 <Clock class="w-4 h-4 text-amber-600 shrink-0" />
                                 <span>
-                                    طلبك لتغيير الباقة إلى <strong class="font-bold text-amber-950">{{ workspace.requested_plan.name }}</strong> قيد مراجعة واعتماد الإدارة
+                                    {{ $t('dashboard.plan_pending', { plan: workspace.requested_plan.name }) }}
                                 </span>
                             </div>
                             <div v-else-if="workspace?.plan_request_status === 'rejected' && workspace?.requested_plan" class="flex items-center gap-1.5 text-xs text-rose-700 font-semibold pt-0.5">
                                 <AlertCircle class="w-4 h-4 text-rose-600 shrink-0" />
-                                <span>تم رفض طلب الترقية الأخير إلى {{ workspace.requested_plan.name }}. يمكنك اختيار باقة أخرى.</span>
+                                <span>{{ $t('dashboard.plan_rejected', { plan: workspace.requested_plan.name }) }}</span>
                             </div>
                             <div v-else class="text-[11px] text-[#5B6770]">
-                                مستخدم حالياً {{ workspace?.units_used ?? 0 }} من أصل {{ workspace?.units_limit ?? '∞' }} وحدة رئيسية.
+                                {{ $t('dashboard.units_used_summary', { used: workspace?.units_used ?? 0, limit: workspace?.units_limit ?? '∞' }) }}
                             </div>
                         </div>
                     </div>
@@ -340,16 +365,16 @@ function submitPlanChangeRequest() {
                         <button
                             type="button"
                             @click="openPlanChangeModal"
-                            class="h-9 px-4 rounded-xl border border-[#163E3E] text-[#163E3E] hover:bg-[#163E3E] hover:text-white text-xs font-bold transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                            class="h-9 px-4 rounded-xl border border-[#163E3E] text-[#163E3E] hover:bg-[#163E3E] hover:text-white text-xs font-bold transition shadow-2xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                         >
                             <Sparkles class="w-3.5 h-3.5" />
-                            <span>طلب تغيير الباقة</span>
+                            <span>{{ $t('dashboard.change_plan_btn') }}</span>
                         </button>
                         <Link
                             :href="route('subscription.index')"
-                            class="h-9 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] hover:bg-[#E8EFF4] text-[#5B6770] hover:text-[#163E3E] text-xs font-semibold transition flex items-center"
+                            class="h-9 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] hover:bg-[#E8EFF4] text-[#5B6770] hover:text-[#163E3E] text-xs font-semibold transition flex items-center whitespace-nowrap"
                         >
-                            صفحة الباقات
+                            {{ $t('dashboard.plans_page_btn') }}
                         </Link>
                     </div>
                 </div>
@@ -375,18 +400,18 @@ function submitPlanChangeRequest() {
                                 <AlertCircle class="h-5 w-5" />
                             </div>
                             <div>
-                                <span class="text-xs font-bold block">تنبيه مستحقات متأخرة</span>
+                                <span class="text-xs font-bold block">{{ $t('dashboard.overdue_alert_title') }}</span>
                                 <span class="text-xs text-rose-800 font-medium">
-                                    لديك {{ kpis.overdue.count }} دفعات إيجار متأخرة بإجمالي مطلوب {{ kpis.overdue.value }}.
+                                    {{ $t('dashboard.overdue_alert_desc', { count: kpis.overdue.count, amount: kpis.overdue.value }) }}
                                 </span>
                             </div>
                         </div>
 
                         <Link
                             :href="route('payments.index')"
-                            class="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs shrink-0 self-start sm:self-auto"
+                            class="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-xs shrink-0 self-start sm:self-auto whitespace-nowrap"
                         >
-                            مراجعة المتأخرات
+                            {{ $t('dashboard.review_overdue') }}
                         </Link>
                     </div>
 
@@ -402,41 +427,41 @@ function submitPlanChangeRequest() {
                                 </div>
                                 <div>
                                     <h3 class="text-xs sm:text-sm font-bold text-[#163E3E]">
-                                        صندوق تأمين الوحدات المسترد (محفوظ ومفصول عن إيراد الإيجار)
+                                        {{ $t('dashboard.deposits_banner_title') }}
                                     </h3>
-                                    <span class="text-[11px] text-[#5B6770]">أموال تأمين مستردة للمستأجرين عند انتهاء العقود</span>
+                                    <span class="text-[11px] text-[#5B6770]">{{ $t('dashboard.deposits_banner_subtitle') }}</span>
                                 </div>
                             </div>
                             <Link
                                 :href="route('leases.index')"
-                                class="text-xs font-bold text-[#163E3E] hover:underline flex items-center gap-1 self-start sm:self-auto"
+                                class="text-xs font-bold text-[#163E3E] hover:underline flex items-center gap-1 self-start sm:self-auto whitespace-nowrap"
                             >
-                                <span>متابعة عقود التأمين</span>
-                                <span>←</span>
+                                <span>{{ $t('dashboard.deposits_track_link') }}</span>
+                                <span :class="isRtl ? '' : 'rotate-180'">←</span>
                             </Link>
                         </div>
 
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1">
                             <div>
-                                <span class="text-xs text-[#5B6770] block">إجمالي مبالغ التأمين المحتجزة</span>
+                                <span class="text-xs text-[#5B6770] block">{{ $t('dashboard.deposits_total_held') }}</span>
                                 <span class="text-lg font-bold text-emerald-700 font-mono mt-0.5 block">
                                     {{ security_deposits.total_held.toLocaleString() }} {{ security_deposits.currency_symbol || 'ج.م' }}
                                 </span>
                             </div>
                             <div>
-                                <span class="text-xs text-[#5B6770] block">تأمينات بانتظار التسوية</span>
+                                <span class="text-xs text-[#5B6770] block">{{ $t('dashboard.deposits_awaiting') }}</span>
                                 <span class="text-lg font-bold text-amber-700 font-mono mt-0.5 block">
-                                    {{ security_deposits.awaiting_settlement_count }} عقود
+                                    {{ $t('dashboard.deposits_awaiting_count', { count: security_deposits.awaiting_settlement_count }) }}
                                 </span>
                             </div>
                             <div>
-                                <span class="text-xs text-[#5B6770] block">مبالغ مستحقة الرد للمستأجرين</span>
+                                <span class="text-xs text-[#5B6770] block">{{ $t('dashboard.deposits_refunds_due') }}</span>
                                 <span class="text-lg font-bold text-[#163E3E] font-mono mt-0.5 block">
                                     {{ security_deposits.refunds_outstanding.toLocaleString() }} {{ security_deposits.currency_symbol || 'ج.م' }}
                                 </span>
                             </div>
                             <div>
-                                <span class="text-xs text-[#5B6770] block">خصومات أضرار معتمدة</span>
+                                <span class="text-xs text-[#5B6770] block">{{ $t('dashboard.deposits_deductions') }}</span>
                                 <span class="text-lg font-bold text-rose-700 font-mono mt-0.5 block">
                                     {{ security_deposits.confirmed_deductions.toLocaleString() }} {{ security_deposits.currency_symbol || 'ج.م' }}
                                 </span>
@@ -522,27 +547,27 @@ function submitPlanChangeRequest() {
 
         <!-- مودال طلب تغيير الباقة من لوحة التحكم -->
         <Modal :show="showPlanChangeModal" @close="showPlanChangeModal = false" max-width="md">
-            <div class="p-6 text-right space-y-4" dir="rtl">
+            <div class="p-6 text-start space-y-4" :dir="dir">
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
                     <div class="flex items-center gap-2">
                         <Crown class="w-5 h-5 text-[#163E3E]" />
-                        <h3 class="text-base font-bold text-[#163E3E]">طلب تغيير باقة المنشأة</h3>
+                        <h3 class="text-base font-bold text-[#163E3E]">{{ $t('dashboard.modal_plan_change_title') }}</h3>
                     </div>
                     <button @click="showPlanChangeModal = false" type="button" class="text-gray-400 hover:text-gray-600 text-sm">✕</button>
                 </div>
 
                 <p class="text-xs text-[#5B6770] leading-relaxed">
-                    باقتك الحالية هي <strong>{{ workspace?.plan_name }}</strong>. اختر الباقة الجديدة التي ترغب بالانتقال إليها وسيقوم مدير النظام بمراجعة واعتماد طلبك:
+                    {{ $t('dashboard.modal_plan_change_desc', { plan: workspace?.plan_name }) }}
                 </p>
 
                 <form @submit.prevent="submitPlanChangeRequest" class="space-y-4 pt-1">
                     <div>
-                        <label for="dashboard_plan_id" class="block text-xs font-semibold text-[#163E3E] mb-1.5">اختر الباقة المطلوبة</label>
+                        <label for="dashboard_plan_id" class="block text-xs font-semibold text-[#163E3E] mb-1.5">{{ $t('dashboard.select_plan_label') }}</label>
                         <select
                             id="dashboard_plan_id"
                             v-model="planChangeForm.plan_id"
                             class="w-full mt-1.5 h-11 px-3 rounded-xl border border-[#D6E0E7] bg-white text-xs font-bold text-[#163E3E]"
-                            aria-label="اختر الباقة المطلوبة"
+                            :aria-label="$t('dashboard.select_plan_label')"
                             required
                         >
                             <option
@@ -550,29 +575,29 @@ function submitPlanChangeRequest() {
                                 :key="plan.id"
                                 :value="plan.id"
                             >
-                                {{ plan.name }} — {{ plan.monthly_price == 0 ? (plan.slug === 'trial' ? 'مجاناً' : 'تسعير مخصص') : `${plan.monthly_price} ج.م/شهرياً` }}
-                                {{ plan.parent_unit_limit ? `(حتى ${plan.parent_unit_limit} عقارات)` : '(سعة غير محدودة)' }}
+                                {{ plan.name }} — {{ plan.monthly_price == 0 ? (plan.slug === 'trial' ? $t('dashboard.free') : $t('dashboard.custom_pricing')) : $t('dashboard.per_month', { price: plan.monthly_price }) }}
+                                {{ plan.parent_unit_limit ? $t('dashboard.up_to_properties', { limit: plan.parent_unit_limit }) : $t('dashboard.unlimited_capacity') }}
                             </option>
                         </select>
                         <InputError :message="planChangeForm.errors.plan_id" class="mt-1" />
                     </div>
 
                     <div>
-                        <label for="dashboard_plan_notes" class="block text-xs font-semibold text-[#163E3E] mb-1.5">ملاحظات للإدارة (اختياري)</label>
+                        <label for="dashboard_plan_notes" class="block text-xs font-semibold text-[#163E3E] mb-1.5">{{ $t('dashboard.notes_label') }}</label>
                         <textarea
                             id="dashboard_plan_notes"
                             v-model="planChangeForm.notes"
                             rows="2"
                             class="w-full mt-1 p-2.5 rounded-xl border border-[#D6E0E7] text-xs text-[#163E3E]"
-                            placeholder="أي تفاصيل أو متطلبات ترغب بتوضيحها للإدارة..."
-                            aria-label="ملاحظات للإدارة (اختياري)"
+                            :placeholder="$t('dashboard.notes_placeholder')"
+                            :aria-label="$t('dashboard.notes_label')"
                         ></textarea>
                     </div>
 
                     <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-[#D6E0E7]">
-                        <SecondaryButton @click="showPlanChangeModal = false" type="button">إلغاء</SecondaryButton>
+                        <SecondaryButton @click="showPlanChangeModal = false" type="button">{{ $t('common.cancel') }}</SecondaryButton>
                         <PrimaryButton :disabled="planChangeForm.processing" class="!px-5 !py-2.5 !text-xs !bg-[#163E3E] !text-white hover:!bg-[#102F2F]">
-                            {{ planChangeForm.processing ? 'جاري الإرسال...' : 'إرسال طلب التغيير' }}
+                            {{ planChangeForm.processing ? $t('dashboard.sending') : $t('dashboard.send_request') }}
                         </PrimaryButton>
                     </div>
                 </form>

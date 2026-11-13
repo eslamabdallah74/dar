@@ -22,7 +22,7 @@ class MetaCloudApiGateway implements WhatsAppGatewayInterface
         $this->apiVersion = config('services.whatsapp.api_version', 'v21.0');
     }
 
-    public function sendTemplate(string $toPhone, string $templateName, array $parameters = []): array
+    public function sendTemplate(string $toPhone, string $templateName, array $parameters = [], string $languageCode = 'ar'): array
     {
         if (empty($this->token) || empty($this->phoneNumberId)) {
             Log::warning("[WhatsApp Meta Cloud API Unconfigured] Unable to send template {$templateName} to {$toPhone}: credentials missing.");
@@ -64,7 +64,7 @@ class MetaCloudApiGateway implements WhatsAppGatewayInterface
                     'type' => 'template',
                     'template' => [
                         'name' => $templateName,
-                        'language' => ['code' => 'ar'],
+                        'language' => ['code' => $languageCode],
                         'components' => $components,
                     ],
                 ]);

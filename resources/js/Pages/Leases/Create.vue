@@ -847,7 +847,7 @@ onUnmounted(() => {
                             type="date"
                             aria-label="تاريخ بداية العقد"
                             required
-                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
+                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-start"
                         />
                         <p v-if="form.errors.starts_on" class="text-xs text-rose-600 font-semibold mt-1">
                             {{ form.errors.starts_on }}
@@ -862,7 +862,7 @@ onUnmounted(() => {
                             type="date"
                             aria-label="تاريخ نهاية العقد"
                             required
-                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
+                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-start"
                         />
                         <p v-if="form.errors.ends_on" class="text-xs text-rose-600 font-semibold mt-1">
                             {{ form.errors.ends_on }}
@@ -882,7 +882,7 @@ onUnmounted(() => {
                                 aria-label="القيمة الإيجارية الشهرية"
                                 placeholder="0.00"
                                 required
-                                class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
+                                class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-start"
                             />
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#5B6770]">
                                 {{ currency || 'ج.م' }}
@@ -906,7 +906,7 @@ onUnmounted(() => {
                                 min="0"
                                 aria-label="مبلغ التأمين المسترد أو الوديعة"
                                 placeholder="0"
-                                class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
+                                class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-start"
                             />
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#5B6770]">
                                 {{ currency || 'ج.م' }}
@@ -1097,7 +1097,7 @@ onUnmounted(() => {
         <Teleport to="body">
             <div
                 v-if="showRenterModal"
-                dir="rtl"
+
                 class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#163E3E]/50 p-4 backdrop-blur-xs"
                 @click.self="closeRenterModal"
             >
@@ -1140,7 +1140,7 @@ onUnmounted(() => {
                             aria-label="اسم المستأجر بالكامل"
                             placeholder="مثال: أحمد عبد الله محمد"
                             required
-                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
+                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-start"
                         />
                         <p v-if="renterErrors.name" class="text-xs text-rose-600 font-semibold mt-1">
                             {{ renterErrors.name }}
@@ -1165,7 +1165,7 @@ onUnmounted(() => {
                                 aria-label="رقم الهاتف"
                                 placeholder="01XXXXXXXXX"
                                 required
-                                class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#163E3E] focus:bg-white focus:ring-1 transition text-right font-mono"
+                                class="w-full h-11 px-3.5 rounded-xl border bg-[#F8FAFC] text-sm text-[#163E3E] focus:bg-white focus:ring-1 transition text-start font-mono"
                                 :class="existingRenterFound
                                     ? 'border-amber-400 focus:border-amber-500 focus:ring-amber-500'
                                     : (renterErrors.phone ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500' : 'border-[#D6E0E7] focus:border-[#163E3E] focus:ring-[#163E3E]')"
@@ -1266,7 +1266,7 @@ onUnmounted(() => {
                                 type="text"
                                 aria-label="الرقم القومي أو الهوية"
                                 placeholder="14 رقم"
-                                class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
+                                class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-start"
                             />
                             <p v-if="renterErrors.national_id" class="text-xs text-rose-600 font-semibold mt-1">
                                 {{ renterErrors.national_id }}
@@ -1283,7 +1283,7 @@ onUnmounted(() => {
                                 type="email"
                                 aria-label="البريد الإلكتروني"
                                 placeholder="name@example.com"
-                                class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
+                                class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-start"
                             />
                             <p v-if="renterErrors.email" class="text-xs text-rose-600 font-semibold mt-1">
                                 {{ renterErrors.email }}

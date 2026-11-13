@@ -543,34 +543,34 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
                         type="text"
                         placeholder="فلترة الجداول..."
                         aria-label="فلترة الجداول"
-                        class="h-9 px-3 rounded-lg border border-[#D6E0E7] bg-white text-xs text-[#163E3E] focus:ring-1 focus:ring-[#163E3E] focus:border-[#163E3E] text-right"
+                        class="h-9 px-3 rounded-lg border border-[#D6E0E7] bg-white text-xs text-[#163E3E] focus:ring-1 focus:ring-[#163E3E] focus:border-[#163E3E] text-start"
                     />
                 </div>
             </div>
 
             <!-- بطاقات الإحصائيات السريعة للمنصة -->
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2 border-t border-amber-200/50">
-                <div class="p-3 rounded-xl bg-white border border-[#D6E0E7] shadow-2xs text-right">
+                <div class="p-3 rounded-xl bg-white border border-[#D6E0E7] shadow-2xs text-start">
                     <span class="text-[11px] font-medium text-[#5B6770] block">مساحات العمل</span>
                     <span class="text-xl font-bold text-[#163E3E] block mt-0.5">{{ platformSummary.total_workspaces }}</span>
                 </div>
-                <div class="p-3 rounded-xl bg-white border border-[#D6E0E7] shadow-2xs text-right">
+                <div class="p-3 rounded-xl bg-white border border-[#D6E0E7] shadow-2xs text-start">
                     <span class="text-[11px] font-medium text-[#5B6770] block">المستخدمين المسجلين</span>
                     <span class="text-xl font-bold text-[#163E3E] block mt-0.5">{{ platformSummary.total_users }}</span>
                 </div>
-                <div class="p-3 rounded-xl bg-white border border-[#D6E0E7] shadow-2xs text-right">
+                <div class="p-3 rounded-xl bg-white border border-[#D6E0E7] shadow-2xs text-start">
                     <span class="text-[11px] font-medium text-[#5B6770] block">إجمالي العقود</span>
                     <span class="text-xl font-bold text-[#163E3E] block mt-0.5">{{ platformSummary.total_leases }}</span>
                 </div>
-                <div class="p-3 rounded-xl bg-white border border-[#D6E0E7] shadow-2xs text-right">
+                <div class="p-3 rounded-xl bg-white border border-[#D6E0E7] shadow-2xs text-start">
                     <span class="text-[11px] font-medium text-[#5B6770] block">إيراد الباقات الشهري</span>
                     <span class="text-xl font-bold text-emerald-700 block mt-0.5">{{ platformSummary.total_mrr }} ج.م</span>
                 </div>
-                <div class="p-3 rounded-xl bg-white border border-[#D6E0E7] shadow-2xs text-right">
+                <div class="p-3 rounded-xl bg-white border border-[#D6E0E7] shadow-2xs text-start">
                     <span class="text-[11px] font-medium text-[#5B6770] block">تسليم رسائل واتساب</span>
                     <span class="text-xl font-bold text-sky-700 block mt-0.5">{{ platformSummary.whatsapp_delivery_rate }}%</span>
                 </div>
-                <div class="p-3 rounded-xl bg-white border border-[#D6E0E7] shadow-2xs text-right">
+                <div class="p-3 rounded-xl bg-white border border-[#D6E0E7] shadow-2xs text-start">
                     <span class="text-[11px] font-medium text-[#5B6770] block">إجمالي المتأخرات</span>
                     <span class="text-xl font-bold text-rose-700 block mt-0.5">{{ platformSummary.total_overdue }} ج.م</span>
                 </div>
@@ -691,7 +691,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
 
             <div class="overflow-hidden rounded-2xl border border-[#D6E0E7] bg-white shadow-sm shadow-[#163E3E]/5">
                 <div class="overflow-x-auto">
-                    <table class="w-full min-w-[1160px] text-right text-xs">
+                    <table class="w-full min-w-[1160px] text-start text-xs">
                         <thead class="border-b border-[#D6E0E7] bg-[#F4F7F7] text-[11px] font-semibold text-[#5B6770]">
                             <tr>
                                 <th class="w-[30%] px-4 py-3.5">مساحة العمل والمالك</th>
@@ -901,7 +901,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
 
             <div class="rounded-2xl border border-[#D6E0E7] bg-white overflow-hidden shadow-2xs">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-right text-xs">
+                    <table class="w-full text-start text-xs">
                         <thead class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
                             <tr>
                                 <th class="p-3.5">الاسم</th>
@@ -1002,7 +1002,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
 
             <div class="rounded-2xl border border-[#D6E0E7] bg-white overflow-hidden shadow-2xs">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-right text-xs">
+                    <table class="w-full text-start text-xs">
                         <thead class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
                             <tr>
                                 <th class="p-3.5">اسم العقار</th>
@@ -1054,7 +1054,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
 
             <div class="rounded-2xl border border-[#D6E0E7] bg-white overflow-hidden shadow-2xs">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-right text-xs">
+                    <table class="w-full text-start text-xs">
                         <thead class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
                             <tr>
                                 <th class="p-3.5">رقم العقد</th>
@@ -1120,7 +1120,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
 
             <div class="rounded-2xl border border-[#D6E0E7] bg-white overflow-hidden shadow-2xs">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-right text-xs">
+                    <table class="w-full text-start text-xs">
                         <thead class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
                             <tr>
                                 <th class="p-3.5">رقم السند</th>
@@ -1170,7 +1170,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
 
             <div class="rounded-2xl border border-[#D6E0E7] bg-white overflow-hidden shadow-2xs">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-right text-xs">
+                    <table class="w-full text-start text-xs">
                         <thead class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
                             <tr>
                                 <th class="p-3.5">عنوان الطلب</th>
@@ -1282,7 +1282,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
 
             <div class="rounded-2xl border border-[#D6E0E7] bg-white overflow-hidden shadow-2xs">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-right text-xs">
+                    <table class="w-full text-start text-xs">
                         <thead class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
                             <tr>
                                 <th class="p-3.5">المستأجر</th>
@@ -1327,7 +1327,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
 
         <!-- مودال إضافة مستخدم جديد (Create User Modal) -->
         <Modal :show="showCreateUserModal" @close="showCreateUserModal = false" max-width="md">
-            <div class="p-6 text-right" dir="rtl">
+            <div class="p-6 text-start" >
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
                     <h3 class="text-base font-bold text-[#163E3E]">إضافة مستخدم جديد للنظام</h3>
                     <button @click="showCreateUserModal = false" type="button" class="text-[#5B6770] hover:text-[#163E3E] p-1">
@@ -1372,7 +1372,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
 
         <!-- مودال تعديل مستخدم (Edit User Modal) -->
         <Modal :show="showEditUserModal" @close="showEditUserModal = false" max-width="md">
-            <div class="p-6 text-right" dir="rtl">
+            <div class="p-6 text-start" >
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
                     <h3 class="text-base font-bold text-[#163E3E]">تعديل بيانات المستخدم</h3>
                     <button @click="showEditUserModal = false" type="button" class="text-[#5B6770] hover:text-[#163E3E] p-1">
@@ -1416,7 +1416,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
 
         <!-- مودال تعديل مساحة العمل (Edit Workspace Modal) -->
         <Modal :show="showEditWorkspaceModal" @close="showEditWorkspaceModal = false" max-width="md">
-            <div class="p-6 text-right" dir="rtl">
+            <div class="p-6 text-start" >
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
                     <h3 class="text-base font-bold text-[#163E3E]">تعديل مساحة العمل</h3>
                     <button @click="showEditWorkspaceModal = false" type="button" class="text-[#5B6770] hover:text-[#163E3E] p-1">
@@ -1472,7 +1472,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
 
         <!-- مودال ترقية وتغيير الباقة (Subscription Modal) -->
         <Modal :show="showSubscriptionModal" @close="showSubscriptionModal = false" max-width="md">
-            <div class="p-6 text-right" dir="rtl">
+            <div class="p-6 text-start" >
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
                     <h3 class="text-base font-bold text-[#163E3E]">تغيير باقة مساحة العمل</h3>
                     <button @click="showSubscriptionModal = false" type="button" class="text-[#5B6770] hover:text-[#163E3E] p-1">
@@ -1545,7 +1545,7 @@ function updateMaintenanceStatus(maintenanceId: number, status: string) {
 
         <!-- مودال إدارة وتعديل الحدود المستقلة لمساحة العمل -->
         <Modal :show="showLimitsModal" @close="showLimitsModal = false" max-width="md">
-            <div class="p-6 text-right" dir="rtl">
+            <div class="p-6 text-start" >
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
                     <h3 class="text-base font-bold text-[#163E3E]">إدارة حدود مساحة العمل المستقلة</h3>
                     <button @click="showLimitsModal = false" type="button" class="text-[#5B6770] hover:text-[#163E3E] p-1">

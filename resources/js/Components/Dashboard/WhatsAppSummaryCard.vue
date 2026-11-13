@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
 import { MessageSquare, CheckCheck, Clock, AlertCircle, ArrowLeft } from 'lucide-vue-next';
+import { useLocale } from '@/composables/useLocale';
+
+const { t, isRtl } = useLocale();
 
 interface WhatsAppData {
     total: number;
@@ -25,15 +28,15 @@ defineProps<{
                         <MessageSquare class="h-4 w-4" />
                     </div>
                     <div>
-                        <h3 class="text-base font-bold text-[#163E3E]">تذكيرات واتساب التلقائية</h3>
+                        <h3 class="text-base font-bold text-[#163E3E]">{{ t('dashboard.whatsapp_summary_title') }}</h3>
                         <p class="text-xs text-[#5B6770] font-medium mt-0.5">
-                            سجل رسائل المطالبات والتنبيهات الدورية
+                            {{ t('dashboard.whatsapp_summary_desc') }}
                         </p>
                     </div>
                 </div>
 
                 <span class="text-xs font-bold font-mono text-[#163E3E] bg-[#F8FAFC] px-2.5 py-1 rounded-lg border border-[#E8EFF4]">
-                    إجمالي {{ summary?.total ?? 0 }} رسالة
+                    {{ t('dashboard.whatsapp_total_messages', { total: summary?.total ?? 0 }) }}
                 </span>
             </div>
 
@@ -43,54 +46,54 @@ defineProps<{
                 <div class="p-3 rounded-xl bg-[#F8FAFC] border border-[#E8EFF4]">
                     <div class="flex items-center gap-1.5 text-xs text-[#5B6770] font-medium">
                         <CheckCheck class="h-3.5 w-3.5 text-sky-600" />
-                        <span>تم الإرسال</span>
+                        <span>{{ t('dashboard.whatsapp_sent') }}</span>
                     </div>
                     <div class="text-xl font-bold font-mono text-[#163E3E] mt-1">
                         {{ summary?.sent ?? 0 }}
                     </div>
-                    <span class="text-[10px] text-[#8E9CA6]">مقبولة لدى مزود الخدمة</span>
+                    <span class="text-[10px] text-[#8E9CA6]">{{ t('dashboard.whatsapp_sent_desc') }}</span>
                 </div>
 
                 <!-- تم التسليم للمستأجر -->
                 <div class="p-3 rounded-xl bg-emerald-50/50 border border-emerald-100">
                     <div class="flex items-center gap-1.5 text-xs text-emerald-800 font-medium">
                         <CheckCheck class="h-3.5 w-3.5 text-emerald-600 stroke-[2.5]" />
-                        <span>تم التسليم</span>
+                        <span>{{ t('dashboard.whatsapp_delivered') }}</span>
                     </div>
                     <div class="text-xl font-bold font-mono text-emerald-900 mt-1">
                         {{ summary?.delivered ?? 0 }}
                     </div>
-                    <span class="text-[10px] text-emerald-700">مؤكدة بتقرير التسليم</span>
+                    <span class="text-[10px] text-emerald-700">{{ t('dashboard.whatsapp_delivered_desc') }}</span>
                 </div>
 
                 <!-- قيد الإرسال -->
                 <div class="p-3 rounded-xl bg-amber-50/50 border border-amber-100">
                     <div class="flex items-center gap-1.5 text-xs text-amber-800 font-medium">
                         <Clock class="h-3.5 w-3.5 text-amber-600" />
-                        <span>قيد المعالجة</span>
+                        <span>{{ t('dashboard.whatsapp_pending') }}</span>
                     </div>
                     <div class="text-xl font-bold font-mono text-amber-900 mt-1">
                         {{ summary?.pending ?? 0 }}
                     </div>
-                    <span class="text-[10px] text-amber-700">في طابور الإرسال المجدول</span>
+                    <span class="text-[10px] text-amber-700">{{ t('dashboard.whatsapp_pending_desc') }}</span>
                 </div>
 
                 <!-- تعذر الإرسال -->
                 <div class="p-3 rounded-xl bg-rose-50/50 border border-rose-100">
                     <div class="flex items-center gap-1.5 text-xs text-rose-800 font-medium">
                         <AlertCircle class="h-3.5 w-3.5 text-rose-600" />
-                        <span>تعذر الإرسال</span>
+                        <span>{{ t('dashboard.whatsapp_failed') }}</span>
                     </div>
                     <div class="text-xl font-bold font-mono text-rose-900 mt-1">
                         {{ summary?.failed ?? 0 }}
                     </div>
-                    <span class="text-[10px] text-rose-700">رقم خاطئ أو تعذر الاتصال</span>
+                    <span class="text-[10px] text-rose-700">{{ t('dashboard.whatsapp_failed_desc') }}</span>
                 </div>
             </div>
 
             <!-- ملاحظة دقة التسليم -->
             <p class="text-[11px] text-[#5B6770] font-medium mt-3 leading-relaxed">
-                * يتم تحديث حالة التسليم الفعلية فور استلام تقرير التسليم من مزود خدمة واتساب المعتمد.
+                {{ t('dashboard.whatsapp_note') }}
             </p>
         </div>
 
@@ -100,8 +103,8 @@ defineProps<{
                 :href="route('whatsapp.index')"
                 class="w-full py-2 px-3 rounded-xl border border-[#D6E0E7] hover:border-[#163E3E] hover:bg-[#E8F0F0]/30 text-xs font-bold text-[#163E3E] transition flex items-center justify-center gap-2"
             >
-                <span>سجل الرسائل وإعدادات القوالب</span>
-                <ArrowLeft class="h-3.5 w-3.5" />
+                <span>{{ t('dashboard.whatsapp_manage_link') }}</span>
+                <ArrowLeft class="h-3.5 w-3.5" :class="isRtl ? '' : 'rotate-180'" />
             </Link>
         </div>
     </div>

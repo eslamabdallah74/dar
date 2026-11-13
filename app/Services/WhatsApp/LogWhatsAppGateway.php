@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\Log;
 
 class LogWhatsAppGateway implements WhatsAppGatewayInterface
 {
-    public function sendTemplate(string $toPhone, string $templateName, array $parameters = []): array
+    public function sendTemplate(string $toPhone, string $templateName, array $parameters = [], string $languageCode = 'ar'): array
     {
-        Log::info("[WhatsApp Log Gateway] Send template '{$templateName}' to {$toPhone}", [
+        Log::info("[WhatsApp Log Gateway] Send template '{$templateName}' ({$languageCode}) to {$toPhone}", [
             'parameters' => $parameters,
         ]);
 

@@ -88,7 +88,7 @@ class MaintenanceController extends Controller
 
         dispatch(new NotifyMaintenanceRequestCreatedJob($maintenanceRequest->id));
 
-        return back()->with('success', 'تم تسجيل طلب الصيانة وإنشاء بند المصروف المرتبط به بنجاح');
+        return back()->with('success', __('maintenance.created'));
     }
 
     public function update(
@@ -116,7 +116,7 @@ class MaintenanceController extends Controller
                 ->log('تم تحديث بيانات طلب الصيانة ومزامنة بند المصروف');
         });
 
-        return back()->with('success', 'تم تحديث بيانات طلب الصيانة ومزامنة بند المصروف بنجاح');
+        return back()->with('success', __('maintenance.updated'));
     }
 
     public function updateStatus(
@@ -139,7 +139,7 @@ class MaintenanceController extends Controller
             ])->with('error', $e->getMessage());
         }
 
-        return back()->with('success', 'تم تحديث حالة طلب الصيانة بنجاح');
+        return back()->with('success', __('maintenance.status_updated'));
     }
 
     public function show(Request $request, MaintenanceRequest $maintenance): JsonResponse|RedirectResponse
@@ -253,12 +253,12 @@ class MaintenanceController extends Controller
 
         if ($request->wantsJson()) {
             return response()->json([
-                'message' => 'تم رفع المرفقات بنجاح',
+                'message' => __('maintenance.attachments_uploaded'),
                 'attachments' => $uploaded,
             ]);
         }
 
-        return back()->with('success', 'تم رفع المرفقات بنجاح');
+        return back()->with('success', __('maintenance.attachments_uploaded'));
     }
 
     public function previewAttachment(
@@ -327,10 +327,10 @@ class MaintenanceController extends Controller
             ->log('تم حذف المرفق: '.$filename);
 
         if ($request->wantsJson()) {
-            return response()->json(['message' => 'تم حذف المرفق بنجاح']);
+            return response()->json(['message' => __('maintenance.attachment_deleted')]);
         }
 
-        return back()->with('success', 'تم حذف المرفق بنجاح');
+        return back()->with('success', __('maintenance.attachment_deleted'));
     }
 
     public function storeNote(
@@ -357,7 +357,7 @@ class MaintenanceController extends Controller
 
         if ($request->wantsJson()) {
             return response()->json([
-                'message' => 'تمت إضافة الملاحظة بنجاح',
+                'message' => __('maintenance.note_added'),
                 'note' => [
                     'id' => $note->id,
                     'note' => $note->note,
@@ -368,7 +368,7 @@ class MaintenanceController extends Controller
             ]);
         }
 
-        return back()->with('success', 'تمت إضافة الملاحظة بنجاح');
+        return back()->with('success', __('maintenance.note_added'));
     }
 
     /**

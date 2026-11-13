@@ -161,7 +161,7 @@ class LeaseController extends Controller
 
         $createLeaseAction->execute($workspace, $validated);
 
-        return redirect()->route('leases.index')->with('success', 'تم إنشاء وتفعيل عقد الإيجار بنجاح');
+        return redirect()->route('leases.index')->with('success', __('leases.created'));
     }
 
     public function show(Request $request, Lease $lease, LeaseDetailsService $leaseDetails): Response
@@ -178,7 +178,7 @@ class LeaseController extends Controller
         abort_if($lease->workspace_id !== $workspace->id, 403);
 
         if ($lease->status !== 'active') {
-            return back()->with('error', 'لا يمكن تمديد عقد غير نشط.');
+            return back()->with('error', __('leases.cannot_extend_inactive'));
         }
 
         $validated = $request->validated();
@@ -213,7 +213,7 @@ class LeaseController extends Controller
             $lockedLease->update($updates);
         });
 
-        return redirect()->route('leases.show', $lease->id)->with('success', 'تم تمديد فترة عقد الإيجار بنجاح وتحديث تاريخ الانتهاء.');
+        return redirect()->route('leases.show', $lease->id)->with('success', __('leases.extended'));
     }
 
     public function terminate(
@@ -225,7 +225,7 @@ class LeaseController extends Controller
         abort_if($lease->workspace_id !== $workspace->id, 403);
 
         if ($lease->status === 'terminated') {
-            return back()->with('error', 'هذا العقد منتهٍ بالفعل.');
+            return back()->with('error', __('leases.already_expired'));
         }
 
         $securityDepositService->terminateLeaseWithSettlement(
@@ -236,7 +236,7 @@ class LeaseController extends Controller
             $this->authenticatedUser($request)->id
         );
 
-        return redirect()->route('leases.show', $lease->id)->with('success', 'تم إنهاء عقد الإيجار واعتماد تسوية التأمين بنجاح.');
+        return redirect()->route('leases.show', $lease->id)->with('success', __('leases.terminated'));
     }
 
     /**
@@ -282,7 +282,7 @@ class LeaseController extends Controller
 
         $lease->update(['contract_image' => $path]);
 
-        return back()->with('success', 'تم رفع وتشفير نسخة العقد بنجاح');
+        return back()->with('success', __('leases.contract_uploaded'));
     }
 
     /**
@@ -298,6 +298,6 @@ class LeaseController extends Controller
             $lease->update(['contract_image' => null]);
         }
 
-        return back()->with('success', 'تم حذف مرفق العقد بنجاح');
+        return back()->with('success', __('leases.contract_deleted'));
     }
 }

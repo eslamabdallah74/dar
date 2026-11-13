@@ -1,45 +1,49 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import { Building2, Home, Users, FileText, ArrowLeft, Plus, Sparkles } from 'lucide-vue-next';
+import { useLocale } from '@/composables/useLocale';
+
+const { t, isRtl } = useLocale();
 
 defineProps<{
     userName?: string;
 }>();
 
-const steps = [
+const steps = computed(() => [
     {
         num: 1,
-        title: 'أضف أول عقار لك',
-        desc: 'سجّل بيانات المبنى أو المجمع السكني وعنوانه ونوعه (عمارة، فيلا، مجمع تجاري).',
+        title: t('dashboard.step1_title'),
+        desc: t('dashboard.step1_desc'),
         icon: Building2,
-        actionLabel: 'إضافة أول عقار',
+        actionLabel: t('dashboard.step1_btn'),
         routeName: 'properties.create',
     },
     {
         num: 2,
-        title: 'أضف الوحدات القابلة للتأجير',
-        desc: 'قسّم عقارك إلى وحدات وشقق أو مساحات مستقلة وحدد القيمة الإيجارية التقديرية.',
+        title: t('dashboard.step2_title'),
+        desc: t('dashboard.step2_desc'),
         icon: Home,
-        actionLabel: 'إدارة الوحدات',
+        actionLabel: t('dashboard.step2_btn'),
         routeName: 'properties.index',
     },
     {
         num: 3,
-        title: 'سجّل بيانات المستأجرين',
-        desc: 'أدخل أسماء المستأجرين وأرقام هواتفهم لإرسال تذكيرات الإيجار التلقائية عبر واتساب.',
+        title: t('dashboard.step3_title'),
+        desc: t('dashboard.step3_desc'),
         icon: Users,
-        actionLabel: 'إضافة مستأجر',
+        actionLabel: t('dashboard.step3_btn'),
         routeName: 'renters.create',
     },
     {
         num: 4,
-        title: 'وثّق أول عقد إيجار',
-        desc: 'اربط المستأجر بالوحدة، وحدد تاريخ بداية ونهاية العقد ومواعيد استحقاق الإيجار.',
+        title: t('dashboard.step4_title'),
+        desc: t('dashboard.step4_desc'),
         icon: FileText,
-        actionLabel: 'إنشاء عقد',
+        actionLabel: t('dashboard.step4_btn'),
         routeName: 'leases.create',
     },
-];
+]);
 </script>
 
 <template>
@@ -49,13 +53,13 @@ const steps = [
             <div class="space-y-2">
                 <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E8F0F0] text-[#163E3E] text-xs font-bold">
                     <Sparkles class="h-3.5 w-3.5" />
-                    <span>مرحباً بك في Nook Mate لإدارة وتأجير العقارات</span>
+                    <span>{{ t('dashboard.onboarding_badge') }}</span>
                 </div>
                 <h2 class="text-2xl sm:text-3xl font-black text-[#163E3E] tracking-tight">
-                    ابدأ بإعداد مساحة عملك في 4 خطوات بسيطة
+                    {{ t('dashboard.onboarding_title') }}
                 </h2>
                 <p class="text-sm text-[#5B6770] font-medium max-w-2xl leading-relaxed">
-                    منصة Nook Mate مصممة لمساعدتك على متابعة الإيجارات، وتحصيل المستحقات، وتتبع الإشغال، وإرسال تذكيرات واتساب لمستأجريك بكل دقة وسهولة.
+                    {{ t('dashboard.onboarding_desc') }}
                 </p>
             </div>
 
@@ -64,7 +68,7 @@ const steps = [
                 class="h-12 px-6 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-sm font-bold transition shadow-xs flex items-center justify-center gap-2 shrink-0 self-start md:self-auto"
             >
                 <Plus class="h-5 w-5" />
-                <span>إضافة أول عقار الآن</span>
+                <span>{{ t('dashboard.onboarding_cta') }}</span>
             </Link>
         </div>
 
@@ -102,7 +106,7 @@ const steps = [
                         class="w-full py-2 px-3 rounded-lg border border-[#D6E0E7] hover:border-[#163E3E] hover:bg-[#E8F0F0]/40 text-xs font-bold text-[#163E3E] group-hover:text-[#163E3E] transition flex items-center justify-center gap-1.5"
                     >
                         <span>{{ step.actionLabel }}</span>
-                        <ArrowLeft class="h-3 w-3" />
+                        <ArrowLeft class="h-3 w-3" :class="isRtl ? '' : 'rotate-180'" />
                     </Link>
                 </div>
             </div>

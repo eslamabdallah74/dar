@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { Head, Link, router } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import LanguageSwitcher from '@/Components/Common/LanguageSwitcher.vue';
+import { useLocale } from '@/composables/useLocale';
 import {
     AlertOctagon,
     ArrowRight,
@@ -16,40 +19,42 @@ const props = defineProps<{
     message?: string;
 }>();
 
+const { t } = useI18n();
+const { dir, isRtl } = useLocale();
 const statusCode = computed(() => props.status || 500);
 
 const details = computed(() => {
     switch (statusCode.value) {
         case 404:
             return {
-                title: 'الصفحة أو السجل غير موجود',
-                subtitle: '404 - Not Found',
-                description: props.message || 'عذراً، لم نتمكن من العثور على الصفحة أو المورد الذي تبحث عنه. قد يكون الرابط خاطئاً أو تم نقل السجل أو حذفه.',
+                title: t('errors.404_title'),
+                subtitle: t('errors.404_subtitle'),
+                description: props.message || t('errors.404_description'),
                 icon: HelpCircle,
                 badgeColor: 'bg-amber-100 text-amber-900 border-amber-300',
             };
         case 403:
             return {
-                title: 'غير مصرح لك بالوصول',
-                subtitle: '403 - Forbidden',
-                description: props.message || 'ليس لديك الصلاحيات الكافية للوصول إلى هذه الصفحة أو تنفيذ هذا الإجراء في مساحة العمل الحالية.',
+                title: t('errors.403_title'),
+                subtitle: t('errors.403_subtitle'),
+                description: props.message || t('errors.403_description'),
                 icon: ShieldAlert,
                 badgeColor: 'bg-rose-100 text-rose-900 border-rose-300',
             };
         case 503:
             return {
-                title: 'النظام في وضع الصيانة المؤقتة',
-                subtitle: '503 - Service Unavailable',
-                description: props.message || 'نقوم حالياً بإجراء تحديثات وتحسينات دورية على منصة نوك مات لضمان أفضل أداء واستقرار. يرجى العودة بعد لحظات.',
+                title: t('errors.503_title'),
+                subtitle: t('errors.503_subtitle'),
+                description: props.message || t('errors.503_description'),
                 icon: RotateCcw,
                 badgeColor: 'bg-sky-100 text-sky-900 border-sky-300',
             };
         case 500:
         default:
             return {
-                title: 'حدث خطأ غير متوقع في الخادم',
-                subtitle: `${statusCode.value} - Server Error`,
-                description: props.message || 'واجه النظام مشكلة تقنية غير متوقعة أثناء معالجة طلبك. تم تسجيل تفاصيل الخطأ رقابياً لسرعة مراجعته ومعالجته.',
+                title: t('errors.500_title'),
+                subtitle: statusCode.value === 500 ? t('errors.500_subtitle') : `${statusCode.value} - Server Error`,
+                description: props.message || t('errors.500_description'),
                 icon: AlertOctagon,
                 badgeColor: 'bg-rose-100 text-rose-900 border-rose-300',
             };
@@ -70,7 +75,7 @@ function reloadPage() {
 </script>
 
 <template>
-    <div class="min-h-screen bg-[#F8F4EA] text-[#163E3E] flex flex-col justify-between selection:bg-[#F7C33D] selection:text-[#163E3E] antialiased" dir="rtl">
+    <div class="min-h-screen bg-[#F8F4EA] text-[#163E3E] flex flex-col justify-between selection:bg-[#F7C33D] selection:text-[#163E3E] antialiased" :dir="dir">
         <Head :title="details.title" />
 
         <!-- Top Header Navigation -->
@@ -80,19 +85,23 @@ function reloadPage() {
                     <ApplicationLogo size="sm" alt="Nook Mate" />
                 </div>
                 <div>
-                    <span class="font-extrabold text-xl text-[#163E3E] tracking-tight">نوك مات</span>
-                    <span class="text-xs text-[#5B6770] block">Nook Mate Financial & Rental Platform</span>
+                    <span class="font-extrabold text-xl text-[#163E3E] tracking-tight">Nook Mate</span>
+                    <span class="text-xs text-[#5B6770] block">Financial & Rental Platform</span>
                 </div>
             </Link>
 
-            <button
-                type="button"
-                @click="goBack"
-                class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-[#163E3E] bg-[#E2DDD2]/60 hover:bg-[#E2DDD2] rounded-xl transition-colors cursor-pointer"
-            >
-                <ArrowRight class="w-4 h-4" />
-                <span>الرجوع للخلف</span>
-            </button>
+            <div class="flex items-center gap-3">
+                <LanguageSwitcher variant="navbar" />
+
+                <button
+                    type="button"
+                    @click="goBack"
+                    class="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-[#163E3E] bg-[#E2DDD2]/60 hover:bg-[#E2DDD2] rounded-xl transition-colors cursor-pointer"
+                >
+                    <ArrowRight class="w-4 h-4 transition-transform" :class="isRtl ? '' : 'rotate-180'" />
+                    <span>{{ $t('errors.go_back') }}</span>
+                </button>
+            </div>
         </header>
 
         <!-- Main Error Display Card -->
@@ -130,7 +139,7 @@ function reloadPage() {
                         class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-[#163E3E] hover:bg-[#1C4E4E] text-white font-bold text-sm shadow-lg shadow-[#163E3E]/20 transition-all hover:-translate-y-0.5 cursor-pointer"
                     >
                         <Home class="w-4 h-4 text-[#F7C33D]" />
-                        <span>العودة للرئيسية</span>
+                        <span>{{ $t('errors.return_home') }}</span>
                     </Link>
 
                     <button
@@ -139,7 +148,7 @@ function reloadPage() {
                         class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl border border-[#E2DDD2] bg-white hover:bg-[#F8F4EA] text-[#163E3E] font-bold text-sm transition-colors cursor-pointer"
                     >
                         <RotateCcw class="w-4 h-4 text-[#5B6770]" />
-                        <span>إعادة تحميل الصفحة</span>
+                        <span>{{ $t('errors.reload_page') }}</span>
                     </button>
                 </div>
             </div>
@@ -147,7 +156,7 @@ function reloadPage() {
 
         <!-- Footer -->
         <footer class="w-full max-w-7xl mx-auto px-6 py-6 text-center text-xs text-[#5B6770]">
-            <p>منصة نوك مات &copy; {{ new Date().getFullYear() }} — جميع الحقوق محفوظة</p>
+            <p>{{ $t('errors.all_rights_reserved') }} &copy; {{ new Date().getFullYear() }}</p>
         </footer>
     </div>
 </template>

@@ -104,7 +104,7 @@ const submitPlanRequest = () => {
         <div
             v-if="requested_plan && requested_plan.status === 'pending'"
             class="rounded-3xl border border-amber-300 bg-amber-50/80 p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-            dir="rtl"
+
         >
             <div class="flex items-start gap-3.5">
                 <div class="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
@@ -129,7 +129,7 @@ const submitPlanRequest = () => {
                     </p>
                 </div>
             </div>
-            <div class="shrink-0 text-left">
+            <div class="shrink-0 text-start">
                 <span class="text-xs font-semibold text-amber-700">باقتك الحالية تبقى نشطة دون انقطاع</span>
             </div>
         </div>
@@ -138,12 +138,12 @@ const submitPlanRequest = () => {
         <div
             v-else-if="requested_plan && requested_plan.status === 'rejected'"
             class="rounded-3xl border border-rose-200 bg-rose-50/80 p-5 shadow-2xs flex items-start gap-3.5"
-            dir="rtl"
+
         >
             <div class="w-10 h-10 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 mt-0.5">
                 <AlertCircle class="w-5 h-5" />
             </div>
-            <div class="space-y-1 text-right">
+            <div class="space-y-1 text-start">
                 <h3 class="text-sm font-bold text-rose-900">تم رفض طلب الترقية الأخير إلى {{ requested_plan.name }}</h3>
                 <p class="text-xs text-rose-700">
                     {{ requested_plan.notes || 'يمكنك اختيار باقة أخرى تناسب احتياجاتك وإرسال طلب جديد.' }}
@@ -301,7 +301,7 @@ const submitPlanRequest = () => {
             </div>
 
             <div class="rounded-3xl border border-[#D6E0E7] bg-white overflow-hidden shadow-2xs">
-                <table class="w-full text-right text-xs">
+                <table class="w-full text-start text-xs">
                     <thead>
                         <tr class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
                             <th class="py-3.5 px-6">رقم الفاتورة</th>
@@ -309,7 +309,7 @@ const submitPlanRequest = () => {
                             <th class="py-3.5 px-6">الوصف</th>
                             <th class="py-3.5 px-6">المبلغ</th>
                             <th class="py-3.5 px-6">الحالة</th>
-                            <th class="py-3.5 px-6 text-start sm:text-left">تحميل</th>
+                            <th class="py-3.5 px-6 text-start">تحميل</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-[#D6E0E7]">
@@ -321,7 +321,7 @@ const submitPlanRequest = () => {
                             <td class="py-4 px-6">
                                 <StatusBadge :status="inv.status" :label="inv.status_label" size="sm" />
                             </td>
-                            <td class="py-4 px-6 text-start sm:text-left">
+                            <td class="py-4 px-6 text-start">
                                 <button
                                     type="button"
                                     class="p-1.5 rounded-lg border border-[#D6E0E7] hover:bg-slate-100 text-[#5B6770] hover:text-[#163E3E] transition cursor-pointer"
@@ -342,7 +342,7 @@ const submitPlanRequest = () => {
         <!-- نافذة تأكيد طلب الترقية -->
         <div v-if="upgradeModalOpen && selectedPlanToUpgrade" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
             <div @click="upgradeModalOpen = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
-            <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-6 z-10 text-center space-y-4" dir="rtl">
+            <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-6 z-10 text-center space-y-4" >
                 <div class="w-14 h-14 rounded-2xl bg-[#E8F0F0] text-[#163E3E] mx-auto flex items-center justify-center">
                     <Sparkles class="w-7 h-7" />
                 </div>
@@ -357,12 +357,12 @@ const submitPlanRequest = () => {
                     <span v-else>تسعير مخصص</span>
                 </div>
 
-                <div v-if="requestForm.errors.plan_id" class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold text-right flex items-center gap-2">
+                <div v-if="requestForm.errors.plan_id" class="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold text-start flex items-center gap-2">
                     <AlertCircle class="w-4 h-4 text-rose-600 shrink-0" />
                     <span>{{ requestForm.errors.plan_id }}</span>
                 </div>
 
-                <div class="text-right">
+                <div class="text-start">
                     <label for="req_notes" class="block text-xs font-semibold text-[#163E3E] mb-1.5">ملاحظات إضافية للإدارة (اختياري)</label>
                     <textarea
                         id="req_notes"

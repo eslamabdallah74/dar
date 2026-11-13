@@ -4,6 +4,7 @@ import { useForm, router, Link, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import EmptyState from '@/Components/Common/EmptyState.vue';
 import MaintenanceDetailsDrawer from '@/Components/Maintenance/MaintenanceDetailsDrawer.vue';
+import { useLocale } from '@/composables/useLocale';
 import {
     AlertCircle,
     Building2,
@@ -96,6 +97,8 @@ const page = usePage();
 const flashError = computed(() => (page.props.flash as any)?.error ?? (page.props.errors as any)?.status);
 const flashSuccess = computed(() => (page.props.flash as any)?.success);
 
+const { t, isRtl, dir } = useLocale();
+
 // Filter states
 const searchQuery = ref('');
 const selectedPropertyId = ref<string | number>('all');
@@ -104,6 +107,13 @@ const statusFilter = ref<string>('all'); // 'all' | 'pending' | 'in_progress' | 
 const costFilter = ref<string>('all'); // 'all' | 'awaiting_cost' | 'recorded_unpaid' | 'paid'
 const startDate = ref<string>('');
 const endDate = ref<string>('');
+
+const statusFilterOptions = computed(() => [
+    { id: 'all', label: t('maintenance.filter_all') },
+    { id: 'pending', label: t('maintenance.status_new') },
+    { id: 'in_progress', label: t('maintenance.kpi_in_progress') },
+    { id: 'completed', label: t('maintenance.kpi_completed') },
+]);
 
 // Drawer states
 const selectedMaintenanceId = ref<number | null>(null);
@@ -262,20 +272,20 @@ const getMaintenanceStatusBadge = (status: string) => {
         case 'pending':
         case 'open':
             return {
-                label: 'جديدة',
+                label: t('maintenance.status_new'),
                 classes: 'bg-rose-50 text-rose-700 border-rose-200/80',
                 dot: 'bg-rose-500',
             };
         case 'in_progress':
             return {
-                label: 'جاري الإصلاح',
+                label: t('maintenance.status_in_progress'),
                 classes: 'bg-amber-50 text-amber-800 border-amber-200/80',
                 dot: 'bg-amber-500',
             };
         case 'completed':
         case 'closed':
             return {
-                label: 'مكتملة',
+                label: t('maintenance.status_completed'),
                 classes: 'bg-emerald-50 text-emerald-800 border-emerald-200/80',
                 dot: 'bg-emerald-500',
             };
@@ -291,7 +301,7 @@ const getMaintenanceStatusBadge = (status: string) => {
 const getExpenseStatusBadge = (expense: LinkedExpense | null) => {
     if (!expense || !expense.has_amount || expense.is_pending_amount) {
         return {
-            label: 'بانتظار تسجيل التكلفة',
+            label: t('maintenance.filter_awaiting_cost'),
             classes: 'bg-amber-50 text-amber-800 border-amber-300/80',
             icon: AlertCircle,
             type: 'awaiting',
@@ -300,7 +310,7 @@ const getExpenseStatusBadge = (expense: LinkedExpense | null) => {
 
     if (expense.is_paid) {
         return {
-            label: 'تم دفع المصروف',
+            label: t('maintenance.filter_paid'),
             classes: 'bg-emerald-50 text-emerald-800 border-emerald-300/80',
             icon: CheckCircle2,
             type: 'paid',
@@ -308,7 +318,7 @@ const getExpenseStatusBadge = (expense: LinkedExpense | null) => {
     }
 
     return {
-        label: 'التكلفة مسجلة — غير مدفوعة',
+        label: t('maintenance.filter_recorded_unpaid'),
         classes: 'bg-indigo-50 text-indigo-900 border-indigo-200',
         icon: Receipt,
         type: 'unpaid',
@@ -385,11 +395,11 @@ const updateRequestStatus = (id: number, newStatus: string) => {
 
 <template>
     <AppLayout
-        title="الصيانة — Dar"
+        :title="$t('maintenance.title') + ' — Nook Mate'"
         active-tab="maintenance"
-        header-title="الصيانة"
-        header-subtitle="تابع طلبات الصيانة وتكاليفها وحالة تنفيذها."
-        breadcrumb="الصيانة"
+        :header-title="$t('maintenance.title')"
+        :header-subtitle="$t('maintenance.subtitle')"
+        :breadcrumb="$t('maintenance.breadcrumb')"
     >
         <!-- رأس الصفحة والإجراء الأساسي -->
         <template #actions>
@@ -399,7 +409,7 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                 class="h-11 px-5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-sm font-semibold transition shadow-xs flex items-center gap-2 cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-[#163E3E] focus:ring-offset-2"
             >
                 <Plus class="h-4 w-4 stroke-[2.5]" />
-                <span>طلب صيانة جديد</span>
+                <span>{{ $t('maintenance.new_request') }}</span>
             </button>
         </template>
 
@@ -419,7 +429,7 @@ const updateRequestStatus = (id: number, newStatus: string) => {
             <!-- طلبات جديدة -->
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2 hover:border-[#163E3E]/30 transition">
                 <div class="flex items-center justify-between text-xs font-semibold text-[#5B6770]">
-                    <span>طلبات جديدة</span>
+                    <span>{{ $t('maintenance.kpi_new') }}</span>
                     <Clock class="w-4 h-4 text-rose-500" />
                 </div>
                 <div class="flex items-baseline justify-between pt-1">
@@ -427,7 +437,7 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                         {{ stats.pending ?? stats.open ?? 0 }}
                     </span>
                     <span class="text-xs text-rose-700 bg-rose-50 px-2.5 py-1 rounded-md font-bold">
-                        جديدة
+                        {{ $t('maintenance.status_new') }}
                     </span>
                 </div>
             </div>
@@ -435,7 +445,7 @@ const updateRequestStatus = (id: number, newStatus: string) => {
             <!-- جاري الإصلاح -->
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2 hover:border-[#163E3E]/30 transition">
                 <div class="flex items-center justify-between text-xs font-semibold text-[#5B6770]">
-                    <span>جاري الإصلاح</span>
+                    <span>{{ $t('maintenance.kpi_in_progress') }}</span>
                     <Wrench class="w-4 h-4 text-amber-600" />
                 </div>
                 <div class="flex items-baseline justify-between pt-1">
@@ -443,7 +453,7 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                         {{ stats.in_progress ?? 0 }}
                     </span>
                     <span class="text-xs text-amber-800 bg-amber-50 px-2.5 py-1 rounded-md font-bold">
-                        قيد التنفيذ
+                        {{ $t('maintenance.status_in_progress') }}
                     </span>
                 </div>
             </div>
@@ -451,7 +461,7 @@ const updateRequestStatus = (id: number, newStatus: string) => {
             <!-- مكتملة -->
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2 hover:border-[#163E3E]/30 transition">
                 <div class="flex items-center justify-between text-xs font-semibold text-[#5B6770]">
-                    <span>مكتملة</span>
+                    <span>{{ $t('maintenance.kpi_completed') }}</span>
                     <CheckCircle2 class="w-4 h-4 text-emerald-600" />
                 </div>
                 <div class="flex items-baseline justify-between pt-1">
@@ -459,7 +469,7 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                         {{ stats.completed ?? stats.closed ?? 0 }}
                     </span>
                     <span class="text-xs text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md font-bold">
-                        تم إنجازها
+                        {{ $t('maintenance.status_completed') }}
                     </span>
                 </div>
             </div>
@@ -467,7 +477,7 @@ const updateRequestStatus = (id: number, newStatus: string) => {
             <!-- بانتظار تسجيل التكلفة -->
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2 hover:border-[#163E3E]/30 transition">
                 <div class="flex items-center justify-between text-xs font-semibold text-[#5B6770]">
-                    <span>بانتظار تسجيل التكلفة</span>
+                    <span>{{ $t('maintenance.kpi_pending_cost') }}</span>
                     <Receipt class="w-4 h-4 text-amber-600" />
                 </div>
                 <div class="flex items-baseline justify-between pt-1">
@@ -477,9 +487,9 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                     <Link
                         :href="route('expenses.index')"
                         class="text-xs text-[#163E3E] hover:underline flex items-center gap-1 font-bold bg-[#F8FAFC] border border-[#D6E0E7] px-2.5 py-1 rounded-md"
-                        title="الانتقال لصفحة المصروفات لتسجيل التكاليف"
+                        :title="$t('maintenance.expenses_link')"
                     >
-                        <span>المصروفات</span>
+                        <span>{{ $t('maintenance.expenses_link') }}</span>
                         <ExternalLink class="w-3 h-3" />
                     </Link>
                 </div>
@@ -494,15 +504,22 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                     <input
                         v-model="searchQuery"
                         type="text"
-                        placeholder="ابحث بالعنوان، الوصف، اسم العقار أو الوحدة..."
-                        class="w-full h-11 pr-11 pl-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] placeholder:text-[#5B6770] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
+                        :placeholder="$t('maintenance.search_placeholder')"
+                        :aria-label="$t('maintenance.search_placeholder')"
+                        class="w-full h-11 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] placeholder:text-[#5B6770] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-start"
+                        :class="isRtl ? 'pr-11 pl-4' : 'pl-11 pr-4'"
                     />
-                    <Search class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#5B6770]" />
+                    <Search
+                        class="pointer-events-none absolute top-1/2 -translate-y-1/2 h-4 w-4 text-[#5B6770]"
+                        :class="isRtl ? 'right-3.5' : 'left-3.5'"
+                    />
                     <button
                         v-if="searchQuery"
                         @click="searchQuery = ''"
                         type="button"
-                        class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                        class="absolute top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                        :class="isRtl ? 'left-3' : 'right-3'"
+                        :aria-label="$t('common.cancel')"
                     >
                         <X class="w-4 h-4" />
                     </button>
@@ -511,12 +528,7 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                 <!-- تصفية حسب حالة الصيانة: جديدة / جاري الإصلاح / مكتملة -->
                 <div class="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0">
                     <button
-                        v-for="st in [
-                            { id: 'all', label: 'الكل' },
-                            { id: 'pending', label: 'جديدة' },
-                            { id: 'in_progress', label: 'جاري الإصلاح' },
-                            { id: 'completed', label: 'مكتملة' },
-                        ]"
+                        v-for="st in statusFilterOptions"
                         :key="st.id"
                         @click="statusFilter = st.id"
                         type="button"
@@ -537,9 +549,10 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                     <Building2 class="w-4 h-4 text-[#5B6770] shrink-0" />
                     <select
                         v-model="selectedPropertyId"
+                        :aria-label="$t('maintenance.filter_all_properties')"
                         class="w-full h-9 px-3 rounded-lg border border-[#D6E0E7] bg-[#F8FAFC] text-xs font-semibold text-[#163E3E] focus:border-[#163E3E] focus:bg-white transition"
                     >
-                        <option value="all">كل العقارات</option>
+                        <option value="all">{{ $t('maintenance.filter_all_properties') }}</option>
                         <option v-for="p in properties" :key="p.id" :value="p.id">{{ p.name }}</option>
                     </select>
                 </div>
@@ -549,10 +562,11 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                     <Layers class="w-4 h-4 text-[#5B6770] shrink-0" />
                     <select
                         v-model="selectedUnitFilter"
+                        :aria-label="$t('maintenance.filter_all_units')"
                         class="w-full h-9 px-3 rounded-lg border border-[#D6E0E7] bg-[#F8FAFC] text-xs font-semibold text-[#163E3E] focus:border-[#163E3E] focus:bg-white transition"
                     >
-                        <option value="all">كل الوحدات والأماكن</option>
-                        <option value="common">الأماكن المشتركة فقط</option>
+                        <option value="all">{{ $t('maintenance.filter_all_units') }}</option>
+                        <option value="common">{{ $t('maintenance.filter_common_areas_only') }}</option>
                         <option v-for="u in filterAvailableUnits" :key="u.id" :value="u.id">{{ u.name }}</option>
                     </select>
                 </div>
@@ -562,12 +576,13 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                     <Receipt class="w-4 h-4 text-[#5B6770] shrink-0" />
                     <select
                         v-model="costFilter"
+                        :aria-label="$t('maintenance.filter_all_cost_statuses')"
                         class="w-full h-9 px-3 rounded-lg border border-[#D6E0E7] bg-[#F8FAFC] text-xs font-semibold text-[#163E3E] focus:border-[#163E3E] focus:bg-white transition"
                     >
-                        <option value="all">كل حالات التكلفة</option>
-                        <option value="awaiting_cost">بانتظار تسجيل التكلفة</option>
-                        <option value="recorded_unpaid">التكلفة مسجلة — غير مدفوعة</option>
-                        <option value="paid">تم دفع المصروف</option>
+                        <option value="all">{{ $t('maintenance.filter_all_cost_statuses') }}</option>
+                        <option value="awaiting_cost">{{ $t('maintenance.filter_awaiting_cost') }}</option>
+                        <option value="recorded_unpaid">{{ $t('maintenance.filter_recorded_unpaid') }}</option>
+                        <option value="paid">{{ $t('maintenance.filter_paid') }}</option>
                     </select>
                 </div>
 
@@ -577,14 +592,14 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                     <input
                         v-model="startDate"
                         type="date"
-                        title="من تاريخ"
+                        aria-label="Start date"
                         class="h-9 px-2 rounded-lg border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E]"
                     />
-                    <span>إلى</span>
+                    <span>{{ $t('maintenance.date_to') }}</span>
                     <input
                         v-model="endDate"
                         type="date"
-                        title="إلى تاريخ"
+                        aria-label="End date"
                         class="h-9 px-2 rounded-lg border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E]"
                     />
                 </div>
@@ -594,20 +609,21 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                     v-if="hasActiveFilters"
                     @click="resetFilters"
                     type="button"
-                    class="h-9 px-3 rounded-lg text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 transition flex items-center gap-1 cursor-pointer mr-auto"
+                    class="h-9 px-3 rounded-lg text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 transition flex items-center gap-1 cursor-pointer"
+                    :class="isRtl ? 'mr-auto' : 'ml-auto'"
                 >
                     <RotateCcw class="w-3.5 h-3.5" />
-                    <span>إعادة ضبط</span>
+                    <span>{{ $t('maintenance.reset_filter') }}</span>
                 </button>
             </div>
 
             <!-- شريط بيان عدد النتائج المطابقة -->
             <div class="flex items-center justify-between text-xs text-[#5B6770] pt-1">
                 <span>
-                    يتم عرض <strong class="text-[#163E3E] font-bold">{{ filteredRequests.length }}</strong> من أصل <strong class="text-[#163E3E]">{{ requests.length }}</strong> طلب صيانة
+                    {{ $t('maintenance.showing_count', { count: filteredRequests.length, total: requests.length }) }}
                 </span>
                 <span v-if="hasActiveFilters" class="text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md font-semibold text-[11px]">
-                    تصفية مفعلة
+                    {{ $t('maintenance.filter_active') }}
                 </span>
             </div>
         </div>
@@ -635,7 +651,7 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                                     : 'bg-slate-100 text-[#163E3E] border border-slate-200'"
                             >
                                 <component :is="req.is_common_area ? Layers : Home" class="w-3.5 h-3.5" />
-                                <span>{{ req.is_common_area ? 'الأماكن المشتركة' : req.unit_name }}</span>
+                                <span>{{ req.is_common_area ? $t('maintenance.common_area') : req.unit_name }}</span>
                             </div>
                         </div>
 
@@ -654,12 +670,12 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                         <h4
                             @click="openDetailsDrawer(req.id)"
                             class="text-base font-bold text-[#163E3E] leading-snug cursor-pointer hover:text-amber-800 transition"
-                            title="انقر لعرض التفاصيل الكاملة والمرفقات"
+                            :title="$t('maintenance.view_details_and_attachments')"
                         >
                             {{ req.title }}
                         </h4>
                         <p class="text-xs text-[#5B6770] line-clamp-2 leading-relaxed">
-                            {{ req.description || 'لا يوجد وصف تفصيلي مسجل لهذا الطلب.' }}
+                            {{ req.description || $t('maintenance.no_description') }}
                         </p>
 
                         <!-- شارات المرفقات والملاحظات إن وُجدت -->
@@ -669,14 +685,14 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                                 class="inline-flex items-center gap-1 text-[11px] font-bold text-[#163E3E] bg-[#E8F0F0] px-2 py-0.5 rounded-md"
                             >
                                 <Paperclip class="w-3 h-3 text-[#163E3E]" />
-                                <span>{{ req.attachments_count }} مرفقات</span>
+                                <span>{{ $t('maintenance.attachments_badge', { count: req.attachments_count }) }}</span>
                             </span>
                             <span
                                 v-if="req.notes_count && req.notes_count > 0"
                                 class="inline-flex items-center gap-1 text-[11px] font-bold text-[#5B6770] bg-slate-100 px-2 py-0.5 rounded-md"
                             >
                                 <MessageSquare class="w-3 h-3 text-[#5B6770]" />
-                                <span>{{ req.notes_count }} ملاحظات</span>
+                                <span>{{ $t('maintenance.notes_badge', { count: req.notes_count }) }}</span>
                             </span>
                         </div>
                     </div>
@@ -684,19 +700,19 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                     <!-- التواريخ والبيانات الإدارية -->
                     <div class="p-3 rounded-xl bg-[#F8FAFC] border border-[#D6E0E7] text-xs space-y-1.5">
                         <div class="flex items-center justify-between text-[#5B6770]">
-                            <span>تاريخ الإبلاغ:</span>
+                            <span>{{ $t('maintenance.lbl_reported_at') }}</span>
                             <span class="font-mono text-[#163E3E] font-semibold">{{ req.reported_at }}</span>
                         </div>
                         <div v-if="req.started_at" class="flex items-center justify-between text-[#5B6770]">
-                            <span>بدء الإصلاح:</span>
+                            <span>{{ $t('maintenance.lbl_started_at') }}</span>
                             <span class="font-mono text-amber-800 font-semibold">{{ req.started_at }}</span>
                         </div>
                         <div v-if="req.resolved_at" class="flex items-center justify-between text-[#5B6770]">
-                            <span>تاريخ الإنجاز:</span>
+                            <span>{{ $t('maintenance.lbl_resolved_at') }}</span>
                             <span class="font-mono text-emerald-800 font-semibold">{{ req.resolved_at }}</span>
                         </div>
                         <div class="flex items-center justify-between text-[#5B6770]">
-                            <span>مقدم البلاغ:</span>
+                            <span>{{ $t('maintenance.lbl_reporter') }}</span>
                             <span class="text-[#163E3E] font-medium">{{ req.renter_name }}</span>
                         </div>
                     </div>
@@ -711,7 +727,7 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                         <div class="flex items-center justify-between">
                             <span class="font-bold flex items-center gap-1.5">
                                 <Receipt class="w-4 h-4" :class="req.expense?.has_amount ? 'text-emerald-700' : 'text-amber-700'" />
-                                <span>التكلفة المالية</span>
+                                <span>{{ $t('maintenance.financial_cost') }}</span>
                             </span>
 
                             <!-- شارة التكلفة المحددة: بانتظار تسجيل التكلفة / التكلفة مسجلة — غير مدفوعة / تم دفع المصروف -->
@@ -727,7 +743,7 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                         <!-- في حال تم إدخال المبلغ -->
                         <div v-if="req.expense?.has_amount" class="flex items-center justify-between pt-2 border-t border-emerald-200/80">
                             <div>
-                                <span class="text-[#5B6770] text-[11px] block">المبلغ المسجل:</span>
+                                <span class="text-[#5B6770] text-[11px] block">{{ $t('maintenance.recorded_amount') }}</span>
                                 <span class="font-bold font-mono text-emerald-800 text-base">
                                     {{ req.expense?.amount?.toLocaleString('en-US') }} {{ currency }}
                                 </span>
@@ -736,9 +752,9 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                             <Link
                                 :href="route('expenses.index')"
                                 class="h-7 px-3 rounded-lg border border-emerald-300 bg-white hover:bg-emerald-100/60 text-emerald-950 text-xs font-bold transition flex items-center gap-1 shadow-2xs"
-                                title="عرض بند المصروف في صفحة المصروفات"
+                                :title="$t('maintenance.open_expense')"
                             >
-                                <span>فتح المصروف</span>
+                                <span>{{ $t('maintenance.open_expense') }}</span>
                                 <ExternalLink class="w-3 h-3" />
                             </Link>
                         </div>
@@ -746,14 +762,14 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                         <!-- في حال لم يتم إدخال المبلغ بعد -->
                         <div v-else class="space-y-2 pt-1 border-t border-amber-200/80">
                             <p class="text-[11px] text-amber-900 leading-relaxed font-medium">
-                                تم ربط بند المصروف تلقائياً، يرجى إدخال التكلفة الفعلية من صفحة المصروفات.
+                                {{ $t('maintenance.auto_linked_hint') }}
                             </p>
                             <Link
                                 :href="route('expenses.index')"
                                 class="w-full h-8 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-2xs"
                             >
                                 <ExternalLink class="w-3.5 h-3.5" />
-                                <span>فتح المصروف</span>
+                                <span>{{ $t('maintenance.open_expense') }}</span>
                             </Link>
                         </div>
                     </div>
@@ -763,7 +779,7 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                 <div class="pt-4 mt-4 border-t border-[#D6E0E7] space-y-2.5">
                     <!-- طلبات جديدة (Pending): الإجراء هو "بدء الإصلاح" -->
                     <div v-if="req.status === 'open' || req.status === 'pending'" class="flex items-center justify-between">
-                        <span class="text-xs text-[#5B6770]">الإجراء التالي:</span>
+                        <span class="text-xs text-[#5B6770]">{{ $t('maintenance.next_action') }}</span>
                         <button
                             @click="updateRequestStatus(req.id, 'in_progress')"
                             :disabled="updatingId === req.id"
@@ -772,14 +788,14 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                         >
                             <Loader2 v-if="updatingId === req.id" class="w-3.5 h-3.5 animate-spin" />
                             <Wrench v-else class="w-3.5 h-3.5" />
-                            <span>{{ updatingId === req.id ? 'جاري البدء...' : 'بدء الإصلاح' }}</span>
+                            <span>{{ updatingId === req.id ? $t('maintenance.starting_repair') : $t('maintenance.start_repair') }}</span>
                         </button>
                     </div>
 
                     <!-- جاري الإصلاح (In Progress): الإجراء هو "إنهاء الصيانة" أو المنع إذا كانت التكلفة فارغة -->
                     <div v-else-if="req.status === 'in_progress'" class="space-y-2">
                         <div class="flex items-center justify-between">
-                            <span class="text-xs text-[#5B6770]">الإجراء التالي:</span>
+                            <span class="text-xs text-[#5B6770]">{{ $t('maintenance.next_action') }}</span>
                             <button
                                 @click="updateRequestStatus(req.id, 'completed')"
                                 :disabled="!req.can_be_completed || updatingId === req.id"
@@ -791,7 +807,7 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                             >
                                 <Loader2 v-if="updatingId === req.id" class="w-3.5 h-3.5 animate-spin" />
                                 <Check v-else class="w-3.5 h-3.5" />
-                                <span>{{ updatingId === req.id ? 'جاري الإنهاء...' : 'إنهاء الصيانة' }}</span>
+                                <span>{{ updatingId === req.id ? $t('maintenance.completing_maintenance') : $t('maintenance.complete_maintenance') }}</span>
                             </button>
                         </div>
 
@@ -802,13 +818,13 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                         >
                             <div class="flex items-center gap-1.5">
                                 <AlertCircle class="w-4 h-4 text-amber-700 shrink-0" />
-                                <span>لا يمكن إنهاء الصيانة قبل تسجيل التكلفة.</span>
+                                <span>{{ $t('maintenance.cannot_complete_without_cost') }}</span>
                             </div>
                             <Link
                                 :href="route('expenses.index')"
                                 class="text-xs text-[#163E3E] font-bold hover:underline shrink-0"
                             >
-                                فتح المصروف
+                                {{ $t('maintenance.open_expense') }}
                             </Link>
                         </div>
                     </div>
@@ -817,13 +833,13 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                     <div v-else class="flex items-center justify-between text-xs">
                         <span class="text-emerald-700 font-bold flex items-center gap-1 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200/80">
                             <CheckCircle2 class="w-4 h-4 text-emerald-600" />
-                            <span>تم إنجاز الصيانة وإغلاق الطلب</span>
+                            <span>{{ $t('maintenance.completed_and_closed') }}</span>
                         </span>
                         <Link
                             :href="route('expenses.index')"
                             class="text-xs text-[#163E3E] font-semibold hover:underline flex items-center gap-1"
                         >
-                            <span>سجل المصروف</span>
+                            <span>{{ $t('maintenance.view_expense_record') }}</span>
                             <ExternalLink class="w-3 h-3" />
                         </Link>
                     </div>
@@ -835,7 +851,7 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                         class="w-full h-9 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F8FAFC] text-xs font-bold text-[#163E3E] transition flex items-center justify-center gap-2 shadow-2xs cursor-pointer mt-1"
                     >
                         <Eye class="w-4 h-4 text-[#163E3E]" />
-                        <span>عرض التفاصيل والمرفقات</span>
+                        <span>{{ $t('maintenance.view_details_and_attachments') }}</span>
                     </button>
                 </div>
             </div>
@@ -845,25 +861,25 @@ const updateRequestStatus = (id: number, newStatus: string) => {
         <EmptyState
             v-else
             type="wrench"
-            :title="hasActiveFilters ? 'لا توجد طلبات صيانة تطابق شروط التصفية' : 'لا توجد طلبات صيانة مسجلة'"
+            :title="hasActiveFilters ? $t('maintenance.empty_filtered_title') : $t('maintenance.empty_title')"
             :description="hasActiveFilters
-                ? 'جرّب تعديل الكلمات الدلالية أو إعادة ضبط معايير البحث والتواريخ لعرض المزيد من الطلبات.'
-                : 'جميع الوحدات والمرافق في حالة تشغيلية ممتازة دون أي بلاغات أعطال مفتوحة حالياً.'"
-            :action-label="hasActiveFilters ? 'إعادة ضبط التصفية' : 'تسجيل طلب صيانة جديد'"
+                ? $t('maintenance.empty_filtered_desc')
+                : $t('maintenance.empty_desc')"
+            :action-label="hasActiveFilters ? $t('maintenance.reset_filter') : $t('maintenance.new_request')"
             @action="hasActiveFilters ? resetFilters() : openModal()"
         />
 
         <!-- 5. نافذة تسجيل طلب صيانة جديد (Creation Modal) -->
         <div v-if="showAddModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
             <div @click="showAddModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
-            <div class="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-6 z-10 animate-in fade-in zoom-in-95" dir="rtl">
+            <div :dir="dir" class="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-6 z-10 animate-in fade-in zoom-in-95 text-start">
                 <!-- رأس النافذة -->
                 <div class="flex items-center justify-between pb-4 border-b border-[#D6E0E7] mb-5">
                     <div>
-                        <h3 class="text-lg font-bold text-[#163E3E]">طلب صيانة جديد</h3>
-                        <p class="text-xs text-[#5B6770] mt-0.5">سجل بلاغ عطل أو صيانة جديدة للمبنى أو إحدى الوحدات.</p>
+                        <h3 class="text-lg font-bold text-[#163E3E]">{{ $t('maintenance.modal_new_title') }}</h3>
+                        <p class="text-xs text-[#5B6770] mt-0.5">{{ $t('maintenance.modal_new_subtitle') }}</p>
                     </div>
-                    <button @click="showAddModal = false" type="button" class="p-1.5 text-[#5B6770] hover:text-[#163E3E] rounded-lg">
+                    <button @click="showAddModal = false" type="button" :aria-label="$t('common.cancel')" class="p-1.5 text-[#5B6770] hover:text-[#163E3E] rounded-lg cursor-pointer">
                         <X class="w-5 h-5" />
                     </button>
                 </div>
@@ -871,9 +887,11 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                 <form @submit.prevent="submitCreate" class="space-y-4">
                     <!-- العقار المعني -->
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">العقار / المبنى *</label>
+                        <label for="create-maintenance-property" class="block text-xs font-bold text-[#163E3E] mb-1.5">{{ $t('maintenance.modal_property_label') }}</label>
                         <select
+                            id="create-maintenance-property"
                             v-model="form.property_id"
+                            :aria-label="$t('maintenance.modal_property_label')"
                             required
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         >
@@ -884,49 +902,51 @@ const updateRequestStatus = (id: number, newStatus: string) => {
 
                     <!-- محدد نوع المكان: صيانة وحدة vs صيانة الأماكن المشتركة -->
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">نطاق ومكان الصيانة *</label>
+                        <span class="block text-xs font-bold text-[#163E3E] mb-1.5">{{ $t('maintenance.modal_scope_label') }}</span>
                         <div class="grid grid-cols-2 gap-3">
                             <button
                                 @click="locationType = 'unit'"
                                 type="button"
-                                class="p-3 rounded-xl border text-right transition cursor-pointer flex flex-col gap-1"
+                                class="p-3 rounded-xl border text-start transition cursor-pointer flex flex-col gap-1"
                                 :class="locationType === 'unit'
                                     ? 'border-[#163E3E] bg-[#163E3E]/5 ring-1 ring-[#163E3E]'
                                     : 'border-[#D6E0E7] bg-[#F8FAFC] hover:bg-white text-[#5B6770]'"
                             >
                                 <div class="flex items-center gap-1.5 font-bold text-xs" :class="locationType === 'unit' ? 'text-[#163E3E]' : 'text-[#5B6770]'">
                                     <Home class="w-4 h-4" />
-                                    <span>صيانة وحدة</span>
+                                    <span>{{ $t('maintenance.modal_scope_unit') }}</span>
                                 </div>
-                                <span class="text-[11px] text-[#5B6770] leading-snug">شقة، محل، مكتب، أو غرفة محددة</span>
+                                <span class="text-[11px] text-[#5B6770] leading-snug">{{ $t('maintenance.modal_scope_unit_hint') }}</span>
                             </button>
 
                             <button
                                 @click="locationType = 'common'"
                                 type="button"
-                                class="p-3 rounded-xl border text-right transition cursor-pointer flex flex-col gap-1"
+                                class="p-3 rounded-xl border text-start transition cursor-pointer flex flex-col gap-1"
                                 :class="locationType === 'common'
                                     ? 'border-[#163E3E] bg-[#163E3E]/5 ring-1 ring-[#163E3E]'
                                     : 'border-[#D6E0E7] bg-[#F8FAFC] hover:bg-white text-[#5B6770]'"
                             >
                                 <div class="flex items-center gap-1.5 font-bold text-xs" :class="locationType === 'common' ? 'text-[#163E3E]' : 'text-[#5B6770]'">
                                     <Building2 class="w-4 h-4" />
-                                    <span>صيانة الأماكن المشتركة</span>
+                                    <span>{{ $t('maintenance.modal_scope_common') }}</span>
                                 </div>
-                                <span class="text-[11px] text-[#5B6770] leading-snug">المصعد، المداخل، السلالم، الواجهة</span>
+                                <span class="text-[11px] text-[#5B6770] leading-snug">{{ $t('maintenance.modal_scope_common_hint') }}</span>
                             </button>
                         </div>
                     </div>
 
                     <!-- اختيار الوحدة (يظهر فقط إذا كان النطاق صيانة وحدة) -->
                     <div v-if="locationType === 'unit'">
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">الوحدة المعنية *</label>
+                        <label for="create-maintenance-unit" class="block text-xs font-bold text-[#163E3E] mb-1.5">{{ $t('maintenance.modal_unit_label') }}</label>
                         <select
+                            id="create-maintenance-unit"
                             v-model="form.unit_id"
+                            :aria-label="$t('maintenance.modal_unit_label')"
                             required
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         >
-                            <option value="" disabled>اختر الوحدة المتأثرة بالعطل</option>
+                            <option value="" disabled>{{ $t('maintenance.modal_unit_placeholder') }}</option>
                             <option v-for="u in modalAvailableUnits" :key="u.id" :value="u.id">{{ u.name }}</option>
                         </select>
                         <p v-if="form.errors.unit_id" class="text-xs text-rose-600 mt-1">{{ form.errors.unit_id }}</p>
@@ -935,31 +955,35 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                     <!-- إشعار الأماكن المشتركة -->
                     <div v-else class="p-3 rounded-xl bg-blue-50/70 border border-blue-200 text-xs text-blue-900 flex items-center gap-2">
                         <Layers class="w-4 h-4 text-blue-700 shrink-0" />
-                        <span>سيتم تسجيل البلاغ كصيانة عامة للعقار دون الحاجة لتخصيص وحدة سكنية.</span>
+                        <span>{{ $t('maintenance.modal_common_notice') }}</span>
                     </div>
 
                     <!-- عنوان طلب الصيانة -->
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">عنوان المشكلة أو العطل *</label>
+                        <label for="create-maintenance-title" class="block text-xs font-bold text-[#163E3E] mb-1.5">{{ $t('maintenance.modal_title_label') }}</label>
                         <input
+                            id="create-maintenance-title"
                             v-model="form.title"
                             type="text"
-                            placeholder="مثال: تسريب مياه في محبس الحمام، عطل في مفتاح إنارة الممر..."
+                            :aria-label="$t('maintenance.modal_title_label')"
+                            :placeholder="$t('maintenance.modal_title_placeholder')"
                             required
-                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
+                            class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-start"
                         />
                         <p v-if="form.errors.title" class="text-xs text-rose-600 mt-1">{{ form.errors.title }}</p>
                     </div>
 
                     <!-- الوصف والتفاصيل -->
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
-                            الوصف والتفاصيل <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري)</span>
+                        <label for="create-maintenance-desc" class="block text-xs font-bold text-[#163E3E] mb-1.5">
+                            {{ $t('maintenance.modal_desc_label') }} <span class="text-[#8A9AA7] font-normal text-[11px]">({{ $t('common.optional') }})</span>
                         </label>
                         <textarea
+                            id="create-maintenance-desc"
                             v-model="form.description"
+                            :aria-label="$t('maintenance.modal_desc_label')"
                             rows="3"
-                            placeholder="اكتب أية تفاصيل إضافية لتسهيل معاينة الفني وإصلاح العطل..."
+                            :placeholder="$t('maintenance.modal_desc_placeholder')"
                             class="w-full p-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         ></textarea>
                         <p v-if="form.errors.description" class="text-xs text-rose-600 mt-1">{{ form.errors.description }}</p>
@@ -967,9 +991,9 @@ const updateRequestStatus = (id: number, newStatus: string) => {
 
                     <!-- المرفقات والصور المبدئية -->
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">
-                            صور العطل أو المستندات <span class="text-[#8A9AA7] font-normal text-[11px]">(اختياري - حتى 10 ملفات)</span>
-                        </label>
+                        <span class="block text-xs font-bold text-[#163E3E] mb-1.5">
+                            {{ $t('maintenance.modal_files_label') }} <span class="text-[#8A9AA7] font-normal text-[11px]">({{ $t('common.optional') }})</span>
+                        </span>
                         <div class="p-3.5 rounded-xl border border-dashed border-[#D6E0E7] bg-[#F8FAFC] text-center space-y-2">
                             <input
                                 ref="createFileInput"
@@ -985,9 +1009,9 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                                 class="h-8 px-3 rounded-lg border border-[#D6E0E7] bg-white text-xs font-bold text-[#163E3E] hover:bg-[#F8FAFC] transition inline-flex items-center gap-1 cursor-pointer shadow-2xs"
                             >
                                 <Plus class="w-3.5 h-3.5" />
-                                <span>إرفاق صور أو فواتير</span>
+                                <span>{{ $t('maintenance.modal_attach_btn') }}</span>
                             </button>
-                            <p class="text-[10px] text-[#5B6770]">JPG, PNG, WEBP أو PDF (الحد الأقصى: 10MB للملف)</p>
+                            <p class="text-[10px] text-[#5B6770]">{{ $t('maintenance.modal_files_hint') }}</p>
                         </div>
 
                         <!-- قائمة المعاينة المبدئية -->
@@ -1001,7 +1025,7 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                                     @click="removeCreateFile(pIdx)"
                                     type="button"
                                     class="absolute -top-1 -left-1 p-0.5 bg-rose-50 text-rose-600 rounded-full border border-rose-200 cursor-pointer shadow-2xs"
-                                    title="حذف"
+                                    :aria-label="$t('common.cancel')"
                                 >
                                     <X class="w-3 h-3" />
                                 </button>
@@ -1018,10 +1042,10 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                     <div class="p-3.5 rounded-2xl bg-[#DEF7EC]/70 border border-[#BCF0DA] text-xs text-[#163E3E] space-y-1">
                         <div class="flex items-center gap-1.5 font-bold">
                             <Receipt class="w-4 h-4 text-[#163E3E]" />
-                            <span>التكلفة المالية المرتبطة:</span>
+                            <span>{{ $t('maintenance.modal_cost_callout_title') }}</span>
                         </div>
                         <p class="text-[11px] text-[#5B6770] leading-relaxed">
-                            لا يُطلب إدخال تكلفة الصيانة الآن. سيتم إنشاء قيد مصروف مرتبط تلقائياً بدون مبلغ مبدئياً، لتسجيل الفاتورة الفعلية لاحقاً من صفحة المصروفات.
+                            {{ $t('maintenance.modal_cost_callout_desc') }}
                         </p>
                     </div>
 
@@ -1030,9 +1054,9 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                         <button
                             @click="showAddModal = false"
                             type="button"
-                            class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold text-[#5B6770] hover:bg-[#F8FAFC]"
+                            class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold text-[#5B6770] hover:bg-[#F8FAFC] cursor-pointer"
                         >
-                            إلغاء
+                            {{ $t('common.cancel') }}
                         </button>
                         <button
                             type="submit"
@@ -1041,7 +1065,7 @@ const updateRequestStatus = (id: number, newStatus: string) => {
                         >
                             <Loader2 v-if="form.processing" class="w-4 h-4 animate-spin" />
                             <Check v-else class="w-4 h-4" />
-                            <span>{{ form.processing ? 'جاري التسجيل...' : 'تسجيل الطلب' }}</span>
+                            <span>{{ form.processing ? $t('maintenance.modal_submitting') : $t('maintenance.modal_submit') }}</span>
                         </button>
                     </div>
                 </form>

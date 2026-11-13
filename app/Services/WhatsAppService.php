@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\WhatsAppGatewayInterface;
+use App\Enums\WhatsAppMessageLanguage;
 use App\Jobs\SendWhatsAppMessageJob;
 use App\Models\Lease;
 use App\Models\MessageLog;
@@ -10,6 +11,7 @@ use App\Models\Payment;
 use App\Models\RentCharge;
 use App\Models\Renter;
 use App\Models\SecurityDepositPayment;
+use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -56,33 +58,30 @@ class WhatsAppService
                 return $existing;
             }
 
-            // Check renter opt-out
-            if ($renterId) {
-                $renter = Renter::withoutGlobalScopes()->find($renterId);
-                if ($renter && $renter->whatsapp_opted_out_at !== null) {
-                    Log::info("[WhatsApp Skipped] Renter #{$renterId} opted out of WhatsApp messages.");
+            if ($renterId && $this->isRenterOptedOut($renterId)) {
+                Log::info("[WhatsApp Skipped] Renter #{$renterId} opted out of WhatsApp messages.");
 
-                    return null;
-                }
+                return null;
             }
 
-            $log = $existing ?? new MessageLog([
-                'workspace_id' => $workspaceId,
-                'renter_id' => $renterId,
-                'lease_id' => $leaseId,
-                'rent_charge_id' => $rentChargeId,
-                'recipient_phone' => $phone,
-                'template_name' => $templateName,
-                'deduplication_key' => $deduplicationKey,
-                'scheduled_at' => now(),
-            ]);
+            $log = $this->findOrCreatePendingLog(
+                $existing,
+                $workspaceId,
+                $renterId,
+                $phone,
+                $templateName,
+                $deduplicationKey,
+                ['lease_id' => $leaseId, 'rent_charge_id' => $rentChargeId]
+            );
 
-            $log->attempts = ($log->attempts ?? 0) + 1;
-            $log->status = 'pending';
-            $log->save();
+            $langEnum = match (true) {
+                str_ends_with($templateName, WhatsAppMessageLanguage::English->templateSuffix()) => WhatsAppMessageLanguage::English,
+                str_ends_with($templateName, WhatsAppMessageLanguage::Arabic->templateSuffix()) => WhatsAppMessageLanguage::Arabic,
+                default => $this->resolveWorkspaceLanguage($workspaceId),
+            };
 
             // Execute via Gateway
-            $result = $this->gateway->sendTemplate($phone, $templateName, $parameters);
+            $result = $this->gateway->sendTemplate($phone, $templateName, $parameters, $langEnum->metaLanguageCode());
 
             $log->update([
                 'status' => $result['status'],
@@ -93,6 +92,55 @@ class WhatsAppService
 
             return $log;
         });
+    }
+
+    private function isRenterOptedOut(int $renterId): bool
+    {
+        $renter = Renter::withoutGlobalScopes()->find($renterId);
+
+        return $renter !== null && $renter->whatsapp_opted_out_at !== null;
+    }
+
+    /**
+     * @param  array{lease_id?: int|null, rent_charge_id?: int|null}  $context
+     */
+    private function findOrCreatePendingLog(
+        ?MessageLog $existing,
+        int $workspaceId,
+        ?int $renterId,
+        string $phone,
+        string $templateName,
+        string $deduplicationKey,
+        array $context = []
+    ): MessageLog {
+        $log = $existing ?? new MessageLog([
+            'workspace_id' => $workspaceId,
+            'renter_id' => $renterId,
+            'lease_id' => $context['lease_id'] ?? null,
+            'rent_charge_id' => $context['rent_charge_id'] ?? null,
+            'recipient_phone' => $phone,
+            'template_name' => $templateName,
+            'deduplication_key' => $deduplicationKey,
+            'scheduled_at' => now(),
+        ]);
+
+        $log->attempts = ($log->attempts ?? 0) + 1;
+        $log->status = 'pending';
+        $log->save();
+
+        return $log;
+    }
+
+    public function resolveTemplateSuffix(int $workspaceId): string
+    {
+        return $this->resolveWorkspaceLanguage($workspaceId)->templateSuffix();
+    }
+
+    private function resolveWorkspaceLanguage(int $workspaceId): WhatsAppMessageLanguage
+    {
+        $workspace = Workspace::withoutGlobalScopes()->find($workspaceId);
+
+        return $workspace->whatsapp_message_language ?? WhatsAppMessageLanguage::Arabic;
     }
 
     /**
@@ -111,7 +159,7 @@ class WhatsAppService
             workspaceId: $payment->workspace_id,
             renterId: $renter->id,
             phone: $renter->phone,
-            templateName: 'payment_receipt_instant_ar',
+            templateName: 'payment_receipt_instant'.$this->resolveTemplateSuffix($payment->workspace_id),
             parameters: [
                 'renter_name' => $renter->name,
                 'amount' => number_format((float) $payment->amount, 2),
@@ -140,7 +188,7 @@ class WhatsAppService
             workspaceId: $payment->workspace_id,
             renterId: $renter->id,
             phone: $renter->phone,
-            templateName: 'payment_receipt_instant_ar',
+            templateName: 'payment_receipt_instant'.$this->resolveTemplateSuffix($payment->workspace_id),
             parameters: [
                 'renter_name' => $renter->name,
                 'amount' => number_format((float) $payment->amount, 2),
@@ -171,7 +219,7 @@ class WhatsAppService
             workspaceId: $charge->workspace_id,
             renterId: $renter->id,
             phone: $renter->phone,
-            templateName: 'rent_due_reminder_ar',
+            templateName: 'rent_due_reminder'.$this->resolveTemplateSuffix($charge->workspace_id),
             parameters: [
                 'renter_name' => $renter->name,
                 'unit' => $lease->unit->name ?? 'الوحدة',
@@ -203,7 +251,7 @@ class WhatsAppService
             workspaceId: $charge->workspace_id,
             renterId: $renter->id,
             phone: $renter->phone,
-            templateName: 'overdue_notice_ar',
+            templateName: 'overdue_notice'.$this->resolveTemplateSuffix($charge->workspace_id),
             parameters: [
                 'renter_name' => $renter->name,
                 'unit' => $lease->unit->name ?? 'الوحدة',
@@ -233,7 +281,7 @@ class WhatsAppService
             workspaceId: $lease->workspace_id,
             renterId: $renter->id,
             phone: $renter->phone,
-            templateName: 'contract_renewal_ar',
+            templateName: 'contract_renewal'.$this->resolveTemplateSuffix($lease->workspace_id),
             parameters: [
                 'renter_name' => $renter->name,
                 'unit' => $lease->unit->name ?? 'الوحدة',

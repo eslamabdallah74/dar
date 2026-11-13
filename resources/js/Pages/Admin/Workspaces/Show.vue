@@ -169,7 +169,7 @@ const activeRentalPercent = computed(() => {
         :admin-mode="true"
         breadcrumb="تفاصيل مساحة العمل"
     >
-        <div class="space-y-6 pb-12" dir="rtl">
+        <div class="space-y-6 pb-12" >
             <!-- Breadcrumb Navigation -->
             <div class="flex items-center gap-2 text-xs text-[#5B6770]">
                 <Link :href="route('admin.dashboard')" class="hover:text-[#163E3E] transition flex items-center gap-1 font-semibold">
@@ -240,7 +240,7 @@ const activeRentalPercent = computed(() => {
             <div
                 v-if="workspace.requested_plan_name && workspace.plan_request_status === 'pending'"
                 class="rounded-2xl border-2 border-amber-400 bg-amber-50/90 p-6 shadow-sm space-y-4"
-                dir="rtl"
+
             >
                 <div class="flex items-center justify-between pb-3 border-b border-amber-200">
                     <div class="flex items-center gap-3">
@@ -335,7 +335,7 @@ const activeRentalPercent = computed(() => {
                                 {{ usage_summary.parent_units_created }}
                             </div>
                         </div>
-                        <div class="text-left">
+                        <div class="text-start">
                             <div class="text-xs text-[#5B6770]">الحد الأقصى المسموح</div>
                             <div class="text-2xl font-bold" :class="usage_summary.is_parent_units_unlimited ? 'text-emerald-700' : 'text-[#163E3E]'">
                                 {{ usage_summary.is_parent_units_unlimited ? 'غير محدود ∞' : usage_summary.parent_units_limit }}
@@ -390,7 +390,7 @@ const activeRentalPercent = computed(() => {
                                 {{ usage_summary.active_rental_slots_occupied }}
                             </div>
                         </div>
-                        <div class="text-left">
+                        <div class="text-start">
                             <div class="text-xs text-[#5B6770]">الحد الأقصى المسموح</div>
                             <div class="text-2xl font-bold" :class="usage_summary.is_active_rental_unlimited ? 'text-emerald-700' : 'text-[#163E3E]'">
                                 {{ usage_summary.is_active_rental_unlimited ? 'غير محدود ∞' : usage_summary.active_rental_limit }}
@@ -517,7 +517,7 @@ const activeRentalPercent = computed(() => {
                     </div>
 
                     <div class="overflow-x-auto max-h-80 divide-y divide-[#E8EFF4]">
-                        <table class="w-full text-right text-xs">
+                        <table class="w-full text-start text-xs">
                             <thead class="bg-[#F8FAFC] text-[#5B6770] font-bold">
                                 <tr>
                                     <th class="p-3">الوحدة</th>
@@ -566,7 +566,7 @@ const activeRentalPercent = computed(() => {
                     </div>
 
                     <div class="overflow-x-auto max-h-80 divide-y divide-[#E8EFF4]">
-                        <table class="w-full text-right text-xs">
+                        <table class="w-full text-start text-xs">
                             <thead class="bg-[#F8FAFC] text-[#5B6770] font-bold">
                                 <tr>
                                     <th class="p-3">رقم العقد</th>
@@ -599,7 +599,7 @@ const activeRentalPercent = computed(() => {
 
         <!-- مودال رفض طلب تغيير الباقة -->
         <Modal :show="showDenyModal" @close="showDenyModal = false" max-width="md">
-            <div class="p-6 text-right space-y-4" dir="rtl">
+            <div class="p-6 text-start space-y-4" >
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
                     <h3 class="text-base font-bold text-rose-700">رفض طلب تغيير الباقة</h3>
                     <button @click="showDenyModal = false" type="button" class="text-gray-400 hover:text-gray-600 text-sm">✕</button>

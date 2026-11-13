@@ -129,7 +129,7 @@ const canDelete = computed(() => {
 </script>
 
 <template>
-    <div v-if="show && unit" class="fixed inset-0 z-50 overflow-hidden" dir="rtl">
+    <div v-if="show && unit" class="fixed inset-0 z-50 overflow-hidden" >
         <!-- Backdrop -->
         <div
             @click="emit('close')"
@@ -325,11 +325,11 @@ const canDelete = computed(() => {
                         </div>
 
                         <!-- Conflict Alert if parent or child has active lease -->
-                        <div v-if="unit.descendant_has_active_lease" class="p-3 bg-amber-100/70 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed text-right">
+                        <div v-if="unit.descendant_has_active_lease" class="p-3 bg-amber-100/70 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed text-start">
                             ⚠️ لا يمكن تأجير هذه الوحدة بالكامل حالياً، نظراً لوجود عقود إيجار نشطة على وحدات فرعية تابعة لها في نفس الهيكل العقاري.
                         </div>
 
-                        <div v-else-if="unit.ancestor_has_active_lease" class="p-3 bg-amber-100/70 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed text-right">
+                        <div v-else-if="unit.ancestor_has_active_lease" class="p-3 bg-amber-100/70 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed text-start">
                             ⚠️ لا يمكن تأجير هذه الوحدة بشكل مستقل، نظراً لوجود عقد إيجار سارٍ على الوحدة الرئيسية الحاوية لها.
                         </div>
 

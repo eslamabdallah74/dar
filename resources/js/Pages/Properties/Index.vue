@@ -10,7 +10,11 @@ import {
     Search,
     User,
     Users,
+    ArrowLeft,
 } from 'lucide-vue-next';
+import { useLocale } from '@/composables/useLocale';
+
+const { t, isRtl } = useLocale();
 
 interface PropertyItem {
     id: number;
@@ -46,6 +50,18 @@ const props = defineProps<{
 const searchQuery = ref('');
 const selectedType = ref('all');
 
+const filterOptions = computed(() => [
+    { id: 'all', label: t('properties.filter_all') },
+    { id: 'building', label: t('properties.filter_buildings') },
+    { id: 'apartment', label: t('properties.filter_apartments') },
+]);
+
+function getPropertyTypeLabel(type: string, fallback: string): string {
+    const key = `properties.type_${type}`;
+    const translated = t(key);
+    return translated !== key ? translated : fallback;
+}
+
 const filteredProperties = computed(() => {
     return props.properties.filter(p => {
         const matchesSearch = p.name.includes(searchQuery.value) || Boolean(p.address?.includes(searchQuery.value));
@@ -53,60 +69,59 @@ const filteredProperties = computed(() => {
         return matchesSearch && matchesType;
     });
 });
-
 </script>
 
 <template>
     <AppLayout
-        title="العقارات والوحدات — Nook Mate"
+        :title="`${t('properties.title')} — Nook Mate`"
         active-tab="properties"
-        header-title="العقارات والوحدات"
-        header-subtitle="إدارة العقارات السكنية ومتابعة نسب الإشغال والوحدات الشاغرة"
-        breadcrumb="العقارات"
+        :header-title="t('properties.title')"
+        :header-subtitle="t('properties.subtitle')"
+        :breadcrumb="t('properties.breadcrumb')"
     >
         <template #actions>
             <Link
                 :href="route('properties.create')"
-                class="h-11 px-5 rounded-xl bg-[#18705A] hover:bg-[#105742] text-white text-sm font-semibold transition shadow-xs flex items-center gap-2 cursor-pointer"
+                class="h-11 px-5 rounded-xl bg-[#18705A] hover:bg-[#105742] text-white text-sm font-semibold transition shadow-xs flex items-center gap-2 cursor-pointer whitespace-nowrap"
             >
                 <Plus class="h-4 w-4 stroke-[2.5]" />
-                <span>إضافة عقار جديد</span>
+                <span>{{ t('properties.add_property') }}</span>
             </Link>
         </template>
 
         <!-- صف المؤشرات الرئيسية المتطابق (KPI Cards) -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
-                <span class="text-xs font-semibold text-[#5B6770]">إجمالي العقارات</span>
+                <span class="text-xs font-semibold text-[#5B6770]">{{ t('properties.total_properties') }}</span>
                 <div class="flex items-baseline justify-between">
                     <span class="text-2xl font-bold text-[#163E3E] font-mono">{{ stats.total_properties }}</span>
-                    <span class="text-xs text-[#163E3E] font-medium">عمارات وشقق</span>
+                    <span class="text-xs text-[#163E3E] font-medium">{{ t('properties.properties_subtitle') }}</span>
                 </div>
             </div>
 
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
-                <span class="text-xs font-semibold text-[#5B6770]">إجمالي الوحدات التأجيرية</span>
+                <span class="text-xs font-semibold text-[#5B6770]">{{ t('properties.total_units') }}</span>
                 <div class="flex items-baseline justify-between">
                     <span class="text-2xl font-bold text-[#163E3E] font-mono">{{ stats.total_units }}</span>
-                    <span class="text-xs text-[#5B6770] font-medium">شقق وغرف</span>
+                    <span class="text-xs text-[#5B6770] font-medium">{{ t('properties.units_subtitle') }}</span>
                 </div>
             </div>
 
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
-                <span class="text-xs font-semibold text-[#5B6770]">نسبة الإشغال الإجمالية</span>
+                <span class="text-xs font-semibold text-[#5B6770]">{{ t('properties.overall_occupancy') }}</span>
                 <div class="flex items-baseline justify-between">
                     <span class="text-2xl font-bold text-[#163E3E] font-mono">{{ stats.overall_occupancy }}%</span>
                     <span class="text-xs text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md">
-                        مستوى ممتاز
+                        {{ t('properties.optimal_rate') }}
                     </span>
                 </div>
             </div>
 
             <div class="rounded-2xl border border-[#D6E0E7] bg-white p-5 shadow-2xs space-y-2">
-                <span class="text-xs font-semibold text-[#5B6770]">الإيراد الشهري المتوقع</span>
+                <span class="text-xs font-semibold text-[#5B6770]">{{ t('properties.expected_monthly_revenue') }}</span>
                 <div class="flex items-baseline justify-between">
                     <span class="text-2xl font-bold text-[#163E3E] font-mono">{{ stats.total_monthly_revenue.toLocaleString() }} <span class="text-xs font-sans font-normal text-[#5B6770]">{{ currency_symbol || 'ج.م' }}</span></span>
-                    <span class="text-xs text-[#5B6770] font-medium">شهرياً</span>
+                    <span class="text-xs text-[#5B6770] font-medium">{{ t('properties.monthly') }}</span>
                 </div>
             </div>
         </div>
@@ -118,24 +133,25 @@ const filteredProperties = computed(() => {
                 <input
                     v-model="searchQuery"
                     type="text"
-                    placeholder="ابحث باسم العقار أو الحي..."
-                    class="w-full h-10 pr-10 pl-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] placeholder:text-[#5B6770] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
+                    :placeholder="t('properties.search_placeholder')"
+                    :aria-label="t('properties.search_placeholder')"
+                    class="w-full h-10 px-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] placeholder:text-[#5B6770] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
+                    :class="isRtl ? 'pr-10 pl-4 text-start' : 'pl-10 pr-4 text-start'"
                 />
-                <Search class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#5B6770]" />
+                <Search
+                    class="pointer-events-none absolute top-1/2 -translate-y-1/2 h-4 w-4 text-[#5B6770]"
+                    :class="isRtl ? 'right-3.5' : 'left-3.5'"
+                />
             </div>
 
             <!-- أزرار التصفية حسب النوع -->
             <div class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
                 <button
-                    v-for="filter in [
-                        { id: 'all', label: 'الكل' },
-                        { id: 'building', label: 'عمارات' },
-                        { id: 'apartment', label: 'شقق' }
-                    ]"
+                    v-for="filter in filterOptions"
                     :key="filter.id"
                     @click="selectedType = filter.id"
                     type="button"
-                    class="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer shrink-0"
+                    class="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer shrink-0 whitespace-nowrap"
                     :class="selectedType === filter.id 
                         ? 'bg-[#163E3E] text-white shadow-2xs' 
                         : 'bg-[#F8FAFC] text-[#5B6770] hover:text-[#163E3E] border border-[#D6E0E7]'"
@@ -171,12 +187,12 @@ const filteredProperties = computed(() => {
                         </div>
 
                         <div class="flex items-center gap-1.5 flex-wrap shrink-0">
-                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-[#F1F5F9] text-[#163E3E] border border-black/5">
-                                {{ prop.type_label }}
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-[#F1F5F9] text-[#163E3E] border border-black/5 whitespace-nowrap">
+                                {{ getPropertyTypeLabel(prop.property_type, prop.type_label) }}
                             </span>
                             <span
                                 v-if="prop.apartment_gender && prop.apartment_gender.status !== 'unspecified'"
-                                class="px-2.5 py-1 rounded-full text-xs font-bold border flex items-center gap-1"
+                                class="px-2.5 py-1 rounded-full text-xs font-bold border flex items-center gap-1 whitespace-nowrap"
                                 :class="[
                                     prop.apartment_gender.status === 'male' ? 'bg-sky-50 text-sky-800 border-sky-200' :
                                     prop.apartment_gender.status === 'female' ? 'bg-rose-50 text-rose-800 border-rose-200' :
@@ -194,7 +210,7 @@ const filteredProperties = computed(() => {
                     <!-- شريط نسبة الإشغال -->
                     <div class="space-y-1.5 pt-2">
                         <div class="flex items-center justify-between text-xs">
-                            <span class="font-semibold text-[#163E3E]">معدل الإشغال</span>
+                            <span class="font-semibold text-[#163E3E]">{{ t('properties.occupancy_rate_label') }}</span>
                             <span class="font-bold text-[#163E3E] font-mono">{{ prop.occupancy_rate }}%</span>
                         </div>
                         <div class="w-full h-2 bg-[#F1F5F9] rounded-full overflow-hidden">
@@ -208,19 +224,19 @@ const filteredProperties = computed(() => {
                     <!-- تفاصيل الوحدات والمالية -->
                     <div class="grid grid-cols-3 gap-3 p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] text-center">
                         <div>
-                            <span class="text-[11px] text-[#5B6770] block">الوحدات المؤجرة</span>
+                            <span class="text-[11px] text-[#5B6770] block whitespace-nowrap">{{ t('properties.occupied_units_label') }}</span>
                             <span class="text-sm font-bold text-[#163E3E] font-mono mt-0.5 block">
                                 {{ prop.occupied_units }}
                             </span>
                         </div>
                         <div class="border-x border-[#D6E0E7]">
-                            <span class="text-[11px] text-[#5B6770] block">الوحدات الشاغرة</span>
+                            <span class="text-[11px] text-[#5B6770] block whitespace-nowrap">{{ t('properties.vacant_units_label') }}</span>
                             <span class="text-sm font-bold text-amber-700 font-mono mt-0.5 block">
                                 {{ prop.vacant_units }}
                             </span>
                         </div>
                         <div>
-                            <span class="text-[11px] text-[#5B6770] block">الإيراد الشهري</span>
+                            <span class="text-[11px] text-[#5B6770] block whitespace-nowrap">{{ t('properties.monthly_revenue_label') }}</span>
                             <span class="text-sm font-bold text-[#163E3E] font-mono mt-0.5 block">
                                 {{ prop.monthly_revenue.toLocaleString() }} <span class="text-[10px] font-sans">{{ currency_symbol || 'ج.م' }}</span>
                             </span>
@@ -231,14 +247,14 @@ const filteredProperties = computed(() => {
                 <!-- زر الانتقال للتفاصيل والوحدات -->
                 <div class="pt-5 mt-4 border-t border-[#D6E0E7] flex items-center justify-between">
                     <span class="text-xs text-[#5B6770] font-mono">
-                        {{ prop.total_units }} وحدات مسجلة
+                        {{ t('properties.units_registered_badge', { count: prop.total_units }) }}
                     </span>
                     <Link
                         :href="route('properties.show', prop.id)"
-                        class="h-9 px-4 rounded-xl bg-[#163E3E]/10 hover:bg-[#163E3E] text-[#163E3E] hover:text-white text-xs font-bold transition flex items-center gap-1.5"
+                        class="h-9 px-4 rounded-xl bg-[#163E3E]/10 hover:bg-[#163E3E] text-[#163E3E] hover:text-white text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap"
                     >
-                        <span>إدارة الوحدات وشجرة الأدوار</span>
-                        <span>←</span>
+                        <span>{{ t('properties.manage_units_action') }}</span>
+                        <ArrowLeft class="w-3.5 h-3.5" :class="isRtl ? '' : 'rotate-180'" />
                     </Link>
                 </div>
             </div>
@@ -248,9 +264,9 @@ const filteredProperties = computed(() => {
         <EmptyState
             v-else
             type="key"
-            title="لم يتم العثور على أي عقارات"
-            description="لم نجد أي عقار يطابق بحثك الحالي. يمكنك إضافة عقار جديد أو تعديل معايير البحث."
-            action-label="إضافة عقار جديد الآن"
+            :title="t('properties.no_properties_found')"
+            :description="t('properties.no_properties_desc')"
+            :action-label="t('properties.add_property')"
             @action="$inertia.visit(route('properties.create'))"
         />
     </AppLayout>

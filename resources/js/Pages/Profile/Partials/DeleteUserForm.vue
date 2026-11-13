@@ -62,7 +62,7 @@ const closeModal = () => {
         </div>
 
         <Modal :show="confirmingUserDeletion" @close="closeModal">
-            <div class="p-6 text-right" dir="rtl">
+            <div class="p-6 text-start" >
                 <div class="flex items-center justify-between pb-3 border-b border-[#E8EFF4]">
                     <h3 class="text-base font-bold text-rose-700 flex items-center gap-2">
                         <AlertTriangle class="w-5 h-5 text-rose-600" />
@@ -94,7 +94,7 @@ const closeModal = () => {
                             ref="passwordInput"
                             v-model="form.password"
                             type="password"
-                            class="w-full h-11 pr-10 pl-3.5 rounded-xl border border-rose-200 bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-rose-500 focus:bg-white focus:ring-1 focus:ring-rose-500 transition text-right"
+                            class="w-full h-11 pr-10 pl-3.5 rounded-xl border border-rose-200 bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-rose-500 focus:bg-white focus:ring-1 focus:ring-rose-500 transition text-start"
                             placeholder="••••••••••••"
                             @keyup.enter="deleteUser"
                         />

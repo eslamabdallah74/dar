@@ -84,7 +84,7 @@ function getProgressWidth(toast: ToastItem): number {
     <Teleport to="body">
         <div
             class="fixed top-6 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-3 w-full max-w-md sm:max-w-lg px-4 pointer-events-none select-none"
-            dir="rtl"
+
             aria-live="assertive"
         >
             <TransitionGroup

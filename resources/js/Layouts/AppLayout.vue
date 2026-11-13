@@ -8,6 +8,7 @@ import ModalNewAction from '@/Components/Common/ModalNewAction.vue';
 import ModalRecordPayment from '@/Components/Common/ModalRecordPayment.vue';
 import ConfirmDialog from '@/Components/Common/ConfirmDialog.vue';
 import GlobalToast from '@/Components/Common/GlobalToast.vue';
+import { useLocale } from '@/composables/useLocale';
 import { AlertOctagon, X } from 'lucide-vue-next';
 
 const props = withDefaults(
@@ -33,6 +34,7 @@ const emit = defineEmits<{
 }>();
 
 const page = usePage();
+const { dir } = useLocale();
 const mobileOpen = ref(false);
 const newActionOpen = ref(false);
 const recordPaymentOpen = ref(false);
@@ -71,7 +73,7 @@ function handleNewAction() {
 </script>
 
 <template>
-    <div class="min-h-screen bg-[#F8F4EA] text-[#163E3E] flex font-sans antialiased select-auto" dir="rtl">
+    <div class="min-h-screen bg-[#F8F4EA] text-[#163E3E] flex font-sans antialiased select-auto" :dir="dir">
         <Head :title="title" />
 
         <!-- 1. الشريط الجانبي الرئيسي (App Sidebar) -->
@@ -107,7 +109,7 @@ function handleNewAction() {
             <!-- تنبيه الأخطاء الصادرة من النظام والتحقق الرقابي (Validation & System Errors) -->
             <div v-if="uniquePageErrors.length > 0 && showErrors" class="max-w-[1440px] w-full mx-auto px-4 sm:px-8 pt-4">
                 <div
-                    class="p-4 sm:p-5 rounded-2xl bg-[#FEF2F2] border-2 border-rose-400 text-rose-950 shadow-lg flex items-start justify-between gap-3.5 border-r-8 border-r-rose-600"
+                    class="p-4 sm:p-5 rounded-2xl bg-[#FEF2F2] border-2 border-rose-400 text-rose-950 shadow-lg flex items-start justify-between gap-3.5 border-s-8 border-s-rose-600"
                     style="background-color: #FEF2F2;"
                 >
                     <div class="flex items-start gap-3.5 flex-1 min-w-0">

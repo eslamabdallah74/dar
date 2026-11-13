@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\WhatsAppMessageLanguage;
 use Database\Factories\WorkspaceFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -21,6 +22,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $plan_request_status
  * @property Carbon|null $plan_requested_at
  * @property string|null $plan_request_notes
+ * @property WhatsAppMessageLanguage|null $whatsapp_message_language
  * @property-read int|null $parent_units_count
  */
 class Workspace extends Model
@@ -50,6 +52,7 @@ class Workspace extends Model
         'auto_instant_receipts',
         'overdue_warning_days_after',
         'weekly_summary_report',
+        'whatsapp_message_language',
     ];
 
     protected function casts(): array
@@ -64,6 +67,7 @@ class Workspace extends Model
             'auto_whatsapp_reminders' => 'boolean',
             'auto_instant_receipts' => 'boolean',
             'weekly_summary_report' => 'boolean',
+            'whatsapp_message_language' => WhatsAppMessageLanguage::class,
         ];
     }
 

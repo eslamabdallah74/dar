@@ -58,7 +58,7 @@ const updatePassword = () => {
                         ref="currentPasswordInput"
                         v-model="form.current_password"
                         type="password"
-                        class="w-full h-11 pr-10 pl-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
+                        class="w-full h-11 pr-10 pl-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-start"
                         autocomplete="current-password"
                         placeholder="••••••••••••"
                     />
@@ -80,7 +80,7 @@ const updatePassword = () => {
                         ref="passwordInput"
                         v-model="form.password"
                         type="password"
-                        class="w-full h-11 pr-10 pl-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
+                        class="w-full h-11 pr-10 pl-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-start"
                         autocomplete="new-password"
                         placeholder="8 أحرف على الأقل"
                     />
@@ -102,7 +102,7 @@ const updatePassword = () => {
                         id="password_confirmation"
                         v-model="form.password_confirmation"
                         type="password"
-                        class="w-full h-11 pr-10 pl-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
+                        class="w-full h-11 pr-10 pl-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-start"
                         autocomplete="new-password"
                         placeholder="أعد كتابة كلمة المرور"
                     />

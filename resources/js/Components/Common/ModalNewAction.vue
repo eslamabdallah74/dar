@@ -36,7 +36,7 @@ const emit = defineEmits<{
         <!-- Modal Dialog -->
         <div
             class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] overflow-hidden z-10 animate-in fade-in zoom-in-95 p-6"
-            dir="rtl"
+
         >
             <div class="flex items-center justify-between pb-4 border-b border-[#D6E0E7] mb-5">
                 <div>
@@ -57,7 +57,7 @@ const emit = defineEmits<{
                 <Link
                     :href="route('leases.create')"
                     @click="emit('close')"
-                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#163E3E] hover:bg-[#F8F4EA] transition group text-right"
+                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#163E3E] hover:bg-[#F8F4EA] transition group text-start"
                 >
                     <div class="w-11 h-11 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center shrink-0 group-hover:bg-[#163E3E] group-hover:text-white transition">
                         <FilePlus class="w-5 h-5" />
@@ -76,7 +76,7 @@ const emit = defineEmits<{
                 <button
                     @click="() => { emit('close'); emit('recordPayment'); }"
                     type="button"
-                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#163E3E] hover:bg-[#F8F4EA] transition group text-right cursor-pointer w-full"
+                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#163E3E] hover:bg-[#F8F4EA] transition group text-start cursor-pointer w-full"
                 >
                     <div class="w-11 h-11 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center shrink-0 group-hover:bg-[#163E3E] group-hover:text-white transition">
                         <Coins class="w-5 h-5" />
@@ -95,7 +95,7 @@ const emit = defineEmits<{
                 <button
                     type="button"
                     @click="() => { emit('close'); emit('addProperty'); }"
-                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#163E3E] hover:bg-[#F8F4EA] transition group text-right w-full"
+                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#163E3E] hover:bg-[#F8F4EA] transition group text-start w-full"
                 >
                     <div class="w-11 h-11 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center shrink-0 group-hover:bg-[#163E3E] group-hover:text-white transition">
                         <Building2 class="w-5 h-5" />
@@ -114,7 +114,7 @@ const emit = defineEmits<{
                 <Link
                     :href="route('renters.index')"
                     @click="emit('close')"
-                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#163E3E] hover:bg-[#F8F4EA] transition group text-right"
+                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#163E3E] hover:bg-[#F8F4EA] transition group text-start"
                 >
                     <div class="w-11 h-11 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center shrink-0 group-hover:bg-[#163E3E] group-hover:text-white transition">
                         <UserPlus class="w-5 h-5" />
@@ -133,7 +133,7 @@ const emit = defineEmits<{
                 <Link
                     :href="route('maintenance.index')"
                     @click="emit('close')"
-                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#163E3E] hover:bg-[#F8F4EA] transition group text-right"
+                    class="flex items-center gap-4 p-3.5 rounded-2xl border border-[#D6E0E7] hover:border-[#163E3E] hover:bg-[#F8F4EA] transition group text-start"
                 >
                     <div class="w-11 h-11 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center shrink-0 group-hover:bg-[#163E3E] group-hover:text-white transition">
                         <Wrench class="w-5 h-5" />

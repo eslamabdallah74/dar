@@ -3,7 +3,10 @@
 namespace App\Jobs;
 
 use App\Enums\QueueName;
+use App\Enums\WhatsAppMessageLanguage;
 use App\Models\RentCharge;
+use App\Models\Unit;
+use App\Models\Workspace;
 use App\Services\WhatsAppService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -32,7 +35,7 @@ class CheckOverdueRentChargesJob extends BaseJob
 
         // Find unpaid charges whose due date has passed
         $overdueCharges = RentCharge::withoutGlobalScopes()
-            ->with(['lease.renter', 'lease.unit'])
+            ->with(['lease.renter', 'lease.unit', 'lease.workspace'])
             ->where('due_date', '<', $checkDate)
             ->get()
             ->filter(fn (RentCharge $charge) => $charge->is_overdue);
@@ -52,14 +55,36 @@ class CheckOverdueRentChargesJob extends BaseJob
 
             // If renter has an email address, dispatch email notification
             if (! empty($renter->email)) {
-                $unitNumber = $lease->unit->name ?? 'الوحدة';
+                $unit = $lease->unit;
+                $unitNumber = $unit instanceof Unit ? $unit->name : 'الوحدة';
                 $amount = number_format($charge->outstanding_balance, 2);
                 $dueDate = $charge->due_date->format('d/m/Y');
 
+                $workspace = $lease->workspace;
+                $notificationLang = ($workspace->whatsapp_message_language ?? WhatsAppMessageLanguage::Arabic)->value;
+
+                $mailSubject = (string) app('translator')->get(
+                    'notifications.overdue_notice_subject',
+                    ['unit' => $unitNumber],
+                    $notificationLang
+                );
+
+                $contentBody = (string) app('translator')->get(
+                    'notifications.overdue_notice_body',
+                    [
+                        'name' => $renter->name,
+                        'unit' => $unitNumber,
+                        'amount' => $amount,
+                        'currency' => $workspace instanceof Workspace ? $workspace->currency : 'EGP',
+                        'date' => $dueDate,
+                    ],
+                    $notificationLang
+                );
+
                 dispatch(new EmailNotificationJob(
                     recipient: $renter->email,
-                    mailSubject: "إشعار استحقاق متأخرات إيجار - وحدة {$unitNumber}",
-                    contentBody: "عزيزي المستأجر {$renter->name}،\n\nنود إحاطتكم بوجود متأخرات إيجارية مستحقة بقيمة {$amount} ج.م للوحدة ({$unitNumber}) التي كان موعد استحقاقها في {$dueDate}.\n\nيرجى المبادرة بالسداد تجنباً للإجراءات النظامية.\n\nشكراً لتعاونكم."
+                    mailSubject: $mailSubject,
+                    contentBody: $contentBody
                 ));
             }
 

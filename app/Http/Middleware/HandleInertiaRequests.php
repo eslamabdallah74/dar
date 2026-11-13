@@ -8,6 +8,7 @@ use App\Models\Workspace;
 use App\Support\CurrentWorkspace;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\App;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -40,14 +41,10 @@ class HandleInertiaRequests extends Middleware
 
         return [
             ...parent::share($request),
+            'locale' => fn (): string => App::getLocale(),
+            'dir' => fn (): string => App::getLocale() === 'ar' ? 'rtl' : 'ltr',
             'auth' => [
-                'user' => $user ? [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'is_admin' => $user->isAdmin(),
-                    'role' => $user->isAdmin() ? 'مدير النظام (كامل الصلاحيات)' : 'مالك الحساب',
-                ] : null,
+                'user' => $this->transformUser($user),
                 'workspace' => fn () => ($workspace = $currentWorkspace()) ? [
                     'id' => $workspace->id,
                     'name' => $workspace->name,
@@ -64,6 +61,27 @@ class HandleInertiaRequests extends Middleware
                 'warning' => fn () => $request->session()->get('warning'),
                 'info' => fn () => $request->session()->get('info'),
             ],
+        ];
+    }
+
+    /**
+     * @return array{id: int, name: string, email: string, is_admin: bool, role_key: string, role: string}|null
+     */
+    private function transformUser(?User $user): ?array
+    {
+        if ($user === null) {
+            return null;
+        }
+
+        $isAdmin = $user->isAdmin();
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'is_admin' => $isAdmin,
+            'role_key' => $isAdmin ? 'admin' : 'owner',
+            'role' => $isAdmin ? __('roles.admin') : __('roles.owner'),
         ];
     }
 

@@ -30,6 +30,11 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Stick to existing directory structure; don't create new base folders without approval.
 - Do not change the application's dependencies without approval.
 
+## Database & Migrations in Production
+
+- Production Migration Rule (CRITICAL): The application is deployed in production. Do NOT alter existing/base migration files or execute destructive raw SQL statements. Any and all database schema modifications (adding columns, tables, or indexes) MUST be created as new standalone migrations (e.g. `php artisan make:migration ...`).
+- Text Columns over Database ENUMs: Avoid rigid MySQL `ENUM` column types. Always use standard text/string columns (`$table->string('...', 50)`), and define PHP backed enums (`app/Enums/...`) in application code. This allows adding, removing, or modifying properties and categories in the future without database alterations.
+
 ## Frontend Bundling
 
 - If a frontend change doesn't show in the UI or you get a "Unable to locate file in Vite manifest" error, run `npm run build` or ask the user to run `npm run dev` or `composer run dev`.

@@ -9,16 +9,11 @@
         min-height: 100%;
     }
 
-    html {
-        direction: rtl;
-        text-align: right;
-    }
-
     body {
         min-height: 100vh;
         background-color: #F8F4EA;
-        direction: rtl;
-        text-align: right;
+        direction: inherit;
+        text-align: start;
         text-rendering: optimizeLegibility;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;

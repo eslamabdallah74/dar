@@ -103,7 +103,7 @@ const rentChargeBadge = (charge: RentChargeItem): { status: string; label: strin
 
                 <!-- Table for due charges -->
                 <div v-else class="overflow-x-auto rounded-2xl border border-[#EEF2F4]">
-                    <table class="w-full text-right text-xs sm:text-sm">
+                    <table class="w-full text-start text-xs sm:text-sm">
                         <thead class="bg-[#FBFAF6] text-xs font-semibold text-[#5B6770] border-b border-[#EEF2F4]">
                             <tr>
                                 <th scope="col" class="px-4 py-3">الفترة</th>
@@ -197,7 +197,7 @@ const rentChargeBadge = (charge: RentChargeItem): { status: string; label: strin
                         لا توجد فواتير مسددة بعد في سجل هذا العقد.
                     </div>
 
-                    <table v-else class="w-full text-right text-xs sm:text-sm">
+                    <table v-else class="w-full text-start text-xs sm:text-sm">
                         <thead class="bg-[#FBFAF6] text-xs font-semibold text-[#5B6770] border-b border-[#EEF2F4]">
                             <tr>
                                 <th scope="col" class="px-4 py-3">الفترة</th>

@@ -65,7 +65,7 @@ class SubscriptionController extends Controller
             return back()->with('info', 'أنت مشترك بالفعل في هذه الباقة.');
         }
 
-        return back()->with('success', 'تم إرسال طلب تغيير الباقة إلى إدارة المنصة بنجاح، وسيتم مراجعته واعتماده.');
+        return back()->with('success', __('subscription.request_sent'));
     }
 
     /**

@@ -2,6 +2,7 @@
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed, ref, watch, onUnmounted } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { useLocale } from '@/composables/useLocale';
 import {
     ArrowLeft,
     ArrowRight,
@@ -73,14 +74,20 @@ const props = defineProps<{
     finishing_types: FinishingTypeOption[];
 }>();
 
+const { t, isRtl } = useLocale();
+
+function localizedText(arabic: string, english: string): string {
+    return isRtl.value ? arabic : english;
+}
+
 // Steps definition
-const steps = [
-    { number: 1, title: 'نوع العقار والهوية', subtitle: 'النوع، الاسم، والصورة' },
-    { number: 2, title: 'الموقع والعنوان', subtitle: 'المدينة، الحي، والخرائط' },
-    { number: 3, title: 'المواصفات والمرافق', subtitle: 'المساحة، العدادات، والخدمات' },
-    { number: 4, title: 'توليد وتكوين الوحدات', subtitle: 'الهيكلة والتوزيع للتأجير' },
-    { number: 5, title: 'المراجعة والاعتماد', subtitle: 'تأكيد البيانات وإنشاء العقار' },
-];
+const steps = computed(() => [
+    { number: 1, title: t('property_wizard.step_identity'), subtitle: t('property_wizard.step_identity_desc') },
+    { number: 2, title: t('property_wizard.step_location'), subtitle: t('property_wizard.step_location_desc') },
+    { number: 3, title: t('property_wizard.step_specs'), subtitle: t('property_wizard.step_specs_desc') },
+    { number: 4, title: t('property_wizard.step_units'), subtitle: t('property_wizard.step_units_desc') },
+    { number: 5, title: t('property_wizard.step_review'), subtitle: t('property_wizard.step_review_desc') },
+]);
 
 const currentStep = ref(1);
 
@@ -90,7 +97,7 @@ const form = useForm({
     code: '',
     property_type: 'building',
     address: '',
-    city: 'القاهرة',
+    city: isRtl.value ? 'القاهرة' : 'Cairo',
     district: '',
     street: '',
     building_number: '',
@@ -177,7 +184,7 @@ const villaRentalMode = ref<'whole' | 'rooms'>('whole');
 const villaRoomsCount = ref(4);
 
 // Floor names lookup for buildings
-const floorNames = [
+const floorNames = computed(() => [
     'الدور الأول',
     'الدور الثاني',
     'الدور الثالث',
@@ -188,7 +195,59 @@ const floorNames = [
     'الدور الثامن',
     'الدور التاسع',
     'الدور العاشر',
-];
+].map((floorName, index) => isRtl.value ? floorName : `${t('property_wizard.floor')} ${index + 1}`));
+
+const propertyTypeTranslations: Record<string, { label: string; badge: string; description: string }> = {
+    building: {
+        label: 'properties.type_building',
+        badge: 'property_wizard.building_badge',
+        description: 'property_wizard.building_description',
+    },
+    apartment: {
+        label: 'properties.type_apartment',
+        badge: 'property_wizard.apartment_badge',
+        description: 'property_wizard.apartment_description',
+    },
+    shop: {
+        label: 'property_wizard.shop',
+        badge: 'property_wizard.shop_badge',
+        description: 'property_wizard.shop_description',
+    },
+    villa: {
+        label: 'properties.type_villa',
+        badge: 'property_wizard.villa_badge',
+        description: 'property_wizard.villa_description',
+    },
+    other: {
+        label: 'property_wizard.other',
+        badge: 'property_wizard.other_badge',
+        description: 'property_wizard.other_description',
+    },
+};
+
+const localizedPropertyTypes = computed(() => availablePropertyTypes.value.map((type) => {
+    const translations = propertyTypeTranslations[type.value];
+    if (isRtl.value || !translations) {
+        return type;
+    }
+
+    return {
+        ...type,
+        label: t(translations.label),
+        badge: t(translations.badge),
+        description: t(translations.description),
+    };
+}));
+
+const localizedAmenities = computed(() => props.amenities_list.map((amenity) => ({
+    ...amenity,
+    label: isRtl.value ? amenity.label : t(`properties.amenity_${amenity.id}`),
+})));
+
+const localizedFinishingTypes = computed(() => props.finishing_types.map((finishingType) => ({
+    ...finishingType,
+    label: isRtl.value ? finishingType.label : t(`properties.finishing_${finishingType.value}`),
+})));
 
 // Helper: Available parents in current unit list
 const availableApartmentParents = computed(() => {
@@ -206,7 +265,7 @@ const availableRoomParents = computed(() => {
  */
 function generateUnitsForShop() {
     const code = form.code.trim() || 'SHP-01';
-    const name = form.name.trim() || 'محل تجاري';
+    const name = form.name.trim() || t('property_wizard.shop');
 
     form.units = [
         {
@@ -217,7 +276,7 @@ function generateUnitsForShop() {
             code: code,
             unit_type: 'shop',
             is_rentable: true,
-            floor_name: 'أرضي / مستقل',
+            floor_name: localizedText('أرضي / مستقل', 'Ground floor / standalone'),
         },
     ];
 }
@@ -231,8 +290,10 @@ function generateUnitsForShop() {
 function generateUnitsForApartment() {
     const list: GeneratedUnit[] = [];
     const baseCode = form.code.trim() || 'APT-01';
-    const baseName = form.name.trim() || 'شقة سكنية';
-    const floorLabel = form.floor_number ? `الدور ${form.floor_number}` : 'الشقة';
+    const baseName = form.name.trim() || t('properties.type_apartment');
+    const floorLabel = form.floor_number
+        ? `${t('property_wizard.floor')} ${form.floor_number}`
+        : t('properties.type_apartment');
 
     if (aptRentalMode.value === 'whole') {
         list.push({
@@ -255,13 +316,13 @@ function generateUnitsForApartment() {
             code: baseCode,
             unit_type: 'apartment',
             is_rentable: true,
-            floor_name: `${floorLabel} (رئيسية)`,
+            floor_name: isRtl.value ? `${floorLabel} (رئيسية)` : `${floorLabel} (Main)`,
         });
 
         for (let r = 1; r <= aptRoomsCount.value; r++) {
             const roomTempId = `room-${r}`;
             const roomCode = `${baseCode}-R${r}`;
-            const roomName = `غرفة ${r}`;
+            const roomName = `${localizedText('غرفة', 'Room')} ${r}`;
 
             list.push({
                 id: roomTempId,
@@ -271,14 +332,16 @@ function generateUnitsForApartment() {
                 code: roomCode,
                 unit_type: 'room',
                 is_rentable: true,
-                floor_name: 'غرفة بالشقة',
+                floor_name: isRtl.value ? 'غرفة بالشقة' : 'Apartment room',
             });
 
             if (aptRentalMode.value === 'beds') {
                 for (let b = 1; b <= aptBedsPerRoom.value; b++) {
                     const bedTempId = `bed-${r}-${b}`;
                     const bedCode = `${roomCode}-B${b}`;
-                    const bedName = `سرير ${b} (غرفة ${r})`;
+                    const bedName = isRtl.value
+                        ? `سرير ${b} (غرفة ${r})`
+                        : `Bed ${b} (Room ${r})`;
 
                     list.push({
                         id: bedTempId,
@@ -288,7 +351,7 @@ function generateUnitsForApartment() {
                         code: bedCode,
                         unit_type: 'bed',
                         is_rentable: true,
-                        floor_name: `سرير بغرفة ${r}`,
+                        floor_name: isRtl.value ? `سرير بغرفة ${r}` : `Bed in Room ${r}`,
                     });
                 }
             }
@@ -313,11 +376,11 @@ function generateUnitsForBuilding() {
                 id: shopTempId,
                 temp_id: shopTempId,
                 parent_temp_id: null,
-                name: `محل تجاري ${s}`,
+                name: `${t('property_wizard.shop')} ${s}`,
                 code: `SHP-0${s}`,
                 unit_type: 'shop',
                 is_rentable: true,
-                floor_name: 'الدور الأرضي',
+                floor_name: isRtl.value ? 'الدور الأرضي' : 'Ground Floor',
             });
         }
     }
@@ -325,7 +388,7 @@ function generateUnitsForBuilding() {
     let overallUnitIndex = 1;
 
     for (let f = 1; f <= genFloorsCount.value; f++) {
-        const floorLabel = floorNames[f - 1] || `الدور ${f}`;
+        const floorLabel = floorNames.value[f - 1] || `${t('property_wizard.floor')} ${f}`;
 
         for (let u = 1; u <= genUnitsPerFloor.value; u++) {
             let unitCode = '';
@@ -334,10 +397,10 @@ function generateUnitsForBuilding() {
             if (genNamingPattern.value === 'floor_number') {
                 const codeNum = `${f}0${u}`;
                 unitCode = `APT-${codeNum}`;
-                unitName = `شقة ${codeNum}`;
+                unitName = `${t('properties.type_apartment')} ${codeNum}`;
             } else {
                 unitCode = `APT-${overallUnitIndex}`;
-                unitName = `شقة ${overallUnitIndex}`;
+                unitName = `${t('properties.type_apartment')} ${overallUnitIndex}`;
             }
 
             const aptTempId = `apt-${f}-${u}`;
@@ -372,11 +435,11 @@ function generateUnitsForCommercial() {
             id: tempId,
             temp_id: tempId,
             parent_temp_id: null,
-            name: `وحدة تجارية / مكتب ${c}`,
+            name: `${localizedText('وحدة تجارية / مكتب', 'Commercial Unit / Office')} ${c}`,
             code: `COM-${codeNum}`,
             unit_type: 'shop',
             is_rentable: true,
-            floor_name: 'تجاري',
+            floor_name: isRtl.value ? 'تجاري' : 'Commercial',
         });
     }
     form.units = list;
@@ -388,7 +451,7 @@ function generateUnitsForCommercial() {
  */
 function generateUnitsForVilla() {
     const baseCode = form.code.trim() || 'VIL-01';
-    const baseName = form.name.trim() || 'فيلا';
+    const baseName = form.name.trim() || t('properties.type_villa');
 
     if (villaRentalMode.value === 'whole') {
         form.units = [
@@ -400,7 +463,7 @@ function generateUnitsForVilla() {
                 code: baseCode,
                 unit_type: 'apartment',
                 is_rentable: true,
-                floor_name: 'الفيلا بالكامل',
+                floor_name: isRtl.value ? 'الفيلا بالكامل' : 'Entire Villa',
             },
         ];
         return;
@@ -416,7 +479,7 @@ function generateUnitsForVilla() {
         code: baseCode,
         unit_type: 'apartment',
         is_rentable: true,
-        floor_name: 'المبنى الرئيسي للفيلا',
+        floor_name: isRtl.value ? 'المبنى الرئيسي للفيلا' : 'Main Villa Building',
     });
 
     for (let r = 1; r <= villaRoomsCount.value; r++) {
@@ -425,11 +488,11 @@ function generateUnitsForVilla() {
             id: roomTempId,
             temp_id: roomTempId,
             parent_temp_id: parentTempId,
-            name: `جناح / غرفة ${r}`,
+            name: isRtl.value ? `جناح / غرفة ${r}` : `Suite / Room ${r}`,
             code: `${baseCode}-R${r}`,
             unit_type: 'room',
             is_rentable: true,
-            floor_name: 'جناح مستقل',
+            floor_name: isRtl.value ? 'جناح مستقل' : 'Private Suite',
         });
     }
 
@@ -441,7 +504,7 @@ function generateUnitsForVilla() {
  */
 function generateUnitsForDefault() {
     const baseCode = form.code.trim() || 'U-01';
-    const baseName = form.name.trim() || 'وحدة عقارية';
+    const baseName = form.name.trim() || t('property_wizard.other');
     form.units = [
         {
             id: 'unit-1',
@@ -451,7 +514,7 @@ function generateUnitsForDefault() {
             code: baseCode,
             unit_type: 'apartment',
             is_rentable: true,
-            floor_name: 'رئيسي',
+            floor_name: isRtl.value ? 'رئيسي' : 'Main',
         },
     ];
 }
@@ -564,11 +627,11 @@ function addManualUnit() {
         id: tempId,
         temp_id: tempId,
         parent_temp_id: defaultParent,
-        name: `وحدة جديدة ${nextIdx}`,
+        name: `${t('property_wizard.new_unit')} ${nextIdx}`,
         code: `U-${nextIdx}`,
         unit_type: defaultType,
         is_rentable: defaultRentable,
-        floor_name: 'مخصص',
+        floor_name: isRtl.value ? 'مخصص' : 'Custom',
     });
 }
 
@@ -605,7 +668,7 @@ const availablePropertyTypes = computed(() => {
 });
 
 const selectedTypeDetails = computed(() => {
-    return availablePropertyTypes.value.find((t) => t.value === form.property_type) || availablePropertyTypes.value[0] || props.property_types[0];
+    return localizedPropertyTypes.value.find((type) => type.value === form.property_type) || localizedPropertyTypes.value[0] || props.property_types[0];
 });
 
 // Step navigation validation
@@ -613,7 +676,7 @@ function goToStep(step: number) {
     if (step > currentStep.value) {
         if (currentStep.value === 1) {
             if (!form.name.trim() || form.name.trim().length < 3) {
-                form.setError('name', 'يجب ألا يقل اسم العقار عن 3 أحرف للاستمرار.');
+                form.setError('name', t('property_wizard.property_name_min_error'));
                 return;
             }
             form.clearErrors('name');
@@ -654,18 +717,18 @@ function submit() {
 </script>
 
 <template>
-    <AppLayout title="إضافة عقار جديد">
-        <Head title="إضافة عقار جديد" />
+    <AppLayout :title="$t('properties.add_property')">
+        <Head :title="$t('properties.add_property')" />
 
-        <div class="-mx-4 -my-6 min-h-[calc(100dvh-5rem)] bg-[#F8F4EA] px-4 pb-10 pt-6 sm:-mx-8 sm:-my-8 sm:px-8 sm:pb-12 sm:pt-8" dir="rtl">
+        <div class="-mx-4 -my-6 min-h-[calc(100dvh-5rem)] bg-[#F8F4EA] px-4 pb-10 pt-6 sm:-mx-8 sm:-my-8 sm:px-8 sm:pb-12 sm:pt-8" >
             <div class="mx-auto max-w-6xl">
                 <!-- Header & Breadcrumbs -->
                 <nav class="mb-6 flex items-center gap-2 text-xs font-semibold text-[#65766F]">
                     <Link :href="route('properties.index')" class="transition hover:text-[#18705A]">
-                        العقارات
+                        {{ $t('properties.breadcrumb') }}
                     </Link>
                     <ChevronLeft class="size-3.5 text-[#A5B5AD]" />
-                    <span class="text-[#18372E]">إضافة عقار جديد</span>
+                    <span class="text-[#18372E]">{{ $t('properties.add_property') }}</span>
                 </nav>
 
                 <div class="mb-7 flex flex-col justify-between gap-5 border-b border-[#D6E0E7] pb-6 sm:mb-8 sm:flex-row sm:items-center">
@@ -678,9 +741,9 @@ function submit() {
                                 <Boxes v-else class="size-5" />
                             </span>
                             <div>
-                                <h1 class="text-2xl font-black tracking-tight text-[#163E3E] sm:text-3xl">إضافة عقار جديد</h1>
+                                <h1 class="text-2xl font-black tracking-tight text-[#163E3E] sm:text-3xl">{{ $t('properties.add_property') }}</h1>
                                 <p class="mt-1 max-w-2xl text-sm leading-6 text-[#5B6770]">
-                                    اختر نوع العقار لتخصيص الحقول المناسبة له وتوليد الوحدات المتوافقة مع طبيعته الاستثمارية.
+                                    {{ $t('property_wizard.property_type_help') }}
                                 </p>
                             </div>
                         </div>
@@ -690,7 +753,7 @@ function submit() {
                         class="inline-flex items-center justify-center gap-2 rounded-xl border border-[#D6E0E7] bg-white px-4 py-2.5 text-xs font-bold text-[#163E3E] shadow-2xs transition hover:border-[#163E3E] hover:text-[#163E3E]"
                     >
                         <ArrowRight class="size-4" />
-                        العودة لقائمة العقارات
+                        {{ $t('properties.back_to_properties') }}
                     </Link>
                 </div>
 
@@ -703,8 +766,8 @@ function submit() {
                             type="button"
                             @click="goToStep(step.number)"
                             :aria-current="currentStep === step.number ? 'step' : undefined"
-                            :aria-label="`الخطوة ${step.number}: ${step.title}`"
-                            class="group relative flex flex-col items-center rounded-xl p-1.5 text-center transition sm:items-start sm:rounded-2xl sm:p-3 sm:text-right"
+                            :aria-label="$t('property_wizard.step_counter', { current: step.number, total: steps.length }) + ': ' + step.title"
+                            class="group relative flex flex-col items-center rounded-xl p-1.5 text-center transition sm:items-start sm:rounded-2xl sm:p-3 sm:text-start"
                             :class="[
                                 currentStep === step.number
                                     ? 'bg-[#EFF7F2] ring-1 ring-[#18705A]'
@@ -741,7 +804,9 @@ function submit() {
                     </div>
 
                     <div class="mt-4 border-t border-[#E8EFF4] pt-4 sm:hidden">
-                        <p class="text-[11px] font-semibold text-[#5B6770]">الخطوة {{ currentStep }} من {{ steps.length }}</p>
+                        <p class="text-[11px] font-semibold text-[#5B6770]">
+                            {{ $t('property_wizard.step_counter', { current: currentStep, total: steps.length }) }}
+                        </p>
                         <p class="mt-1 text-sm font-extrabold text-[#18372E]">{{ steps[currentStep - 1].title }}</p>
                     </div>
 
@@ -752,7 +817,7 @@ function submit() {
                         :aria-valuenow="currentStep"
                         :aria-valuemin="1"
                         :aria-valuemax="steps.length"
-                        :aria-label="`الخطوة ${currentStep} من ${steps.length}`"
+                        :aria-label="$t('property_wizard.step_counter', { current: currentStep, total: steps.length })"
                     >
                         <div
                             class="h-full bg-gradient-to-r from-[#18705A] to-[#25B492] transition-all duration-300"
@@ -771,25 +836,25 @@ function submit() {
                         class="space-y-6 rounded-3xl border border-[#E3EAE6] bg-white p-6 shadow-sm sm:p-8"
                     >
                         <div class="border-b border-[#EAEFEA] pb-5">
-                            <span class="text-xs font-bold text-[#18705A]">الخطوة الأولى</span>
-                            <h2 class="mt-1 text-xl font-black text-[#18372E]">نوع وهوية العقار</h2>
+                            <span class="text-xs font-bold text-[#18705A]">{{ $t('property_wizard.step_first') }}</span>
+                            <h2 class="mt-1 text-xl font-black text-[#18372E]">{{ $t('property_wizard.property_identity') }}</h2>
                             <p class="mt-1 text-sm text-[#65766F]">
-                                حدد التصنيف الدقيق للعقار لتخصيص الحقول المناسبة له وتوليد شجرة الوحدات والتأجير المناسبة.
+                                {{ $t('property_wizard.property_type_help') }}
                             </p>
                         </div>
 
                         <!-- Property Types Selection Cards -->
                         <div class="space-y-3">
                             <label class="block text-sm font-bold text-[#18372E]">
-                                نوع العقار <span class="text-rose-500">*</span>
+                                {{ $t('property_wizard.property_type') }} <span class="text-rose-500">*</span>
                             </label>
                             <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                                 <button
-                                    v-for="type in availablePropertyTypes"
+                                    v-for="type in localizedPropertyTypes"
                                     :key="type.value"
                                     type="button"
                                     @click="form.property_type = type.value"
-                                    class="relative flex flex-col justify-between rounded-2xl border p-4 text-right transition"
+                                    class="relative flex flex-col justify-between rounded-2xl border p-4 text-start transition"
                                     :class="[
                                         form.property_type === type.value
                                             ? 'border-[#18705A] bg-[#F2F8F4] ring-2 ring-[#18705A]'
@@ -818,7 +883,7 @@ function submit() {
 
                                     <div v-if="form.property_type === type.value" class="mt-3 flex items-center gap-1.5 text-xs font-bold text-[#18705A]">
                                         <CheckCircle2 class="size-4" />
-                                        <span>محدد حالياً</span>
+                                        <span>{{ $t('property_wizard.current_selection') }}</span>
                                     </div>
                                 </button>
                             </div>
@@ -828,7 +893,7 @@ function submit() {
                         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                             <div>
                                 <label for="prop-name" class="mb-2 block text-sm font-bold text-[#18372E]">
-                                    اسم العقار <span class="text-rose-500">*</span>
+                                    {{ $t('property_wizard.property_name') }} <span class="text-rose-500">*</span>
                                 </label>
                                 <input
                                     id="prop-name"
@@ -838,10 +903,10 @@ function submit() {
                                     minlength="3"
                                     :placeholder="
                                         form.property_type === 'shop'
-                                            ? 'مثال: محل البركة التجاري - المعادي'
+                                            ? $t('property_wizard.property_name_placeholder_shop')
                                             : form.property_type === 'apartment'
-                                            ? 'مثال: شقة رقم 12 - برج الياسمين'
-                                            : 'مثال: عمارة النور والأمل - المعادي'
+                                            ? $t('property_wizard.property_name_placeholder_apartment')
+                                            : $t('property_wizard.property_name_placeholder_building')
                                     "
                                     class="h-12 w-full rounded-2xl border border-[#D8E4DC] bg-[#FAFDFB] px-4 text-sm text-[#18372E] outline-none transition placeholder:text-[#99A8A0] focus:border-[#18705A] focus:bg-white focus:ring-2 focus:ring-[#18705A]/15"
                                 />
@@ -852,7 +917,8 @@ function submit() {
 
                             <div>
                                 <label for="prop-code" class="mb-2 block text-sm font-bold text-[#18372E]">
-                                    كود / مرجع العقار <span class="text-xs font-normal text-[#7A8C83]">(اختياري)</span>
+                                    {{ $t('property_wizard.property_code') }}
+                                    <span class="text-xs font-normal text-[#7A8C83]">({{ $t('property_wizard.optional') }})</span>
                                 </label>
                                 <input
                                     id="prop-code"
@@ -860,10 +926,10 @@ function submit() {
                                     type="text"
                                     :placeholder="
                                         form.property_type === 'shop'
-                                            ? 'مثال: SHP-101'
+                                            ? $t('property_wizard.property_code_placeholder_shop')
                                             : form.property_type === 'apartment'
-                                            ? 'مثال: APT-12'
-                                            : 'مثال: BLD-102'
+                                            ? $t('property_wizard.property_code_placeholder_apartment')
+                                            : $t('property_wizard.property_code_placeholder_building')
                                     "
                                     class="h-12 w-full rounded-2xl border border-[#D8E4DC] bg-[#FAFDFB] px-4 text-sm text-[#18372E] outline-none transition placeholder:text-[#99A8A0] focus:border-[#18705A] focus:bg-white focus:ring-2 focus:ring-[#18705A]/15"
                                 />
@@ -876,21 +942,22 @@ function submit() {
                         <!-- Cover Image Upload -->
                         <div class="space-y-2">
                             <label class="block text-sm font-bold text-[#18372E]">
-                                صورة واجهة العقار <span class="text-xs font-normal text-[#7A8C83]">(اختياري)</span>
+                                {{ $t('property_wizard.upload_cover_image') }}
+                                <span class="text-xs font-normal text-[#7A8C83]">({{ $t('property_wizard.optional') }})</span>
                             </label>
 
                             <div
                                 v-if="imagePreviewUrl"
                                 class="relative h-56 w-full overflow-hidden rounded-3xl border border-[#D8E4DC] bg-[#10251D]"
                             >
-                                <img :src="imagePreviewUrl" alt="معاينة العقار" class="h-full w-full object-cover" />
+                                <img :src="imagePreviewUrl" :alt="$t('property_wizard.preview_property')" class="h-full w-full object-cover" />
                                 <button
                                     type="button"
                                     @click="removeImage"
                                     class="absolute left-4 top-4 flex items-center gap-1.5 rounded-xl bg-black/70 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-md transition hover:bg-rose-600"
                                 >
                                     <Trash2 class="size-4" />
-                                    حذف الصورة
+                                    {{ $t('property_wizard.remove_image') }}
                                 </button>
                             </div>
 
@@ -902,12 +969,12 @@ function submit() {
                                     <UploadCloud class="size-7" />
                                 </span>
                                 <span class="mt-3 text-sm font-bold text-[#18372E]">
-                                    انقر لرفع صورة العقار الرئيسية أو اسحبها هنا
+                                    {{ $t('property_wizard.upload_image_prompt') }}
                                 </span>
-                                <span class="mt-1 text-xs text-[#7A8C83]">PNG, JPG, WEBP حتى 5 ميجابايت</span>
+                                <span class="mt-1 text-xs text-[#7A8C83]">{{ $t('property_wizard.upload_image_formats') }}</span>
                                 <input
                                     type="file"
-                                    aria-label="صورة العقار الرئيسية"
+                                    :aria-label="$t('property_wizard.upload_cover_image')"
                                     accept="image/*"
                                     class="hidden"
                                     @change="handleImageChange"
@@ -927,43 +994,43 @@ function submit() {
                         class="space-y-6 rounded-3xl border border-[#E3EAE6] bg-white p-6 shadow-sm sm:p-8"
                     >
                         <div class="border-b border-[#EAEFEA] pb-5">
-                            <span class="text-xs font-bold text-[#18705A]">الخطوة الثانية</span>
-                            <h2 class="mt-1 text-xl font-black text-[#18372E]">الموقع الجغرافي والعنوان</h2>
+                            <span class="text-xs font-bold text-[#18705A]">{{ localizedText('الخطوة الثانية', 'Step 2') }}</span>
+                            <h2 class="mt-1 text-xl font-black text-[#18372E]">{{ localizedText('الموقع الجغرافي والعنوان', 'Location and address') }}</h2>
                             <p class="mt-1 text-sm text-[#65766F]">
-                                حدد عنوان العقار وموقعه بدقة لتسهيل وصول المستأجرين والفنيين.
+                                {{ localizedText('حدد عنوان العقار وموقعه بدقة لتسهيل وصول المستأجرين والفنيين.', 'Enter the property address and precise location to help renters and technicians find it.') }}
                             </p>
                         </div>
 
                         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                             <div>
-                                <label for="prop-city" class="mb-2 block text-sm font-bold text-[#18372E]">المدينة / المحافظة</label>
+                                <label for="prop-city" class="mb-2 block text-sm font-bold text-[#18372E]">{{ localizedText('المدينة / المحافظة', 'City / Governorate') }}</label>
                                 <input
                                     id="prop-city"
                                     v-model="form.city"
                                     type="text"
-                                    placeholder="مثال: القاهرة، الجيزة، الإسكندرية..."
+                                    :placeholder="localizedText('مثال: القاهرة، الجيزة، الإسكندرية...', 'e.g. Cairo, Giza, Alexandria...')"
                                     class="h-12 w-full rounded-2xl border border-[#D8E4DC] bg-[#FAFDFB] px-4 text-sm text-[#18372E] outline-none transition placeholder:text-[#99A8A0] focus:border-[#18705A] focus:bg-white focus:ring-2 focus:ring-[#18705A]/15"
                                 />
                             </div>
 
                             <div>
-                                <label for="prop-district" class="mb-2 block text-sm font-bold text-[#18372E]">الحي / المنطقة</label>
+                                <label for="prop-district" class="mb-2 block text-sm font-bold text-[#18372E]">{{ localizedText('الحي / المنطقة', 'District / Area') }}</label>
                                 <input
                                     id="prop-district"
                                     v-model="form.district"
                                     type="text"
-                                    placeholder="مثال: المعادي، الدقي، التجمع الخامس..."
+                                    :placeholder="localizedText('مثال: المعادي، الدقي، التجمع الخامس...', 'e.g. Maadi, Dokki, Fifth Settlement...')"
                                     class="h-12 w-full rounded-2xl border border-[#D8E4DC] bg-[#FAFDFB] px-4 text-sm text-[#18372E] outline-none transition placeholder:text-[#99A8A0] focus:border-[#18705A] focus:bg-white focus:ring-2 focus:ring-[#18705A]/15"
                                 />
                             </div>
 
                             <div>
-                                <label for="prop-street" class="mb-2 block text-sm font-bold text-[#18372E]">اسم الشارع</label>
+                                <label for="prop-street" class="mb-2 block text-sm font-bold text-[#18372E]">{{ localizedText('اسم الشارع', 'Street name') }}</label>
                                 <input
                                     id="prop-street"
                                     v-model="form.street"
                                     type="text"
-                                    placeholder="مثال: شارع النصر، متفرع من اللاسلكي"
+                                    :placeholder="localizedText('مثال: شارع النصر، متفرع من اللاسلكي', 'e.g. El Nasr Street, off El Laselky Street')"
                                     class="h-12 w-full rounded-2xl border border-[#D8E4DC] bg-[#FAFDFB] px-4 text-sm text-[#18372E] outline-none transition placeholder:text-[#99A8A0] focus:border-[#18705A] focus:bg-white focus:ring-2 focus:ring-[#18705A]/15"
                                 />
                             </div>
@@ -971,9 +1038,9 @@ function submit() {
                             <!-- Contextual Building / Location field -->
                             <div>
                                 <label for="prop-bld-num" class="mb-2 block text-sm font-bold text-[#18372E]">
-                                    <template v-if="form.property_type === 'shop'">رقم المحل أو المبنى التجاري</template>
-                                    <template v-else-if="form.property_type === 'apartment'">رقم العقار أو اسم البرج التابع له</template>
-                                    <template v-else>رقم المبنى / القطعة</template>
+                                    <template v-if="form.property_type === 'shop'">{{ localizedText('رقم المحل أو المبنى التجاري', 'Shop or commercial building number') }}</template>
+                                    <template v-else-if="form.property_type === 'apartment'">{{ localizedText('رقم العقار أو اسم البرج التابع له', 'Property number or building name') }}</template>
+                                    <template v-else>{{ localizedText('رقم المبنى / القطعة', 'Building / Lot number') }}</template>
                                 </label>
                                 <input
                                     id="prop-bld-num"
@@ -981,10 +1048,10 @@ function submit() {
                                     type="text"
                                     :placeholder="
                                         form.property_type === 'shop'
-                                            ? 'مثال: محل رقم 4، مول الصفا'
+                                            ? localizedText('مثال: محل رقم 4، مول الصفا', 'e.g. Shop 4, Al Safa Mall')
                                             : form.property_type === 'apartment'
-                                            ? 'مثال: برج الياسمين 2، عمارة 15'
-                                            : 'مثال: عمارة رقم 15، قطعة 4'
+                                            ? localizedText('مثال: برج الياسمين 2، عمارة 15', 'e.g. Yasmin Tower 2, Building 15')
+                                            : localizedText('مثال: عمارة رقم 15، قطعة 4', 'e.g. Building 15, Lot 4')
                                     "
                                     class="h-12 w-full rounded-2xl border border-[#D8E4DC] bg-[#FAFDFB] px-4 text-sm text-[#18372E] outline-none transition placeholder:text-[#99A8A0] focus:border-[#18705A] focus:bg-white focus:ring-2 focus:ring-[#18705A]/15"
                                 />
@@ -993,13 +1060,13 @@ function submit() {
                             <!-- Apartment Specific: Floor Number -->
                             <div v-if="form.property_type === 'apartment'">
                                 <label for="prop-floor-num" class="mb-2 block text-sm font-bold text-[#18372E]">
-                                    رقم الدور / الطابق <span class="text-xs font-normal text-[#7A8C83]">(خاص بالشقة)</span>
+                                    {{ localizedText('رقم الدور / الطابق', 'Floor number') }} <span class="text-xs font-normal text-[#7A8C83]">({{ localizedText('خاص بالشقة', 'for this apartment') }})</span>
                                 </label>
                                 <input
                                     id="prop-floor-num"
                                     v-model="form.floor_number"
                                     type="text"
-                                    placeholder="مثال: الدور الثالث، الدور الأرضي..."
+                                    :placeholder="localizedText('مثال: الدور الثالث، الدور الأرضي...', 'e.g. Third floor, ground floor...')"
                                     class="h-12 w-full rounded-2xl border border-[#D8E4DC] bg-[#FAFDFB] px-4 text-sm text-[#18372E] outline-none transition placeholder:text-[#99A8A0] focus:border-[#18705A] focus:bg-white focus:ring-2 focus:ring-[#18705A]/15"
                                 />
                             </div>
@@ -1007,7 +1074,7 @@ function submit() {
 
                         <div>
                             <label for="prop-maps-url" class="mb-2 block text-sm font-bold text-[#18372E]">
-                                رابط موقع العقار على خرائط جوجل (Google Maps)
+                                {{ localizedText('رابط موقع العقار على خرائط جوجل (Google Maps)', 'Property location on Google Maps') }}
                             </label>
                             <div class="relative">
                                 <span class="pointer-events-none absolute right-4 top-3.5 text-[#18705A]">
@@ -1028,13 +1095,13 @@ function submit() {
 
                         <div>
                             <label for="prop-address-full" class="mb-2 block text-sm font-bold text-[#18372E]">
-                                العنوان الكامل المسجل / العلامة المميزة
+                                {{ localizedText('العنوان الكامل المسجل / العلامة المميزة', 'Full registered address / landmark') }}
                             </label>
                             <textarea
                                 id="prop-address-full"
                                 v-model="form.address"
                                 rows="2"
-                                placeholder="مثال: بجوار مسجد الفاروق، أمام بنك مصر..."
+                                :placeholder="localizedText('مثال: بجوار مسجد الفاروق، أمام بنك مصر...', 'e.g. Near Al Farouq Mosque, opposite Banque Misr...')"
                                 class="w-full rounded-2xl border border-[#D8E4DC] bg-[#FAFDFB] p-4 text-sm text-[#18372E] outline-none transition placeholder:text-[#99A8A0] focus:border-[#18705A] focus:bg-white focus:ring-2 focus:ring-[#18705A]/15"
                             ></textarea>
                         </div>
@@ -1048,10 +1115,10 @@ function submit() {
                         class="space-y-8 rounded-3xl border border-[#E3EAE6] bg-white p-6 shadow-sm sm:p-8"
                     >
                         <div class="border-b border-[#EAEFEA] pb-5">
-                            <span class="text-xs font-bold text-[#18705A]">الخطوة الثالثة</span>
-                            <h2 class="mt-1 text-xl font-black text-[#18372E]">المواصفات الإنشائية والمرافق والخدمات</h2>
+                            <span class="text-xs font-bold text-[#18705A]">{{ localizedText('الخطوة الثالثة', 'Step 3') }}</span>
+                            <h2 class="mt-1 text-xl font-black text-[#18372E]">{{ localizedText('المواصفات الإنشائية والمرافق والخدمات', 'Specifications, amenities, and utilities') }}</h2>
                             <p class="mt-1 text-sm text-[#65766F]">
-                                حقول مخصصة تناسب نوع العقار المختار:
+                                {{ localizedText('حقول مخصصة تناسب نوع العقار المختار:', 'Fields tailored to the selected property type:') }}
                                 <span class="font-bold text-[#18705A]">{{ selectedTypeDetails.label }}</span>
                             </p>
                         </div>
@@ -1061,37 +1128,37 @@ function submit() {
                             <div class="rounded-2xl border border-[#D8E4DC] bg-[#FAFDFB] p-5">
                                 <h3 class="flex items-center gap-2 text-sm font-extrabold text-[#18705A]">
                                     <Store class="size-4" />
-                                    <span>مواصفات المحل التجاري</span>
+                                    <span>{{ localizedText('مواصفات المحل التجاري', 'Commercial unit specifications') }}</span>
                                 </h3>
 
                                 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
                                     <div>
-                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">المساحة بالمتر المربع (م²)</label>
+                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('المساحة بالمتر المربع (م²)', 'Area (m²)') }}</label>
                                         <input
                                             v-model="form.total_area"
                                             type="number"
-                                            placeholder="مثال: 65"
+                                            :placeholder="localizedText('مثال: 65', 'e.g. 65')"
                                             class="h-11 w-full rounded-xl border border-[#D8E4DC] bg-white px-3 text-sm font-bold text-[#18372E] focus:border-[#18705A]"
                                         />
                                     </div>
 
                                     <div>
-                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">النشاط التجاري الحالي أو المرخص</label>
+                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('النشاط التجاري الحالي أو المرخص', 'Current or licensed commercial activity') }}</label>
                                         <input
                                             v-model="form.commercial_activity"
                                             type="text"
-                                            placeholder="مثال: مطعم / كافيه، صيدلية، سوبر ماركت، ملابس..."
+                                            :placeholder="localizedText('مثال: مطعم / كافيه، صيدلية، سوبر ماركت، ملابس...', 'e.g. Restaurant / cafe, pharmacy, supermarket, clothing...')"
                                             class="h-11 w-full rounded-xl border border-[#D8E4DC] bg-white px-3 text-sm text-[#18372E] focus:border-[#18705A]"
                                         />
                                     </div>
 
                                     <div>
-                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">مستوى التشطيب التجاري</label>
+                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('مستوى التشطيب التجاري', 'Commercial finishing level') }}</label>
                                         <select
                                             v-model="form.finishing_type"
                                             class="h-11 w-full rounded-xl border border-[#D8E4DC] bg-white px-3 text-xs font-bold text-[#18372E] focus:border-[#18705A]"
                                         >
-                                            <option v-for="ft in finishing_types" :key="ft.value" :value="ft.value">
+                                            <option                                             v-for="ft in localizedFinishingTypes" :key="ft.value" :value="ft.value">
                                                 {{ ft.label }}
                                             </option>
                                         </select>
@@ -1103,36 +1170,36 @@ function submit() {
                             <div class="space-y-4">
                                 <h3 class="flex items-center gap-2 text-sm font-extrabold text-[#18705A]">
                                     <Receipt class="size-4" />
-                                    <span>عدادات واشتراكات المحل التجاري</span>
+                                    <span>{{ localizedText('عدادات واشتراكات المحل التجاري', 'Commercial unit meters and utilities') }}</span>
                                 </h3>
 
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                     <div>
-                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">رقم عداد الكهرباء التجاري</label>
+                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('رقم عداد الكهرباء التجاري', 'Commercial electricity meter number') }}</label>
                                         <input
                                             v-model="form.electricity_meter_number"
                                             type="text"
-                                            placeholder="مثال: ELEC-99120"
+                                            :placeholder="localizedText('مثال: ELEC-99120', 'e.g. ELEC-99120')"
                                             class="h-11 w-full rounded-xl border border-[#D8E4DC] bg-[#FAFDFB] px-3 text-xs text-[#18372E] focus:border-[#18705A] focus:bg-white"
                                         />
                                     </div>
 
                                     <div>
-                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">رقم عداد المياه</label>
+                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('رقم عداد المياه', 'Water meter number') }}</label>
                                         <input
                                             v-model="form.water_meter_number"
                                             type="text"
-                                            placeholder="مثال: WTR-33211"
+                                            :placeholder="localizedText('مثال: WTR-33211', 'e.g. WTR-33211')"
                                             class="h-11 w-full rounded-xl border border-[#D8E4DC] bg-[#FAFDFB] px-3 text-xs text-[#18372E] focus:border-[#18705A] focus:bg-white"
                                         />
                                     </div>
 
                                     <div>
-                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">رقم اشتراك الغاز (إن وجد)</label>
+                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('رقم اشتراك الغاز (إن وجد)', 'Gas subscription number (if available)') }}</label>
                                         <input
                                             v-model="form.gas_meter_number"
                                             type="text"
-                                            placeholder="مثال: GAS-11204"
+                                            :placeholder="localizedText('مثال: GAS-11204', 'e.g. GAS-11204')"
                                             class="h-11 w-full rounded-xl border border-[#D8E4DC] bg-[#FAFDFB] px-3 text-xs text-[#18372E] focus:border-[#18705A] focus:bg-white"
                                         />
                                     </div>
@@ -1145,22 +1212,22 @@ function submit() {
                             <div class="rounded-2xl border border-[#D8E4DC] bg-[#FAFDFB] p-5">
                                 <h3 class="flex items-center gap-2 text-sm font-extrabold text-[#18705A]">
                                     <Home class="size-4" />
-                                    <span>مواصفات الشقة</span>
+                                    <span>{{ localizedText('مواصفات الشقة', 'Apartment specifications') }}</span>
                                 </h3>
 
                                 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
                                     <div>
-                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">مساحة الشقة (م²)</label>
+                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('مساحة الشقة (م²)', 'Apartment area (m²)') }}</label>
                                         <input
                                             v-model="form.total_area"
                                             type="number"
-                                            placeholder="مثال: 140"
+                                            :placeholder="localizedText('مثال: 140', 'e.g. 140')"
                                             class="h-11 w-full rounded-xl border border-[#D8E4DC] bg-white px-3 text-sm font-bold text-[#18372E] focus:border-[#18705A]"
                                         />
                                     </div>
 
                                     <div>
-                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">سنة البناء / التجديد</label>
+                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('سنة البناء / التجديد', 'Year built / renovated') }}</label>
                                         <input
                                             v-model.number="form.year_built"
                                             type="number"
@@ -1171,12 +1238,12 @@ function submit() {
                                     </div>
 
                                     <div>
-                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">مستوى تشطيب الشقة</label>
+                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('مستوى تشطيب الشقة', 'Apartment finishing level') }}</label>
                                         <select
                                             v-model="form.finishing_type"
                                             class="h-11 w-full rounded-xl border border-[#D8E4DC] bg-white px-3 text-xs font-bold text-[#18372E] focus:border-[#18705A]"
                                         >
-                                            <option v-for="ft in finishing_types" :key="ft.value" :value="ft.value">
+                                            <option                                             v-for="ft in localizedFinishingTypes" :key="ft.value" :value="ft.value">
                                                 {{ ft.label }}
                                             </option>
                                         </select>
@@ -1188,36 +1255,36 @@ function submit() {
                             <div class="space-y-4">
                                 <h3 class="flex items-center gap-2 text-sm font-extrabold text-[#18705A]">
                                     <Receipt class="size-4" />
-                                    <span>عدادات واشتراكات الشقة</span>
+                                    <span>{{ localizedText('عدادات واشتراكات الشقة', 'Apartment meters and utilities') }}</span>
                                 </h3>
 
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                     <div>
-                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">رقم عداد الكهرباء الخاص بالشقة</label>
+                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('رقم عداد الكهرباء الخاص بالشقة', 'Apartment electricity meter number') }}</label>
                                         <input
                                             v-model="form.electricity_meter_number"
                                             type="text"
-                                            placeholder="مثال: 0102938475"
+                                            :placeholder="localizedText('مثال: 0102938475', 'e.g. 0102938475')"
                                             class="h-11 w-full rounded-xl border border-[#D8E4DC] bg-[#FAFDFB] px-3 text-xs text-[#18372E] focus:border-[#18705A] focus:bg-white"
                                         />
                                     </div>
 
                                     <div>
-                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">رقم عداد المياه</label>
+                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('رقم عداد المياه', 'Water meter number') }}</label>
                                         <input
                                             v-model="form.water_meter_number"
                                             type="text"
-                                            placeholder="مثال: WTR-99210"
+                                            :placeholder="localizedText('مثال: WTR-99210', 'e.g. WTR-99210')"
                                             class="h-11 w-full rounded-xl border border-[#D8E4DC] bg-[#FAFDFB] px-3 text-xs text-[#18372E] focus:border-[#18705A] focus:bg-white"
                                         />
                                     </div>
 
                                     <div>
-                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">رقم اشتراك الغاز الطبيعي</label>
+                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('رقم اشتراك الغاز الطبيعي', 'Natural gas subscription number') }}</label>
                                         <input
                                             v-model="form.gas_meter_number"
                                             type="text"
-                                            placeholder="مثال: GAS-33491"
+                                            :placeholder="localizedText('مثال: GAS-33491', 'e.g. GAS-33491')"
                                             class="h-11 w-full rounded-xl border border-[#D8E4DC] bg-[#FAFDFB] px-3 text-xs text-[#18372E] focus:border-[#18705A] focus:bg-white"
                                         />
                                     </div>
@@ -1231,12 +1298,12 @@ function submit() {
                             <div class="space-y-4">
                                 <h3 class="flex items-center gap-2 text-sm font-extrabold text-[#18705A]">
                                     <Building2 class="size-4" />
-                                    <span>المواصفات الإنشائية للمبنى</span>
+                                    <span>{{ localizedText('المواصفات الإنشائية للمبنى', 'Building specifications') }}</span>
                                 </h3>
 
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
                                     <div>
-                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">عدد الطوابق</label>
+                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('عدد الطوابق', 'Number of floors') }}</label>
                                         <input
                                             v-model.number="form.floors_count"
                                             type="number"
@@ -1247,17 +1314,17 @@ function submit() {
                                     </div>
 
                                     <div>
-                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">المساحة الإجمالية (م²)</label>
+                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('المساحة الإجمالية (م²)', 'Total area (m²)') }}</label>
                                         <input
                                             v-model="form.total_area"
                                             type="number"
-                                            placeholder="مثال: 550"
+                                            :placeholder="localizedText('مثال: 550', 'e.g. 550')"
                                             class="h-11 w-full rounded-xl border border-[#D8E4DC] bg-[#FAFDFB] px-3 text-sm text-[#18372E] focus:border-[#18705A] focus:bg-white"
                                         />
                                     </div>
 
                                     <div>
-                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">سنة البناء</label>
+                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('سنة البناء', 'Year built') }}</label>
                                         <input
                                             v-model.number="form.year_built"
                                             type="number"
@@ -1268,12 +1335,12 @@ function submit() {
                                     </div>
 
                                     <div>
-                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">مستوى التشطيب</label>
+                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('مستوى التشطيب', 'Finishing level') }}</label>
                                         <select
                                             v-model="form.finishing_type"
                                             class="h-11 w-full rounded-xl border border-[#D8E4DC] bg-[#FAFDFB] px-3 text-xs font-bold text-[#18372E] focus:border-[#18705A] focus:bg-white"
                                         >
-                                            <option v-for="ft in finishing_types" :key="ft.value" :value="ft.value">
+                                            <option                                             v-for="ft in localizedFinishingTypes" :key="ft.value" :value="ft.value">
                                                 {{ ft.label }}
                                             </option>
                                         </select>
@@ -1285,36 +1352,36 @@ function submit() {
                             <div class="space-y-4">
                                 <h3 class="flex items-center gap-2 text-sm font-extrabold text-[#18705A]">
                                     <Receipt class="size-4" />
-                                    <span>عدادات واشتراكات المبنى الرئيسية</span>
+                                    <span>{{ localizedText('عدادات واشتراكات المبنى الرئيسية', 'Main building meters and utilities') }}</span>
                                 </h3>
 
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                     <div>
-                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">رقم عداد الكهرباء الرئيسي</label>
+                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('رقم عداد الكهرباء الرئيسي', 'Main electricity meter number') }}</label>
                                         <input
                                             v-model="form.electricity_meter_number"
                                             type="text"
-                                            placeholder="مثال: 0102938475"
+                                            :placeholder="localizedText('مثال: 0102938475', 'e.g. 0102938475')"
                                             class="h-11 w-full rounded-xl border border-[#D8E4DC] bg-[#FAFDFB] px-3 text-xs text-[#18372E] focus:border-[#18705A] focus:bg-white"
                                         />
                                     </div>
 
                                     <div>
-                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">رقم عداد المياه الرئيسي</label>
+                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('رقم عداد المياه الرئيسي', 'Main water meter number') }}</label>
                                         <input
                                             v-model="form.water_meter_number"
                                             type="text"
-                                            placeholder="مثال: WTR-99210"
+                                            :placeholder="localizedText('مثال: WTR-99210', 'e.g. WTR-99210')"
                                             class="h-11 w-full rounded-xl border border-[#D8E4DC] bg-[#FAFDFB] px-3 text-xs text-[#18372E] focus:border-[#18705A] focus:bg-white"
                                         />
                                     </div>
 
                                     <div>
-                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">رقم اشتراك الغاز الطبيعي</label>
+                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('رقم اشتراك الغاز الطبيعي', 'Natural gas subscription number') }}</label>
                                         <input
                                             v-model="form.gas_meter_number"
                                             type="text"
-                                            placeholder="مثال: GAS-33491"
+                                            :placeholder="localizedText('مثال: GAS-33491', 'e.g. GAS-33491')"
                                             class="h-11 w-full rounded-xl border border-[#D8E4DC] bg-[#FAFDFB] px-3 text-xs text-[#18372E] focus:border-[#18705A] focus:bg-white"
                                         />
                                     </div>
@@ -1325,16 +1392,16 @@ function submit() {
                             <div class="space-y-4">
                                 <h3 class="flex items-center gap-2 text-sm font-extrabold text-[#18705A]">
                                     <UserCheck class="size-4" />
-                                    <span>بيانات الحارس والإشراف على المبنى</span>
+                                    <span>{{ localizedText('بيانات الحارس والإشراف على المبنى', 'Property guard and management details') }}</span>
                                 </h3>
 
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <div>
-                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">اسم حارس / مشرف العقار</label>
+                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('اسم حارس / مشرف العقار', 'Guard / property manager name') }}</label>
                                         <input
                                             v-model="form.guard_name"
                                             type="text"
-                                            placeholder="مثال: عم محمد"
+                                            :placeholder="localizedText('مثال: عم محمد', 'e.g. John Smith')"
                                             class="h-11 w-full rounded-xl border border-[#D8E4DC] bg-[#FAFDFB] px-3 text-xs text-[#18372E] focus:border-[#18705A] focus:bg-white"
                                         />
                                         <p v-if="form.errors.guard_name" class="mt-1 text-xs font-bold text-rose-500">
@@ -1343,7 +1410,7 @@ function submit() {
                                     </div>
 
                                     <div>
-                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">رقم هاتف الحارس</label>
+                                        <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('رقم هاتف الحارس', 'Guard phone number') }}</label>
                                         <input
                                             v-model="form.guard_phone"
                                             type="tel"
@@ -1363,20 +1430,20 @@ function submit() {
                             <div>
                                 <h3 class="flex items-center gap-2 text-sm font-extrabold text-[#18705A]">
                                     <Sparkles class="size-4" />
-                                    <span>المرافق والخدمات المتوفرة</span>
+                                    <span>{{ localizedText('المرافق والخدمات المتوفرة', 'Available amenities and services') }}</span>
                                 </h3>
                                 <p class="mt-1 text-xs text-[#556960]">
-                                    اختر المرافق والخدمات المتوفرة في العقار
+                                    {{ localizedText('اختر المرافق والخدمات المتوفرة في العقار', 'Select the amenities and services available at this property') }}
                                 </p>
                             </div>
 
                             <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
                                 <button
-                                    v-for="amenity in amenities_list"
+                                    v-for="amenity in localizedAmenities"
                                     :key="amenity.id"
                                     type="button"
                                     @click="toggleAmenity(amenity.id)"
-                                    class="flex items-center gap-2.5 rounded-2xl border p-3 text-right transition"
+                                    class="flex items-center gap-2.5 rounded-2xl border p-3 text-start transition"
                                     :class="[
                                         form.amenities.includes(amenity.id)
                                             ? 'border-[#18705A] bg-[#EFF7F2] text-[#18705A] ring-1 ring-[#18705A]'
@@ -1409,26 +1476,26 @@ function submit() {
                         <div class="space-y-4 border-t border-[#EAEFEA] pt-6">
                             <h3 class="flex items-center gap-2 text-sm font-extrabold text-[#18705A]">
                                 <FileText class="size-4" />
-                                <span>سند الملكية والملاحظات الداخلية</span>
+                                <span>{{ localizedText('سند الملكية والملاحظات الداخلية', 'Ownership documents and internal notes') }}</span>
                             </h3>
 
                             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div>
-                                    <label class="mb-2 block text-xs font-bold text-[#2A4137]">رقم صك الملكية أو العقد</label>
+                                    <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('رقم صك الملكية أو العقد', 'Title deed or contract number') }}</label>
                                     <input
                                         v-model="form.deed_number"
                                         type="text"
-                                        placeholder="مثال: DEED-2024-998"
+                                        :placeholder="localizedText('مثال: DEED-2024-998', 'e.g. DEED-2024-998')"
                                         class="h-11 w-full rounded-xl border border-[#D8E4DC] bg-[#FAFDFB] px-3 text-xs text-[#18372E] focus:border-[#18705A] focus:bg-white"
                                     />
                                 </div>
 
                                 <div>
-                                    <label class="mb-2 block text-xs font-bold text-[#2A4137]">ملاحظات داخلية حول العقار</label>
+                                    <label class="mb-2 block text-xs font-bold text-[#2A4137]">{{ localizedText('ملاحظات داخلية حول العقار', 'Internal property notes') }}</label>
                                     <input
                                         v-model="form.notes"
                                         type="text"
-                                        placeholder="أي تفاصيل تشغيلية أو ملاحظات خاصة بإدارة العقار..."
+                                        :placeholder="localizedText('أي تفاصيل تشغيلية أو ملاحظات خاصة بإدارة العقار...', 'Operational details or notes for managing this property...')"
                                         class="h-11 w-full rounded-xl border border-[#D8E4DC] bg-[#FAFDFB] px-3 text-xs text-[#18372E] focus:border-[#18705A] focus:bg-white"
                                     />
                                 </div>
@@ -1444,14 +1511,14 @@ function submit() {
                         class="space-y-6 rounded-3xl border border-[#E3EAE6] bg-white p-6 shadow-sm sm:p-8"
                     >
                         <div class="border-b border-[#EAEFEA] pb-5">
-                            <span class="text-xs font-bold text-[#18705A]">الخطوة الرابعة</span>
+                            <span class="text-xs font-bold text-[#18705A]">{{ localizedText('الخطوة الرابعة', 'Step 4') }}</span>
                             <div class="flex items-center justify-between">
                                 <div>
-                                    <h2 class="mt-1 text-xl font-black text-[#18372E]">توليد وتكوين الوحدات تلقائياً</h2>
+                                    <h2 class="mt-1 text-xl font-black text-[#18372E]">{{ localizedText('توليد وتكوين الوحدات تلقائياً', 'Generate and organize units') }}</h2>
                                     <p class="mt-1 text-sm text-[#65766F]">
-                                        هيكل الوحدات يتبع طبيعة
+                                        {{ localizedText('هيكل الوحدات يتبع طبيعة', 'The unit structure is tailored to the') }}
                                         <span class="font-bold text-[#18705A]">{{ selectedTypeDetails.label }}</span>
-                                        مباشرة دون تكرار أو علاقات غير صالحة.
+                                        {{ localizedText('مباشرة دون تكرار أو علاقات غير صالحة.', 'without duplicates or invalid relationships.') }}
                                     </p>
                                 </div>
                                 <label class="flex cursor-pointer items-center gap-2 rounded-2xl bg-[#EFF7F2] px-4 py-2 text-xs font-bold text-[#18705A]">
@@ -1460,7 +1527,7 @@ function submit() {
                                         v-model="autoGenEnabled"
                                         class="size-4 rounded text-[#18705A] focus:ring-[#18705A]"
                                     />
-                                    <span>تفعيل التوليد السريع للوحدات</span>
+                                    <span>{{ localizedText('تفعيل التوليد السريع للوحدات', 'Enable quick unit generation') }}</span>
                                 </label>
                             </div>
                         </div>
@@ -1475,9 +1542,9 @@ function submit() {
                                         <Store class="size-5" />
                                     </span>
                                     <div>
-                                        <h4 class="text-sm font-black text-[#18372E]">توليد المحل التجاري المستقل</h4>
+                                        <h4 class="text-sm font-black text-[#18372E]">{{ localizedText('توليد المحل التجاري المستقل', 'Generate a standalone commercial unit') }}</h4>
                                         <p class="mt-1 text-xs leading-5 text-[#65766F]">
-                                            المحل التجاري هو وحدة تأجيرية واحدة مستقلة بذاتها. لا يتم توليد أدوار سكنية أو شقق أو غرف أو أسرة لمحل تجاري.
+                                            {{ localizedText('المحل التجاري هو وحدة تأجيرية واحدة مستقلة بذاتها. لا يتم توليد أدوار سكنية أو شقق أو غرف أو أسرة لمحل تجاري.', 'A commercial shop is one standalone rentable unit. Residential floors, apartments, rooms, and beds are not generated for it.') }}
                                         </p>
                                     </div>
                                 </div>
@@ -1489,7 +1556,7 @@ function submit() {
                                         class="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-[#18705A] px-4 text-xs font-bold text-white shadow-sm transition hover:bg-[#105742]"
                                     >
                                         <Sparkles class="size-4" />
-                                        <span>تحديث بيانات المحل</span>
+                                        <span>{{ localizedText('تحديث بيانات المحل', 'Refresh shop details') }}</span>
                                     </button>
                                 </div>
                             </div>
@@ -1499,9 +1566,9 @@ function submit() {
                             <!-- ---------------------------------------------------- -->
                             <div v-else-if="form.property_type === 'apartment'" class="space-y-4 rounded-2xl border border-[#D8E4DC] bg-[#FAFDFB] p-5">
                                 <div>
-                                    <h4 class="text-sm font-black text-[#18372E]">طريقة تأجير الشقة وهيكلة الوحدات</h4>
+                                    <h4 class="text-sm font-black text-[#18372E]">{{ localizedText('طريقة تأجير الشقة وهيكلة الوحدات', 'Apartment rental and unit structure') }}</h4>
                                     <p class="mt-1 text-xs text-[#65766F]">
-                                        حدد كيف ستقوم بتأجير هذه الشقة ليتم بناء شجرة الوحدات وقابليتها للفوترة بدقة:
+                                        {{ localizedText('حدد كيف ستقوم بتأجير هذه الشقة ليتم بناء شجرة الوحدات وقابليتها للفوترة بدقة:', 'Choose how to rent this apartment to build the unit hierarchy and billing structure:') }}
                                     </p>
                                 </div>
 
@@ -1510,7 +1577,7 @@ function submit() {
                                     <button
                                         type="button"
                                         @click="aptRentalMode = 'whole'; generateUnitsForApartment()"
-                                        class="flex flex-col justify-between rounded-xl border p-3.5 text-right transition"
+                                        class="flex flex-col justify-between rounded-xl border p-3.5 text-start transition"
                                         :class="[
                                             aptRentalMode === 'whole'
                                                 ? 'border-[#18705A] bg-[#EFF7F2] ring-1 ring-[#18705A]'
@@ -1519,20 +1586,20 @@ function submit() {
                                     >
                                         <div>
                                             <div class="flex items-center justify-between">
-                                                <span class="text-xs font-black text-[#18372E]">1. تأجير الشقة بالكامل</span>
+                                                <span class="text-xs font-black text-[#18372E]">{{ localizedText('1. تأجير الشقة بالكامل', '1. Rent the entire apartment') }}</span>
                                                 <Home class="size-4 text-[#18705A]" />
                                             </div>
                                             <p class="mt-1.5 text-[11px] leading-4 text-[#65766F]">
-                                                تأجير الشقة كعقد واحد متكامل لمستأجر واحد (النمط التقليدي).
+                                                {{ localizedText('تأجير الشقة كعقد واحد متكامل لمستأجر واحد (النمط التقليدي).', 'Rent the apartment to one renter under a single lease (traditional setup).') }}
                                             </p>
                                         </div>
-                                        <span class="mt-3 text-[10px] font-bold text-[#18705A]">وحدة واحدة قابلة للتأجير</span>
+                                        <span class="mt-3 text-[10px] font-bold text-[#18705A]">{{ localizedText('وحدة واحدة قابلة للتأجير', 'One rentable unit') }}</span>
                                     </button>
 
                                     <button
                                         type="button"
                                         @click="aptRentalMode = 'rooms'; generateUnitsForApartment()"
-                                        class="flex flex-col justify-between rounded-xl border p-3.5 text-right transition"
+                                        class="flex flex-col justify-between rounded-xl border p-3.5 text-start transition"
                                         :class="[
                                             aptRentalMode === 'rooms'
                                                 ? 'border-[#18705A] bg-[#EFF7F2] ring-1 ring-[#18705A]'
@@ -1541,20 +1608,20 @@ function submit() {
                                     >
                                         <div>
                                             <div class="flex items-center justify-between">
-                                                <span class="text-xs font-black text-[#18372E]">2. تأجير الغرف المستقلة</span>
+                                                <span class="text-xs font-black text-[#18372E]">{{ localizedText('2. تأجير الغرف المستقلة', '2. Rent individual rooms') }}</span>
                                                 <DoorOpen class="size-4 text-[#18705A]" />
                                             </div>
                                             <p class="mt-1.5 text-[11px] leading-4 text-[#65766F]">
-                                                تأجير كل غرفة داخل الشقة بعقد منفصل (سكن مشترك / مغتربين).
+                                                {{ localizedText('تأجير كل غرفة داخل الشقة بعقد منفصل (سكن مشترك / مغتربين).', 'Rent each room under a separate lease (shared housing / residents).') }}
                                             </p>
                                         </div>
-                                        <span class="mt-3 text-[10px] font-bold text-[#18705A]">الغرف فقط قابلة للتأجير</span>
+                                        <span class="mt-3 text-[10px] font-bold text-[#18705A]">{{ localizedText('الغرف فقط قابلة للتأجير', 'Only rooms are rentable') }}</span>
                                     </button>
 
                                     <button
                                         type="button"
                                         @click="aptRentalMode = 'beds'; generateUnitsForApartment()"
-                                        class="flex flex-col justify-between rounded-xl border p-3.5 text-right transition"
+                                        class="flex flex-col justify-between rounded-xl border p-3.5 text-start transition"
                                         :class="[
                                             aptRentalMode === 'beds'
                                                 ? 'border-[#18705A] bg-[#EFF7F2] ring-1 ring-[#18705A]'
@@ -1563,14 +1630,14 @@ function submit() {
                                     >
                                         <div>
                                             <div class="flex items-center justify-between">
-                                                <span class="text-xs font-black text-[#18372E]">3. تأجير الأسرّة / تأجير مرن</span>
+                                                <span class="text-xs font-black text-[#18372E]">{{ localizedText('3. تأجير الأسرّة / تأجير مرن', '3. Rent beds / flexible rental') }}</span>
                                                 <Bed class="size-4 text-[#18705A]" />
                                             </div>
                                             <p class="mt-1.5 text-[11px] leading-4 text-[#65766F]">
-                                                تأجير بالسرير أو بالغرفة بالكامل بمرونة (سكن طلاب / كوادر / شباب وبنات).
+                                                {{ localizedText('تأجير بالسرير أو بالغرفة بالكامل بمرونة (سكن طلاب / كوادر / شباب وبنات).', 'Rent by the bed or by the entire room (student or shared housing).') }}
                                             </p>
                                         </div>
-                                        <span class="mt-3 text-[10px] font-bold text-[#18705A]">مرونة كاملة: بالسرير أو بالغرفة</span>
+                                        <span class="mt-3 text-[10px] font-bold text-[#18705A]">{{ localizedText('مرونة كاملة: بالسرير أو بالغرفة', 'Flexible: rent by bed or room') }}</span>
                                     </button>
                                 </div>
 
@@ -1578,7 +1645,7 @@ function submit() {
                                 <div v-if="aptRentalMode === 'rooms' || aptRentalMode === 'beds'" class="mt-4 border-t border-[#E3EAE6] pt-4">
                                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                         <div>
-                                            <label class="mb-1.5 block text-xs font-bold text-[#18372E]">عدد الغرف بالشقة</label>
+                                            <label class="mb-1.5 block text-xs font-bold text-[#18372E]">{{ localizedText('عدد الغرف بالشقة', 'Number of rooms in the apartment') }}</label>
                                             <input
                                                 v-model.number="aptRoomsCount"
                                                 type="number"
@@ -1589,7 +1656,7 @@ function submit() {
                                         </div>
 
                                         <div v-if="aptRentalMode === 'beds'">
-                                            <label class="mb-1.5 block text-xs font-bold text-[#18372E]">عدد الأسرّة في كل غرفة</label>
+                                            <label class="mb-1.5 block text-xs font-bold text-[#18372E]">{{ localizedText('عدد الأسرّة في كل غرفة', 'Beds per room') }}</label>
                                             <input
                                                 v-model.number="aptBedsPerRoom"
                                                 type="number"
@@ -1606,14 +1673,14 @@ function submit() {
                                                 class="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-[#18705A] px-4 text-xs font-bold text-white shadow-sm transition hover:bg-[#105742]"
                                             >
                                                 <Sparkles class="size-4" />
-                                                <span>تطبيق وإعادة التوليد</span>
+                                                <span>{{ localizedText('تطبيق وإعادة التوليد', 'Apply and regenerate') }}</span>
                                             </button>
                                         </div>
                                     </div>
 
                                     <div v-if="aptRentalMode === 'beds'" class="mt-3 p-3 rounded-xl bg-[#EFF7F2] border border-[#D8E4DC] text-[11px] text-[#18705A] flex items-center gap-2">
                                         <Info class="size-4 shrink-0" />
-                                        <span>مرونة كاملة: يمكنك تأجير بعض الغرف كأسرّة فردية وغرف أخرى كغرفة مستقلة بالكامل (مثلاً غرفتان بالأسرّة وغرفة كغرفة كاملة)، أو حذف الأسرّة من أي غرفة في خطوة المراجعة التالية.</span>
+                                        <span>{{ localizedText('مرونة كاملة: يمكنك تأجير بعض الغرف كأسرّة فردية وغرف أخرى كغرفة مستقلة بالكامل (مثلاً غرفتان بالأسرّة وغرفة كغرفة كاملة)، أو حذف الأسرّة من أي غرفة في خطوة المراجعة التالية.', 'Flexible setup: rent some rooms by the bed and others as a whole room (for example, two rooms by bed and one as a whole room), or remove beds from any room in the review step.') }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -1622,10 +1689,10 @@ function submit() {
                             <!-- WORKFLOW C: عمارة (Building) Generator Config         -->
                             <!-- ---------------------------------------------------- -->
                             <div v-else-if="form.property_type === 'building'" class="rounded-2xl border border-[#D8E4DC] bg-[#FAFDFB] p-5">
-                                <h4 class="mb-3 text-sm font-black text-[#18372E]">إعدادات أدوار وشقق ومحلات العمارة</h4>
+                                <h4 class="mb-3 text-sm font-black text-[#18372E]">{{ localizedText('إعدادات أدوار وشقق ومحلات العمارة', 'Building floors, apartments, and shops') }}</h4>
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
                                     <div>
-                                        <label class="mb-1.5 block text-xs font-bold text-[#18372E]">عدد الأدوار السكنية</label>
+                                        <label class="mb-1.5 block text-xs font-bold text-[#18372E]">{{ localizedText('عدد الأدوار السكنية', 'Number of residential floors') }}</label>
                                         <input
                                             v-model.number="genFloorsCount"
                                             type="number"
@@ -1636,7 +1703,7 @@ function submit() {
                                     </div>
 
                                     <div>
-                                        <label class="mb-1.5 block text-xs font-bold text-[#18372E]">شقق في كل دور</label>
+                                        <label class="mb-1.5 block text-xs font-bold text-[#18372E]">{{ localizedText('شقق في كل دور', 'Apartments per floor') }}</label>
                                         <input
                                             v-model.number="genUnitsPerFloor"
                                             type="number"
@@ -1647,13 +1714,13 @@ function submit() {
                                     </div>
 
                                     <div>
-                                        <label class="mb-1.5 block text-xs font-bold text-[#18372E]">نمط الترقيم</label>
+                                        <label class="mb-1.5 block text-xs font-bold text-[#18372E]">{{ localizedText('نمط الترقيم', 'Numbering pattern') }}</label>
                                         <select
                                             v-model="genNamingPattern"
                                             class="h-10 w-full rounded-xl border border-[#D8E4DC] bg-white px-3 text-xs font-bold text-[#18372E]"
                                         >
-                                            <option value="floor_number">رقم الدور (101, 102, 201...)</option>
-                                            <option value="sequential">تسلسلي (شقة 1, شقة 2...)</option>
+                                            <option value="floor_number">{{ localizedText('رقم الدور (101, 102, 201...)', 'Floor-based (101, 102, 201...)') }}</option>
+                                            <option value="sequential">{{ localizedText('تسلسلي (شقة 1, شقة 2...)', 'Sequential (Apartment 1, Apartment 2...)') }}</option>
                                         </select>
                                     </div>
 
@@ -1664,7 +1731,7 @@ function submit() {
                                             class="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-[#18705A] px-4 text-xs font-bold text-white shadow-sm transition hover:bg-[#105742]"
                                         >
                                             <Sparkles class="size-4" />
-                                            <span>إعادة توليد الوحدات</span>
+                                            <span>{{ localizedText('إعادة توليد الوحدات', 'Regenerate units') }}</span>
                                         </button>
                                     </div>
                                 </div>
@@ -1677,11 +1744,11 @@ function submit() {
                                             v-model="genIncludeGroundShops"
                                             class="size-4 rounded text-[#18705A] focus:ring-[#18705A]"
                                         />
-                                        <span>تضمين محلات تجارية في الدور الأرضي للعمارة</span>
+                                        <span>{{ localizedText('تضمين محلات تجارية في الدور الأرضي للعمارة', 'Include shops on the building ground floor') }}</span>
                                     </label>
 
                                     <div v-if="genIncludeGroundShops" class="flex items-center gap-2">
-                                        <span class="text-xs text-[#65766F]">عدد المحلات الأرضية:</span>
+                                        <span class="text-xs text-[#65766F]">{{ localizedText('عدد المحلات الأرضية:', 'Ground-floor shops:') }}</span>
                                         <input
                                             v-model.number="genShopsCount"
                                             type="number"
@@ -1697,10 +1764,10 @@ function submit() {
                             <!-- WORKFLOW D: مركز تجاري / فيلا (Commercial / Villa)   -->
                             <!-- ---------------------------------------------------- -->
                             <div v-else-if="form.property_type === 'commercial'" class="rounded-2xl border border-[#D8E4DC] bg-[#FAFDFB] p-5">
-                                <h4 class="mb-3 text-sm font-black text-[#18372E]">إعدادات المركز / المجمع التجاري</h4>
+                                <h4 class="mb-3 text-sm font-black text-[#18372E]">{{ localizedText('إعدادات المركز / المجمع التجاري', 'Commercial center / complex settings') }}</h4>
                                 <div class="flex items-center gap-4">
                                     <div>
-                                        <label class="mb-1.5 block text-xs font-bold text-[#18372E]">إجمالي عدد الوحدات والمكاتب التجارية</label>
+                                        <label class="mb-1.5 block text-xs font-bold text-[#18372E]">{{ localizedText('إجمالي عدد الوحدات والمكاتب التجارية', 'Total commercial units and offices') }}</label>
                                         <input
                                             v-model.number="commUnitsCount"
                                             type="number"
@@ -1716,28 +1783,28 @@ function submit() {
                                             class="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-[#18705A] px-4 text-xs font-bold text-white shadow-sm transition hover:bg-[#105742]"
                                         >
                                             <Sparkles class="size-4" />
-                                            <span>إعادة توليد الوحدات</span>
+                                            <span>{{ localizedText('إعادة توليد الوحدات', 'Regenerate units') }}</span>
                                         </button>
                                     </div>
                                 </div>
                             </div>
 
                             <div v-else-if="form.property_type === 'villa'" class="rounded-2xl border border-[#D8E4DC] bg-[#FAFDFB] p-5">
-                                <h4 class="mb-3 text-sm font-black text-[#18372E]">إعدادات الفيلا</h4>
+                                <h4 class="mb-3 text-sm font-black text-[#18372E]">{{ localizedText('إعدادات الفيلا', 'Villa settings') }}</h4>
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                     <div>
-                                        <label class="mb-1.5 block text-xs font-bold text-[#18372E]">نمط التأجير</label>
+                                        <label class="mb-1.5 block text-xs font-bold text-[#18372E]">{{ localizedText('نمط التأجير', 'Rental mode') }}</label>
                                         <select
                                             v-model="villaRentalMode"
                                             class="h-10 w-full rounded-xl border border-[#D8E4DC] bg-white px-3 text-xs font-bold text-[#18372E]"
                                         >
-                                            <option value="whole">الفيلا بالكامل (عقد واحد)</option>
-                                            <option value="rooms">مقسمة إلى أجنحة / غرف مستقلة</option>
+                                            <option value="whole">{{ localizedText('الفيلا بالكامل (عقد واحد)', 'Entire villa (one lease)') }}</option>
+                                            <option value="rooms">{{ localizedText('مقسمة إلى أجنحة / غرف مستقلة', 'Divided into separate suites / rooms') }}</option>
                                         </select>
                                     </div>
 
                                     <div v-if="villaRentalMode === 'rooms'">
-                                        <label class="mb-1.5 block text-xs font-bold text-[#18372E]">عدد الأجنحة / الغرف</label>
+                                        <label class="mb-1.5 block text-xs font-bold text-[#18372E]">{{ localizedText('عدد الأجنحة / الغرف', 'Number of suites / rooms') }}</label>
                                         <input
                                             v-model.number="villaRoomsCount"
                                             type="number"
@@ -1754,7 +1821,7 @@ function submit() {
                                             class="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-[#18705A] px-4 text-xs font-bold text-white shadow-sm transition hover:bg-[#105742]"
                                         >
                                             <Sparkles class="size-4" />
-                                            <span>إعادة توليد الوحدات</span>
+                                            <span>{{ localizedText('إعادة توليد الوحدات', 'Regenerate units') }}</span>
                                         </button>
                                     </div>
                                 </div>
@@ -1767,13 +1834,13 @@ function submit() {
                                 <div class="flex flex-wrap items-center justify-between gap-3">
                                     <div class="flex items-center gap-3">
                                         <h3 class="text-sm font-extrabold text-[#18372E]">
-                                            معاينة وتعديل الوحدات الناتجة
+                                            {{ localizedText('معاينة وتعديل الوحدات الناتجة', 'Preview and edit generated units') }}
                                         </h3>
                                         <span class="rounded-full bg-[#E5EEE8] px-2.5 py-0.5 text-xs font-black text-[#18705A]">
-                                            {{ form.units.length }} وحدة إجمالية
+                                            {{ form.units.length }} {{ localizedText('وحدة إجمالية', 'total units') }}
                                         </span>
                                         <span class="rounded-full bg-[#EFF7F2] px-2.5 py-0.5 text-xs font-bold text-[#163E3E] border border-[#DCEDE3]">
-                                            {{ totalBillableUnitsCount }} قابلة للتأجير المباشر
+                                            {{ totalBillableUnitsCount }} {{ localizedText('قابلة للتأجير المباشر', 'directly rentable') }}
                                         </span>
                                     </div>
 
@@ -1783,20 +1850,20 @@ function submit() {
                                         class="flex items-center gap-1 text-xs font-bold text-[#18705A] transition hover:underline"
                                     >
                                         <Plus class="size-3.5" />
-                                        <span>إضافة وحدة إضافية يدوياً</span>
+                                        <span>{{ localizedText('إضافة وحدة إضافية يدوياً', 'Add a unit manually') }}</span>
                                     </button>
                                 </div>
 
                                 <div class="max-h-96 overflow-y-auto rounded-2xl border border-[#E3EAE6] bg-[#FAFDFB]">
-                                    <table class="w-full text-right text-xs">
+                                    <table class="w-full text-start text-xs">
                                         <thead class="sticky top-0 bg-[#EFF5F1] text-[#334D41]">
                                             <tr>
-                                                <th class="p-3 font-bold">اسم الوحدة</th>
-                                                <th class="p-3 font-bold">الكود</th>
-                                                <th class="p-3 font-bold">النوع</th>
-                                                <th class="p-3 font-bold">الوحدة الأب (إن وجدت)</th>
-                                                <th class="p-3 font-bold text-center">قابلة للتأجير</th>
-                                                <th class="p-3 font-bold text-center">إجراء</th>
+                                                <th class="p-3 font-bold">{{ localizedText('اسم الوحدة', 'Unit name') }}</th>
+                                                <th class="p-3 font-bold">{{ localizedText('الكود', 'Code') }}</th>
+                                                <th class="p-3 font-bold">{{ localizedText('النوع', 'Type') }}</th>
+                                                <th class="p-3 font-bold">{{ localizedText('الوحدة الأب (إن وجدت)', 'Parent unit (if applicable)') }}</th>
+                                                <th class="p-3 font-bold text-center">{{ localizedText('قابلة للتأجير', 'Rentable') }}</th>
+                                                <th class="p-3 font-bold text-center">{{ localizedText('إجراء', 'Action') }}</th>
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-[#EAEFEA]">
@@ -1839,18 +1906,18 @@ function submit() {
                                                         class="h-8 rounded-lg border border-[#D8E4DC] bg-white px-2 text-xs font-bold text-[#18372E]"
                                                     >
                                                         <template v-if="form.property_type === 'shop'">
-                                                            <option value="shop">محل تجاري</option>
+                                                            <option value="shop">{{ localizedText('محل تجاري', 'Commercial shop') }}</option>
                                                         </template>
                                                         <template v-else-if="form.property_type === 'apartment'">
-                                                            <option value="apartment">شقة رئيسية</option>
-                                                            <option value="room">غرفة داخل الشقة</option>
-                                                            <option value="bed">سرير فردي</option>
+                                                            <option value="apartment">{{ localizedText('شقة رئيسية', 'Main apartment') }}</option>
+                                                            <option value="room">{{ localizedText('غرفة داخل الشقة', 'Room in apartment') }}</option>
+                                                            <option value="bed">{{ localizedText('سرير فردي', 'Individual bed') }}</option>
                                                         </template>
                                                         <template v-else>
-                                                            <option value="apartment">شقة سكنية</option>
-                                                            <option value="shop">محل تجاري</option>
-                                                            <option value="room">غرفة مستقلة</option>
-                                                            <option value="bed">سرير</option>
+                                                            <option value="apartment">{{ localizedText('شقة سكنية', 'Residential apartment') }}</option>
+                                                            <option value="shop">{{ localizedText('محل تجاري', 'Commercial shop') }}</option>
+                                                            <option value="room">{{ localizedText('غرفة مستقلة', 'Private room') }}</option>
+                                                            <option value="bed">{{ localizedText('سرير', 'Bed') }}</option>
                                                         </template>
                                                     </select>
                                                 </td>
@@ -1862,7 +1929,7 @@ function submit() {
                                                             v-model="unit.parent_temp_id"
                                                             class="h-8 w-36 rounded-lg border border-[#D8E4DC] bg-white px-2 text-[11px] text-[#18372E]"
                                                         >
-                                                            <option :value="null">-- اختر الشقة الأب --</option>
+                                                            <option :value="null">{{ localizedText('-- اختر الشقة الأب --', '-- Select parent apartment --') }}</option>
                                                             <option
                                                                 v-for="apt in availableApartmentParents"
                                                                 :key="apt.temp_id"
@@ -1877,7 +1944,7 @@ function submit() {
                                                             v-model="unit.parent_temp_id"
                                                             class="h-8 w-36 rounded-lg border border-[#D8E4DC] bg-white px-2 text-[11px] text-[#18372E]"
                                                         >
-                                                            <option :value="null">-- اختر الغرفة الأب --</option>
+                                                            <option :value="null">{{ localizedText('-- اختر الغرفة الأب --', '-- Select parent room --') }}</option>
                                                             <option
                                                                 v-for="rm in availableRoomParents"
                                                                 :key="rm.temp_id"
@@ -1888,7 +1955,7 @@ function submit() {
                                                         </select>
                                                     </div>
                                                     <span v-else class="text-[11px] text-[#8EA096]">
-                                                        وحدة رئيسية مستقلة
+                                                        {{ localizedText('وحدة رئيسية مستقلة', 'Standalone top-level unit') }}
                                                     </span>
                                                 </td>
 
@@ -1897,9 +1964,9 @@ function submit() {
                                                     <span
                                                         v-if="unit.unit_type === 'apartment' && form.units.some(u => u.parent_temp_id === unit.temp_id)"
                                                         class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold bg-[#EAEFEA] text-[#65766F]"
-                                                        title="شقة رئيسية مقسمة لغرف - يتم تأجير الغرف أو الأسرّة بداخلها"
+                                                        :title="localizedText('شقة رئيسية مقسمة لغرف - يتم تأجير الغرف أو الأسرّة بداخلها', 'Main apartment divided into rooms; rent the rooms or beds inside it')"
                                                     >
-                                                        شقة أب (غير مؤجرة مباشرة)
+                                                        {{ localizedText('شقة أب (غير مؤجرة مباشرة)', 'Parent apartment (not rented directly)') }}
                                                     </span>
                                                     <button
                                                         v-else
@@ -1909,7 +1976,7 @@ function submit() {
                                                         :class="unit.is_rentable ? 'bg-[#DCEDE3] text-[#18705A] hover:bg-[#c9e4d3]' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'"
                                                     >
                                                         <CheckCircle2 v-if="unit.is_rentable" class="size-3" />
-                                                        <span>{{ unit.is_rentable ? (unit.unit_type === 'room' && form.units.some(u => u.parent_temp_id === unit.temp_id) ? 'قابلة للتأجير (غرفة/أسرّة)' : 'قابلة للتأجير') : 'معطلة' }}</span>
+                                                        <span>{{ unit.is_rentable ? (unit.unit_type === 'room' && form.units.some(u => u.parent_temp_id === unit.temp_id) ? localizedText('قابلة للتأجير (غرفة/أسرّة)', 'Rentable (room/beds)') : localizedText('قابلة للتأجير', 'Rentable')) : localizedText('معطلة', 'Disabled') }}</span>
                                                     </button>
                                                 </td>
 
@@ -1934,9 +2001,9 @@ function submit() {
                             <span class="grid size-12 place-items-center rounded-2xl bg-[#EAEFEA] text-[#71857C] mx-auto">
                                 <DoorOpen class="size-6" />
                             </span>
-                            <h3 class="mt-3 text-sm font-bold text-[#18372E]">تم تخطي التوليد التلقائي للوحدات</h3>
+                            <h3 class="mt-3 text-sm font-bold text-[#18372E]">{{ localizedText('تم تخطي التوليد التلقائي للوحدات', 'Automatic unit generation was skipped') }}</h3>
                             <p class="mt-1 text-xs text-[#71857C]">
-                                يمكنك إنشاء العقار فارغاً ثم إضافة الوحدات والشقق وتقسيمها يدوياً لاحقاً في أي وقت.
+                                {{ localizedText('يمكنك إنشاء العقار فارغاً ثم إضافة الوحدات والشقق وتقسيمها يدوياً لاحقاً في أي وقت.', 'You can create the property without units and add or subdivide units manually later.') }}
                             </p>
                         </div>
                     </div>
@@ -1949,10 +2016,10 @@ function submit() {
                         class="space-y-6 rounded-3xl border border-[#E3EAE6] bg-white p-6 shadow-sm sm:p-8"
                     >
                         <div class="border-b border-[#EAEFEA] pb-5">
-                            <span class="text-xs font-bold text-[#18705A]">الخطوة الخامسة والأخيرة</span>
-                            <h2 class="mt-1 text-xl font-black text-[#18372E]">المراجعة الشاملة وتأكيد إنشاء العقار</h2>
+                            <span class="text-xs font-bold text-[#18705A]">{{ localizedText('الخطوة الخامسة والأخيرة', 'Step 5 — Final step') }}</span>
+                            <h2 class="mt-1 text-xl font-black text-[#18372E]">{{ localizedText('المراجعة الشاملة وتأكيد إنشاء العقار', 'Review and confirm property creation') }}</h2>
                             <p class="mt-1 text-sm text-[#65766F]">
-                                تحقق من ملخص بيانات العقار والوحدات قبل الحفظ والبدء في إدارة التأجير.
+                                {{ localizedText('تحقق من ملخص بيانات العقار والوحدات قبل الحفظ والبدء في إدارة التأجير.', 'Review the property and unit summary before saving and managing rentals.') }}
                             </p>
                         </div>
 
@@ -1960,9 +2027,9 @@ function submit() {
                         <div class="grid grid-cols-1 gap-6 sm:grid-cols-3">
                             <!-- Card 1: Property Identity -->
                             <div class="rounded-2xl border border-[#D8E4DC] bg-[#FAFDFB] p-5">
-                                <span class="text-xs font-extrabold text-[#18705A]">الهوية والنوع</span>
-                                <h3 class="mt-2 text-lg font-black text-[#18372E]">{{ form.name || 'بدون اسم' }}</h3>
-                                <p class="mt-1 text-xs text-[#65766F]">كود العقار: {{ form.code || 'غير محدد' }}</p>
+                                <span class="text-xs font-extrabold text-[#18705A]">{{ localizedText('الهوية والنوع', 'Identity and type') }}</span>
+                                <h3 class="mt-2 text-lg font-black text-[#18372E]">{{ form.name || localizedText('بدون اسم', 'Unnamed property') }}</h3>
+                                <p class="mt-1 text-xs text-[#65766F]">{{ localizedText('كود العقار:', 'Property code:') }} {{ form.code || localizedText('غير محدد', 'Not specified') }}</p>
 
                                 <div class="mt-4 flex items-center gap-2 rounded-xl bg-white p-2.5 border border-[#E3EAE6]">
                                     <span class="grid size-8 place-items-center rounded-lg bg-[#DCEDE3] text-[#18705A]">
@@ -1977,18 +2044,18 @@ function submit() {
                                 </div>
 
                                 <div v-if="form.property_type === 'shop' && form.commercial_activity" class="mt-3 text-xs text-[#18705A] font-semibold">
-                                    النشاط: {{ form.commercial_activity }}
+                                    {{ localizedText('النشاط:', 'Activity:') }} {{ form.commercial_activity }}
                                 </div>
                             </div>
 
                             <!-- Card 2: Location -->
                             <div class="rounded-2xl border border-[#D8E4DC] bg-[#FAFDFB] p-5">
-                                <span class="text-xs font-extrabold text-[#18705A]">العنوان والموقع</span>
+                                <span class="text-xs font-extrabold text-[#18705A]">{{ localizedText('العنوان والموقع', 'Address and location') }}</span>
                                 <h3 class="mt-2 text-sm font-bold text-[#18372E]">
                                     {{ form.city }} {{ form.district ? ` - ${form.district}` : '' }}
                                 </h3>
                                 <p class="mt-1 text-xs text-[#65766F]">
-                                    {{ form.street || 'الشارع غير محدد' }} {{ form.building_number ? ` (${form.building_number})` : '' }}
+                                    {{ form.street || localizedText('الشارع غير محدد', 'Street not specified') }} {{ form.building_number ? ` (${form.building_number})` : '' }}
                                 </p>
                                 <p v-if="form.property_type === 'apartment' && form.floor_number" class="mt-1 text-xs font-bold text-[#18705A]">
                                     {{ form.floor_number }}
@@ -2045,7 +2112,7 @@ function submit() {
                                     class="inline-flex items-center gap-1.5 rounded-xl bg-[#EFF7F2] px-3 py-1.5 text-xs font-bold text-[#18705A] border border-[#DCEDE3]"
                                 >
                                     <Check class="size-3.5" />
-                                    <span>{{ amenities_list.find((a) => a.id === amenityId)?.label || amenityId }}</span>
+                                    <span>{{ localizedAmenities.find((amenity) => amenity.id === amenityId)?.label || amenityId }}</span>
                                 </span>
                             </div>
                         </div>

@@ -10,8 +10,10 @@ use App\Models\Payment;
 use App\Models\RentCharge;
 use App\Models\Renter;
 use App\Models\SecurityDepositPayment;
+use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 
 class WhatsAppService
 {
@@ -73,12 +75,14 @@ class WhatsAppService
                 'rent_charge_id' => $rentChargeId,
                 'recipient_phone' => $phone,
                 'template_name' => $templateName,
+                'payload_parameters' => $parameters,
                 'deduplication_key' => $deduplicationKey,
                 'scheduled_at' => now(),
             ]);
 
             $log->attempts = ($log->attempts ?? 0) + 1;
             $log->status = 'pending';
+            $log->payload_parameters = $parameters;
             $log->save();
 
             // Execute via Gateway
@@ -100,26 +104,15 @@ class WhatsAppService
      */
     public function queuePaymentReceipt(Payment $payment): void
     {
-        $renter = $payment->renter;
-        if (! $renter || empty($renter->phone)) {
-            return;
-        }
-
-        $deduplicationKey = "payment_receipt_{$payment->id}";
-
-        dispatch(new SendWhatsAppMessageJob(
+        $this->queueReceiptMessage(
             workspaceId: $payment->workspace_id,
-            renterId: $renter->id,
-            phone: $renter->phone,
-            templateName: 'payment_receipt_instant_ar',
-            parameters: [
-                'renter_name' => $renter->name,
-                'amount' => number_format((float) $payment->amount, 2),
-                'receipt_no' => $payment->reference ?? "REC-{$payment->id}",
-                'link' => url("/payments/{$payment->id}"),
-            ],
-            deduplicationKey: $deduplicationKey
-        ));
+            renter: $payment->renter,
+            amount: (float) $payment->amount,
+            reference: $payment->reference ?? "REC-{$payment->id}",
+            signedRouteName: 'public.receipts.show',
+            routeParams: ['payment' => $payment->id],
+            deduplicationKey: "payment_receipt_{$payment->id}"
+        );
     }
 
     /**
@@ -128,27 +121,53 @@ class WhatsAppService
     public function queueSecurityDepositReceipt(SecurityDepositPayment $payment): void
     {
         $lease = $payment->lease;
-        $renter = $lease?->renter;
 
+        $this->queueReceiptMessage(
+            workspaceId: $payment->workspace_id,
+            renter: $lease?->renter,
+            amount: (float) $payment->amount,
+            reference: $payment->reference ?? "DEP-{$payment->id}",
+            signedRouteName: 'public.deposits.show',
+            routeParams: ['payment' => $payment->id],
+            deduplicationKey: "security_deposit_receipt_{$payment->id}",
+            leaseId: $lease?->id
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $routeParams
+     */
+    private function queueReceiptMessage(
+        int $workspaceId,
+        ?Renter $renter,
+        float $amount,
+        string $reference,
+        string $signedRouteName,
+        array $routeParams,
+        string $deduplicationKey,
+        ?int $leaseId = null
+    ): void {
         if (! $renter || empty($renter->phone)) {
             return;
         }
 
-        $deduplicationKey = "security_deposit_receipt_{$payment->id}";
+        $workspace = Workspace::find($workspaceId);
+        $currency = $workspace?->currencySymbol() ?? 'ج.م';
+        $link = URL::signedRoute($signedRouteName, $routeParams);
 
         dispatch(new SendWhatsAppMessageJob(
-            workspaceId: $payment->workspace_id,
+            workspaceId: $workspaceId,
             renterId: $renter->id,
             phone: $renter->phone,
             templateName: 'payment_receipt_instant_ar',
             parameters: [
                 'renter_name' => $renter->name,
-                'amount' => number_format((float) $payment->amount, 2),
-                'receipt_no' => $payment->reference ?? "DEP-{$payment->id}",
-                'link' => url("/leases/{$lease->id}"),
+                'amount' => number_format($amount, 2).' '.$currency,
+                'receipt_no' => $reference,
+                'link' => $link,
             ],
             deduplicationKey: $deduplicationKey,
-            leaseId: $lease->id
+            leaseId: $leaseId
         ));
     }
 
@@ -157,31 +176,12 @@ class WhatsAppService
      */
     public function queueRentDueReminder(RentCharge $charge): void
     {
-        $lease = $charge->lease;
-        $renter = $lease?->renter;
-
-        if (! $renter || empty($renter->phone) || $charge->is_fully_paid) {
-            return;
-        }
-
-        $dueDateStr = $charge->due_date->format('Y-m-d');
-        $deduplicationKey = "rent_due_{$charge->id}_{$dueDateStr}";
-
-        dispatch(new SendWhatsAppMessageJob(
-            workspaceId: $charge->workspace_id,
-            renterId: $renter->id,
-            phone: $renter->phone,
+        $this->queueChargeMessage(
+            charge: $charge,
             templateName: 'rent_due_reminder_ar',
-            parameters: [
-                'renter_name' => $renter->name,
-                'unit' => $lease->unit->name ?? 'الوحدة',
-                'amount' => number_format($charge->outstanding_balance, 2),
-                'due_date' => $dueDateStr,
-            ],
-            deduplicationKey: $deduplicationKey,
-            leaseId: $lease->id,
-            rentChargeId: $charge->id
-        ));
+            dedupPrefix: 'rent_due',
+            amountBeforeDueDate: true
+        );
     }
 
     /**
@@ -189,27 +189,55 @@ class WhatsAppService
      */
     public function queueOverdueNotice(RentCharge $charge): void
     {
-        $lease = $charge->lease;
-        $renter = $lease?->renter;
+        $this->queueChargeMessage(
+            charge: $charge,
+            templateName: 'overdue_notice_ar',
+            dedupPrefix: 'overdue_notice',
+            amountBeforeDueDate: false
+        );
+    }
 
-        if (! $renter || empty($renter->phone) || $charge->is_fully_paid) {
+    private function queueChargeMessage(
+        RentCharge $charge,
+        string $templateName,
+        string $dedupPrefix,
+        bool $amountBeforeDueDate
+    ): void {
+        $lease = $charge->lease;
+        if (! $lease || $charge->is_fully_paid) {
             return;
         }
 
-        $dueDateStr = $charge->due_date->format('Y-m-d');
-        $deduplicationKey = "overdue_notice_{$charge->id}_{$dueDateStr}";
+        $renter = $lease->renter;
+        if (! $renter || empty($renter->phone)) {
+            return;
+        }
+
+        $dueDate = $charge->due_date;
+        $dueDateStr = $dueDate->format('d/m/Y');
+        $deduplicationKey = "{$dedupPrefix}_{$charge->id}_".$dueDate->format('Y-m-d');
+        $currency = $lease->workspace?->currencySymbol() ?? 'ج.م';
+        $formattedAmount = number_format($charge->outstanding_balance, 2).' '.$currency;
+
+        $parameters = [
+            'renter_name' => $renter->name,
+            'unit' => $lease->unit->name ?? 'الوحدة',
+        ];
+
+        if ($amountBeforeDueDate) {
+            $parameters['amount'] = $formattedAmount;
+            $parameters['due_date'] = $dueDateStr;
+        } else {
+            $parameters['due_date'] = $dueDateStr;
+            $parameters['amount'] = $formattedAmount;
+        }
 
         dispatch(new SendWhatsAppMessageJob(
             workspaceId: $charge->workspace_id,
             renterId: $renter->id,
             phone: $renter->phone,
-            templateName: 'overdue_notice_ar',
-            parameters: [
-                'renter_name' => $renter->name,
-                'unit' => $lease->unit->name ?? 'الوحدة',
-                'due_date' => $dueDateStr,
-                'amount' => number_format($charge->outstanding_balance, 2),
-            ],
+            templateName: $templateName,
+            parameters: $parameters,
             deduplicationKey: $deduplicationKey,
             leaseId: $lease->id,
             rentChargeId: $charge->id

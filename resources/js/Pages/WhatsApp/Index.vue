@@ -22,6 +22,7 @@ interface LogItem {
     template_name: string;
     status: string;
     status_label: string;
+    error_message?: string | null;
     scheduled_at: string;
     sent_at: string;
 }
@@ -141,9 +142,16 @@ const sendTestMessage = () => {
                         </div>
 
                         <!-- نص المعاينة للرسالة -->
-                        <div class="p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] text-xs text-[#163E3E] leading-relaxed font-sans">
+                        <div class="p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] text-xs text-[#163E3E] leading-relaxed font-sans whitespace-pre-line">
                             {{ tpl.sample }}
                         </div>
+                    </div>
+                    <div class="pt-2 flex items-center justify-between text-xs text-[#5B6770] border-t border-slate-100">
+                        <span>متغيرات ذكية: {اسم_المستأجر}، {الوحدة}، {تاريخ_الاستحقاق}، {المبلغ}</span>
+                        <span class="text-emerald-700 font-bold flex items-center gap-1">
+                            <CheckCheck class="w-4 h-4" />
+                            <span>معتمد من Meta</span>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -198,6 +206,9 @@ const sendTestMessage = () => {
                                 </td>
                                 <td class="py-4 px-6">
                                     <StatusBadge :status="log.status" :label="log.status_label" size="sm" />
+                                    <p v-if="log.status === 'failed' && log.error_message" class="text-[11px] text-rose-600 mt-1 max-w-xs truncate" :title="log.error_message">
+                                        {{ log.error_message }}
+                                    </p>
                                 </td>
                             </tr>
                         </tbody>

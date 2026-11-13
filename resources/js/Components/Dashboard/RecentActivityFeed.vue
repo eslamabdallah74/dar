@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { Coins, FileText, Wrench, Activity } from 'lucide-vue-next';
+import { useLocale } from '@/composables/useLocale';
+
+const { t } = useLocale();
 
 interface ActivityItem {
     id: string;
@@ -24,9 +27,9 @@ const safeActivities = computed(() => props.activities || []);
             <!-- الرأس -->
             <div class="flex items-center justify-between pb-3 border-b border-[#E8EFF4]">
                 <div>
-                    <h3 class="text-base font-bold text-[#163E3E]">سجل النشاط الأخير</h3>
+                    <h3 class="text-base font-bold text-[#163E3E]">{{ t('dashboard.recent_activity_title') }}</h3>
                     <p class="text-xs text-[#5B6770] font-medium mt-0.5">
-                        آخر العمليات الإدارية والمالية في مساحة العمل
+                        {{ t('dashboard.recent_activity_desc') }}
                     </p>
                 </div>
                 <div class="w-8 h-8 rounded-lg bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center">
@@ -67,8 +70,8 @@ const safeActivities = computed(() => props.activities || []);
                         </p>
                     </div>
 
-                    <!-- التوقيت النسبي بالعربية -->
-                    <span class="text-[10px] font-medium text-[#8E9CA6] shrink-0 font-mono mt-0.5" dir="rtl">
+                    <!-- التوقيت النسبي -->
+                    <span class="text-[10px] font-medium text-[#8E9CA6] shrink-0 font-mono mt-0.5">
                         {{ act.time_ago }}
                     </span>
                 </div>
@@ -79,12 +82,12 @@ const safeActivities = computed(() => props.activities || []);
                 v-else
                 class="py-8 px-4 rounded-xl border border-dashed border-[#D6E0E7] bg-[#F8FAFC] text-center my-4"
             >
-                <p class="text-xs text-[#5B6770] font-medium">لا توجد حركات أو أنشطة مسجلة حتى الآن.</p>
+                <p class="text-xs text-[#5B6770] font-medium">{{ t('dashboard.no_activities') }}</p>
             </div>
         </div>
 
         <div class="pt-3 border-t border-[#E8EFF4] text-[11px] text-[#5B6770] font-medium text-center">
-            تحديث فوري مع كل عملية سداد أو توثيق عقد جديد
+            {{ t('dashboard.activity_live_update') }}
         </div>
     </div>
 </template>

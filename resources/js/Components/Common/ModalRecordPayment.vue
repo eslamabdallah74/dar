@@ -170,7 +170,7 @@ const submit = () => {
         <!-- بطاقة النافذة المنبثقة (Modal Content) -->
         <div
             class="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] overflow-hidden z-10 animate-in fade-in zoom-in-95 max-h-[92vh] flex flex-col"
-            dir="rtl"
+
         >
             <!-- الرأس (Modal Header) -->
             <div class="px-6 py-5 border-b border-[#D6E0E7] flex items-center justify-between bg-[#F8FAFC] shrink-0">
@@ -327,7 +327,7 @@ const submit = () => {
                                 aria-label="المبلغ المقبوض"
                                 placeholder="0.00"
                                 required
-                                class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
+                                class="w-full h-11 pl-12 pr-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-start"
                                 :class="{ 'border-rose-500 bg-[#FFF5F5] ring-1 ring-rose-500': form.errors.amount }"
                             />
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#5B6770]">
@@ -350,7 +350,7 @@ const submit = () => {
                             type="date"
                             aria-label="تاريخ التحصيل الفعلي"
                             required
-                            class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
+                            class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-start"
                             :class="{ 'border-rose-500 bg-[#FFF5F5] ring-1 ring-rose-500': form.errors.paid_at }"
                         />
                         <div v-if="form.errors.paid_at" class="mt-1.5 p-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-1.5" style="background-color: #FFF1F2;">
@@ -368,7 +368,7 @@ const submit = () => {
                             v-model="form.record_date"
                             type="date"
                             aria-label="تاريخ القيد والتسجيل"
-                            class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
+                            class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-start"
                             :class="{ 'border-rose-500 bg-[#FFF5F5] ring-1 ring-rose-500': form.errors.record_date }"
                         />
                         <div v-if="form.errors.record_date" class="mt-1.5 p-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-1.5" style="background-color: #FFF1F2;">
@@ -413,7 +413,7 @@ const submit = () => {
                             type="text"
                             aria-label="رقم المرجع أو الإيصال"
                             placeholder="REC-XXXXXX"
-                            class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition font-mono text-right"
+                            class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition font-mono text-start"
                             :class="{ 'border-rose-500 bg-[#FFF5F5] ring-1 ring-rose-500': form.errors.reference }"
                         />
                         <div v-if="form.errors.reference" class="mt-1.5 p-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-1.5" style="background-color: #FFF1F2;">

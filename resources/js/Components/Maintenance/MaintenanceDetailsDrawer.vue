@@ -505,7 +505,7 @@ const close = () => {
     <div
         v-if="isOpen"
         class="fixed inset-0 z-50 overflow-hidden"
-        dir="rtl"
+
     >
         <!-- Backdrop -->
         <div
@@ -515,7 +515,7 @@ const close = () => {
 
         <section class="absolute inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10">
             <div class="w-screen max-w-2xl bg-white shadow-2xl flex flex-col border-l border-[#D6E0E7] transform transition duration-300 ease-in-out">
-                
+
                 <!-- 1. Drawer Header -->
                 <div class="p-5 sm:p-6 pb-4 border-b border-[#E8EFF4] bg-white sticky top-0 z-20">
                     <div class="flex items-start justify-between gap-3">
@@ -651,7 +651,7 @@ const close = () => {
 
                 <!-- 2. Scrollable Body Content -->
                 <div class="overflow-y-auto p-5 sm:p-6 space-y-5 flex-1">
-                    
+
                     <!-- Loading State -->
                     <div v-if="isLoading" class="py-16 text-center space-y-3">
                         <Loader2 class="w-8 h-8 text-[#163E3E] animate-spin mx-auto" />
@@ -679,7 +679,7 @@ const close = () => {
 
                         <!-- TAB 1: OVERVIEW & COST -->
                         <div v-if="activeTab === 'overview'" class="space-y-5">
-                            
+
                             <!-- الوصف الأساسي للبلاغ -->
                             <div class="p-4 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] space-y-2">
                                 <span class="text-xs font-bold text-[#163E3E] block">الوصف التفصيلي للبلاغ:</span>
@@ -769,7 +769,7 @@ const close = () => {
                                             </button>
                                         </div>
 
-                                        <div class="text-left space-y-1">
+                                        <div class="text-start space-y-1">
                                             <span class="text-[11px] block text-[#5B6770]">حالة السداد:</span>
                                             <span
                                                 class="text-xs font-bold px-2.5 py-0.5 rounded-md inline-block"
@@ -792,7 +792,7 @@ const close = () => {
                                                 min="0.5"
                                                 placeholder="0.00"
                                                 required
-                                                class="w-full h-9 pl-12 pr-3 rounded-lg border border-[#D6E0E7] bg-white text-xs font-bold text-[#163E3E] text-right"
+                                                class="w-full h-9 pl-12 pr-3 rounded-lg border border-[#D6E0E7] bg-white text-xs font-bold text-[#163E3E] text-start"
                                                 aria-label="تعديل تكلفة الصيانة"
                                             />
                                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#5B6770]">
@@ -870,7 +870,7 @@ const close = () => {
                                                 min="0.5"
                                                 placeholder="0.00"
                                                 required
-                                                class="w-full h-10 pl-12 pr-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#163E3E] text-right focus:bg-white"
+                                                class="w-full h-10 pl-12 pr-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm font-bold text-[#163E3E] text-start focus:bg-white"
                                                 aria-label="تكلفة الصيانة"
                                             />
                                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#5B6770]">
@@ -948,7 +948,7 @@ const close = () => {
 
                         <!-- TAB 2: ATTACHMENTS & PHOTOS -->
                         <div v-else-if="activeTab === 'attachments'" class="space-y-6">
-                            
+
                             <!-- Uploader Area -->
                             <div class="p-5 rounded-2xl border-2 border-dashed border-[#D6E0E7] bg-[#F8FAFC] text-center space-y-3">
                                 <div class="w-12 h-12 rounded-2xl bg-white shadow-2xs border border-[#D6E0E7] flex items-center justify-center mx-auto text-[#163E3E]">
@@ -1140,7 +1140,7 @@ const close = () => {
 
                         <!-- TAB 3: PROGRESS NOTES -->
                         <div v-else-if="activeTab === 'notes'" class="space-y-5">
-                            
+
                             <!-- Form to Add Note -->
                             <div class="p-4 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] space-y-3">
                                 <div>

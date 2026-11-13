@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n';
 import { router, usePage } from '@inertiajs/vue3';
 
 export function useLocale() {
-    const { locale } = useI18n();
+    const { locale, t } = useI18n();
     const page = usePage();
 
     const currentLocale = computed<'ar' | 'en'>({
@@ -45,6 +45,7 @@ export function useLocale() {
         currentLocale,
         isRtl,
         dir,
+        t,
         switchLocale,
     };
 }

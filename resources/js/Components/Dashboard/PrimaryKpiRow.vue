@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
+import { useLocale } from '@/composables/useLocale';
 import {
     Building2,
     Home,
@@ -37,28 +38,30 @@ const emit = defineEmits<{
     (e: 'selectKpi', key: 'properties' | 'units' | 'occupancy' | 'collected'): void;
 }>();
 
+const { isRtl } = useLocale();
+
 const propertiesKpi = computed(() => props.kpis.properties || {
-    label: 'إجمالي العقارات',
+    label: '',
     value: '0',
-    subtitle: 'لا توجد عقارات مسجلة',
+    subtitle: '',
 });
 
 const unitsKpi = computed(() => props.kpis.units || {
-    label: 'الوحدات القابلة للتأجير',
+    label: '',
     value: '0',
-    subtitle: 'لا توجد وحدات نشطة',
+    subtitle: '',
 });
 
 const occupancyKpi = computed(() => props.kpis.occupancy || {
-    label: 'معدل الإشغال',
+    label: '',
     value: '0%',
-    subtitle: '0 مشغولة · 0 شاغرة',
+    subtitle: '',
 });
 
 const collectedKpi = computed(() => props.kpis.collected || props.kpis.collections || {
-    label: 'الإيجارات المحصلة هذا الشهر',
+    label: '',
     value: '0',
-    subtitle: 'من إجمالي 0 مستحقة',
+    subtitle: '',
 });
 
 const occupancyNumber = computed(() => {
@@ -81,7 +84,7 @@ const occupancyNumber = computed(() => {
         >
             <div class="flex items-center justify-between">
                 <span class="text-xs font-semibold text-[#5B6770] group-hover:text-[#163E3E] transition-colors">
-                    {{ propertiesKpi.label || propertiesKpi.title }}
+                    {{ $t('dashboard.kpi_properties') }}
                 </span>
                 <div class="w-10 h-10 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center group-hover:scale-105 group-hover:bg-[#163E3E] group-hover:text-white transition-all shadow-2xs">
                     <Building2 class="h-4 w-4 stroke-[2.2]" />
@@ -93,7 +96,7 @@ const occupancyNumber = computed(() => {
                     <div class="text-3xl font-black text-[#163E3E] leading-none">
                         {{ propertiesKpi.value }}
                     </div>
-                    <ArrowUpLeft class="w-4 h-4 text-[#8E9CA6] group-hover:text-[#163E3E] group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                    <ArrowUpLeft class="w-4 h-4 text-[#8E9CA6] group-hover:text-[#163E3E] transition-all" :class="isRtl ? 'group-hover:-translate-x-0.5 group-hover:-translate-y-0.5' : 'scale-x-[-1] group-hover:translate-x-0.5 group-hover:-translate-y-0.5'" />
                 </div>
                 <p class="text-xs text-[#5B6770] font-medium mt-2 truncate">
                     {{ propertiesKpi.subtitle }}
@@ -113,7 +116,7 @@ const occupancyNumber = computed(() => {
         >
             <div class="flex items-center justify-between">
                 <span class="text-xs font-semibold text-[#5B6770] group-hover:text-sky-700 transition-colors">
-                    {{ unitsKpi.label || unitsKpi.title }}
+                    {{ $t('dashboard.kpi_units') }}
                 </span>
                 <div class="w-10 h-10 rounded-xl bg-sky-50 text-sky-700 flex items-center justify-center group-hover:scale-105 group-hover:bg-sky-600 group-hover:text-white transition-all shadow-2xs">
                     <Home class="h-4 w-4 stroke-[2.2]" />
@@ -125,7 +128,7 @@ const occupancyNumber = computed(() => {
                     <div class="text-3xl font-black text-[#163E3E] leading-none">
                         {{ unitsKpi.value }}
                     </div>
-                    <ArrowUpLeft class="w-4 h-4 text-[#8E9CA6] group-hover:text-sky-700 group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                    <ArrowUpLeft class="w-4 h-4 text-[#8E9CA6] group-hover:text-sky-700 transition-all" :class="isRtl ? 'group-hover:-translate-x-0.5 group-hover:-translate-y-0.5' : 'scale-x-[-1] group-hover:translate-x-0.5 group-hover:-translate-y-0.5'" />
                 </div>
                 <p class="text-xs text-[#5B6770] font-medium mt-2 truncate">
                     {{ unitsKpi.subtitle }}
@@ -145,7 +148,7 @@ const occupancyNumber = computed(() => {
         >
             <div class="flex items-center justify-between">
                 <span class="text-xs font-semibold text-[#5B6770] group-hover:text-emerald-700 transition-colors">
-                    {{ occupancyKpi.label || occupancyKpi.title }}
+                    {{ $t('dashboard.kpi_occupancy') }}
                 </span>
                 <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center group-hover:scale-105 group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-2xs">
                     <PieChart class="h-4 w-4 stroke-[2.2]" />
@@ -157,7 +160,7 @@ const occupancyNumber = computed(() => {
                     <div class="text-3xl font-black text-[#163E3E] leading-none">
                         {{ occupancyKpi.value }}
                     </div>
-                    <ArrowUpLeft class="w-4 h-4 text-[#8E9CA6] group-hover:text-emerald-700 group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                    <ArrowUpLeft class="w-4 h-4 text-[#8E9CA6] group-hover:text-emerald-700 transition-all" :class="isRtl ? 'group-hover:-translate-x-0.5 group-hover:-translate-y-0.5' : 'scale-x-[-1] group-hover:translate-x-0.5 group-hover:-translate-y-0.5'" />
                 </div>
                 <div class="mt-2 w-full bg-[#E8EFF4] h-1.5 rounded-full overflow-hidden">
                     <div
@@ -183,7 +186,7 @@ const occupancyNumber = computed(() => {
         >
             <div class="flex items-center justify-between">
                 <span class="text-xs font-semibold text-[#5B6770] group-hover:text-teal-700 transition-colors">
-                    {{ collectedKpi.label || collectedKpi.title }}
+                    {{ $t('dashboard.kpi_collected') }}
                 </span>
                 <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center group-hover:scale-105 group-hover:bg-teal-600 group-hover:text-white transition-all shadow-2xs">
                     <Wallet class="h-4 w-4 stroke-[2.2]" />
@@ -195,7 +198,7 @@ const occupancyNumber = computed(() => {
                     <div class="text-2xl sm:text-3xl font-black text-[#163E3E] leading-none">
                         {{ collectedKpi.value }}
                     </div>
-                    <ArrowUpLeft class="w-4 h-4 text-[#8E9CA6] group-hover:text-teal-700 group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                    <ArrowUpLeft class="w-4 h-4 text-[#8E9CA6] group-hover:text-teal-700 transition-all" :class="isRtl ? 'group-hover:-translate-x-0.5 group-hover:-translate-y-0.5' : 'scale-x-[-1] group-hover:translate-x-0.5 group-hover:-translate-y-0.5'" />
                 </div>
                 <p class="text-xs text-[#5B6770] font-medium mt-2 truncate">
                     {{ collectedKpi.subtitle }}

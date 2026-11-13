@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Database\QueryException;
@@ -8,6 +9,27 @@ test('registration screen can be rendered', function () {
     $response = $this->get('/register');
 
     $response->assertStatus(200);
+});
+
+test('registration preselects the requested plan and offers active plans', function () {
+    $businessPlan = Plan::factory()->create([
+        'name' => 'Business Plan',
+        'slug' => 'business',
+    ]);
+
+    Plan::factory()->create([
+        'is_active' => false,
+    ]);
+
+    $this->get('/register?plan=business')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Auth/Register')
+            ->where('initialPlanSlug', 'business')
+            ->where('selectedPlan.id', $businessPlan->id)
+            ->has('plans', 1)
+            ->where('plans.0.slug', 'business')
+        );
 });
 
 test('new users receive a workspace and are sent to the property setup wizard', function () {
@@ -34,6 +56,32 @@ test('new users receive a workspace and are sent to the property setup wizard', 
     $this->actingAs($user)
         ->get(route('properties.create'))
         ->assertInertia(fn ($page) => $page->component('Properties/Create'));
+});
+
+test('registration saves the requested plan for administrator review', function () {
+    $trialPlan = Plan::factory()->create(['slug' => 'trial']);
+    $businessPlan = Plan::factory()->create(['slug' => 'business']);
+
+    $response = $this->post('/register', [
+        'name' => 'Ahmed Mansour',
+        'email' => 'ahmed-business@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+        'plan' => 'business',
+    ]);
+
+    $response->assertRedirect(route('properties.create'));
+
+    $user = User::where('email', 'ahmed-business@example.com')->firstOrFail();
+    $workspace = Workspace::where('owner_user_id', $user->id)->firstOrFail();
+    expect($workspace->requested_plan_id)->toBe($businessPlan->id)
+        ->and($workspace->plan_request_status)->toBe('pending')
+        ->and($workspace->plan_requested_at)->not->toBeNull();
+
+    $this->assertDatabaseHas('workspace_subscriptions', [
+        'workspace_id' => $workspace->id,
+        'plan_id' => $trialPlan->id,
+    ]);
 });
 
 test('registration requires an email address', function () {

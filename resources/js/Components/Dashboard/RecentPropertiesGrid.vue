@@ -8,6 +8,9 @@ import {
     Layers,
     ArrowUpLeft,
 } from 'lucide-vue-next';
+import { useLocale } from '@/composables/useLocale';
+
+const { t, isRtl } = useLocale();
 
 interface PropertyItem {
     id: number;
@@ -35,6 +38,12 @@ function getIcon(type: string) {
             return Layers;
     }
 }
+
+function getPropertyTypeLabel(type: string, fallback: string): string {
+    const key = `properties.type_${type}`;
+    const translated = t(key);
+    return translated !== key ? translated : fallback;
+}
 </script>
 
 <template>
@@ -42,9 +51,9 @@ function getIcon(type: string) {
         <!-- الرأس وزر عرض الكل -->
         <div class="flex items-center justify-between pb-3 border-b border-[#E8EFF4]">
             <div>
-                <h3 class="text-base font-bold text-[#163E3E]">أحدث العقارات المسجلة</h3>
+                <h3 class="text-base font-bold text-[#163E3E]">{{ t('dashboard.recent_properties_title') }}</h3>
                 <p class="text-xs text-[#5B6770] font-medium mt-0.5">
-                    متابعة فورية ومباشرة لحالة الإشغال في كل عقار
+                    {{ t('dashboard.recent_properties_desc') }}
                 </p>
             </div>
 
@@ -52,8 +61,11 @@ function getIcon(type: string) {
                 :href="route('properties.index')"
                 class="text-xs font-bold text-[#163E3E] hover:text-[#102F2F] transition flex items-center gap-1 group"
             >
-                <span>عرض كل العقارات</span>
-                <ArrowLeft class="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
+                <span>{{ t('dashboard.view_all_properties') }}</span>
+                <ArrowLeft
+                    class="h-3.5 w-3.5 transition-transform"
+                    :class="isRtl ? 'group-hover:-translate-x-0.5' : 'group-hover:translate-x-0.5 rotate-180'"
+                />
             </Link>
         </div>
 
@@ -70,13 +82,13 @@ function getIcon(type: string) {
                     <div class="flex items-center justify-between gap-2">
                         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-[#E8F0F0] text-[#163E3E]">
                             <component :is="getIcon(prop.property_type)" class="w-3.5 h-3.5" />
-                            <span>{{ prop.property_type_label }}</span>
+                            <span>{{ getPropertyTypeLabel(prop.property_type, prop.property_type_label) }}</span>
                         </span>
                         <span
                             class="text-xs font-bold font-mono px-2 py-0.5 rounded-full"
                             :class="prop.occupancy_rate >= 80 ? 'bg-emerald-50 text-emerald-800' : (prop.occupancy_rate > 0 ? 'bg-amber-50 text-amber-800' : 'bg-slate-100 text-slate-700')"
                         >
-                            {{ prop.occupancy_rate }}% إشغال
+                            {{ t('dashboard.occupancy_rate_badge', { rate: prop.occupancy_rate }) }}
                         </span>
                     </div>
 
@@ -85,7 +97,10 @@ function getIcon(type: string) {
                         <h4 class="text-sm font-bold text-[#163E3E] group-hover:text-[#163E3E] transition line-clamp-1">
                             {{ prop.name }}
                         </h4>
-                        <ArrowUpLeft class="w-4 h-4 text-[#8E9CA6] group-hover:text-[#163E3E] group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0 mt-0.5 opacity-0 group-hover:opacity-100" />
+                        <ArrowUpLeft
+                            class="w-4 h-4 text-[#8E9CA6] group-hover:text-[#163E3E] transition-all shrink-0 mt-0.5 opacity-0 group-hover:opacity-100"
+                            :class="isRtl ? 'group-hover:-translate-x-0.5 group-hover:-translate-y-0.5' : 'group-hover:translate-x-0.5 group-hover:-translate-y-0.5 rotate-90'"
+                        />
                     </div>
 
                     <!-- العنوان -->
@@ -98,8 +113,8 @@ function getIcon(type: string) {
                 <!-- شريط الإشغال والوحدات -->
                 <div class="mt-4 pt-3 border-t border-[#E8EFF4] space-y-1.5">
                     <div class="flex items-center justify-between text-xs text-[#5B6770]">
-                        <span class="font-medium">{{ prop.units_count }} وحدة</span>
-                        <span class="font-semibold text-emerald-700">{{ prop.occupied_count }} مشغولة</span>
+                        <span class="font-medium">{{ t('dashboard.units_count', { count: prop.units_count }) }}</span>
+                        <span class="font-semibold text-emerald-700">{{ t('dashboard.units_occupied', { count: prop.occupied_count }) }}</span>
                     </div>
                     <div class="w-full h-1.5 bg-[#E8EFF4] rounded-full overflow-hidden">
                         <div
@@ -116,7 +131,7 @@ function getIcon(type: string) {
             v-else
             class="py-8 px-4 rounded-xl border border-dashed border-[#D6E0E7] bg-[#F8FAFC] text-center"
         >
-            <p class="text-xs text-[#5B6770] font-medium">لا توجد عقارات مسجلة بعد.</p>
+            <p class="text-xs text-[#5B6770] font-medium">{{ t('dashboard.no_properties_registered') }}</p>
         </div>
     </div>
 </template>

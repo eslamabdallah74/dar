@@ -42,16 +42,16 @@ const maintenancePercent = computed(() => {
             <!-- الرأس -->
             <div class="flex items-center justify-between">
                 <div>
-                    <h3 class="text-base font-bold text-[#163E3E]">ملخص إشغال الوحدات</h3>
+                    <h3 class="text-base font-bold text-[#163E3E]">{{ $t('dashboard.occupancy_summary_title') }}</h3>
                     <p class="text-xs text-[#5B6770] font-medium mt-0.5">
-                        {{ subtitle || 'توزيع الوحدات القابلة للتأجير' }}
+                        {{ subtitle || $t('dashboard.occupancy_summary_desc') }}
                     </p>
                 </div>
-                <div class="text-start sm:text-left">
+                <div class="text-start">
                     <span class="text-2xl font-black text-[#163E3E]">
                         {{ occupancyRate }}%
                     </span>
-                    <span class="text-[11px] text-[#5B6770] block font-medium">معدل الإشغال</span>
+                    <span class="text-[11px] text-[#5B6770] block font-medium">{{ $t('dashboard.occupancy_rate_label') }}</span>
                 </div>
             </div>
 
@@ -62,25 +62,25 @@ const maintenancePercent = computed(() => {
                     <div
                         class="bg-emerald-600 transition-all duration-700"
                         :style="{ width: `${occupiedPercent}%` }"
-                        :title="`مشغولة: ${occupiedUnits} وحدة (${occupiedPercent}%)`"
+                        :title="`${$t('dashboard.occupied')}: ${occupiedUnits} (${occupiedPercent}%)`"
                     ></div>
                     <!-- شاغرة -->
                     <div
                         class="bg-amber-400 transition-all duration-700"
                         :style="{ width: `${vacantPercent}%` }"
-                        :title="`شاغرة: ${vacantUnits} وحدة (${vacantPercent}%)`"
+                        :title="`${$t('dashboard.vacant')}: ${vacantUnits} (${vacantPercent}%)`"
                     ></div>
                     <!-- تحت الصيانة -->
                     <div
                         v-if="maintenanceUnits > 0"
                         class="bg-sky-500 transition-all duration-700"
                         :style="{ width: `${maintenancePercent}%` }"
-                        :title="`تحت الصيانة: ${maintenanceUnits} وحدة`"
+                        :title="`${$t('dashboard.maintenance')}: ${maintenanceUnits}`"
                     ></div>
                 </div>
 
                 <div class="text-[11px] text-[#5B6770] font-medium text-start">
-                    إجمالي {{ totalUnits }} وحدة مسجلة
+                    {{ $t('dashboard.total_units_registered', { total: totalUnits }) }}
                 </div>
             </div>
 
@@ -90,7 +90,7 @@ const maintenancePercent = computed(() => {
                 <div class="text-center p-2 rounded-xl bg-emerald-50/50">
                     <div class="flex items-center justify-center gap-1.5 text-xs font-bold text-emerald-800">
                         <span class="w-2 h-2 rounded-full bg-emerald-600"></span>
-                        <span>مشغولة</span>
+                        <span>{{ $t('dashboard.occupied') }}</span>
                     </div>
                     <div class="text-lg font-black font-mono text-emerald-900 mt-1">
                         {{ occupiedUnits }}
@@ -102,7 +102,7 @@ const maintenancePercent = computed(() => {
                 <div class="text-center p-2 rounded-xl bg-amber-50/50">
                     <div class="flex items-center justify-center gap-1.5 text-xs font-bold text-amber-800">
                         <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-                        <span>شاغرة</span>
+                        <span>{{ $t('dashboard.vacant') }}</span>
                     </div>
                     <div class="text-lg font-black font-mono text-amber-900 mt-1">
                         {{ vacantUnits }}
@@ -114,12 +114,12 @@ const maintenancePercent = computed(() => {
                 <div class="text-center p-2 rounded-xl bg-sky-50/50">
                     <div class="flex items-center justify-center gap-1.5 text-xs font-bold text-sky-800">
                         <span class="w-2 h-2 rounded-full bg-sky-500"></span>
-                        <span>صيانة</span>
+                        <span>{{ $t('dashboard.maintenance') }}</span>
                     </div>
                     <div class="text-lg font-black font-mono text-sky-900 mt-1">
                         {{ maintenanceUnits }}
                     </div>
-                    <span class="text-[10px] text-sky-700 font-medium">طلبات جارية</span>
+                    <span class="text-[10px] text-sky-700 font-medium">{{ maintenanceUnits }}</span>
                 </div>
             </div>
         </div>

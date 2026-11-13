@@ -222,7 +222,7 @@ const formatCurrency = (amount: number | null | undefined): string => {
                                 <input
                                     v-model="startDate"
                                     type="date"
-                                    class="w-full h-10 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
+                                    class="w-full h-10 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-start"
                                 />
                             </div>
                         </div>
@@ -234,7 +234,7 @@ const formatCurrency = (amount: number | null | undefined): string => {
                                 <input
                                     v-model="endDate"
                                     type="date"
-                                    class="w-full h-10 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-right"
+                                    class="w-full h-10 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition text-start"
                                 />
                             </div>
                         </div>
@@ -402,7 +402,7 @@ const formatCurrency = (amount: number | null | undefined): string => {
                                 {{ formatCurrency(stats.actual_maintenance_expenses ?? 0) }} {{ currency_symbol }}
                             </span>
                         </div>
-                        <div class="text-left">
+                        <div class="text-start">
                             <span class="text-[11px] text-amber-800 font-semibold block">بانتظار تحديد التكلفة:</span>
                             <span class="text-sm font-bold text-amber-800 font-mono">{{ stats.pending_cost_count }} طلب</span>
                         </div>
@@ -456,7 +456,7 @@ const formatCurrency = (amount: number | null | undefined): string => {
                     </div>
 
                     <div class="mt-4 overflow-x-auto">
-                        <table class="w-full text-right text-sm">
+                        <table class="w-full text-start text-sm">
                             <thead class="border-b border-[#D6E0E7] bg-[#F8FAFC] text-xs font-bold text-[#5B6770]">
                                 <tr>
                                     <th class="py-3 px-4">الشهر</th>

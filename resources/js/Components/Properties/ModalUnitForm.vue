@@ -167,7 +167,7 @@ const submit = () => {
 </script>
 
 <template>
-    <div v-if="show" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4" dir="rtl">
+    <div v-if="show" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4" >
         <!-- Backdrop -->
         <div @click="emit('close')" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs transition-opacity"></div>
 

@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { ArrowUpRight, TrendingUp } from 'lucide-vue-next';
+import { useLocale } from '@/composables/useLocale';
+
+const { t } = useLocale();
 
 interface IncomeHistoryItem {
     month: string;
@@ -20,11 +23,11 @@ const props = defineProps<{
 
 const hoveredIndex = ref<number | null>(null);
 
-const activeMonths = computed(() => props.months || ['مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر']);
+const activeMonths = computed(() => props.months || ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct']);
 const activeAmounts = computed(() => props.amounts || [0, 0, 0, 0, 0, 0]);
 
 const currencySymbol = computed(() => props.currencySymbol || 'ر.س');
-const currencyLabel = computed(() => props.currencyLabel || 'بالعملة المحلية');
+const currencyLabel = computed(() => props.currencyLabel || '');
 
 const totalIncome = computed(() => {
     if (props.totalCollected !== undefined) {
@@ -113,20 +116,20 @@ const growthPercentage = computed(() => {
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
                 <div class="flex items-center gap-2">
-                    <h3 class="text-base font-bold text-[#163E3E]">الإيرادات الإيجارية الشهرية</h3>
+                    <h3 class="text-base font-bold text-[#163E3E]">{{ t('dashboard.monthly_rental_income') }}</h3>
                     <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-[#E8F0F0] text-[#163E3E]">
-                        آخر 6 أشهر
+                        {{ t('dashboard.last_6_months') }}
                     </span>
                 </div>
                 <p class="text-xs text-[#5B6770] font-medium mt-1">
-                    صافي التحصيلات النقدية المستلمة فعلياً {{ currencyLabel }}
+                    {{ t('dashboard.net_collections_desc', { currency: currencyLabel }) }}
                 </p>
             </div>
 
             <!-- إجمالي التحصيل والشارة -->
             <div class="flex items-center gap-3 self-start sm:self-auto">
-                <div class="text-start sm:text-left">
-                    <span class="text-xs text-[#5B6770] font-medium block">إجمالي المحصّل</span>
+                <div class="text-start">
+                    <span class="text-xs text-[#5B6770] font-medium block">{{ t('dashboard.total_collected_label') }}</span>
                     <span class="text-xl font-black text-[#163E3E]">
                         {{ Number(totalIncome).toLocaleString() }} {{ currencySymbol }}
                     </span>
@@ -152,9 +155,9 @@ const growthPercentage = computed(() => {
                 <TrendingUp class="h-6 w-6 stroke-[1.75]" />
             </div>
             <div class="max-w-md">
-                <h4 class="text-sm font-bold text-[#163E3E]">لا توجد سجلات مدفوعات سابقة حتى الآن</h4>
+                <h4 class="text-sm font-bold text-[#163E3E]">{{ t('dashboard.no_payment_history_title') }}</h4>
                 <p class="text-xs text-[#5B6770] font-medium mt-1 leading-relaxed">
-                    ستظهر الإحصائيات ومنحنى التحصيل المالي تلقائياً بمجرد تسجيل أول دفعة إيجار في أحد عقاراتك.
+                    {{ t('dashboard.no_payment_history_desc') }}
                 </p>
             </div>
         </div>

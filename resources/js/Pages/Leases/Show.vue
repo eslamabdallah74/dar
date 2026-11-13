@@ -703,7 +703,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
         <!-- مودال 1: تسجيل استلام دفعة تأمين -->
         <div v-if="showRecordPaymentModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
             <div @click="showRecordPaymentModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
-            <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right animate-in fade-in zoom-in-95" dir="rtl">
+            <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-start animate-in fade-in zoom-in-95" >
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7] mb-4">
                     <h3 class="text-sm font-bold text-[#163E3E]">تسجيل استلام دفعة تأمين</h3>
                     <button @click="showRecordPaymentModal = false" type="button" aria-label="إغلاق النافذة" class="p-1 text-slate-400 hover:text-slate-600">
@@ -750,17 +750,17 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
 
                     <div>
                         <label for="deposit_paid_at" class="block text-xs font-bold text-[#163E3E] mb-1">تاريخ التحصيل *</label>
-                        <input id="deposit_paid_at" aria-label="تاريخ التحصيل" v-model="paymentForm.paid_at" type="date" required class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right" />
+                        <input id="deposit_paid_at" aria-label="تاريخ التحصيل" v-model="paymentForm.paid_at" type="date" required class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-start" />
                     </div>
 
                     <div>
                         <label for="deposit_reference" class="block text-xs font-bold text-[#163E3E] mb-1">رقم المرجع / الإيصال</label>
-                        <input id="deposit_reference" aria-label="رقم المرجع أو الإيصال" v-model="paymentForm.reference" type="text" placeholder="مثال: REC-10293" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right" />
+                        <input id="deposit_reference" aria-label="رقم المرجع أو الإيصال" v-model="paymentForm.reference" type="text" placeholder="مثال: REC-10293" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-start" />
                     </div>
 
                     <div>
                         <label for="deposit_notes" class="block text-xs font-bold text-[#163E3E] mb-1">ملاحظات إضافية</label>
-                        <textarea id="deposit_notes" aria-label="ملاحظات إضافية" v-model="paymentForm.notes" rows="2" class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right"></textarea>
+                        <textarea id="deposit_notes" aria-label="ملاحظات إضافية" v-model="paymentForm.notes" rows="2" class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-start"></textarea>
                     </div>
 
                     <div class="pt-3 border-t border-[#D6E0E7] flex justify-end gap-2">
@@ -777,7 +777,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
         <!-- مودال 2: بدء فحص الوحدة والتسوية -->
         <div v-if="showStartSettlementModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
             <div @click="showStartSettlementModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
-            <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right animate-in fade-in zoom-in-95" dir="rtl">
+            <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-start animate-in fade-in zoom-in-95" >
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7] mb-4">
                     <h3 class="text-sm font-bold text-[#163E3E]">بدء فحص حالة الوحدة والتسوية</h3>
                     <button @click="showStartSettlementModal = false" type="button" aria-label="إغلاق النافذة" class="p-1 text-slate-400 hover:text-slate-600">
@@ -799,7 +799,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
 
                     <div>
                         <label for="settlement_inspection_notes" class="block text-xs font-bold text-[#163E3E] mb-1">ملاحظات وتقرير الفحص الميداني</label>
-                        <textarea id="settlement_inspection_notes" aria-label="ملاحظات وتقرير الفحص الميداني" v-model="settlementForm.inspection_notes" rows="3" placeholder="وصف حالة الوحدة عند التسليم، الجدران، الأرضيات، التركيبات..." class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right"></textarea>
+                        <textarea id="settlement_inspection_notes" aria-label="ملاحظات وتقرير الفحص الميداني" v-model="settlementForm.inspection_notes" rows="3" placeholder="وصف حالة الوحدة عند التسليم، الجدران، الأرضيات، التركيبات..." class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-start"></textarea>
                     </div>
 
                     <div class="pt-3 border-t border-[#D6E0E7] flex justify-end gap-2">
@@ -824,7 +824,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
         <!-- مودال 4: تسجيل رد التأمين -->
         <div v-if="showRecordRefundModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
             <div @click="showRecordRefundModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
-            <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right animate-in fade-in zoom-in-95" dir="rtl">
+            <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-start animate-in fade-in zoom-in-95" >
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7] mb-4">
                     <h3 class="text-sm font-bold text-[#163E3E]">تسجيل رد مبلغ التأمين للمستأجر</h3>
                     <button @click="showRecordRefundModal = false" type="button" aria-label="إغلاق النافذة" class="p-1 text-slate-400 hover:text-slate-600">
@@ -876,17 +876,17 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
 
                     <div>
                         <label for="refund_refunded_at" class="block text-xs font-bold text-[#163E3E] mb-1">تاريخ الرد الفعلي *</label>
-                        <input id="refund_refunded_at" aria-label="تاريخ الرد الفعلي" v-model="refundForm.refunded_at" type="date" required class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right" />
+                        <input id="refund_refunded_at" aria-label="تاريخ الرد الفعلي" v-model="refundForm.refunded_at" type="date" required class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-start" />
                     </div>
 
                     <div>
                         <label for="refund_reference" class="block text-xs font-bold text-[#163E3E] mb-1">رقم مرجع التحويل / الإيصال</label>
-                        <input id="refund_reference" aria-label="رقم مرجع التحويل أو الإيصال" v-model="refundForm.reference" type="text" placeholder="مثال: TXN-54321" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right" />
+                        <input id="refund_reference" aria-label="رقم مرجع التحويل أو الإيصال" v-model="refundForm.reference" type="text" placeholder="مثال: TXN-54321" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-start" />
                     </div>
 
                     <div>
                         <label for="refund_notes" class="block text-xs font-bold text-[#163E3E] mb-1">ملاحظات الرد</label>
-                        <textarea id="refund_notes" aria-label="ملاحظات الرد" v-model="refundForm.notes" rows="2" class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right"></textarea>
+                        <textarea id="refund_notes" aria-label="ملاحظات الرد" v-model="refundForm.notes" rows="2" class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-start"></textarea>
                     </div>
 
                     <div class="pt-3 border-t border-[#D6E0E7] flex justify-end gap-2">
@@ -903,7 +903,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
         <!-- مودال 5: اعتماد التسوية النهائية للتأمين -->
         <div v-if="showFinalizeSettlementModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
             <div @click="showFinalizeSettlementModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
-            <div class="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95" dir="rtl">
+            <div class="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-start max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95" >
                 <!-- Header -->
                 <div class="flex items-center justify-between pb-3.5 border-b border-[#D6E0E7] mb-5">
                     <div class="flex items-center gap-3">
@@ -987,7 +987,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             <label
                                 :class="[
-                                    'p-3 rounded-xl border cursor-pointer text-right flex items-center justify-between transition',
+                                    'p-3 rounded-xl border cursor-pointer text-start flex items-center justify-between transition',
                                     finalizeSettlementForm.refund_status === 'pending'
                                         ? 'border-amber-500 bg-white ring-2 ring-amber-500/20'
                                         : 'border-emerald-200 bg-white/70 hover:bg-white'
@@ -1007,7 +1007,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
 
                             <label
                                 :class="[
-                                    'p-3 rounded-xl border cursor-pointer text-right flex items-center justify-between transition',
+                                    'p-3 rounded-xl border cursor-pointer text-start flex items-center justify-between transition',
                                     finalizeSettlementForm.refund_status === 'refunded'
                                         ? 'border-emerald-600 bg-white ring-2 ring-emerald-600/20'
                                         : 'border-emerald-200 bg-white/70 hover:bg-white'
@@ -1039,11 +1039,11 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
                             </div>
                             <div>
                                 <label for="finalize_refund_payment_date" class="block text-[11px] font-bold text-emerald-950 mb-1">تاريخ الرد الفعلي *</label>
-                                <input id="finalize_refund_payment_date" aria-label="تاريخ الرد الفعلي" v-model="finalizeSettlementForm.refund_payment_date" type="date" required class="w-full h-10 px-2.5 rounded-xl border border-emerald-200 bg-white text-xs text-right font-mono" />
+                                <input id="finalize_refund_payment_date" aria-label="تاريخ الرد الفعلي" v-model="finalizeSettlementForm.refund_payment_date" type="date" required class="w-full h-10 px-2.5 rounded-xl border border-emerald-200 bg-white text-xs text-start font-mono" />
                             </div>
                             <div>
                                 <label for="finalize_refund_reference" class="block text-[11px] font-semibold text-emerald-950 mb-1">رقم المرجع / الإيصال</label>
-                                <input id="finalize_refund_reference" aria-label="رقم المرجع أو الإيصال" v-model="finalizeSettlementForm.refund_reference" type="text" placeholder="TXN-..." class="w-full h-10 px-2.5 rounded-xl border border-emerald-200 bg-white text-xs text-right font-mono" />
+                                <input id="finalize_refund_reference" aria-label="رقم المرجع أو الإيصال" v-model="finalizeSettlementForm.refund_reference" type="text" placeholder="TXN-..." class="w-full h-10 px-2.5 rounded-xl border border-emerald-200 bg-white text-xs text-start font-mono" />
                             </div>
                         </div>
                     </div>
@@ -1062,7 +1062,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
                         </div>
                         <div>
                             <label for="finalize_notes" class="block text-xs font-bold text-[#163E3E] mb-1">ملاحظات الإغلاق النهائي للتسوية</label>
-                            <input id="finalize_notes" aria-label="ملاحظات الإغلاق النهائي للتسوية" v-model="finalizeSettlementForm.notes" type="text" placeholder="أي ملاحظات ختامية للتسوية..." class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right" />
+                            <input id="finalize_notes" aria-label="ملاحظات الإغلاق النهائي للتسوية" v-model="finalizeSettlementForm.notes" type="text" placeholder="أي ملاحظات ختامية للتسوية..." class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-start" />
                         </div>
                     </div>
 
@@ -1087,7 +1087,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
         <!-- مودال تعديل بند خصم -->
         <div v-if="showEditDeductionModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
             <div @click="showEditDeductionModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
-            <div class="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right animate-in fade-in zoom-in-95" dir="rtl">
+            <div class="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-start animate-in fade-in zoom-in-95" >
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7] mb-4">
                     <h3 class="text-sm font-bold text-[#163E3E]">تعديل بند الخصم</h3>
                     <button @click="showEditDeductionModal = false" type="button" aria-label="إغلاق النافذة" class="p-1 text-slate-400 hover:text-slate-600">
@@ -1152,7 +1152,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
                             v-model="editDeductionForm.notes"
                             rows="2"
                             maxlength="1000"
-                            class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right"
+                            class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-start"
                         ></textarea>
                     </div>
 
@@ -1182,7 +1182,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
         <!-- مودال 6: عكس دفعة تأمين -->
         <div v-if="showReversePaymentModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
             <div @click="showReversePaymentModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
-            <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right animate-in fade-in zoom-in-95" dir="rtl">
+            <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-start animate-in fade-in zoom-in-95" >
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7] mb-4">
                     <h3 class="text-sm font-bold text-rose-700">عكس وإلغاء دفعة تأمين مسجلة</h3>
                     <button @click="showReversePaymentModal = false" type="button" aria-label="إغلاق النافذة" class="p-1 text-slate-400 hover:text-slate-600">
@@ -1202,7 +1202,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
 
                     <div>
                         <label for="reverse_payment_reason" class="block text-xs font-bold text-[#163E3E] mb-1">سبب إلغاء وعكس الدفعة *</label>
-                        <textarea id="reverse_payment_reason" aria-label="سبب إلغاء وعكس الدفعة" v-model="reversePaymentForm.reversal_reason" rows="3" placeholder="اذكر سبب الإلغاء (سداد بالخطأ، شيك مرتجع، تصحيح محاسبي)..." required class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right"></textarea>
+                        <textarea id="reverse_payment_reason" aria-label="سبب إلغاء وعكس الدفعة" v-model="reversePaymentForm.reversal_reason" rows="3" placeholder="اذكر سبب الإلغاء (سداد بالخطأ، شيك مرتجع، تصحيح محاسبي)..." required class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-start"></textarea>
                     </div>
 
                     <div class="pt-3 border-t border-[#D6E0E7] flex justify-end gap-2">
@@ -1219,7 +1219,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
         <!-- مودال تمديد / تجديد العقد -->
         <div v-if="showExtendModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
             <div @click="showExtendModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
-            <div class="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right animate-in fade-in zoom-in-95" dir="rtl">
+            <div class="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-start animate-in fade-in zoom-in-95" >
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7] mb-4">
                     <div class="flex items-center gap-2">
                         <div class="w-8 h-8 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center">
@@ -1260,7 +1260,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
                             type="date"
                             :min="lease.raw_ends_on"
                             required
-                            class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right font-mono"
+                            class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-start font-mono"
                         />
                         <p class="text-[11px] text-[#5B6770] mt-1">يجب أن يكون التاريخ بعد تاريخ النهاية الحالي للعقد.</p>
                     </div>
@@ -1292,7 +1292,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
                             v-model="extendForm.notes"
                             rows="2"
                             placeholder="ملاحظات توثيقية حول تجديد العقد والاتفاق مع المستأجر..."
-                            class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right"
+                            class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-start"
                         ></textarea>
                     </div>
 
@@ -1314,7 +1314,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
         <!-- مودال إنهاء العقد مع تسوية التأمين الشاملة -->
         <div v-if="showTerminateWithSettlementModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
             <div @click="showTerminateWithSettlementModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
-            <div class="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95" dir="rtl">
+            <div class="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-start max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95" >
                 <!-- Header -->
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7] mb-4">
                     <div class="flex items-center gap-2.5">
@@ -1374,7 +1374,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <label
                                 :class="[
-                                    'p-3.5 rounded-2xl border cursor-pointer transition text-right flex flex-col justify-between space-y-2',
+                                    'p-3.5 rounded-2xl border cursor-pointer transition text-start flex flex-col justify-between space-y-2',
                                     terminateForm.settlement_type === 'full_refund'
                                         ? 'border-[#163E3E] bg-[#E8F0F0]/40 ring-2 ring-[#163E3E]/20'
                                         : 'border-[#D6E0E7] bg-white hover:bg-slate-50'
@@ -1396,7 +1396,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
 
                             <label
                                 :class="[
-                                    'p-3.5 rounded-2xl border cursor-pointer transition text-right flex flex-col justify-between space-y-2',
+                                    'p-3.5 rounded-2xl border cursor-pointer transition text-start flex flex-col justify-between space-y-2',
                                     terminateForm.settlement_type === 'partial_refund'
                                         ? 'border-amber-500 bg-amber-50/40 ring-2 ring-amber-500/20'
                                         : 'border-[#D6E0E7] bg-white hover:bg-slate-50'
@@ -1418,7 +1418,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
 
                             <label
                                 :class="[
-                                    'p-3.5 rounded-2xl border cursor-pointer transition text-right flex flex-col justify-between space-y-2',
+                                    'p-3.5 rounded-2xl border cursor-pointer transition text-start flex flex-col justify-between space-y-2',
                                     terminateForm.settlement_type === 'no_refund'
                                         ? 'border-rose-500 bg-rose-50/40 ring-2 ring-rose-500/20'
                                         : 'border-[#D6E0E7] bg-white hover:bg-slate-50'
@@ -1460,7 +1460,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
                             rows="3"
                             required
                             placeholder="وضح بالتفصيل سبب الاحتفاظ بكامل التأمين (مثل: وجود تلفيات جسيمة تفوق قيمة التأمين، عدم سداد إيجار متأخر)..."
-                            class="w-full p-2.5 rounded-xl border border-rose-200 bg-white text-xs text-right"
+                            class="w-full p-2.5 rounded-xl border border-rose-200 bg-white text-xs text-start"
                         ></textarea>
                     </div>
 
@@ -1475,7 +1475,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             <label
                                 :class="[
-                                    'p-3 rounded-xl border cursor-pointer text-right flex items-center justify-between',
+                                    'p-3 rounded-xl border cursor-pointer text-start flex items-center justify-between',
                                     terminateForm.refund_status === 'pending'
                                         ? 'border-amber-500 bg-white ring-2 ring-amber-500/20'
                                         : 'border-emerald-200 bg-white/70 hover:bg-white'
@@ -1495,7 +1495,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
 
                             <label
                                 :class="[
-                                    'p-3 rounded-xl border cursor-pointer text-right flex items-center justify-between',
+                                    'p-3 rounded-xl border cursor-pointer text-start flex items-center justify-between',
                                     terminateForm.refund_status === 'refunded'
                                         ? 'border-emerald-600 bg-white ring-2 ring-emerald-600/20'
                                         : 'border-emerald-200 bg-white/70 hover:bg-white'
@@ -1527,11 +1527,11 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
                             </div>
                             <div>
                                 <label for="terminate_refund_payment_date" class="block text-[11px] font-bold text-emerald-950 mb-1">تاريخ الرد الفعلي *</label>
-                                <input id="terminate_refund_payment_date" aria-label="تاريخ الرد الفعلي" v-model="terminateForm.refund_payment_date" type="date" required class="w-full h-10 px-2.5 rounded-xl border border-emerald-200 bg-white text-xs text-right font-mono" />
+                                <input id="terminate_refund_payment_date" aria-label="تاريخ الرد الفعلي" v-model="terminateForm.refund_payment_date" type="date" required class="w-full h-10 px-2.5 rounded-xl border border-emerald-200 bg-white text-xs text-start font-mono" />
                             </div>
                             <div>
                                 <label for="terminate_refund_reference" class="block text-[11px] font-semibold text-emerald-950 mb-1">رقم المرجع / الإيصال</label>
-                                <input id="terminate_refund_reference" aria-label="رقم المرجع أو الإيصال" v-model="terminateForm.refund_reference" type="text" placeholder="TXN-..." class="w-full h-10 px-2.5 rounded-xl border border-emerald-200 bg-white text-xs text-right font-mono" />
+                                <input id="terminate_refund_reference" aria-label="رقم المرجع أو الإيصال" v-model="terminateForm.refund_reference" type="text" placeholder="TXN-..." class="w-full h-10 px-2.5 rounded-xl border border-emerald-200 bg-white text-xs text-start font-mono" />
                             </div>
                         </div>
                     </div>
@@ -1550,7 +1550,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
                         </div>
                         <div>
                             <label for="terminate_notes" class="block text-xs font-bold text-[#163E3E] mb-1">ملاحظات ختامية على إنهاء العقد</label>
-                            <input id="terminate_notes" aria-label="ملاحظات ختامية على إنهاء العقد" v-model="terminateForm.notes" type="text" placeholder="أي ملاحظات نهائية..." class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right" />
+                            <input id="terminate_notes" aria-label="ملاحظات ختامية على إنهاء العقد" v-model="terminateForm.notes" type="text" placeholder="أي ملاحظات نهائية..." class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-start" />
                         </div>
                     </div>
 
@@ -1575,7 +1575,7 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
         <!-- مودال تسجيل صرف المبلغ المتبقي المعلق -->
         <div v-if="showPendingRefundModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
             <div @click="showPendingRefundModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
-            <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-right animate-in fade-in zoom-in-95" dir="rtl">
+            <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-5 sm:p-7 z-10 text-start animate-in fade-in zoom-in-95" >
                 <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7] mb-4">
                     <div class="flex items-center gap-2">
                         <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
@@ -1635,17 +1635,17 @@ const handleActionCenterAction = (actionKey: string, meta?: any) => {
 
                     <div>
                         <label for="pending_refund_refunded_at" class="block text-xs font-bold text-[#163E3E] mb-1">تاريخ الصرف والتحويل الفعلي *</label>
-                        <input id="pending_refund_refunded_at" aria-label="تاريخ الصرف والتحويل الفعلي" v-model="pendingRefundForm.refunded_at" type="date" required class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right font-mono" />
+                        <input id="pending_refund_refunded_at" aria-label="تاريخ الصرف والتحويل الفعلي" v-model="pendingRefundForm.refunded_at" type="date" required class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-start font-mono" />
                     </div>
 
                     <div>
                         <label for="pending_refund_reference" class="block text-xs font-bold text-[#163E3E] mb-1">رقم مرجع الحوالة / الإيصال</label>
-                        <input id="pending_refund_reference" aria-label="رقم مرجع الحوالة أو الإيصال" v-model="pendingRefundForm.reference" type="text" placeholder="TXN-123456" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right font-mono" />
+                        <input id="pending_refund_reference" aria-label="رقم مرجع الحوالة أو الإيصال" v-model="pendingRefundForm.reference" type="text" placeholder="TXN-123456" class="w-full h-11 px-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-start font-mono" />
                     </div>
 
                     <div>
                         <label for="pending_refund_notes" class="block text-xs font-bold text-[#163E3E] mb-1">ملاحظات الصرف</label>
-                        <textarea id="pending_refund_notes" aria-label="ملاحظات الصرف" v-model="pendingRefundForm.notes" rows="2" class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-right"></textarea>
+                        <textarea id="pending_refund_notes" aria-label="ملاحظات الصرف" v-model="pendingRefundForm.notes" rows="2" class="w-full p-2.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-start"></textarea>
                     </div>
 
                     <div class="pt-3 border-t border-[#D6E0E7] flex justify-end gap-2">

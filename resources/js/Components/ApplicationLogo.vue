@@ -110,7 +110,7 @@ const titleSizeClass = computed(() => {
         </div>
 
         <!-- Typography Lockup (optional or withText) -->
-        <div v-if="withText || variant === 'full' || variant === 'horizontal'" class="flex flex-col text-right leading-none">
+        <div v-if="withText || variant === 'full' || variant === 'horizontal'" class="flex flex-col text-start leading-none">
             <div dir="ltr" class="flex items-center gap-1.5 tracking-tight font-extrabold font-montserrat" :class="titleSizeClass">
                 <span :class="dark ? 'text-white' : 'text-[#163E3E]'">Nook</span>
                 <span class="text-[#F7C33D]">Mate</span>

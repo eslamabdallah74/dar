@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { router, usePage, Link } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import LanguageSwitcher from '@/Components/Common/LanguageSwitcher.vue';
+import { useLocale } from '@/composables/useLocale';
 import {
     Building2,
     Check,
@@ -18,6 +19,8 @@ import {
     User as UserIcon,
     Wrench,
 } from 'lucide-vue-next';
+
+const { t } = useLocale();
 
 const props = defineProps<{
     searchQuery?: string;
@@ -189,7 +192,7 @@ onUnmounted(() => {
                 @click="emit('toggleMobile')"
                 type="button"
                 class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#D6E0E7] text-[#163E3E] transition hover:bg-[#F8F4EA] lg:hidden"
-                aria-label="القائمة الجانبية"
+                :aria-label="t('nav.mobile_menu')"
             >
                 <Menu class="h-5 w-5" />
             </button>
@@ -259,10 +262,13 @@ onUnmounted(() => {
                     @input="adminMode && emit('search', term)"
                     @keydown.enter="handleSearch"
                     type="text"
-                    :placeholder="adminMode ? 'بحث فوري في مساحات العمل، المستخدمين، العقارات...' : 'ابحث عن عقار، مستأجر أو عقد…'"
-                    class="w-full h-11 pr-11 pl-4 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] placeholder:text-[#5B6770] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition shadow-2xs font-sans text-right"
+                    :placeholder="adminMode ? t('nav.search_placeholder_admin') : t('nav.search_placeholder')"
+                    :aria-label="adminMode ? t('nav.search_placeholder_admin') : t('nav.search_placeholder')"
+                    class="w-full h-11 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] ps-11 pe-4 text-start text-sm text-[#163E3E] placeholder:text-[#5B6770] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition shadow-2xs font-sans"
                 />
-                <Search class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#5B6770]" />
+                <Search
+                    class="pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#5B6770]"
+                />
             </div>
         </div>
 
@@ -275,7 +281,7 @@ onUnmounted(() => {
                 class="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-[#163E3E] hover:text-[#102F2F] bg-[#E8F0F0] hover:bg-[#D4EAEF] px-3 py-2 rounded-xl transition"
             >
                 <ExternalLink class="w-3.5 h-3.5" />
-                <span>تطبيق العملاء</span>
+                <span>{{ $t('nav.switch_to_app') }}</span>
             </Link>
 
             <!-- قائمة التنبيهات (في وضع العميل) -->
@@ -284,7 +290,7 @@ onUnmounted(() => {
                     @click.stop="toggleNotifications"
                     type="button"
                     class="flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-transparent px-1.5 text-[#163E3E] transition hover:border-[#D6E0E7] hover:bg-[#F8F4EA] sm:h-11 sm:px-2 cursor-pointer"
-                    aria-label="مركز التنبيهات"
+                    :aria-label="$t('nav.notifications_center')"
                     :aria-expanded="notificationsDropdownOpen"
                 >
                     <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#F8F4EA] ring-1 ring-[#E5DEC9]">
@@ -301,15 +307,15 @@ onUnmounted(() => {
                 <!-- القائمة المنسدلة للتنبيهات -->
                 <div
                     v-if="notificationsDropdownOpen"
-                    class="fixed inset-x-3 top-16 z-50 w-auto max-w-[calc(100vw-1.5rem)] rounded-2xl border border-[#D6E0E7] bg-white p-3 text-right shadow-xl animate-in fade-in zoom-in-95 sm:absolute sm:inset-x-auto sm:left-0 sm:top-13 sm:w-80"
+                    class="fixed inset-x-3 top-16 z-50 w-auto max-w-[calc(100vw-1.5rem)] rounded-2xl border border-[#D6E0E7] bg-white p-3 text-start shadow-xl animate-in fade-in zoom-in-95 sm:absolute sm:inset-x-auto sm:end-0 sm:top-13 sm:w-80"
                 >
                     <div class="flex items-center justify-between pb-2 border-b border-[#D6E0E7] mb-2">
-                        <span class="text-xs font-bold text-[#163E3E]">مركز التنبيهات</span>
+                        <span class="text-xs font-bold text-[#163E3E]">{{ $t('nav.notifications_center') }}</span>
                         <span v-if="notifications.unread_count > 0" class="text-[11px] font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">
-                            {{ notifications.unread_count }} مهام تتطلب المتابعة
+                            {{ $t('nav.tasks_requiring_followup', { count: notifications.unread_count }) }}
                         </span>
                         <span v-else class="text-[11px] text-emerald-600 font-semibold">
-                            لا توجد تنبيهات
+                            {{ $t('nav.no_notifications') }}
                         </span>
                     </div>
 
@@ -323,8 +329,8 @@ onUnmounted(() => {
                         >
                             <ShieldAlert class="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                             <div class="flex-1">
-                                <span class="font-bold text-rose-950 block">متأخرات في سداد الإيجار</span>
-                                <span class="text-[11px] text-rose-800">{{ notifications.overdue_count }} فواتير تجاوزت موعد الاستحقاق</span>
+                                <span class="font-bold text-rose-950 block">{{ $t('nav.overdue_rent') }}</span>
+                                <span class="text-[11px] text-rose-800">{{ $t('nav.overdue_invoices_count', { count: notifications.overdue_count }) }}</span>
                             </div>
                         </Link>
 
@@ -337,8 +343,8 @@ onUnmounted(() => {
                         >
                             <Clock class="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                             <div class="flex-1">
-                                <span class="font-bold text-amber-950 block">عقود إيجار تنتهي قريباً</span>
-                                <span class="text-[11px] text-amber-800">{{ notifications.expiring_count }} عقود تنتهي خلال 30 يوماً</span>
+                                <span class="font-bold text-amber-950 block">{{ $t('nav.expiring_leases') }}</span>
+                                <span class="text-[11px] text-amber-800">{{ $t('nav.expiring_leases_count', { count: notifications.expiring_count }) }}</span>
                             </div>
                         </Link>
 
@@ -351,15 +357,15 @@ onUnmounted(() => {
                         >
                             <Wrench class="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
                             <div class="flex-1">
-                                <span class="font-bold text-sky-950 block">طلبات صيانة قيد المتابعة</span>
-                                <span class="text-[11px] text-sky-800">{{ notifications.maintenance_count }} طلبات صيانة مفتوحة بحاجة لفني</span>
+                                <span class="font-bold text-sky-950 block">{{ $t('nav.maintenance_requests') }}</span>
+                                <span class="text-[11px] text-sky-800">{{ $t('nav.maintenance_requests_count', { count: notifications.maintenance_count }) }}</span>
                             </div>
                         </Link>
                     </div>
 
                     <div v-else class="py-6 text-center text-xs text-[#5B6770]">
                         <Check class="w-6 h-6 text-emerald-500 mx-auto mb-1" />
-                        <span>جميع العمليات منتظمة ولا توجد متأخرات أو تنبيهات حالياً.</span>
+                        <span>{{ $t('nav.all_clear') }}</span>
                     </div>
                 </div>
             </div>
@@ -452,10 +458,10 @@ onUnmounted(() => {
                 @click="emit('newAction')"
                 type="button"
                 class="flex h-10 shrink-0 items-center gap-2 rounded-xl bg-[#163E3E] px-3 text-sm font-semibold text-white shadow-xs transition hover:bg-[#102F2F] sm:h-11 sm:px-5"
-                :aria-label="adminMode ? 'إضافة بيانات' : 'إجراء جديد'"
+                :aria-label="adminMode ? $t('nav.add_data') : $t('nav.new_action_full')"
             >
                 <Plus class="h-4 w-4 stroke-[2.5]" />
-                <span class="hidden sm:inline">{{ adminMode ? 'إضافة بيانات' : 'جديد' }}</span>
+                <span class="hidden sm:inline">{{ adminMode ? $t('nav.add_data') : $t('nav.new_action') }}</span>
             </button>
         </div>
     </header>

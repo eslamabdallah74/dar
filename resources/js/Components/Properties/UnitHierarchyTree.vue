@@ -235,7 +235,7 @@ watch(query, (q) => {
 </script>
 
 <template>
-    <div class="space-y-0" dir="rtl">
+    <div class="space-y-0" >
         <!-- Empty State -->
         <div
             v-if="visibleRootUnits.length === 0"
@@ -311,7 +311,7 @@ watch(query, (q) => {
                                         <button
                                             @click="emit('selectUnit', rootUnit)"
                                             type="button"
-                                            class="text-sm font-bold text-[#163E3E] hover:text-[#102F2F] transition text-right cursor-pointer truncate"
+                                            class="text-sm font-bold text-[#163E3E] hover:text-[#102F2F] transition text-start cursor-pointer truncate"
                                         >
                                             {{ rootUnit.name }}
                                         </button>
@@ -519,7 +519,7 @@ watch(query, (q) => {
                                                     <button
                                                         @click="emit('selectUnit', room)"
                                                         type="button"
-                                                        class="text-xs font-semibold text-[#163E3E] hover:text-[#102F2F] transition text-right cursor-pointer"
+                                                        class="text-xs font-semibold text-[#163E3E] hover:text-[#102F2F] transition text-start cursor-pointer"
                                                     >
                                                         {{ room.name }}
                                                     </button>

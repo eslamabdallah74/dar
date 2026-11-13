@@ -95,7 +95,7 @@ const submit = () => {
             role="dialog"
             aria-modal="true"
             aria-labelledby="deposit-deduction-title"
-            dir="rtl"
+
             class="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-[#D6E0E7] bg-white p-5 shadow-2xl sm:p-7"
         >
             <header class="mb-5 flex items-start justify-between gap-3 border-b border-[#D6E0E7] pb-4">

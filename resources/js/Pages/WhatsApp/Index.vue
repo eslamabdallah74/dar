@@ -159,7 +159,7 @@ const sendTestMessage = () => {
 
             <div v-if="logs.length > 0" class="rounded-3xl border border-[#D6E0E7] bg-white overflow-hidden shadow-2xs">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-right text-sm">
+                    <table class="w-full text-start text-sm">
                         <thead>
                             <tr class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] text-xs font-bold">
                                 <th class="py-3.5 px-6">
@@ -211,7 +211,7 @@ const sendTestMessage = () => {
         <!-- نافذة إرسال رسالة تجريبية -->
         <div v-if="showTestModal" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
             <div @click="showTestModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
-            <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-6 z-10 animate-in fade-in zoom-in-95" dir="rtl">
+            <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-6 z-10 animate-in fade-in zoom-in-95" >
                 <div class="flex items-center justify-between pb-4 border-b border-[#D6E0E7] mb-5">
                     <h3 class="text-base font-bold text-[#163E3E]">إرسال رسالة WhatsApp تجريبية</h3>
                     <button @click="showTestModal = false" type="button" class="p-1.5 text-[#5B6770] hover:text-[#163E3E]">

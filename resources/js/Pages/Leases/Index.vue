@@ -4,6 +4,7 @@ import { Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import EmptyState from '@/Components/Common/EmptyState.vue';
 import ResourceTableHeading from '@/Components/Common/ResourceTableHeading.vue';
+import { useLocale } from '@/composables/useLocale';
 import {
     ArrowLeft,
     Building2,
@@ -63,13 +64,26 @@ const props = defineProps<{
     currency?: string;
 }>();
 
+const { t, isRtl } = useLocale();
+
 const searchQuery = ref('');
 const statusFilter = ref('all');
 
 const currencySymbol = computed(() => {
     const c = props.currency || 'EGP';
-    return c === 'EGP' ? 'ج.م' : c === 'SAR' ? 'ر.س' : c;
+    if (isRtl.value) {
+        return c === 'EGP' ? 'ج.م' : c === 'SAR' ? 'ر.س' : c;
+    }
+    return c;
 });
+
+const quickFilters = computed(() => [
+    { id: 'all', label: t('leases.filter_all') },
+    { id: 'past_due', label: t('leases.filter_past_due', { count: props.stats.past_end_date ?? 0 }) },
+    { id: 'active', label: t('leases.filter_active') },
+    { id: 'expiring', label: t('leases.filter_expiring', { count: props.stats.expiring_soon }) },
+    { id: 'with_deposit', label: t('leases.filter_with_deposit') },
+]);
 
 const filteredLeases = computed(() => {
     return props.leases.filter(l => {
@@ -122,11 +136,11 @@ const leaseStatusClass = (status: string) => {
 
 <template>
     <AppLayout
-        title="عقود الإيجار والتأمين — Nook Mate"
+        :title="$t('leases.title') + ' — Nook Mate'"
         active-tab="leases"
-        header-title="عقود الإيجار والتأمين"
-        header-subtitle="إدارة وتوثيق عقود الإيجار السكنية والتجارية، متابعة التأمين المسترد وتواريخ التجديد"
-        breadcrumb="العقود"
+        :header-title="$t('leases.title')"
+        :header-subtitle="$t('leases.subtitle')"
+        :breadcrumb="$t('leases.breadcrumb')"
     >
         <template #actions>
             <Link
@@ -134,7 +148,7 @@ const leaseStatusClass = (status: string) => {
                 class="w-full sm:w-auto h-11 px-5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs sm:text-sm font-semibold transition duration-200 ease-out flex items-center justify-center gap-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#163E3E] focus-visible:ring-offset-2 active:scale-[0.98]"
             >
                 <Plus class="h-4 w-4" />
-                <span>إنشاء عقد إيجار جديد</span>
+                <span>{{ $t('leases.create_lease') }}</span>
             </Link>
         </template>
 
@@ -142,39 +156,39 @@ const leaseStatusClass = (status: string) => {
             <div class="min-w-0 bg-white p-4 sm:p-5">
                 <div class="flex items-center gap-2 text-xs font-medium text-[#77756D]">
                     <FileCheck class="h-4 w-4 text-[#52766C]" />
-                    <span>العقود السارية</span>
+                    <span>{{ $t('leases.active_leases') }}</span>
                 </div>
                 <div class="mt-3 flex items-baseline gap-2">
                     <span class="font-mono text-2xl font-semibold tabular-nums text-[#163E3E]">{{ stats.active_leases }}</span>
-                    <span class="text-[11px] text-[#8A887F]">من {{ stats.total_leases }} عقد</span>
+                    <span class="text-[11px] text-[#8A887F]">{{ $t('leases.out_of_leases', { total: stats.total_leases }) }}</span>
                 </div>
             </div>
             <div class="min-w-0 bg-white p-4 sm:p-5">
                 <div class="flex items-center gap-2 text-xs font-medium text-[#77756D]">
                     <Clock class="h-4 w-4 text-[#9A8050]" />
-                    <span>تنتهي خلال 30 يوماً</span>
+                    <span>{{ $t('leases.expiring_soon') }}</span>
                 </div>
                 <div class="mt-3 flex items-baseline gap-2">
                     <span class="font-mono text-2xl font-semibold tabular-nums text-[#163E3E]">{{ stats.expiring_soon }}</span>
-                    <span class="text-[11px] text-[#8A887F]">تحتاج متابعة</span>
+                    <span class="text-[11px] text-[#8A887F]">{{ $t('leases.needs_followup') }}</span>
                 </div>
             </div>
             <div class="min-w-0 bg-white p-4 sm:p-5">
                 <div class="flex items-center gap-2 text-xs font-medium text-[#77756D]">
                     <Coins class="h-4 w-4 text-[#52766C]" />
-                    <span>القيمة السنوية</span>
+                    <span>{{ $t('leases.annual_value') }}</span>
                 </div>
                 <div class="mt-3 flex items-baseline gap-2">
                     <span class="truncate font-mono text-xl sm:text-2xl font-semibold tabular-nums text-[#163E3E]">
                         {{ Math.round(stats.total_annual_value ?? 0).toLocaleString() }}
                     </span>
-                    <span class="shrink-0 text-[11px] text-[#8A887F]">{{ currencySymbol }} / سنة</span>
+                    <span class="shrink-0 text-[11px] text-[#8A887F]">{{ $t('leases.per_year', { currency: currencySymbol }) }}</span>
                 </div>
             </div>
             <div class="min-w-0 bg-white p-4 sm:p-5">
                 <div class="flex items-center gap-2 text-xs font-medium text-[#77756D]">
                     <ShieldCheck class="h-4 w-4 text-[#52766C]" />
-                    <span>التأمينات المحتجزة</span>
+                    <span>{{ $t('leases.held_deposits') }}</span>
                 </div>
                 <div class="mt-3 flex items-baseline gap-2">
                     <span class="truncate font-mono text-xl sm:text-2xl font-semibold tabular-nums text-[#163E3E]">
@@ -192,16 +206,16 @@ const leaseStatusClass = (status: string) => {
                     <Clock class="h-4 w-4" />
                 </div>
                 <div>
-                    <span class="block text-xs sm:text-sm font-semibold text-[#4E493E]">يوجد {{ stats.past_end_date }} عقود تجاوزت تاريخ انتهائها</span>
-                    <span class="mt-1 block text-[11px] leading-relaxed text-[#777064]">تحتاج هذه العقود إلى قرار بالتجديد أو الإنهاء والتسوية.</span>
+                    <span class="block text-xs sm:text-sm font-semibold text-[#4E493E]">{{ $t('leases.past_end_date_alert', { count: stats.past_end_date }) }}</span>
+                    <span class="mt-1 block text-[11px] leading-relaxed text-[#777064]">{{ $t('leases.past_end_date_desc') }}</span>
                 </div>
             </div>
             <button
                 type="button"
                 @click="statusFilter = 'past_due'"
-                class="shrink-0 self-start rounded-lg px-3.5 py-2 text-xs font-semibold text-[#6E5B38] transition duration-200 ease-out hover:bg-[#EEE5D2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9A8050] sm:self-auto"
+                class="shrink-0 self-start rounded-lg px-3.5 py-2 text-xs font-semibold text-[#6E5B38] transition duration-200 ease-out hover:bg-[#EEE5D2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9A8050] sm:self-auto cursor-pointer"
             >
-                عرض العقود
+                {{ $t('leases.view_leases') }}
             </button>
         </div>
 
@@ -211,16 +225,22 @@ const leaseStatusClass = (status: string) => {
                 <input
                     v-model="searchQuery"
                     type="text"
-                    placeholder="ابحث برقم العقد، اسم المستأجر، رقم الهاتف أو الوحدة..."
-                    class="h-10 w-full rounded-xl border border-transparent bg-[#F7F6F2] pl-4 pr-10 text-xs text-[#313B38] placeholder:text-[#929087] transition duration-200 ease-out focus:border-[#A9B9B1] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#52766C]/15"
+                    :placeholder="$t('leases.search_placeholder')"
+                    :aria-label="$t('leases.search_placeholder')"
+                    class="h-10 w-full rounded-xl border border-transparent bg-[#F7F6F2] text-xs text-[#313B38] placeholder:text-[#929087] transition duration-200 ease-out focus:border-[#A9B9B1] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#52766C]/15"
+                    :class="isRtl ? 'pr-10 pl-4' : 'pl-10 pr-4'"
                 />
-                <Search class="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A887F]" />
+                <Search
+                    class="pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-[#8A887F]"
+                    :class="isRtl ? 'right-3.5' : 'left-3.5'"
+                />
                 <button
                     v-if="searchQuery"
                     @click="searchQuery = ''"
                     type="button"
-                    class="absolute left-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-[#8A887F] transition hover:bg-[#EAE8E0] hover:text-[#313B38] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#52766C]"
-                    aria-label="مسح البحث"
+                    class="absolute top-1/2 -translate-y-1/2 rounded-md p-1 text-[#8A887F] transition hover:bg-[#EAE8E0] hover:text-[#313B38] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#52766C] cursor-pointer"
+                    :class="isRtl ? 'left-3' : 'right-3'"
+                    :aria-label="$t('leases.clear_search')"
                 >
                     <X class="w-3.5 h-3.5" />
                 </button>
@@ -229,13 +249,7 @@ const leaseStatusClass = (status: string) => {
             <!-- أزرار التصفية السريعة -->
             <div class="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
                 <button
-                    v-for="f in [
-                        { id: 'all', label: 'كافة العقود' },
-                        { id: 'past_due', label: 'انتهت مدتها (' + (stats.past_end_date ?? 0) + ')' },
-                        { id: 'active', label: 'سارية' },
-                        { id: 'expiring', label: 'تنتهي قريباً (' + stats.expiring_soon + ')' },
-                        { id: 'with_deposit', label: 'تتضمن تأمين' },
-                    ]"
+                    v-for="f in quickFilters"
                     :key="f.id"
                     @click="statusFilter = f.id"
                     type="button"
@@ -266,10 +280,10 @@ const leaseStatusClass = (status: string) => {
                             {{ lease.contract_number }}
                         </Link>
                         <span v-if="lease.is_past_end_date" class="shrink-0 text-[10px] font-medium text-[#806B45]">
-                            يحتاج قرار
+                            {{ $t('leases.needs_decision') }}
                         </span>
                         <span v-else-if="lease.is_expiring_soon" class="shrink-0 text-[10px] font-medium text-[#806B45]">
-                            ينتهي قريباً
+                            {{ $t('leases.expiring_soon_badge') }}
                         </span>
                     </div>
 
@@ -330,8 +344,8 @@ const leaseStatusClass = (status: string) => {
                             :href="`https://wa.me/20${lease.renter_phone.replace(/^0+/, '')}`"
                             target="_blank"
                             class="rounded-lg p-2 text-[#77756D] transition duration-200 ease-out hover:bg-[#EAE8E0] hover:text-[#36594F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#52766C]"
-                            title="محادثة واتساب"
-                            aria-label="محادثة واتساب"
+                            :title="$t('renters.whatsapp_chat')"
+                            :aria-label="$t('renters.whatsapp_chat')"
                         >
                             <MessageCircle class="w-4 h-4" />
                         </a>
@@ -339,8 +353,8 @@ const leaseStatusClass = (status: string) => {
                             v-if="lease.renter_phone"
                             :href="`tel:${lease.renter_phone}`"
                             class="rounded-lg p-2 text-[#77756D] transition duration-200 ease-out hover:bg-[#EAE8E0] hover:text-[#36594F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#52766C]"
-                            title="اتصال هاتفي"
-                            aria-label="اتصال هاتفي"
+                            :title="$t('renters.phone_call')"
+                            :aria-label="$t('renters.phone_call')"
                         >
                             <Phone class="w-4 h-4" />
                         </a>
@@ -351,7 +365,7 @@ const leaseStatusClass = (status: string) => {
                 <div class="grid grid-cols-2 gap-2.5 text-xs">
                     <!-- الإيجار الشهري -->
                     <div class="space-y-1 rounded-xl bg-[#F7F6F2] p-3">
-                        <span class="block text-[11px] text-[#77756D]">الإيجار الشهري</span>
+                        <span class="block text-[11px] text-[#77756D]">{{ $t('leases.monthly_rent') }}</span>
                         <div class="font-mono text-sm font-semibold tabular-nums text-[#313B38]">
                             {{ (lease.rent_amount ?? 0).toLocaleString() }}
                             <span class="font-sans text-[10px] font-normal text-[#77756D]">{{ currencySymbol }}</span>
@@ -363,7 +377,7 @@ const leaseStatusClass = (status: string) => {
                         <div class="flex items-center justify-between">
                             <span class="flex items-center gap-1 text-[11px] text-[#77756D]">
                                 <Shield class="h-3 w-3" />
-                                <span>التأمين</span>
+                                <span>{{ $t('leases.security_deposit') }}</span>
                             </span>
                         </div>
 
@@ -377,7 +391,7 @@ const leaseStatusClass = (status: string) => {
                             </span>
                         </div>
                         <div v-else class="pt-1 text-[11px] font-medium text-[#929087]">
-                            بدون تأمين
+                            {{ $t('leases.no_deposit') }}
                         </div>
                     </div>
                 </div>
@@ -398,18 +412,18 @@ const leaseStatusClass = (status: string) => {
                         :href="lease.contract_image_url"
                         target="_blank"
                         class="flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-[#E6E3DA] px-3.5 text-xs font-medium text-[#52766C] transition duration-200 ease-out hover:bg-[#F7F6F2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#52766C]"
-                        title="عرض وثيقة العقد المعتمد"
+                        :title="$t('leases.view_contract_doc')"
                     >
                         <Paperclip class="h-4 w-4" />
-                        <span>العقد</span>
+                        <span>{{ $t('leases.view_contract_doc') }}</span>
                     </a>
 
                     <Link
                         :href="route('leases.show', lease.id)"
                         class="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#163E3E] text-xs font-semibold text-white transition duration-200 ease-out hover:bg-[#102F2F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#163E3E] focus-visible:ring-offset-2 active:scale-[0.98]"
                     >
-                        <span>تفاصيل العقد والتأمين</span>
-                        <ArrowLeft class="w-4 h-4" />
+                        <span>{{ $t('leases.lease_details_btn') }}</span>
+                        <ArrowLeft class="w-4 h-4 transition-transform duration-200" :class="isRtl ? '' : 'rotate-180'" />
                     </Link>
                 </div>
             </div>
@@ -418,21 +432,21 @@ const leaseStatusClass = (status: string) => {
         <!-- 2. جدول العقود المطور للشاشات الكبيرة (Desktop Table Layout for lg+) -->
         <div v-if="filteredLeases.length > 0" class="hidden overflow-hidden rounded-2xl border border-[#E6E3DA] bg-white lg:block">
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[1120px] text-right text-sm">
+                <table class="w-full min-w-[1120px] text-start text-sm">
                     <thead>
                         <tr class="border-b border-[#EAE8E0] bg-[#F8F7F3] text-[11px] font-medium text-[#77756D]">
-                            <th class="px-4 py-3.5">رقم العقد</th>
+                            <th class="px-4 py-3.5">{{ $t('leases.th_contract_number') }}</th>
                             <th class="px-4 py-3.5">
-                                <ResourceTableHeading :href="route('renters.index')">المستأجر</ResourceTableHeading>
+                                <ResourceTableHeading :href="route('renters.index')">{{ $t('leases.th_renter') }}</ResourceTableHeading>
                             </th>
                             <th class="px-4 py-3.5">
-                                <ResourceTableHeading :href="route('properties.index')">العقار والوحدة</ResourceTableHeading>
+                                <ResourceTableHeading :href="route('properties.index')">{{ $t('leases.th_property_unit') }}</ResourceTableHeading>
                             </th>
-                            <th class="px-4 py-3.5">مدة العقد</th>
-                            <th class="px-4 py-3.5">الإيجار الشهري</th>
-                            <th class="px-4 py-3.5">التأمين المسترد</th>
-                            <th class="px-4 py-3.5">الحالة</th>
-                            <th class="px-4 py-3.5 text-left">الإجراءات</th>
+                            <th class="px-4 py-3.5">{{ $t('leases.th_lease_period') }}</th>
+                            <th class="px-4 py-3.5">{{ $t('leases.th_monthly_rent') }}</th>
+                            <th class="px-4 py-3.5">{{ $t('leases.th_security_deposit') }}</th>
+                            <th class="px-4 py-3.5">{{ $t('leases.th_status') }}</th>
+                            <th class="px-4 py-3.5 text-start">{{ $t('leases.th_actions') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-[#EEECE5]">
@@ -495,7 +509,7 @@ const leaseStatusClass = (status: string) => {
                                     <Calendar class="h-3.5 w-3.5 shrink-0 text-[#8A887F]" />
                                     <span>{{ lease.starts_on }} – {{ lease.ends_on }}</span>
                                 </div>
-                                <span class="mt-1 block font-sans text-[10px] text-[#8A887F]">الاستحقاق: {{ lease.billing_interval }}</span>
+                                <span class="mt-1 block font-sans text-[10px] text-[#8A887F]">{{ $t('leases.due_interval', { interval: lease.billing_interval }) }}</span>
                             </td>
 
                             <!-- الإيجار الشهري -->
@@ -521,7 +535,7 @@ const leaseStatusClass = (status: string) => {
                                 </div>
                                 <div v-else class="flex items-center gap-1 text-[11px] text-[#929087]">
                                     <Shield class="h-3.5 w-3.5" />
-                                    <span>بدون تأمين</span>
+                                    <span>{{ $t('leases.no_deposit') }}</span>
                                 </div>
                             </td>
 
@@ -537,25 +551,25 @@ const leaseStatusClass = (status: string) => {
                             </td>
 
                             <!-- إجراءات -->
-                            <td class="whitespace-nowrap px-4 py-3.5 text-left">
+                            <td class="whitespace-nowrap px-4 py-3.5 text-start">
                                 <div class="flex items-center justify-end gap-2">
                                     <a
                                         v-if="lease.has_contract_image && lease.contract_image_url"
                                         :href="lease.contract_image_url"
                                         target="_blank"
                                         class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-[#52766C] transition-colors duration-200 ease-out hover:bg-[#F3F2EE] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#52766C]"
-                                        title="عرض وثيقة العقد المشفرة"
+                                        :title="$t('leases.contract_document')"
                                     >
                                         <Paperclip class="h-3.5 w-3.5" />
-                                        <span>وثيقة العقد</span>
+                                        <span>{{ $t('leases.contract_document') }}</span>
                                     </a>
 
                                     <Link
                                         :href="route('leases.show', lease.id)"
                                         class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-[#36594F] transition-colors duration-200 ease-out hover:bg-[#E8EFEB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#52766C]"
                                     >
-                                        <span>تفاصيل العقد والتأمين</span>
-                                        <ArrowLeft class="h-3.5 w-3.5" />
+                                        <span>{{ $t('leases.lease_details_btn') }}</span>
+                                        <ArrowLeft class="h-3.5 w-3.5 transition-transform duration-200" :class="isRtl ? '' : 'rotate-180'" />
                                     </Link>
                                 </div>
                             </td>
@@ -569,9 +583,9 @@ const leaseStatusClass = (status: string) => {
         <EmptyState
             v-else
             type="document"
-            title="لم يتم العثور على أي عقود"
-            description="لم نجد أي عقد إيجار يطابق معايير البحث والتصفية المحددة."
-            action-label="إنشاء عقد إيجار جديد الآن"
+            :title="$t('leases.empty_title')"
+            :description="$t('leases.empty_desc')"
+            :action-label="$t('leases.empty_action')"
             @action="$inertia.visit(route('leases.create'))"
         />
     </AppLayout>

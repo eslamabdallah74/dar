@@ -192,8 +192,10 @@ class WorkspaceDashboardService
             ]),
             'is_empty_workspace' => ($totalProperties === 0 && $totalBillableUnits === 0),
             'header' => [
-                'greeting' => ((now()->hour >= 5 && now()->hour < 12) ? 'صباح الخير' : 'مساء الخير').'، '.($user->name ?: 'عزيزي المالك').' 👋',
-                'subtitle' => 'اليوم '.now()->translatedFormat('l، d F Y').' • نظرة عامة على مساحة عملك والعمليات التشغيلية',
+                'greeting' => (now()->hour >= 5 && now()->hour < 12)
+                    ? __('dashboard.greeting_morning', ['name' => $user->name ?: __('dashboard.dear_owner')])
+                    : __('dashboard.greeting_evening', ['name' => $user->name ?: __('dashboard.dear_owner')]),
+                'subtitle' => __('dashboard.subtitle_date', ['date' => now()->translatedFormat('l، d F Y')]),
             ],
             'checklist' => $onboarding,
             'top_kpis' => [
@@ -309,13 +311,15 @@ class WorkspaceDashboardService
 
     private function resolveCurrencyLabel(string $currencyCode): string
     {
+        $isAr = app()->getLocale() === 'ar';
+
         return match (strtoupper($currencyCode)) {
-            'EGP' => 'بالجنيه المصري',
-            'SAR' => 'بالريال السعودي',
-            'AED' => 'بالدرهم الإماراتي',
-            'USD' => 'بالدولار الأمريكي',
-            'KWD' => 'بالدينار الكويتي',
-            default => 'بالعملة المحلية',
+            'EGP' => $isAr ? 'بالجنيه المصري' : 'in Egyptian Pounds',
+            'SAR' => $isAr ? 'بالريال السعودي' : 'in Saudi Riyals',
+            'AED' => $isAr ? 'بالدرهم الإماراتي' : 'in UAE Dirhams',
+            'USD' => $isAr ? 'بالدولار الأمريكي' : 'in US Dollars',
+            'KWD' => $isAr ? 'بالدينار الكويتي' : 'in Kuwaiti Dinars',
+            default => $isAr ? 'بالعملة المحلية' : 'in local currency',
         };
     }
 
@@ -324,12 +328,6 @@ class WorkspaceDashboardService
      */
     private function buildIncomeTrend(Workspace $workspace, string $currencySymbol, string $currencyLabel): array
     {
-        $arabicMonths = [
-            1 => 'يناير', 2 => 'فبراير', 3 => 'مارس', 4 => 'أبريل',
-            5 => 'مايو', 6 => 'يونيو', 7 => 'يوليو', 8 => 'أغسطس',
-            9 => 'سبتمبر', 10 => 'أكتوبر', 11 => 'نوفمبر', 12 => 'ديسمبر',
-        ];
-
         $monthlyIncomeData = [];
         $incomeMonths = [];
         $incomeAmounts = [];
@@ -348,7 +346,7 @@ class WorkspaceDashboardService
                 $hasPaymentHistory = true;
             }
 
-            $monthLabel = $arabicMonths[$monthDate->month];
+            $monthLabel = $monthDate->translatedFormat('M');
             $incomeMonths[] = $monthLabel;
             $incomeAmounts[] = $amount;
 

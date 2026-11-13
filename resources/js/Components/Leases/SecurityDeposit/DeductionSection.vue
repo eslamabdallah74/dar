@@ -70,7 +70,7 @@ const exceedsBalance = computed(() => {
 </script>
 
 <template>
-    <section class="space-y-4 rounded-2xl border border-[#D6E0E7] bg-white p-4 sm:p-5" dir="rtl">
+    <section class="space-y-4 rounded-2xl border border-[#D6E0E7] bg-white p-4 sm:p-5" >
         <!-- Section Header -->
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-[#D6E0E7] pb-3.5">
             <div>

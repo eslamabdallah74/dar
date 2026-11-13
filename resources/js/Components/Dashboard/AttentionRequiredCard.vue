@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { AlertTriangle, ChevronLeft, Clock, Wrench, CheckCircle, ArrowLeft } from 'lucide-vue-next';
+import { useLocale } from '@/composables/useLocale';
+
+const { t, isRtl } = useLocale();
 
 interface AttentionItem {
     id: number;
@@ -32,13 +35,13 @@ const safeItems = computed(() => props.items || []);
             <!-- العنوان وعدد التنبيهات -->
             <div class="flex items-center justify-between">
                 <h3 class="text-base font-bold text-[#163E3E]">
-                    {{ title || 'تحتاج انتباهك' }}
+                    {{ title || t('dashboard.attention_required_title') }}
                 </h3>
                 <span
                     v-if="safeItems.length > 0"
                     class="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200"
                 >
-                    {{ safeItems.length }} تنبيهات
+                    {{ t('dashboard.attention_alerts_count', { count: safeItems.length }) }}
                 </span>
             </div>
 
@@ -50,9 +53,9 @@ const safeItems = computed(() => props.items || []);
                 <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
                     <CheckCircle class="h-5 w-5" />
                 </div>
-                <h4 class="text-xs font-bold text-emerald-900">كل شيء على ما يرام!</h4>
+                <h4 class="text-xs font-bold text-emerald-900">{{ t('dashboard.all_good_title') }}</h4>
                 <p class="text-[11px] text-emerald-700 font-medium leading-relaxed max-w-[220px]">
-                    لا توجد متأخرات دفع أو عقود تنتهي قريباً أو طلبات صيانة تتطلب إجراءً عاجلاً.
+                    {{ t('dashboard.all_good_desc') }}
                 </p>
             </div>
 
@@ -89,7 +92,10 @@ const safeItems = computed(() => props.items || []);
                         </div>
                     </div>
 
-                    <ChevronLeft class="h-4 w-4 text-[#B6C5D0] group-hover:text-[#163E3E] group-hover:-translate-x-1 transition shrink-0" />
+                    <ChevronLeft
+                        class="h-4 w-4 text-[#B6C5D0] group-hover:text-[#163E3E] transition shrink-0"
+                        :class="isRtl ? 'group-hover:-translate-x-1' : 'group-hover:translate-x-1 rotate-180'"
+                    />
                 </div>
             </div>
         </div>
@@ -101,8 +107,8 @@ const safeItems = computed(() => props.items || []);
                 type="button"
                 class="w-full text-center text-xs font-bold text-[#163E3E] hover:text-[#102F2F] transition py-1 flex items-center justify-center gap-1.5"
             >
-                <span>متابعة كافة المستحقات والعقود</span>
-                <ArrowLeft class="h-3.5 w-3.5" />
+                <span>{{ t('dashboard.view_all_attention') }}</span>
+                <ArrowLeft class="h-3.5 w-3.5" :class="isRtl ? '' : 'rotate-180'" />
             </button>
         </div>
     </div>

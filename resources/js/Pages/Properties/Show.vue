@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import { useToast } from '@/composables/useToast';
+import { useLocale } from '@/composables/useLocale';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
 import UnitDrawer from '@/Components/Common/UnitDrawer.vue';
@@ -31,6 +32,8 @@ import {
     ShieldCheck,
     Receipt,
 } from 'lucide-vue-next';
+
+const { t, isRtl, dir } = useLocale();
 
 const props = withDefaults(
     defineProps<{
@@ -133,29 +136,16 @@ const statusFilter = ref<'all' | 'occupied' | 'vacant' | 'maintenance'>('all');
 const typeFilter = ref<string>('all');
 const activeTab = ref<'tree' | 'table'>('tree');
 
-const FINISHING_TYPE_LABELS: Record<string, string> = {
-    deluxe: 'الترا ديلوكس / فاخر جداً',
-    super_lux: 'سوبر لوكس',
-    lux: 'لوكس',
-    standard: 'تشطيب قياسي / عادي',
-    semi_finished: 'نصف تشطيب (محارة وحلوق)',
-    commercial: 'تشطيب تجاري / إداري',
-    unfinished: 'بدون تشطيب (على الطوب)',
+const getFinishingTypeLabel = (type: string) => {
+    const key = `properties.finishing_${type}`;
+    const translated = t(key);
+    return translated !== key ? translated : type;
 };
 
-const AMENITY_LABELS: Record<string, string> = {
-    elevator: 'مصعد كهربائي',
-    parking: 'موقف سيارات / جراج',
-    security_guard: 'حارس أمن / مشرف',
-    cctv: 'كاميرات مراقبة CCTV',
-    water_tank: 'خزان ومضخة مياه',
-    natural_gas: 'غاز طبيعي مركزي',
-    central_ac: 'تكييف مركزي',
-    fiber_internet: 'إنترنت ألياف ضوئية',
-    intercom: 'انتركم مرئي / صوتي',
-    fire_system: 'نظام إطفاء وإنذار حريق',
-    generator: 'مولد كهرباء طوارئ',
-    waste_chute: 'ممر ومجمع نفايات',
+const getAmenityLabel = (id: string) => {
+    const key = `properties.amenity_${id}`;
+    const translated = t(key);
+    return translated !== key ? translated : id;
 };
 
 const finishingTypeLabel = computed(() => {
@@ -163,21 +153,24 @@ const finishingTypeLabel = computed(() => {
         return props.property.finishing_type_label;
     }
     if (props.property.finishing_type) {
-        return FINISHING_TYPE_LABELS[props.property.finishing_type] || props.property.finishing_type;
+        return getFinishingTypeLabel(props.property.finishing_type);
     }
     return '';
 });
 
 const displayAmenities = computed(() => {
     if (props.property.amenities_labels && props.property.amenities_labels.length > 0) {
-        return props.property.amenities_labels;
+        return props.property.amenities_labels.map((a) => ({
+            id: a.id,
+            label: getAmenityLabel(a.id),
+        }));
     }
     if (props.property.amenities && props.property.amenities.length > 0) {
         return props.property.amenities.map((item) => {
             const key = String(item);
             return {
                 id: key,
-                label: AMENITY_LABELS[key] || key,
+                label: getAmenityLabel(key),
             };
         });
     }
@@ -294,34 +287,34 @@ const filteredUnits = computed(() => {
         :title="`${property.name} — Nook Mate`"
         active-tab="properties"
         :header-title="property.name"
-        :header-subtitle="property.address || 'تفاصيل العقار وهيكل الوحدات السكنية والتجارية'"
-        :breadcrumb="`العقارات / ${property.name}`"
+        :header-subtitle="property.address || t('properties.subtitle')"
+        :breadcrumb="`${t('properties.breadcrumb')} / ${property.name}`"
     >
         <template #actions>
             <div class="flex items-center gap-2.5 flex-wrap">
                 <Link
                     :href="route('properties.index')"
-                    class="h-10 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F8F4EA] text-xs font-semibold text-[#5B6770] transition flex items-center gap-1.5"
+                    class="h-10 px-4 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F8F4EA] text-xs font-semibold text-[#5B6770] transition flex items-center gap-1.5 whitespace-nowrap"
                 >
-                    <ArrowRight class="w-4 h-4" />
-                    <span>العودة للعقارات</span>
+                    <ArrowRight class="w-4 h-4" :class="isRtl ? '' : 'rotate-180'" />
+                    <span>{{ t('properties.back_to_properties') }}</span>
                 </Link>
 
                 <Link
                     :href="route('leases.create')"
-                    class="h-10 px-4 rounded-xl border border-[#163E3E]/30 bg-[#E8F0F0] text-[#163E3E] hover:bg-[#163E3E] hover:text-white text-xs font-bold transition flex items-center gap-1.5"
+                    class="h-10 px-4 rounded-xl border border-[#163E3E]/30 bg-[#E8F0F0] text-[#163E3E] hover:bg-[#163E3E] hover:text-white text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap"
                 >
                     <FileText class="w-4 h-4" />
-                    <span>تأجير وحدة</span>
+                    <span>{{ t('properties.rent_unit') }}</span>
                 </Link>
 
                 <button
                     @click="openGeneralAddModal"
                     type="button"
-                    class="h-10 px-5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer"
+                    class="h-10 px-5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center gap-2 shadow-xs cursor-pointer whitespace-nowrap"
                 >
                     <Plus class="w-4 h-4" />
-                    <span>إضافة وحدة بالعقار</span>
+                    <span>{{ t('properties.add_unit_to_property') }}</span>
                 </button>
             </div>
         </template>
@@ -332,27 +325,27 @@ const filteredUnits = computed(() => {
                 <!-- المؤشرات الرئيسية -->
                 <div class="flex items-center flex-wrap gap-x-0 gap-y-2 divide-x divide-x-reverse divide-[#E2DDD2]">
                     <div class="flex items-center gap-2 pe-5">
-                        <span class="text-xs text-[#5B6770]">إجمالي الوحدات</span>
+                        <span class="text-xs text-[#5B6770]">{{ t('properties.total_units_metric') }}</span>
                         <span class="font-mono font-bold text-[#163E3E] text-sm">{{ stats.total_units }}</span>
-                        <span class="text-[11px] text-[#5B6770]">({{ stats.billable_units }} قابلة للتأجير)</span>
+                        <span class="text-[11px] text-[#5B6770]">({{ t('properties.billable_units_hint', { count: stats.billable_units }) }})</span>
                     </div>
                     <div class="flex items-center gap-2 px-5">
                         <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-                        <span class="text-xs text-[#5B6770]">مشغولة</span>
+                        <span class="text-xs text-[#5B6770]">{{ t('properties.occupied') }}</span>
                         <span class="font-mono font-bold text-emerald-800 text-sm">{{ stats.occupied }}</span>
                     </div>
                     <div class="flex items-center gap-2 px-5">
                         <span class="w-2 h-2 rounded-full bg-[#C5BCAC] shrink-0"></span>
-                        <span class="text-xs text-[#5B6770]">شاغرة</span>
+                        <span class="text-xs text-[#5B6770]">{{ t('properties.vacant') }}</span>
                         <span class="font-mono font-bold text-[#163E3E] text-sm">{{ stats.vacant }}</span>
                     </div>
                     <div v-if="stats.maintenance > 0" class="flex items-center gap-2 px-5">
                         <span class="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
-                        <span class="text-xs text-[#5B6770]">صيانة</span>
+                        <span class="text-xs text-[#5B6770]">{{ t('properties.maintenance_status') }}</span>
                         <span class="font-mono font-bold text-amber-700 text-sm">{{ stats.maintenance }}</span>
                     </div>
                     <div class="flex items-center gap-2 ps-5">
-                        <span class="text-xs text-[#5B6770]">الإيراد الشهري</span>
+                        <span class="text-xs text-[#5B6770]">{{ t('properties.monthly_revenue_metric') }}</span>
                         <span class="font-mono font-bold text-[#163E3E] text-sm">{{ stats.monthly_revenue.toLocaleString() }}</span>
                         <span class="text-[11px] text-[#5B6770]">{{ currency_symbol }}</span>
                     </div>
@@ -366,7 +359,7 @@ const filteredUnits = computed(() => {
                         ></div>
                     </div>
                     <span class="text-xs font-bold text-[#163E3E] font-mono">{{ stats.occupancy_rate }}%</span>
-                    <span class="text-[11px] text-[#5B6770]">إشغال</span>
+                    <span class="text-[11px] text-[#5B6770]">{{ t('properties.occupancy') }}</span>
                 </div>
             </div>
         </div>
@@ -379,7 +372,7 @@ const filteredUnits = computed(() => {
                 <div class="absolute bottom-4 right-5 text-white sm:bottom-6 sm:right-8">
                     <div class="flex items-center gap-2">
                         <span class="rounded-lg bg-[#18705A] px-2.5 py-0.5 text-xs font-bold text-white">
-                            {{ property.property_type_label || 'عقار' }}
+                            {{ property.property_type_label || t('properties.property_default_label') }}
                         </span>
                         <span
                             v-if="property.apartment_gender && property.apartment_gender.status !== 'unspecified'"
@@ -410,7 +403,7 @@ const filteredUnits = computed(() => {
                     </div>
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="rounded-lg bg-[#18705A] px-2.5 py-1 text-xs font-bold text-white">
-                            {{ property.property_type_label || 'عقار' }}
+                            {{ property.property_type_label || t('properties.property_default_label') }}
                         </span>
                         <span
                             v-if="property.apartment_gender && property.apartment_gender.status !== 'unspecified'"
@@ -434,13 +427,13 @@ const filteredUnits = computed(() => {
                     <div class="rounded-md border border-[#E2DDD2] bg-[#EFECE2]/40 p-4">
                         <span class="flex items-center gap-1.5 text-xs font-extrabold text-[#18705A]">
                             <MapPin class="size-4" />
-                            <span>الموقع والعنوان</span>
+                            <span>{{ t('properties.specs_location_title') }}</span>
                         </span>
                         <p class="mt-2 text-xs font-bold text-[#163E3E]">
-                            {{ property.city || 'المدينة غير محددة' }} {{ property.district ? ` - ${property.district}` : '' }}
+                            {{ property.city || t('properties.city_not_specified') }} {{ property.district ? ` - ${property.district}` : '' }}
                         </p>
                         <p class="mt-1 text-[11px] text-[#5B6770]">
-                            {{ property.street || property.address || 'العنوان غير مدخل' }}
+                            {{ property.street || property.address || t('properties.address_not_entered') }}
                         </p>
                         <a
                             v-if="property.google_maps_url"
@@ -448,7 +441,7 @@ const filteredUnits = computed(() => {
                             target="_blank"
                             class="mt-2.5 inline-flex items-center gap-1 text-[11px] font-bold text-[#18705A] hover:underline"
                         >
-                            <span>فتح في خرائط Google</span>
+                            <span>{{ t('properties.open_in_google_maps') }}</span>
                         </a>
                     </div>
 
@@ -456,32 +449,32 @@ const filteredUnits = computed(() => {
                     <div class="rounded-md border border-[#E2DDD2] bg-[#EFECE2]/40 p-4">
                         <span class="flex items-center gap-1.5 text-xs font-extrabold text-[#18705A]">
                             <Building2 class="size-4" />
-                            <span>المواصفات الإنشائية</span>
+                            <span>{{ t('properties.specs_structural_title') }}</span>
                         </span>
                         <div class="mt-2 grid grid-cols-2 gap-2 text-[11px]">
                             <div>
-                                <span class="text-[#5B6770]">الأدوار:</span>
-                                <span class="mr-1 font-bold text-[#163E3E]">{{ property.floors_count || 1 }}</span>
+                                <span class="text-[#5B6770]">{{ t('properties.specs_floors') }}</span>
+                                <span class="mx-1 font-bold text-[#163E3E]">{{ property.floors_count || 1 }}</span>
                             </div>
                             <div v-if="property.total_area">
-                                <span class="text-[#5B6770]">المساحة:</span>
-                                <span class="mr-1 font-bold text-[#163E3E]">{{ property.total_area }} م²</span>
+                                <span class="text-[#5B6770]">{{ t('properties.specs_area') }}</span>
+                                <span class="mx-1 font-bold text-[#163E3E]">{{ property.total_area }} م²</span>
                             </div>
                             <div v-if="property.year_built">
-                                <span class="text-[#5B6770]">البناء:</span>
-                                <span class="mr-1 font-bold text-[#163E3E]">{{ property.year_built }}</span>
+                                <span class="text-[#5B6770]">{{ t('properties.specs_built') }}</span>
+                                <span class="mx-1 font-bold text-[#163E3E]">{{ property.year_built }}</span>
                             </div>
                             <div v-if="finishingTypeLabel">
-                                <span class="text-[#5B6770]">التشطيب:</span>
-                                <span class="mr-1 font-bold text-[#163E3E]">{{ finishingTypeLabel }}</span>
+                                <span class="text-[#5B6770]">{{ t('properties.specs_finishing') }}</span>
+                                <span class="mx-1 font-bold text-[#163E3E]">{{ finishingTypeLabel }}</span>
                             </div>
                             <div v-if="property.floor_number">
-                                <span class="text-[#5B6770]">الطابق:</span>
-                                <span class="mr-1 font-bold text-[#163E3E]">{{ property.floor_number }}</span>
+                                <span class="text-[#5B6770]">{{ t('properties.specs_floor_num') }}</span>
+                                <span class="mx-1 font-bold text-[#163E3E]">{{ property.floor_number }}</span>
                             </div>
                             <div v-if="property.commercial_activity">
-                                <span class="text-[#5B6770]">النشاط:</span>
-                                <span class="mr-1 font-bold text-[#163E3E]">{{ property.commercial_activity }}</span>
+                                <span class="text-[#5B6770]">{{ t('properties.specs_activity') }}</span>
+                                <span class="mx-1 font-bold text-[#163E3E]">{{ property.commercial_activity }}</span>
                             </div>
                         </div>
                     </div>
@@ -490,23 +483,23 @@ const filteredUnits = computed(() => {
                     <div class="rounded-md border border-[#E2DDD2] bg-[#EFECE2]/40 p-4">
                         <span class="flex items-center gap-1.5 text-xs font-extrabold text-[#18705A]">
                             <Receipt class="size-4" />
-                            <span>عدادات المرافق</span>
+                            <span>{{ t('properties.specs_meters_title') }}</span>
                         </span>
                         <div class="mt-2 space-y-1 text-[11px]">
                             <div v-if="property.electricity_meter_number">
-                                <span class="text-[#5B6770]">كهرباء:</span>
-                                <span class="mr-1 font-mono font-bold text-[#163E3E]">{{ property.electricity_meter_number }}</span>
+                                <span class="text-[#5B6770]">{{ t('properties.meter_electricity') }}</span>
+                                <span class="mx-1 font-mono font-bold text-[#163E3E]">{{ property.electricity_meter_number }}</span>
                             </div>
                             <div v-if="property.water_meter_number">
-                                <span class="text-[#5B6770]">مياه:</span>
-                                <span class="mr-1 font-mono font-bold text-[#163E3E]">{{ property.water_meter_number }}</span>
+                                <span class="text-[#5B6770]">{{ t('properties.meter_water') }}</span>
+                                <span class="mx-1 font-mono font-bold text-[#163E3E]">{{ property.water_meter_number }}</span>
                             </div>
                             <div v-if="property.gas_meter_number">
-                                <span class="text-[#5B6770]">غاز:</span>
-                                <span class="mr-1 font-mono font-bold text-[#163E3E]">{{ property.gas_meter_number }}</span>
+                                <span class="text-[#5B6770]">{{ t('properties.meter_gas') }}</span>
+                                <span class="mx-1 font-mono font-bold text-[#163E3E]">{{ property.gas_meter_number }}</span>
                             </div>
                             <div v-if="!property.electricity_meter_number && !property.water_meter_number && !property.gas_meter_number" class="text-[#7A8C83]">
-                                لا توجد عدادات مسجلة
+                                {{ t('properties.no_meters_recorded') }}
                             </div>
                         </div>
                     </div>
@@ -515,23 +508,23 @@ const filteredUnits = computed(() => {
                     <div class="rounded-md border border-[#E2DDD2] bg-[#EFECE2]/40 p-4">
                         <span class="flex items-center gap-1.5 text-xs font-extrabold text-[#18705A]">
                             <ShieldCheck class="size-4" />
-                            <span>الإدارة وسند الملكية</span>
+                            <span>{{ t('properties.specs_management_title') }}</span>
                         </span>
                         <div class="mt-2 space-y-1 text-[11px]">
                             <div v-if="property.guard_name">
-                                <span class="text-[#5B6770]">الحارس:</span>
-                                <span class="mr-1 font-bold text-[#163E3E]">{{ property.guard_name }}</span>
+                                <span class="text-[#5B6770]">{{ t('properties.guard_label') }}</span>
+                                <span class="mx-1 font-bold text-[#163E3E]">{{ property.guard_name }}</span>
                             </div>
                             <div v-if="property.guard_phone">
-                                <span class="text-[#5B6770]">الهاتف:</span>
-                                <a :href="`tel:${property.guard_phone}`" class="mr-1 font-mono text-[#18705A] hover:underline">{{ property.guard_phone }}</a>
+                                <span class="text-[#5B6770]">{{ t('properties.guard_phone_label') }}</span>
+                                <a :href="`tel:${property.guard_phone}`" class="mx-1 font-mono text-[#18705A] hover:underline">{{ property.guard_phone }}</a>
                             </div>
                             <div v-if="property.deed_number">
-                                <span class="text-[#5B6770]">الصك/العقد:</span>
-                                <span class="mr-1 font-mono font-bold text-[#163E3E]">{{ property.deed_number }}</span>
+                                <span class="text-[#5B6770]">{{ t('properties.deed_label') }}</span>
+                                <span class="mx-1 font-mono font-bold text-[#163E3E]">{{ property.deed_number }}</span>
                             </div>
                             <div v-if="!property.guard_name && !property.deed_number" class="text-[#7A8C83]">
-                                غير مسجل
+                                {{ t('properties.not_registered') }}
                             </div>
                         </div>
                     </div>
@@ -539,7 +532,7 @@ const filteredUnits = computed(() => {
 
                 <!-- شارات المرافق المتاحة -->
                 <div v-if="displayAmenities.length > 0" class="flex flex-wrap items-center gap-2 border-t border-[#E2DDD2] pt-3">
-                    <span class="text-xs font-bold text-[#5B6770]">المرافق والخدمات:</span>
+                    <span class="text-xs font-bold text-[#5B6770]">{{ t('properties.amenities_services_title') }}</span>
                     <span
                         v-for="amenity in displayAmenities"
                         :key="amenity.id"
@@ -557,31 +550,31 @@ const filteredUnits = computed(() => {
                 <div class="flex items-center flex-wrap gap-x-0 gap-y-2 divide-x divide-x-reverse divide-[#E2DDD2] text-xs">
                     <div class="flex items-center gap-2 pe-5">
                         <Home class="w-3.5 h-3.5 text-[#5B6770]" />
-                        <span class="text-[#5B6770]">شقق</span>
+                        <span class="text-[#5B6770]">{{ t('properties.apartments_count') }}</span>
                         <span class="font-mono font-bold text-[#163E3E]">{{ stats.hierarchy_summary?.apartments ?? 0 }}</span>
-                        <span class="text-[11px] text-[#8E9CA6]">مستوى 1</span>
+                        <span class="text-[11px] text-[#8E9CA6]">{{ t('properties.level_1') }}</span>
                     </div>
                     <div class="flex items-center gap-2 px-5">
                         <DoorClosed class="w-3.5 h-3.5 text-[#5B6770]" />
-                        <span class="text-[#5B6770]">أوض</span>
+                        <span class="text-[#5B6770]">{{ t('properties.rooms_count') }}</span>
                         <span class="font-mono font-bold text-[#163E3E]">{{ stats.hierarchy_summary?.rooms ?? 0 }}</span>
-                        <span class="text-[11px] text-[#8E9CA6]">مستوى 2</span>
+                        <span class="text-[11px] text-[#8E9CA6]">{{ t('properties.level_2') }}</span>
                     </div>
                     <div class="flex items-center gap-2 px-5">
                         <Bed class="w-3.5 h-3.5 text-[#5B6770]" />
-                        <span class="text-[#5B6770]">سراير</span>
+                        <span class="text-[#5B6770]">{{ t('properties.beds_count') }}</span>
                         <span class="font-mono font-bold text-[#163E3E]">{{ stats.hierarchy_summary?.beds ?? 0 }}</span>
-                        <span class="text-[11px] text-[#8E9CA6]">مستوى 3</span>
+                        <span class="text-[11px] text-[#8E9CA6]">{{ t('properties.level_3') }}</span>
                     </div>
                     <div class="flex items-center gap-2 ps-5">
                         <Store class="w-3.5 h-3.5 text-[#5B6770]" />
-                        <span class="text-[#5B6770]">محلات</span>
+                        <span class="text-[#5B6770]">{{ t('properties.shops_count') }}</span>
                         <span class="font-mono font-bold text-[#163E3E]">{{ stats.hierarchy_summary?.shops ?? 0 }}</span>
-                        <span class="text-[11px] text-[#8E9CA6]">مستقل</span>
+                        <span class="text-[11px] text-[#8E9CA6]">{{ t('properties.level_standalone') }}</span>
                     </div>
                 </div>
                 <p class="text-[11px] text-[#8E9CA6] shrink-0">
-                    الشقق قابلة للتأجير كلياً أو تقسيمها لغرف، والمحلات مستقلة تماماً
+                    {{ t('properties.hierarchy_summary_hint') }}
                 </p>
             </div>
         </div>
@@ -594,15 +587,22 @@ const filteredUnits = computed(() => {
                     <input
                         v-model="searchQuery"
                         type="text"
-                        placeholder="ابحث برقم الشقة، اسم الأوضة، السرير، أو المستأجر..."
-                        class="w-full h-10 pr-9 pl-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition placeholder-[#8E9CA6]"
+                        :placeholder="t('properties.search_units_placeholder')"
+                        :class="[
+                            'w-full h-10 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-xs text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition placeholder-[#8E9CA6]',
+                            isRtl ? 'pr-9 pl-3.5 text-right' : 'pl-9 pr-3.5 text-left'
+                        ]"
                     />
-                    <Search class="w-4 h-4 text-[#8E9CA6] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <Search
+                        class="w-4 h-4 text-[#8E9CA6] absolute top-1/2 -translate-y-1/2 pointer-events-none"
+                        :class="isRtl ? 'right-3' : 'left-3'"
+                    />
                     <button
                         v-if="searchQuery"
                         @click="searchQuery = ''"
                         type="button"
-                        class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        class="absolute top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        :class="isRtl ? 'left-3' : 'right-3'"
                     >
                         <X class="w-3.5 h-3.5" />
                     </button>
@@ -615,20 +615,20 @@ const filteredUnits = computed(() => {
                         <button
                             @click="handleExpandAll"
                             type="button"
-                            class="h-8 px-2.5 rounded-lg text-xs font-semibold text-[#5B6770] hover:text-[#163E3E] hover:bg-white transition flex items-center gap-1 cursor-pointer"
-                            title="فتح كل المستويات الهرمية"
+                            class="h-8 px-2.5 rounded-lg text-xs font-semibold text-[#5B6770] hover:text-[#163E3E] hover:bg-white transition flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                            :title="t('properties.expand_all')"
                         >
                             <Maximize2 class="w-3.5 h-3.5" />
-                            <span>توسيع الكل</span>
+                            <span>{{ t('properties.expand_all') }}</span>
                         </button>
                         <button
                             @click="handleCollapseAll"
                             type="button"
-                            class="h-8 px-2.5 rounded-lg text-xs font-semibold text-[#5B6770] hover:text-[#163E3E] hover:bg-white transition flex items-center gap-1 cursor-pointer"
-                            title="طي كل الفروع وإبقاء الشقق الرئيسية فقط"
+                            class="h-8 px-2.5 rounded-lg text-xs font-semibold text-[#5B6770] hover:text-[#163E3E] hover:bg-white transition flex items-center gap-1 cursor-pointer whitespace-nowrap"
+                            :title="t('properties.collapse_all')"
                         >
                             <Minimize2 class="w-3.5 h-3.5" />
-                            <span>طي الكل</span>
+                            <span>{{ t('properties.collapse_all') }}</span>
                         </button>
                     </div>
 
@@ -637,21 +637,21 @@ const filteredUnits = computed(() => {
                         <button
                             @click="activeTab = 'tree'"
                             type="button"
-                            class="h-8 px-3 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                            class="h-8 px-3 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                             :class="activeTab === 'tree' ? 'bg-white text-[#163E3E] shadow-2xs' : 'text-[#5B6770] hover:text-[#163E3E]'"
                         >
                             <Layers class="w-3.5 h-3.5" />
-                            <span>شجرة الوحدات</span>
+                            <span>{{ t('properties.tree_view') }}</span>
                         </button>
 
                         <button
                             @click="activeTab = 'table'"
                             type="button"
-                            class="h-8 px-3 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                            class="h-8 px-3 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
                             :class="activeTab === 'table' ? 'bg-white text-[#163E3E] shadow-2xs' : 'text-[#5B6770] hover:text-[#163E3E]'"
                         >
                             <List class="w-3.5 h-3.5" />
-                            <span>جدول تفصيلي</span>
+                            <span>{{ t('properties.table_view') }}</span>
                         </button>
                     </div>
                 </div>
@@ -661,100 +661,100 @@ const filteredUnits = computed(() => {
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-[#E8EFF4] pt-3 text-xs">
                 <!-- تصفية حسب النوع الهرمي -->
                 <div class="flex items-center gap-1.5 overflow-x-auto pb-1">
-                    <span class="text-[#5B6770] font-medium shrink-0 ml-1">النوع:</span>
+                    <span class="text-[#5B6770] font-medium shrink-0 ml-1">{{ t('properties.type_filter_label') }}</span>
 
                     <button
                         @click="typeFilter = 'all'"
                         type="button"
-                        class="px-2.5 py-1 rounded-lg font-bold transition shrink-0 cursor-pointer"
+                        class="px-2.5 py-1 rounded-lg font-bold transition shrink-0 cursor-pointer whitespace-nowrap"
                         :class="typeFilter === 'all' ? 'bg-[#163E3E] text-white' : 'bg-[#F8F4EA] text-[#5B6770] hover:bg-slate-200'"
                     >
-                        الكل
+                        {{ t('properties.filter_all') }}
                     </button>
 
                     <button
                         @click="typeFilter = 'apartment'"
                         type="button"
-                        class="px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 shrink-0 cursor-pointer"
+                        class="px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 shrink-0 cursor-pointer whitespace-nowrap"
                         :class="typeFilter === 'apartment' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200'"
                     >
                         <Home class="w-3.5 h-3.5" />
-                        <span>شقق ({{ stats.hierarchy_summary?.apartments ?? 0 }})</span>
+                        <span>{{ t('properties.apartments_count') }} ({{ stats.hierarchy_summary?.apartments ?? 0 }})</span>
                     </button>
 
                     <button
                         @click="typeFilter = 'room'"
                         type="button"
-                        class="px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 shrink-0 cursor-pointer"
+                        class="px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 shrink-0 cursor-pointer whitespace-nowrap"
                         :class="typeFilter === 'room' ? 'bg-teal-600 text-white' : 'bg-teal-50 text-teal-800 hover:bg-teal-100 border border-teal-200'"
                     >
                         <DoorClosed class="w-3.5 h-3.5" />
-                        <span>أوض ({{ stats.hierarchy_summary?.rooms ?? 0 }})</span>
+                        <span>{{ t('properties.rooms_count') }} ({{ stats.hierarchy_summary?.rooms ?? 0 }})</span>
                     </button>
 
                     <button
                         @click="typeFilter = 'bed'"
                         type="button"
-                        class="px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 shrink-0 cursor-pointer"
+                        class="px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 shrink-0 cursor-pointer whitespace-nowrap"
                         :class="typeFilter === 'bed' ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'"
                     >
                         <Bed class="w-3.5 h-3.5" />
-                        <span>سراير ({{ stats.hierarchy_summary?.beds ?? 0 }})</span>
+                        <span>{{ t('properties.beds_count') }} ({{ stats.hierarchy_summary?.beds ?? 0 }})</span>
                     </button>
 
                     <button
                         @click="typeFilter = 'shop'"
                         type="button"
-                        class="px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 shrink-0 cursor-pointer"
+                        class="px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 shrink-0 cursor-pointer whitespace-nowrap"
                         :class="typeFilter === 'shop' ? 'bg-purple-600 text-white' : 'bg-purple-50 text-purple-800 hover:bg-purple-100 border border-purple-200'"
                     >
                         <Store class="w-3.5 h-3.5" />
-                        <span>محلات ({{ stats.hierarchy_summary?.shops ?? 0 }})</span>
+                        <span>{{ t('properties.shops_count') }} ({{ stats.hierarchy_summary?.shops ?? 0 }})</span>
                     </button>
                 </div>
 
                 <!-- تصفية حسب حالة الإشغال -->
                 <div class="flex items-center gap-1.5 overflow-x-auto pb-1">
-                    <span class="text-[#5B6770] font-medium shrink-0 ml-1">الحالة:</span>
+                    <span class="text-[#5B6770] font-medium shrink-0 ml-1">{{ t('properties.status_filter_label') }}</span>
 
                     <button
                         @click="statusFilter = 'all'"
                         type="button"
-                        class="px-2.5 py-1 rounded-lg font-bold transition shrink-0 cursor-pointer"
+                        class="px-2.5 py-1 rounded-lg font-bold transition shrink-0 cursor-pointer whitespace-nowrap"
                         :class="statusFilter === 'all' ? 'bg-[#163E3E] text-white' : 'bg-[#F8F4EA] text-[#5B6770] hover:bg-slate-200'"
                     >
-                        الكل
+                        {{ t('properties.filter_all') }}
                     </button>
 
                     <button
                         @click="statusFilter = 'occupied'"
                         type="button"
-                        class="px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 shrink-0 cursor-pointer"
+                        class="px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 shrink-0 cursor-pointer whitespace-nowrap"
                         :class="statusFilter === 'occupied' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'"
                     >
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500" :class="{ 'bg-white': statusFilter === 'occupied' }"></span>
-                        <span>مؤجرة ({{ stats.occupied }})</span>
+                        <span>{{ t('properties.occupied') }} ({{ stats.occupied }})</span>
                     </button>
 
                     <button
                         @click="statusFilter = 'vacant'"
                         type="button"
-                        class="px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 shrink-0 cursor-pointer"
+                        class="px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 shrink-0 cursor-pointer whitespace-nowrap"
                         :class="statusFilter === 'vacant' ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'"
                     >
                         <span class="w-1.5 h-1.5 rounded-full bg-amber-500" :class="{ 'bg-white': statusFilter === 'vacant' }"></span>
-                        <span>شاغرة ({{ stats.vacant }})</span>
+                        <span>{{ t('properties.vacant') }} ({{ stats.vacant }})</span>
                     </button>
 
                     <button
                         v-if="stats.maintenance > 0"
                         @click="statusFilter = 'maintenance'"
                         type="button"
-                        class="px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 shrink-0 cursor-pointer"
+                        class="px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1 shrink-0 cursor-pointer whitespace-nowrap"
                         :class="statusFilter === 'maintenance' ? 'bg-sky-600 text-white' : 'bg-sky-50 text-sky-800 hover:bg-sky-100 border border-sky-200'"
                     >
                         <span class="w-1.5 h-1.5 rounded-full bg-sky-500" :class="{ 'bg-white': statusFilter === 'maintenance' }"></span>
-                        <span>صيانة ({{ stats.maintenance }})</span>
+                        <span>{{ t('properties.maintenance_status') }} ({{ stats.maintenance }})</span>
                     </button>
                 </div>
             </div>
@@ -778,19 +778,19 @@ const filteredUnits = computed(() => {
         <!-- جدول تفصيلي تنفيذي (عند اختيار تبويب الجدول) -->
         <div v-else class="bg-white rounded-3xl border border-[#D6E0E7] shadow-2xs overflow-hidden">
             <div class="overflow-x-auto">
-                <table class="w-full text-right text-sm">
+                <table class="w-full text-start text-sm">
                     <thead>
                         <tr class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] text-xs font-bold">
-                            <th class="py-3.5 px-6">كود الوحدة</th>
-                            <th class="py-3.5 px-6">اسم الوحدة</th>
-                            <th class="py-3.5 px-6">النوع الهرمي</th>
-                            <th class="py-3.5 px-6">المسار الهرمي التابع له</th>
+                            <th class="py-3.5 px-6">{{ t('properties.th_unit_code') }}</th>
+                            <th class="py-3.5 px-6">{{ t('properties.th_unit_name') }}</th>
+                            <th class="py-3.5 px-6">{{ t('properties.th_unit_type') }}</th>
+                            <th class="py-3.5 px-6">{{ t('properties.th_parent_path') }}</th>
                             <th class="py-3.5 px-6">
-                                <ResourceTableHeading :href="route('renters.index')">المستأجر الحالي</ResourceTableHeading>
+                                <ResourceTableHeading :href="route('renters.index')">{{ t('properties.th_current_renter') }}</ResourceTableHeading>
                             </th>
-                            <th class="py-3.5 px-6">القيمة الشهرية</th>
-                            <th class="py-3.5 px-6">الحالة</th>
-                            <th class="py-3.5 px-6 text-start sm:text-left">الإجراءات</th>
+                            <th class="py-3.5 px-6">{{ t('properties.th_monthly_value') }}</th>
+                            <th class="py-3.5 px-6">{{ t('properties.th_status') }}</th>
+                            <th class="py-3.5 px-6 text-start">{{ t('properties.th_actions') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-[#E8EFF4]">
@@ -813,17 +813,17 @@ const filteredUnits = computed(() => {
                             </td>
 
                             <td class="py-4 px-6 text-xs text-[#163E3E]">
-                                <span class="bg-[#F8F4EA] px-2 py-0.5 rounded-md border border-[#D6E0E7] font-bold">
+                                <span class="bg-[#F8F4EA] px-2 py-0.5 rounded-md border border-[#D6E0E7] font-bold whitespace-nowrap">
                                     {{ unit.type_label }}
                                 </span>
                             </td>
 
                             <td class="py-4 px-6 text-xs text-[#5B6770]">
                                 <span v-if="unit.parent_unit_name" class="font-medium text-[#163E3E]">
-                                    تابع لـ: {{ unit.parent_unit_name }}
+                                    {{ t('properties.belongs_to', { parent: unit.parent_unit_name }) }}
                                 </span>
                                 <span v-else class="text-slate-400">
-                                    {{ unit.unit_type === 'shop' ? 'محل مستقل' : 'وحدة رئيسية' }}
+                                    {{ unit.unit_type === 'shop' ? t('properties.standalone_shop') : t('properties.main_unit') }}
                                 </span>
                             </td>
 
@@ -832,7 +832,7 @@ const filteredUnits = computed(() => {
                                     <span class="font-bold text-[#163E3E] text-xs block truncate">{{ unit.active_lease.renter_name }}</span>
                                     <span class="text-[11px] text-[#5B6770] font-mono block" dir="ltr">{{ unit.active_lease.renter_phone }}</span>
                                 </div>
-                                <span v-else class="text-xs text-[#8E9CA6] italic">شاغرة</span>
+                                <span v-else class="text-xs text-[#8E9CA6] italic">{{ t('properties.vacant_label') }}</span>
                             </td>
 
                             <td class="py-4 px-6 font-mono text-xs font-bold text-[#163E3E]">
@@ -846,23 +846,23 @@ const filteredUnits = computed(() => {
                                 <StatusBadge :status="unit.status" :label="unit.status_label" size="sm" />
                             </td>
 
-                            <td class="py-4 px-6 text-start sm:text-left">
+                            <td class="py-4 px-6 text-start">
                                 <div class="flex items-center justify-end gap-2">
                                     <button
                                         @click="openUnitDetails(unit)"
                                         type="button"
-                                        class="h-8 px-3 rounded-lg border border-[#D6E0E7] hover:bg-[#F8F4EA] text-[#163E3E] text-xs font-semibold transition cursor-pointer"
+                                        class="h-8 px-3 rounded-lg border border-[#D6E0E7] hover:bg-[#F8F4EA] text-[#163E3E] text-xs font-semibold transition cursor-pointer whitespace-nowrap"
                                     >
-                                        التفاصيل
+                                        {{ t('properties.unit_details_btn') }}
                                     </button>
 
                                     <button
                                         @click="handleEditUnit(unit)"
                                         type="button"
-                                        class="h-8 px-2.5 rounded-lg border border-[#D6E0E7] hover:bg-[#F8F4EA] text-[#5B6770] hover:text-[#163E3E] text-xs transition cursor-pointer"
-                                        title="تعديل"
+                                        class="h-8 px-2.5 rounded-lg border border-[#D6E0E7] hover:bg-[#F8F4EA] text-[#5B6770] hover:text-[#163E3E] text-xs transition cursor-pointer whitespace-nowrap"
+                                        :title="t('properties.edit_unit_btn')"
                                     >
-                                        تعديل
+                                        {{ t('properties.edit_unit_btn') }}
                                     </button>
                                 </div>
                             </td>
@@ -877,10 +877,10 @@ const filteredUnits = computed(() => {
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <Wrench class="w-5 h-5 text-[#163E3E]" />
-                    <h3 class="text-base font-bold text-[#163E3E]">بلاغات الصيانة المسجلة لهذا العقار</h3>
+                    <h3 class="text-base font-bold text-[#163E3E]">{{ t('properties.maintenance_for_property') }}</h3>
                 </div>
                 <Link :href="route('maintenance.index')" class="text-xs font-bold text-[#163E3E] hover:underline">
-                    كل طلبات الصيانة ↗
+                    {{ t('properties.all_maintenance_link') }}
                 </Link>
             </div>
 
@@ -888,7 +888,7 @@ const filteredUnits = computed(() => {
                 <div v-for="m in recent_maintenance" :key="m.id" class="py-3 flex items-center justify-between text-xs">
                     <div>
                         <span class="font-bold text-[#163E3E]">{{ m.title }}</span>
-                        <span class="text-[#5B6770] mr-2">بواسطة {{ m.renter_name }}</span>
+                        <span class="text-[#5B6770] mx-2">{{ t('properties.by_renter', { name: m.renter_name }) }}</span>
                     </div>
                     <div class="flex items-center gap-3">
                         <span class="text-[#5B6770] font-mono">{{ m.reported_at }}</span>
@@ -927,21 +927,21 @@ const filteredUnits = computed(() => {
         />
 
         <!-- 8. نافذة تأكيد حذف الوحدة -->
-        <div v-if="showDeleteModal && unitToDelete" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4" dir="rtl">
+        <div v-if="showDeleteModal && unitToDelete" class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
             <div @click="showDeleteModal = false" class="fixed inset-0 bg-[#163E3E]/60 backdrop-blur-xs"></div>
-            <div class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-6 z-10 space-y-4">
+            <div :dir="dir" class="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-[#D6E0E7] p-6 z-10 space-y-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
                         <AlertTriangle class="w-5 h-5 stroke-[2]" />
                     </div>
                     <div>
-                        <h3 class="text-base font-bold text-[#163E3E]">تأكيد حذف الوحدة</h3>
+                        <h3 class="text-base font-bold text-[#163E3E]">{{ t('properties.delete_unit_confirm_title') }}</h3>
                         <p class="text-xs text-[#5B6770]">{{ unitToDelete.name }} ({{ unitToDelete.type_label }})</p>
                     </div>
                 </div>
 
                 <p class="text-xs text-[#5B6770] leading-relaxed">
-                    هل أنت متأكد من رغبتك بحذف هذه الوحدة؟ لن تتمكن من التراجع عن هذه العملية إذا تم الحذف.
+                    {{ t('properties.delete_unit_confirm_desc') }}
                 </p>
 
                 <div class="pt-2 flex items-center justify-end gap-2.5">
@@ -950,7 +950,7 @@ const filteredUnits = computed(() => {
                         type="button"
                         class="h-10 px-4 rounded-xl border border-[#D6E0E7] text-xs font-semibold text-[#5B6770] hover:bg-slate-50 transition cursor-pointer"
                     >
-                        إلغاء
+                        {{ t('common.cancel') }}
                     </button>
                     <button
                         @click="confirmDeleteUnit"
@@ -958,7 +958,7 @@ const filteredUnits = computed(() => {
                         type="button"
                         class="h-10 px-5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
-                        <span>{{ isDeleting ? 'جاري الحذف...' : 'نعم، احذف الوحدة' }}</span>
+                        <span>{{ isDeleting ? t('properties.deleting') : t('properties.yes_delete_unit') }}</span>
                     </button>
                 </div>
             </div>

@@ -141,7 +141,7 @@ onUnmounted(() => {
             <div
                 v-if="dialog.isOpen"
                 class="fixed inset-0 z-[100] flex items-end justify-center p-3 sm:items-center sm:p-6"
-                dir="rtl"
+
             >
                 <div
                     class="absolute inset-0 bg-[#0F2A2A]/55 backdrop-blur-[3px]"

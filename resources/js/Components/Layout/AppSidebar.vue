@@ -3,7 +3,6 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Link } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
-import LanguageSwitcher from '@/Components/Common/LanguageSwitcher.vue';
 import { useLocale } from '@/composables/useLocale';
 import {
     BarChart3,
@@ -147,9 +146,6 @@ onUnmounted(() => {
                                 {{ isRtl ? 'إشراف' : 'Admin' }}
                             </span>
                         </div>
-                        <span class="text-[10px] text-[#F8F4EA]/80 font-medium mt-1 font-poppins truncate max-w-[145px]">
-                            {{ adminMode ? $t('nav.admin_dashboard') : $t('nav.tagline') }}
-                        </span>
                     </div>
                 </Link>
 
@@ -166,13 +162,13 @@ onUnmounted(() => {
             <!-- شارة الإدارة -->
             <div
                 v-if="adminMode"
-                class="w-full rounded-xl bg-[#102F2F] p-3 border border-[#F7C33D]/30 text-right space-y-1"
+                class="w-full rounded-xl bg-[#102F2F] p-3 border border-[#F7C33D]/30 text-start space-y-1"
             >
                 <div class="flex items-center justify-between">
-                    <span class="text-xs font-bold text-[#F7C33D]">منظومة الإدارة</span>
+                    <span class="text-xs font-bold text-[#F7C33D]">{{ $t('nav.admin_system') }}</span>
                     <Shield class="w-3.5 h-3.5 text-[#F7C33D]" />
                 </div>
-                <p class="text-[11px] text-[#F8F4EA]/80 font-medium">تحكم شامل في كافة البيانات</p>
+                <p class="text-[11px] text-[#F8F4EA]/80 font-medium">{{ $t('nav.admin_system_desc') }}</p>
             </div>
 
             <!-- قائمة الروابط -->
@@ -209,7 +205,7 @@ onUnmounted(() => {
                         v-else
                         type="button"
                         @click="handleNavClick(link)"
-                        class="w-full h-[42px] px-3.5 rounded-xl flex items-center justify-between text-sm transition-all group font-medium text-right cursor-pointer"
+                        class="w-full h-[42px] px-3.5 rounded-xl flex items-center justify-between text-sm transition-all group font-medium text-start cursor-pointer"
                         :class="isLinkActive(link.key) 
                             ? 'bg-[#F7C33D] text-[#163E3E] font-bold shadow-xs' 
                             : 'text-[#F8F4EA]/85 hover:bg-white/10 hover:text-white'"
@@ -235,11 +231,8 @@ onUnmounted(() => {
             </nav>
         </div>
 
-        <!-- الجزء السفلي: انتقال التطبيق + حساب المستخدم + تبديل اللغة -->
+        <!-- الجزء السفلي: انتقال التطبيق + حساب المستخدم -->
         <div class="space-y-4 pt-6 border-t border-white/10">
-            <!-- Language Switcher in sidebar -->
-            <LanguageSwitcher variant="sidebar" />
-
             <!-- رابط انتقال لتطبيق المستأجرين في وضع الأدمن -->
             <div v-if="adminMode" class="w-full rounded-xl bg-[#102F2F] p-3 border border-white/5 space-y-2">
                 <div class="text-[11px] font-medium text-[#F8F4EA]/80">{{ $t('nav.switch_to_app') }}:</div>

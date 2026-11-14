@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Leases;
 
 use App\Enums\SecurityDepositDeductionCategory;
+use App\Enums\TenantStatus;
 use App\Models\Lease;
 use App\Models\RentCharge;
 use App\Models\SecurityDepositDeduction;
@@ -70,6 +71,8 @@ class LeaseDetailsService
                 'email' => $lease->renter?->email,
                 'gender' => $lease->renter?->gender?->value,
                 'gender_label' => $lease->renter?->gender?->label(),
+                'status' => ($lease->renter ? $lease->renter->status : TenantStatus::Green)->value,
+                'status_details' => ($lease->renter ? $lease->renter->status : TenantStatus::Green)->toArray(),
             ],
             'security_deposit' => $this->securityDeposit($lease),
             'rent_charges' => $lease->rentCharges->map(function (RentCharge $charge): array {

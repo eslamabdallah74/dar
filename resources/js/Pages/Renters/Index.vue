@@ -3,6 +3,7 @@ import { ref, computed, onUnmounted } from 'vue';
 import { Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
+import TenantStatusIndicator from '@/Components/Common/TenantStatusIndicator.vue';
 import EmptyState from '@/Components/Common/EmptyState.vue';
 import ResourceTableHeading from '@/Components/Common/ResourceTableHeading.vue';
 import ModalRecordPayment from '@/Components/Common/ModalRecordPayment.vue';
@@ -27,6 +28,15 @@ interface RenterItem {
     national_id: string;
     gender?: 'male' | 'female' | null;
     gender_label?: string | null;
+    tenant_status?: 'green' | 'yellow' | 'red' | string;
+    tenant_status_details?: {
+        value?: string;
+        label?: string;
+        description?: string;
+        color?: string;
+        badge_class?: string;
+        dot_class?: string;
+    };
     active_unit: {
         lease_id?: number;
         unit_name: string;
@@ -354,7 +364,16 @@ const submitRenter = () => {
                                         {{ renter.name.charAt(0) }}
                                     </div>
                                     <div class="flex flex-col">
-                                        <span>{{ renter.name }}</span>
+                                        <div class="flex items-center gap-1.5">
+                                            <span>{{ renter.name }}</span>
+                                            <TenantStatusIndicator
+                                                :status="renter.tenant_status"
+                                                :details="renter.tenant_status_details"
+                                                :renter-id="renter.id"
+                                                :interactive="true"
+                                                size="sm"
+                                            />
+                                        </div>
                                         <span class="text-xs text-[#5B6770] font-normal font-mono" dir="ltr">{{ renter.phone }}</span>
                                     </div>
                                 </Link>

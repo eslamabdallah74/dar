@@ -2,6 +2,7 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
+import TenantStatusIndicator from '@/Components/Common/TenantStatusIndicator.vue';
 import type {
     LeaseData,
     RentTotals,
@@ -252,12 +253,19 @@ onUnmounted(() => {
         <!-- Sub row: Renter & Unit Links -->
         <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-[#5B6770]">
             <span>المستأجر:</span>
-            <Link
-                :href="route('renters.show', renter.id)"
-                class="font-bold text-[#163E3E] underline-offset-4 hover:underline"
-            >
-                {{ renter.name }}
-            </Link>
+            <div class="inline-flex items-center gap-1.5">
+                <Link
+                    :href="route('renters.show', renter.id)"
+                    class="font-bold text-[#163E3E] underline-offset-4 hover:underline"
+                >
+                    {{ renter.name }}
+                </Link>
+                <TenantStatusIndicator
+                    :status="renter.status"
+                    :details="renter.status_details"
+                    size="xs"
+                />
+            </div>
             <span class="text-[#D6E0E7]" aria-hidden="true">·</span>
             <span>الوحدة:</span>
             <Link

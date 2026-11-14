@@ -102,6 +102,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/renters/check-phone', [RenterController::class, 'checkPhone'])->name('renters.check-phone');
     Route::get('/renters/{renter}', [RenterController::class, 'show'])->name('renters.show');
     Route::put('/renters/{renter}', [RenterController::class, 'update'])->name('renters.update');
+    Route::patch('/renters/{renter}/status', [RenterController::class, 'updateStatus'])->name('renters.status.update');
     Route::post('/renters/{renter}/documents', [RenterController::class, 'storeDocument'])->name('renters.documents.store');
     Route::get('/renters/{renter}/documents/{document}/download', [RenterController::class, 'downloadDocument'])->name('renters.documents.download');
     Route::get('/renters/{renter}/id-card/{side}', [RenterController::class, 'viewIdCard'])->where('side', 'front|back')->name('renters.id-card');

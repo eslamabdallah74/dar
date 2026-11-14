@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
+import TenantStatusIndicator from '@/Components/Common/TenantStatusIndicator.vue';
 import EmptyState from '@/Components/Common/EmptyState.vue';
 import ModalRecordPayment from '@/Components/Common/ModalRecordPayment.vue';
 import ModalCorrectPayment from '@/Components/Common/ModalCorrectPayment.vue';
@@ -15,6 +16,15 @@ interface ChargeItem {
     renter_id: number;
     renter_name: string;
     renter_phone: string;
+    renter_status?: 'green' | 'yellow' | 'red' | string;
+    renter_status_details?: {
+        value?: string;
+        label?: string;
+        description?: string;
+        color?: string;
+        badge_class?: string;
+        dot_class?: string;
+    };
     unit_name: string;
     property_name: string;
     period: string;
@@ -39,6 +49,15 @@ interface PaymentReceiptItem {
     renter_id: number;
     renter_name: string;
     renter_phone?: string;
+    renter_status?: 'green' | 'yellow' | 'red' | string;
+    renter_status_details?: {
+        value?: string;
+        label?: string;
+        description?: string;
+        color?: string;
+        badge_class?: string;
+        dot_class?: string;
+    };
     unit_name: string;
     property_name?: string;
     amount: number;
@@ -403,9 +422,16 @@ const rowAction =
                         <li v-for="charge in filteredCharges" :key="charge.id" class="space-y-3 px-4 py-4">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0">
-                                    <Link :href="route('renters.show', charge.renter_id)" class="block truncate font-semibold text-[#163E3E]">
-                                        {{ charge.renter_name }}
-                                    </Link>
+                                    <div class="flex items-center gap-1.5">
+                                        <Link :href="route('renters.show', charge.renter_id)" class="truncate font-semibold text-[#163E3E]">
+                                            {{ charge.renter_name }}
+                                        </Link>
+                                        <TenantStatusIndicator
+                                            :status="charge.renter_status"
+                                            :details="charge.renter_status_details"
+                                            size="xs"
+                                        />
+                                    </div>
                                     <p class="truncate text-xs text-[#5B6770]">{{ charge.unit_name }} · {{ charge.property_name }}</p>
                                 </div>
                                 <StatusBadge :status="chargeBadgeStatuses[charge.status] ?? 'pending'" :label="charge.status_label" size="sm" />
@@ -479,12 +505,19 @@ const rowAction =
                         <tbody class="divide-y divide-[#E6ECF0]">
                             <tr v-for="charge in filteredCharges" :key="charge.id" class="align-top transition-colors hover:bg-[#FBFAF6]">
                                 <td class="px-5 py-4">
-                                    <Link
-                                        :href="route('renters.show', charge.renter_id)"
-                                        class="font-semibold text-[#163E3E] underline-offset-4 hover:underline"
-                                    >
-                                        {{ charge.renter_name }}
-                                    </Link>
+                                    <div class="flex items-center gap-1.5">
+                                        <Link
+                                            :href="route('renters.show', charge.renter_id)"
+                                            class="font-semibold text-[#163E3E] underline-offset-4 hover:underline"
+                                        >
+                                            {{ charge.renter_name }}
+                                        </Link>
+                                        <TenantStatusIndicator
+                                            :status="charge.renter_status"
+                                            :details="charge.renter_status_details"
+                                            size="xs"
+                                        />
+                                    </div>
                                     <p class="mt-0.5 text-xs text-[#5B6770]">{{ charge.unit_name }} · {{ charge.property_name }}</p>
                                 </td>
                                 <td class="px-3 py-4">
@@ -637,12 +670,19 @@ const rowAction =
                                     <p v-if="payment.notes" class="mt-0.5 max-w-[16rem] truncate text-xs text-[#8A9AA7]">{{ payment.notes }}</p>
                                 </td>
                                 <td class="px-3 py-4">
-                                    <Link
-                                        :href="route('renters.show', payment.renter_id)"
-                                        class="font-semibold text-[#163E3E] underline-offset-4 hover:underline"
-                                    >
-                                        {{ payment.renter_name }}
-                                    </Link>
+                                    <div class="flex items-center gap-1.5">
+                                        <Link
+                                            :href="route('renters.show', payment.renter_id)"
+                                            class="font-semibold text-[#163E3E] underline-offset-4 hover:underline"
+                                        >
+                                            {{ payment.renter_name }}
+                                        </Link>
+                                        <TenantStatusIndicator
+                                            :status="payment.renter_status"
+                                            :details="payment.renter_status_details"
+                                            size="xs"
+                                        />
+                                    </div>
                                     <p class="mt-0.5 text-xs text-[#5B6770]">
                                         {{ payment.unit_name }}<span v-if="payment.property_name"> · {{ payment.property_name }}</span>
                                     </p>

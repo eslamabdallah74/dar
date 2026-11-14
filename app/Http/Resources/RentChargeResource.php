@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Enums\TenantStatus;
 use App\Models\RentCharge;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -49,6 +50,8 @@ class RentChargeResource extends JsonResource
             'renter_id' => $this->lease?->renter_id,
             'renter_name' => $this->lease?->renter->name ?? 'مستأجر',
             'renter_phone' => $this->lease?->renter->phone ?? '',
+            'renter_status' => ($this->lease?->renter ? $this->lease->renter->status : TenantStatus::Green)->value,
+            'renter_status_details' => ($this->lease?->renter ? $this->lease->renter->status : TenantStatus::Green)->toArray(),
             'unit_name' => $this->lease?->unit->name ?? '',
             'property_name' => $this->lease?->unit?->property->name ?? '',
             'period' => $this->period_start->format('m/Y'),

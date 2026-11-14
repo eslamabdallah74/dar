@@ -100,6 +100,15 @@ export interface RenterData {
     email: string | null;
     gender?: 'male' | 'female' | null;
     gender_label?: string | null;
+    status?: 'green' | 'yellow' | 'red' | string | null;
+    status_details?: {
+        value?: string;
+        label?: string;
+        description?: string;
+        color?: string;
+        badge_class?: string;
+        dot_class?: string;
+    } | null;
 }
 
 export interface SettlementData {

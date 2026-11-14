@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Renters;
 
 use App\Enums\Gender;
+use App\Enums\TenantStatus;
 use App\Models\Renter;
 use App\Rules\EgyptianPhoneNumber;
 use App\Support\CurrentWorkspace;
@@ -55,6 +56,7 @@ class UpdateRenterRequest extends FormRequest
                     ->ignore($renterId),
             ],
             'gender' => ['nullable', 'string', Rule::enum(Gender::class)],
+            'status' => ['nullable', 'string', Rule::enum(TenantStatus::class)],
             'notes' => ['nullable', 'string'],
             'whatsapp_consent' => ['nullable', 'boolean'],
             'id_card_front' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:5120'],

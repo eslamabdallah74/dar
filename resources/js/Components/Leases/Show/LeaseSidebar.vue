@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
+import TenantStatusIndicator from '@/Components/Common/TenantStatusIndicator.vue';
 import type { LeaseData, RenterData, UnitData } from './types';
 import {
     ArrowLeft,
@@ -38,12 +39,20 @@ const showDocMenu = ref(false);
             <header class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                     <p id="sidebar-renter-heading" class="text-xs font-semibold text-[#5B6770]">المستأجر</p>
-                    <Link
-                        :href="route('renters.show', renter.id)"
-                        class="mt-0.5 block truncate text-base font-extrabold text-[#163E3E] underline-offset-4 hover:underline"
-                    >
-                        {{ renter.name }}
-                    </Link>
+                    <div class="mt-0.5 flex items-center gap-2">
+                        <Link
+                            :href="route('renters.show', renter.id)"
+                            class="truncate text-base font-extrabold text-[#163E3E] underline-offset-4 hover:underline"
+                        >
+                            {{ renter.name }}
+                        </Link>
+                        <TenantStatusIndicator
+                            :status="renter.status"
+                            :details="renter.status_details"
+                            :show-label="true"
+                            size="sm"
+                        />
+                    </div>
                 </div>
 
                 <div v-if="renter.phone" class="flex shrink-0 items-center gap-1.5">

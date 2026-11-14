@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TenantStatus;
 use App\Http\Requests\Renters\StoreRenterDocumentRequest;
 use App\Http\Requests\Renters\StoreRenterRequest;
 use App\Http\Requests\Renters\UpdateRenterRequest;
@@ -19,6 +20,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -80,6 +82,8 @@ class RenterController extends Controller
                 'national_id' => $renter->national_id ?? '—',
                 'gender' => $renter->gender?->value,
                 'gender_label' => $renter->gender?->label(),
+                'tenant_status' => ($renter->status ?? TenantStatus::Green)->value,
+                'tenant_status_details' => ($renter->status ?? TenantStatus::Green)->toArray(),
                 'id_card_front_url' => $renter->id_card_front_url,
                 'id_card_back_url' => $renter->id_card_back_url,
                 'whatsapp_opted_in' => $renter->hasConsentedToWhatsApp(),
@@ -389,6 +393,23 @@ class RenterController extends Controller
         }
 
         return back()->with('success', 'تم حذف صورة بطاقة الهوية بنجاح');
+    }
+
+    public function updateStatus(Request $request, Renter $renter): RedirectResponse
+    {
+        $workspace = $this->resolveWorkspace($request);
+        abort_if($renter->workspace_id !== $workspace->id, 403, 'غير مصرح لك بإدارة هذا المستأجر.');
+
+        $validated = $request->validate([
+            'status' => ['required', 'string', Rule::enum(TenantStatus::class)],
+        ], [
+            'status.required' => 'يرجى اختيار حالة التقييم.',
+            'status.enum' => 'حالة التقييم غير صالحة.',
+        ]);
+
+        $renter->update(['status' => $validated['status']]);
+
+        return back()->with('success', 'تم تحديث حالة تقييم المستأجر بنجاح');
     }
 
     /**

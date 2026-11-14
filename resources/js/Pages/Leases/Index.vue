@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import EmptyState from '@/Components/Common/EmptyState.vue';
+import TenantStatusIndicator from '@/Components/Common/TenantStatusIndicator.vue';
 import ResourceTableHeading from '@/Components/Common/ResourceTableHeading.vue';
 import {
     ArrowLeft,
@@ -30,6 +31,15 @@ interface LeaseItem {
     renter_id: number;
     renter_name: string;
     renter_phone: string;
+    renter_status?: 'green' | 'yellow' | 'red' | string;
+    renter_status_details?: {
+        value?: string;
+        label?: string;
+        description?: string;
+        color?: string;
+        badge_class?: string;
+        dot_class?: string;
+    };
     property_name: string;
     unit_name: string;
     unit_code: string;
@@ -311,12 +321,19 @@ const leaseStatusClass = (status: string) => {
                             {{ lease.renter_name.charAt(0) }}
                         </div>
                         <div class="min-w-0">
-                            <Link
-                                :href="route('renters.show', lease.renter_id)"
-                                class="block truncate text-xs font-semibold text-[#313B38] hover:text-[#36594F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#52766C]"
-                            >
-                                {{ lease.renter_name }}
-                            </Link>
+                            <div class="flex items-center gap-1.5 min-w-0">
+                                <Link
+                                    :href="route('renters.show', lease.renter_id)"
+                                    class="truncate text-xs font-semibold text-[#313B38] hover:text-[#36594F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#52766C]"
+                                >
+                                    {{ lease.renter_name }}
+                                </Link>
+                                <TenantStatusIndicator
+                                    :status="lease.renter_status"
+                                    :details="lease.renter_status_details"
+                                    size="xs"
+                                />
+                            </div>
                             <span class="mt-0.5 block font-mono text-[11px] text-[#77756D]" dir="ltr">
                                 {{ lease.renter_phone }}
                             </span>
@@ -459,12 +476,19 @@ const leaseStatusClass = (status: string) => {
                                         {{ lease.renter_name.charAt(0) }}
                                     </div>
                                     <div class="min-w-0">
-                                        <Link
-                                            :href="route('renters.show', lease.renter_id)"
-                                            class="block truncate text-xs font-semibold text-[#313B38] transition-colors duration-200 ease-out hover:text-[#36594F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#52766C]"
-                                        >
-                                            {{ lease.renter_name }}
-                                        </Link>
+                                        <div class="flex items-center gap-1.5">
+                                            <Link
+                                                :href="route('renters.show', lease.renter_id)"
+                                                class="truncate text-xs font-semibold text-[#313B38] transition-colors duration-200 ease-out hover:text-[#36594F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#52766C]"
+                                            >
+                                                {{ lease.renter_name }}
+                                            </Link>
+                                            <TenantStatusIndicator
+                                                :status="lease.renter_status"
+                                                :details="lease.renter_status_details"
+                                                size="xs"
+                                            />
+                                        </div>
                                         <span class="mt-0.5 block font-mono text-[11px] text-[#8A887F]" dir="ltr">{{ lease.renter_phone }}</span>
                                     </div>
                                 </div>

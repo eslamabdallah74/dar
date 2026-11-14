@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Properties;
 
+use App\Enums\TenantStatus;
 use App\Models\Lease;
 use App\Models\Property;
 use App\Models\Unit;
@@ -210,6 +211,8 @@ class PropertyUnitBoardService
             'renter_national_id' => $activeLease->renter->national_id ?? '',
             'renter_gender' => $activeLease->renter?->gender?->value,
             'renter_gender_label' => $activeLease->renter?->gender?->label(),
+            'renter_status' => ($activeLease->renter ? $activeLease->renter->status : TenantStatus::Green)->value,
+            'renter_status_details' => ($activeLease->renter ? $activeLease->renter->status : TenantStatus::Green)->toArray(),
             'rent_amount' => (float) $activeLease->rent_amount,
             'security_deposit_amount' => $activeLease->security_deposit_amount ? (float) $activeLease->security_deposit_amount : null,
             'security_deposit_status' => $activeLease->security_deposit_status,

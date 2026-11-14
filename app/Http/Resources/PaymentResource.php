@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Enums\TenantStatus;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -44,6 +45,8 @@ class PaymentResource extends JsonResource
             'renter_id' => $this->renter_id,
             'renter_name' => $this->renter->name ?? 'مستأجر',
             'renter_phone' => $this->renter->phone ?? '',
+            'renter_status' => ($this->renter ? $this->renter->status : TenantStatus::Green)->value,
+            'renter_status_details' => ($this->renter ? $this->renter->status : TenantStatus::Green)->toArray(),
             'lease_id' => $lease?->id,
             'unit_name' => $unit->name ?? '—',
             'property_id' => $property?->id,

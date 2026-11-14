@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Enums\TenantStatus;
 use App\Models\Renter;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -38,6 +39,8 @@ class RenterResource extends JsonResource
             'national_id' => $this->national_id ?? '—',
             'gender' => $this->gender?->value,
             'gender_label' => $this->gender?->label(),
+            'tenant_status' => ($this->status ?? TenantStatus::Green)->value,
+            'tenant_status_details' => ($this->status ?? TenantStatus::Green)->toArray(),
             'active_unit' => $activeLease ? [
                 'lease_id' => $activeLease->id,
                 'unit_name' => $activeLease->unit?->name,

@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\TenantStatus;
 use App\Models\Renter;
 use App\Models\Workspace;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -22,6 +23,7 @@ class RenterFactory extends Factory
             'email' => fake()->safeEmail(),
             'national_id' => fake()->numerify('1#########'),
             'gender' => fake()->randomElement(['male', 'female']),
+            'status' => TenantStatus::Green,
             'whatsapp_opt_in_at' => now()->subMonths(2),
             'whatsapp_opt_in_source' => 'contract_signature',
             'whatsapp_opt_in_recorded_by' => null,

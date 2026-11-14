@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Enums\SecurityDepositStatus;
+use App\Enums\TenantStatus;
 use App\Models\Lease;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -36,6 +37,8 @@ class LeaseResource extends JsonResource
             'renter_phone' => $this->renter->phone ?? '',
             'renter_gender' => $this->renter?->gender?->value,
             'renter_gender_label' => $this->renter?->gender?->label(),
+            'renter_status' => ($this->renter ? $this->renter->status : TenantStatus::Green)->value,
+            'renter_status_details' => ($this->renter ? $this->renter->status : TenantStatus::Green)->toArray(),
             'property_name' => $this->unit?->property->name ?? '',
             'unit_name' => $this->unit->name ?? '',
             'unit_code' => $this->unit->code ?? '',

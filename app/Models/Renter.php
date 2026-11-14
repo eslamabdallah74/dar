@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Gender;
+use App\Enums\TenantStatus;
 use App\Models\Concerns\BelongsToWorkspace;
 use Database\Factories\RenterFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,6 +23,7 @@ class Renter extends Model
         'email',
         'national_id',
         'gender',
+        'status',
         'id_card_front',
         'id_card_back',
         'whatsapp_opt_in_at',
@@ -40,6 +42,7 @@ class Renter extends Model
     {
         return [
             'gender' => Gender::class,
+            'status' => TenantStatus::class,
             'whatsapp_opt_in_at' => 'datetime',
             'whatsapp_opted_out_at' => 'datetime',
         ];
@@ -48,6 +51,16 @@ class Renter extends Model
     public function getGenderLabelAttribute(): ?string
     {
         return $this->gender?->label();
+    }
+
+    /**
+     * @return array{value: string, label: string, description: string, color: string, badge_class: string, dot_class: string}
+     */
+    public function getStatusDetailsAttribute(): array
+    {
+        $status = $this->status ?? TenantStatus::Green;
+
+        return $status->toArray();
     }
 
     public function isMale(): bool

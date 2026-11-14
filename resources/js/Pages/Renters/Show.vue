@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { Link, useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
+import TenantStatusIndicator from '@/Components/Common/TenantStatusIndicator.vue';
 import ModalRecordPayment from '@/Components/Common/ModalRecordPayment.vue';
 import ResourceTableHeading from '@/Components/Common/ResourceTableHeading.vue';
 import { useConfirmDialog } from '@/composables/useConfirmDialog';
@@ -82,6 +83,15 @@ const props = defineProps<{
         national_id: string;
         gender?: 'male' | 'female' | null;
         gender_label?: string | null;
+        tenant_status?: 'green' | 'yellow' | 'red' | string;
+        tenant_status_details?: {
+            value?: string;
+            label?: string;
+            description?: string;
+            color?: string;
+            badge_class?: string;
+            dot_class?: string;
+        };
         id_card_front_url?: string | null;
         id_card_back_url?: string | null;
         whatsapp_opted_in: boolean;
@@ -189,6 +199,7 @@ const editForm = useForm<{
     national_id: string;
     email: string;
     gender: '' | 'male' | 'female';
+    status: 'green' | 'yellow' | 'red';
     notes: string;
     whatsapp_consent: boolean;
     id_card_front: File | null;
@@ -201,6 +212,7 @@ const editForm = useForm<{
     national_id: props.renter.national_id === '—' ? '' : props.renter.national_id,
     email: props.renter.email || '',
     gender: (props.renter.gender || '') as '' | 'male' | 'female',
+    status: (props.renter.tenant_status || 'green') as 'green' | 'yellow' | 'red',
     notes: props.renter.notes || '',
     whatsapp_consent: Boolean(props.renter.whatsapp_opted_in),
     id_card_front: null,
@@ -216,6 +228,7 @@ const openEditModal = () => {
     editForm.national_id = props.renter.national_id === '—' ? '' : props.renter.national_id;
     editForm.email = props.renter.email || '';
     editForm.gender = (props.renter.gender || '') as '' | 'male' | 'female';
+    editForm.status = (props.renter.tenant_status || 'green') as 'green' | 'yellow' | 'red';
     editForm.notes = props.renter.notes || '';
     editForm.whatsapp_consent = Boolean(props.renter.whatsapp_opted_in);
     editForm.id_card_front = null;
@@ -407,7 +420,17 @@ const deleteDocument = async (renterDocument: DocumentItem) => {
                             {{ renter.name.charAt(0) }}
                         </div>
                         <div>
-                            <h3 class="text-base font-bold text-[#163E3E]">{{ renter.name }}</h3>
+                            <div class="flex items-center gap-2">
+                                <h3 class="text-base font-bold text-[#163E3E]">{{ renter.name }}</h3>
+                                <TenantStatusIndicator
+                                    :status="renter.tenant_status"
+                                    :details="renter.tenant_status_details"
+                                    :renter-id="renter.id"
+                                    :interactive="true"
+                                    :show-label="true"
+                                    size="sm"
+                                />
+                            </div>
                             <span class="text-xs text-[#5B6770]">مسجل منذ {{ renter.created_at }}</span>
                         </div>
                     </div>
@@ -1159,6 +1182,48 @@ const deleteDocument = async (renterDocument: DocumentItem) => {
                         </div>
                         <p v-if="editForm.errors.gender" class="text-xs text-rose-600 font-semibold mt-1">
                             {{ editForm.errors.gender }}
+                        </p>
+                    </div>
+
+                    <!-- تقييم المستأجر -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="block text-xs font-bold text-[#163E3E]">
+                                تقييم المستأجر (مؤشر الحالة)
+                            </label>
+                            <span class="text-[10px] text-[#5B6770]">يظهر بجانب الاسم في جميع الشاشات</span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button
+                                type="button"
+                                @click="editForm.status = 'green'"
+                                class="h-10 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                                :class="editForm.status === 'green' ? 'border-emerald-500 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-400' : 'border-[#D6E0E7] bg-white text-[#5B6770] hover:bg-emerald-50/50'"
+                            >
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                <span>ملتزم</span>
+                            </button>
+                            <button
+                                type="button"
+                                @click="editForm.status = 'yellow'"
+                                class="h-10 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                                :class="editForm.status === 'yellow' ? 'border-amber-500 bg-amber-50 text-amber-800 ring-1 ring-amber-400' : 'border-[#D6E0E7] bg-white text-[#5B6770] hover:bg-amber-50/50'"
+                            >
+                                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                                <span>يحتاج متابعة</span>
+                            </button>
+                            <button
+                                type="button"
+                                @click="editForm.status = 'red'"
+                                class="h-10 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                                :class="editForm.status === 'red' ? 'border-rose-500 bg-rose-50 text-rose-800 ring-1 ring-rose-400' : 'border-[#D6E0E7] bg-white text-[#5B6770] hover:bg-rose-50/50'"
+                            >
+                                <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                                <span>غير ملتزم</span>
+                            </button>
+                        </div>
+                        <p v-if="editForm.errors.status" class="text-xs text-rose-600 font-semibold mt-1">
+                            {{ editForm.errors.status }}
                         </p>
                     </div>
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Renters;
 
 use App\Enums\Gender;
+use App\Enums\TenantStatus;
 use App\Rules\EgyptianPhoneNumber;
 use App\Support\CurrentWorkspace;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -48,6 +49,7 @@ class StoreRenterRequest extends FormRequest
                 Rule::unique('renters', 'national_id')->where('workspace_id', $workspaceId),
             ],
             'gender' => ['nullable', 'string', Rule::enum(Gender::class)],
+            'status' => ['nullable', 'string', Rule::enum(TenantStatus::class)],
             'whatsapp_consent' => ['nullable', 'boolean'],
             'notes' => ['nullable', 'string'],
             'id_card_front' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:5120'],

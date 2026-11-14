@@ -22,6 +22,15 @@ export interface ActiveLease {
     renter_national_id?: string;
     renter_gender?: string | null;
     renter_gender_label?: string | null;
+    renter_status?: 'green' | 'yellow' | 'red' | string | null;
+    renter_status_details?: {
+        value?: string;
+        label?: string;
+        description?: string;
+        color?: string;
+        badge_class?: string;
+        dot_class?: string;
+    } | null;
     rent_amount: number;
     security_deposit_amount?: number | null;
     security_deposit_status?: string | null;

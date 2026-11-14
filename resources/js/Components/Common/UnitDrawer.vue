@@ -22,6 +22,7 @@ import {
     Trash2,
 } from 'lucide-vue-next';
 import StatusBadge from '@/Components/Common/StatusBadge.vue';
+import TenantStatusIndicator from '@/Components/Common/TenantStatusIndicator.vue';
 import type { UnitItem } from '@/Components/Properties/UnitHierarchyTree.vue';
 
 export interface ChildUnit {
@@ -49,6 +50,15 @@ export interface ActiveLease {
     renter_name: string;
     renter_phone: string;
     renter_national_id?: string;
+    renter_status?: 'green' | 'yellow' | 'red' | string;
+    renter_status_details?: {
+        value?: string;
+        label?: string;
+        description?: string;
+        color?: string;
+        badge_class?: string;
+        dot_class?: string;
+    };
     rent_amount: number;
     security_deposit_amount?: number | null;
     security_deposit_status?: string | null;
@@ -218,12 +228,19 @@ const canDelete = computed(() => {
                                     {{ unit.active_lease.renter_name?.charAt(0) || 'م' }}
                                 </div>
                                 <div class="min-w-0">
-                                    <Link
-                                        :href="route('renters.show', unit.active_lease.renter_id)"
-                                        class="font-bold text-sm text-[#163E3E] hover:text-[#163E3E] transition truncate block"
-                                    >
-                                        {{ unit.active_lease.renter_name }}
-                                    </Link>
+                                    <div class="flex items-center gap-1.5">
+                                        <Link
+                                            :href="route('renters.show', unit.active_lease.renter_id)"
+                                            class="font-bold text-sm text-[#163E3E] hover:text-[#163E3E] transition truncate"
+                                        >
+                                            {{ unit.active_lease.renter_name }}
+                                        </Link>
+                                        <TenantStatusIndicator
+                                            :status="unit.active_lease.renter_status"
+                                            :details="unit.active_lease.renter_status_details"
+                                            size="xs"
+                                        />
+                                    </div>
                                     <span v-if="unit.active_lease.renter_national_id" class="text-[11px] text-[#5B6770] font-mono block">
                                         هوية: {{ unit.active_lease.renter_national_id }}
                                     </span>

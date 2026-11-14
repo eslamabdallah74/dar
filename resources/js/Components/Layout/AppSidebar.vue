@@ -117,8 +117,8 @@ onUnmounted(() => {
     <aside
         class="w-[240px] bg-[#163E3E] text-white p-6 flex flex-col justify-between shrink-0 h-screen select-none transition-all duration-300 z-50 lg:z-30 overflow-y-auto custom-scrollbar"
         :class="[
-            'fixed inset-y-0 right-0 lg:sticky lg:top-0',
-            mobileOpen ? 'translate-x-0 shadow-2xl' : 'translate-x-full lg:translate-x-0'
+            'fixed inset-y-0 rtl:right-0 ltr:left-0 lg:sticky lg:top-0',
+            mobileOpen ? 'translate-x-0 shadow-2xl' : 'rtl:translate-x-full ltr:-translate-x-full lg:translate-x-0'
         ]"
     >
         <!-- الجزء العلوي: الشعار + الروابط -->

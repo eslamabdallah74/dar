@@ -340,9 +340,125 @@ const handleReversePayment = async (expense: ExpenseItem) => {
             </div>
         </div>
 
-        <!-- جدول المصروفات -->
+        <!-- جدول وقائمة كروت المصروفات -->
         <div v-if="filteredExpenses.length > 0" class="rounded-3xl border border-[#D6E0E7] bg-white overflow-hidden shadow-2xs">
-            <div class="overflow-x-auto">
+            <!-- Mobile Cards List -->
+            <ul class="divide-y divide-[#D6E0E7] md:hidden">
+                <li
+                    v-for="exp in filteredExpenses"
+                    :key="exp.id"
+                    class="p-4 space-y-3 transition"
+                    :class="exp.is_pending_amount ? 'bg-amber-50/60 border-r-4 border-r-amber-500' : 'hover:bg-[#F8F4EA]'"
+                >
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0 space-y-1">
+                            <h4 class="text-sm font-bold text-[#163E3E] break-words">
+                                {{ exp.title || 'بند مصروف عام' }}
+                            </h4>
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <span
+                                    v-if="exp.origin === 'maintenance'"
+                                    class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1"
+                                >
+                                    <Wrench class="w-3 h-3 text-amber-700" />
+                                    <span>مصدر: صيانة #{{ exp.maintenance_request_id }}</span>
+                                </span>
+                                <span
+                                    v-else
+                                    class="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200"
+                                >
+                                    يدوي مباشر
+                                </span>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#F1F5F9] text-[#163E3E] border border-black/5">
+                                    {{ exp.category }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="shrink-0 text-start">
+                            <span v-if="exp.amount !== null && exp.amount > 0" class="font-mono font-bold text-base text-rose-700 block">
+                                {{ exp.amount.toLocaleString('en-US') }} <span class="text-xs font-sans font-normal text-[#5B6770]">{{ currency_symbol }}</span>
+                            </span>
+                            <span v-else class="text-xs italic text-amber-700 font-bold bg-amber-100 px-2 py-0.5 rounded-md inline-block">
+                                غير محدد
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-between text-xs text-[#5B6770] gap-2 pt-1 border-t border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-[#163E3E]">{{ exp.property_name }}</span>
+                            <span v-if="exp.unit_name">· {{ exp.unit_name }}</span>
+                        </div>
+                        <span class="font-mono text-[11px]">{{ exp.expense_date }}</span>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold inline-flex items-center gap-1" :class="[
+                            exp.is_pending_amount ? 'bg-amber-100 text-amber-900 border border-amber-300' :
+                            (exp.status === 'ready' || exp.status === 'ready_to_apply') ? 'bg-indigo-50 text-indigo-800 border border-indigo-200' :
+                            'bg-slate-100 text-slate-800 border border-slate-200'
+                        ]">
+                            <AlertCircle v-if="exp.is_pending_amount" class="w-3 h-3 text-amber-700" />
+                            <CheckCircle2 v-else class="w-3 h-3 text-emerald-700" />
+                            <span>{{ exp.status_label }}</span>
+                        </span>
+
+                        <span
+                            v-if="!exp.is_pending_amount"
+                            class="px-2 py-0.5 rounded-md text-[10px] font-bold inline-flex items-center gap-1 border"
+                            :class="exp.is_paid
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : 'bg-amber-50 text-amber-800 border-amber-200'"
+                        >
+                            <CheckCircle2 v-if="exp.is_paid" class="w-2.5 h-2.5 text-emerald-600" />
+                            <Clock v-else class="w-2.5 h-2.5 text-amber-600" />
+                            <span>{{ exp.is_paid ? 'مدفوع' : 'غير مدفوع' }}</span>
+                        </span>
+                    </div>
+
+                    <p v-if="exp.notes" class="text-xs text-[#5B6770] bg-[#F8FAFC] p-2 rounded-lg border border-[#E8EFF4]">
+                        {{ exp.notes }}
+                    </p>
+
+                    <!-- Mobile Action Buttons -->
+                    <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                        <button
+                            v-if="!exp.is_pending_amount && !exp.is_paid"
+                            @click="handleRecordPayment(exp)"
+                            :disabled="isRecordingPayment === exp.id"
+                            type="button"
+                            class="h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1 shadow-2xs cursor-pointer disabled:opacity-50"
+                        >
+                            <Loader2 v-if="isRecordingPayment === exp.id" class="w-3.5 h-3.5 animate-spin" />
+                            <Coins v-else class="w-3.5 h-3.5" />
+                            <span>سداد</span>
+                        </button>
+
+                        <button
+                            v-else-if="!exp.is_pending_amount && exp.is_paid"
+                            @click="handleReversePayment(exp)"
+                            :disabled="isRecordingPayment === exp.id"
+                            type="button"
+                            class="h-8 px-2.5 rounded-lg border border-slate-200 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-700 text-xs font-medium text-[#5B6770] transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        >
+                            <span>إلغاء السداد</span>
+                        </button>
+
+                        <button
+                            @click="openEditModal(exp)"
+                            type="button"
+                            class="h-8 px-3 rounded-lg border border-[#D6E0E7] bg-white hover:bg-slate-50 text-xs font-semibold text-[#163E3E] transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                        >
+                            <Edit3 class="w-3.5 h-3.5 text-[#163E3E]" />
+                            <span>{{ exp.is_pending_amount ? 'إدخال المبلغ' : 'تعديل' }}</span>
+                        </button>
+                    </div>
+                </li>
+            </ul>
+
+            <!-- Desktop Table -->
+            <div class="hidden md:block overflow-x-auto">
                 <table class="w-full text-right text-sm">
                     <thead>
                         <tr class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] text-xs font-bold">

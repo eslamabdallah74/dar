@@ -1869,7 +1869,7 @@ function submit() {
                                     </button>
                                 </div>
 
-                                <div class="max-h-96 overflow-y-auto rounded-2xl border border-[#E3EAE6] bg-[#FAFDFB]">
+                                <div class="max-h-96 overflow-auto rounded-2xl border border-[#E3EAE6] bg-[#FAFDFB]">
                                     <table class="w-full text-right text-xs">
                                         <thead class="sticky top-0 bg-[#EFF5F1] text-[#334D41]">
                                             <tr>

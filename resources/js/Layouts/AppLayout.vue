@@ -161,21 +161,21 @@ function handleNewAction() {
                 <!-- رأس الصفحة الاختياري إن وُجد (Page Header) -->
                 <div v-if="headerTitle" class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
                     <div>
-                        <div v-if="breadcrumb" class="text-xs font-semibold text-[#5B6770] mb-1.5 flex items-center gap-1.5">
+                        <div v-if="breadcrumb" class="text-xs font-semibold text-[#5B6770] mb-1.5 flex flex-wrap items-center gap-1.5 overflow-x-auto">
                             <span>{{ adminMode ? 'لوحة الإدارة' : 'الرئيسية' }}</span>
                             <span>/</span>
                             <span class="text-[#163E3E]">{{ breadcrumb }}</span>
                         </div>
-                        <h1 class="text-2xl sm:text-[28px] font-bold text-[#163E3E] tracking-tight">
+                        <h1 class="text-xl sm:text-2xl lg:text-[28px] font-bold text-[#163E3E] tracking-tight">
                             {{ headerTitle }}
                         </h1>
-                        <p v-if="headerSubtitle" class="text-sm text-[#5B6770] mt-1">
+                        <p v-if="headerSubtitle" class="text-xs sm:text-sm text-[#5B6770] mt-1 break-words">
                             {{ headerSubtitle }}
                         </p>
                     </div>
 
                     <!-- مكان أزرار إجراءات رأس الصفحة -->
-                    <div id="page-header-actions" class="flex items-center gap-3">
+                    <div id="page-header-actions" class="flex flex-wrap items-center gap-2.5 sm:gap-3">
                         <slot name="actions" />
                     </div>
                 </div>

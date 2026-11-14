@@ -66,7 +66,7 @@ function closeDrawer() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="property-drawer-title"
-            class="absolute inset-y-0 right-0 flex w-full max-w-xl flex-col bg-white shadow-2xl"
+            class="absolute inset-y-0 rtl:right-0 ltr:left-0 flex w-full max-w-full sm:max-w-xl flex-col bg-white shadow-2xl"
         >
             <header class="flex items-start justify-between gap-5 border-b border-[#E3EAE6] px-5 py-5 sm:px-8 sm:py-7">
                 <div>

@@ -217,7 +217,7 @@ onUnmounted(() => {
                 <!-- قائمة مساحات العمل المنسدلة -->
                 <div
                     v-if="workspaceDropdownOpen"
-                    class="absolute right-0 top-13 w-64 rounded-2xl bg-white border border-[#D6E0E7] shadow-xl p-2 z-50 animate-in fade-in zoom-in-95"
+                    class="absolute rtl:right-0 ltr:left-0 top-13 w-64 max-w-[calc(100vw-2rem)] rounded-2xl bg-white border border-[#D6E0E7] shadow-xl p-2 z-50 animate-in fade-in zoom-in-95"
                 >
                     <div class="px-3 py-2 border-b border-[#D6E0E7] text-[11px] font-bold text-[#5B6770]">
                         مساحات العمل المصرح لك بالدخول إليها
@@ -300,7 +300,7 @@ onUnmounted(() => {
                 <!-- القائمة المنسدلة للتنبيهات -->
                 <div
                     v-if="notificationsDropdownOpen"
-                    class="fixed inset-x-3 top-16 z-50 w-auto max-w-[calc(100vw-1.5rem)] rounded-2xl border border-[#D6E0E7] bg-white p-3 text-right shadow-xl animate-in fade-in zoom-in-95 sm:absolute sm:inset-x-auto sm:left-0 sm:top-13 sm:w-80"
+                    class="fixed inset-x-3 top-16 z-50 w-auto max-w-[calc(100vw-1.5rem)] rounded-2xl border border-[#D6E0E7] bg-white p-3 text-right shadow-xl animate-in fade-in zoom-in-95 sm:absolute sm:inset-x-auto rtl:sm:left-0 ltr:sm:right-0 sm:top-13 sm:w-80"
                 >
                     <div class="flex items-center justify-between pb-2 border-b border-[#D6E0E7] mb-2">
                         <span class="text-xs font-bold text-[#163E3E]">مركز التنبيهات</span>
@@ -388,7 +388,7 @@ onUnmounted(() => {
                 <!-- القائمة المنسدلة للمستخدم -->
                 <div
                     v-if="userDropdownOpen"
-                    class="absolute left-0 top-13 w-56 rounded-2xl bg-white border border-[#D6E0E7] shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 text-right"
+                    class="absolute rtl:left-0 ltr:right-0 top-13 w-56 max-w-[calc(100vw-2rem)] rounded-2xl bg-white border border-[#D6E0E7] shadow-xl p-2 z-50 animate-in fade-in zoom-in-95 text-right"
                 >
                     <div class="px-3 py-2 border-b border-[#D6E0E7] mb-1">
                         <div class="text-xs font-bold text-[#163E3E]">{{ user.name }}</div>

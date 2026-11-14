@@ -148,9 +148,9 @@ const canDelete = computed(() => {
             class="absolute inset-0 bg-[#163E3E]/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
         ></div>
 
-        <div class="fixed inset-y-0 right-0 max-w-full flex pr-0 sm:pr-6">
+        <div class="fixed inset-y-0 rtl:right-0 ltr:left-0 max-w-full flex rtl:pr-0 sm:rtl:pr-6 ltr:pl-0 sm:ltr:pl-6">
             <!-- Sliding Drawer -->
-            <div class="w-screen max-w-lg bg-white shadow-2xl border-l border-[#D6E0E7] flex flex-col justify-between animate-in slide-in-from-right duration-300">
+            <div class="w-screen max-w-full sm:max-w-lg bg-white shadow-2xl rtl:border-l ltr:border-r border-[#D6E0E7] flex flex-col justify-between animate-in rtl:slide-in-from-right ltr:slide-in-from-left duration-300">
                 <!-- 1. Drawer Header -->
                 <div class="p-5 sm:p-6 pb-4 border-b border-[#E8EFF4] bg-white sticky top-0 z-10">
                     <div class="flex items-start justify-between gap-3">
@@ -478,8 +478,8 @@ const canDelete = computed(() => {
                 </div>
 
                 <!-- 3. Drawer Footer Actions -->
-                <div class="p-4 border-t border-[#E8EFF4] bg-white flex items-center justify-between gap-2.5 sticky bottom-0">
-                    <div class="flex items-center gap-2">
+                <div class="p-4 border-t border-[#E8EFF4] bg-white flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sticky bottom-0">
+                    <div class="flex flex-wrap items-center gap-2">
                         <!-- Edit Unit -->
                         <button
                             @click="emit('editUnit', unit)"

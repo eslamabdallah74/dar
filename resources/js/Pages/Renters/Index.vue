@@ -330,9 +330,106 @@ const submitRenter = () => {
             </div>
         </div>
 
-        <!-- جدول المستأجرين (Renters Data Table) -->
+        <!-- جدول وقائمة كروت المستأجرين (Renters Data Table & Cards) -->
         <div v-if="filteredRenters.length > 0" class="rounded-3xl border border-[#D6E0E7] bg-white overflow-hidden shadow-2xs">
-            <div class="overflow-x-auto">
+            <!-- Mobile Cards List -->
+            <ul class="divide-y divide-[#D6E0E7] md:hidden">
+                <li
+                    v-for="renter in filteredRenters"
+                    :key="renter.id"
+                    class="p-4 space-y-3 hover:bg-[#F8F4EA] transition"
+                >
+                    <div class="flex items-start justify-between gap-2">
+                        <Link
+                            :href="route('renters.show', renter.id)"
+                            class="flex items-center gap-2.5 min-w-0"
+                        >
+                            <div class="w-9 h-9 rounded-xl bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center font-bold text-sm shrink-0">
+                                {{ renter.name.charAt(0) }}
+                            </div>
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="font-bold text-sm text-[#163E3E] hover:underline">{{ renter.name }}</span>
+                                    <TenantStatusIndicator
+                                        :status="renter.tenant_status"
+                                        :details="renter.tenant_status_details"
+                                        :renter-id="renter.id"
+                                        :interactive="true"
+                                        size="sm"
+                                    />
+                                </div>
+                                <span class="text-xs text-[#5B6770] font-mono block mt-0.5" dir="ltr">{{ renter.phone }}</span>
+                            </div>
+                        </Link>
+
+                        <div class="flex flex-col items-end gap-1 shrink-0">
+                            <StatusBadge :status="renter.status" :label="renter.status_label" size="sm" />
+                            <span
+                                v-if="renter.gender"
+                                class="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md border"
+                                :class="renter.gender === 'female' ? 'bg-rose-50 text-rose-800 border-rose-200' : 'bg-sky-50 text-sky-800 border-sky-200'"
+                            >
+                                <User class="w-2.5 h-2.5" />
+                                <span>{{ renter.gender_label || (renter.gender === 'female' ? 'أنثى' : 'ذكر') }}</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- تفاصيل الوحدة والقيمة المالية -->
+                    <div class="flex items-center justify-between text-xs text-[#5B6770] bg-[#F8FAFC] px-3 py-2 rounded-xl border border-[#E8EFF4]">
+                        <div v-if="renter.active_unit" class="min-w-0">
+                            <span class="font-bold text-[#163E3E] block truncate">{{ renter.active_unit.unit_name }}</span>
+                            <span class="text-[11px] text-[#5B6770] block truncate">{{ renter.active_unit.property_name }}</span>
+                        </div>
+                        <span v-else class="italic text-[#8A9AA7]">لا يوجد عقد نشط</span>
+
+                        <div class="text-end shrink-0">
+                            <span v-if="renter.active_unit" class="font-mono font-bold text-sm text-[#163E3E]">
+                                {{ (renter.active_unit.rent_amount ?? 0).toLocaleString() }} {{ currency_symbol || 'ج.م' }}
+                            </span>
+                            <span v-else class="text-[#8A9AA7]">—</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <span class="text-[11px] text-[#5B6770] font-mono">الهوية: {{ renter.national_id }}</span>
+                            <span
+                                v-if="renter.whatsapp_opted_in"
+                                class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200"
+                            >
+                                <MessageCircle class="w-3 h-3 text-emerald-600" />
+                                <span>واتساب</span>
+                            </span>
+                        </div>
+
+                        <!-- أزرار الإجراءات للموبايل -->
+                        <div class="flex items-center gap-2">
+                            <button
+                                v-if="renter.active_unit"
+                                @click="openPaymentForRenter(renter)"
+                                type="button"
+                                class="h-8 px-2.5 rounded-lg bg-[#E8F0F0] hover:bg-[#163E3E] text-[#163E3E] hover:text-white text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                                title="تسجيل دفعة سريعة"
+                            >
+                                <Coins class="w-3.5 h-3.5" />
+                                <span>دفعة</span>
+                            </button>
+
+                            <Link
+                                :href="route('renters.show', renter.id)"
+                                class="h-8 px-3 rounded-lg border border-[#D6E0E7] bg-white hover:bg-slate-100 text-[#5B6770] hover:text-[#163E3E] text-xs font-semibold transition flex items-center gap-1"
+                            >
+                                <span>الملف</span>
+                                <span>←</span>
+                            </Link>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+
+            <!-- Desktop Table -->
+            <div class="hidden md:block overflow-x-auto">
                 <table class="w-full text-right text-sm">
                     <thead>
                         <tr class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] text-xs font-bold">

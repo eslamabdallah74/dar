@@ -513,8 +513,8 @@ const close = () => {
             class="fixed inset-0 bg-[#163E3E]/50 backdrop-blur-xs transition-opacity duration-300"
         ></div>
 
-        <section class="absolute inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10">
-            <div class="w-screen max-w-2xl bg-white shadow-2xl flex flex-col border-l border-[#D6E0E7] transform transition duration-300 ease-in-out">
+        <section class="absolute inset-y-0 rtl:right-0 ltr:left-0 max-w-full flex rtl:pr-0 sm:rtl:pr-10 ltr:pl-0 sm:ltr:pl-10">
+            <div class="w-screen max-w-full sm:max-w-2xl bg-white shadow-2xl flex flex-col rtl:border-l ltr:border-r border-[#D6E0E7] transform transition duration-300 ease-in-out">
                 
                 <!-- 1. Drawer Header -->
                 <div class="p-5 sm:p-6 pb-4 border-b border-[#E8EFF4] bg-white sticky top-0 z-20">

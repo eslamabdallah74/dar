@@ -301,7 +301,8 @@ const submitPlanRequest = () => {
             </div>
 
             <div class="rounded-3xl border border-[#D6E0E7] bg-white overflow-hidden shadow-2xs">
-                <table class="w-full text-right text-xs">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-xs">
                     <thead>
                         <tr class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
                             <th class="py-3.5 px-6">رقم الفاتورة</th>
@@ -336,6 +337,7 @@ const submitPlanRequest = () => {
                         </tr>
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
 

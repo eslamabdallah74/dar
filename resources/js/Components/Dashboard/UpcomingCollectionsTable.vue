@@ -139,8 +139,76 @@ const filteredItems = computed(() => {
                 </button>
             </div>
 
+            <!-- قائمة كروت الاستحقاقات للموبايل -->
+            <ul class="divide-y divide-[#E8EFF4] sm:hidden mt-2">
+                <li
+                    v-for="item in filteredItems"
+                    :key="item.id"
+                    class="py-3.5 space-y-2.5"
+                >
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="w-8 h-8 rounded-lg bg-[#E8F0F0] text-[#163E3E] flex items-center justify-center font-bold text-xs shrink-0">
+                                {{ item.tenant.charAt(0) }}
+                            </div>
+                            <div class="min-w-0">
+                                <span class="font-bold text-sm text-[#163E3E] truncate block">
+                                    {{ item.tenant }}
+                                </span>
+                                <span v-if="item.phone" class="text-[11px] text-[#8E9CA6] block font-medium" dir="ltr">
+                                    {{ item.phone }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <span
+                            class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0"
+                            :class="[
+                                item.status === 'overdue' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                                item.status === 'due_today' ? 'bg-amber-50 text-amber-800 border border-amber-200' :
+                                item.status === 'partial' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
+                                'bg-sky-50 text-sky-700 border border-sky-200'
+                            ]"
+                        >
+                            {{ item.status_label }}
+                        </span>
+                    </div>
+
+                    <div class="flex items-center justify-between text-xs text-[#5B6770] bg-[#F8FAFC] px-3 py-2 rounded-xl border border-[#E8EFF4]">
+                        <span class="font-semibold text-[#163E3E] truncate">{{ item.unit }}</span>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-[11px]">{{ item.due_date }}</span>
+                            <span class="font-black text-sm text-[#163E3E] font-mono">{{ item.amount }}</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-2 pt-1">
+                        <button
+                            v-if="item.phone"
+                            @click="emit('sendWhatsApp', item)"
+                            type="button"
+                            class="h-8 px-3 rounded-lg border border-emerald-200 bg-emerald-50/80 hover:bg-emerald-100 text-emerald-800 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                            title="إرسال تذكير رسمي عبر واتساب"
+                        >
+                            <MessageCircle class="h-3.5 w-3.5 text-emerald-700" />
+                            <span>واتساب</span>
+                        </button>
+
+                        <button
+                            @click="emit('recordPayment', item)"
+                            type="button"
+                            class="h-8 px-4 rounded-lg bg-[#163E3E] hover:bg-[#102F2F] text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                            title="تسجيل دفعة سداد لهذا المستحق"
+                        >
+                            <Coins class="h-3.5 w-3.5" />
+                            <span>سداد</span>
+                        </button>
+                    </div>
+                </li>
+            </ul>
+
             <!-- جدول الاستحقاقات الحقيقية -->
-            <div v-else class="overflow-x-auto mt-2">
+            <div class="hidden sm:block overflow-x-auto mt-2">
                 <table class="w-full text-right text-sm">
                     <thead>
                         <tr class="border-b border-[#E8EFF4] text-[11px] font-bold text-[#5B6770]">

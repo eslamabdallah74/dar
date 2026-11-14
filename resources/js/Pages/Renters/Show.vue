@@ -695,11 +695,11 @@ const deleteDocument = async (renterDocument: DocumentItem) => {
             <!-- العمود الأيسر (التبويبات: سجل الفواتير، سندات القبض، ورسائل WhatsApp) -->
             <div class="lg:col-span-2 space-y-4">
                 <!-- شريط أزرار التبويبات -->
-                <div class="flex items-center gap-2 border-b border-[#D6E0E7] pb-2">
+                <div class="flex items-center gap-2 border-b border-[#D6E0E7] pb-2 overflow-x-auto">
                     <button
                         @click="activeTab = 'ledger'"
                         type="button"
-                        class="px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2"
+                        class="px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2 shrink-0"
                         :class="activeTab === 'ledger'
                             ? 'bg-[#163E3E] text-white shadow-2xs'
                             : 'bg-white text-[#5B6770] hover:text-[#163E3E] border border-[#D6E0E7]'"
@@ -711,7 +711,7 @@ const deleteDocument = async (renterDocument: DocumentItem) => {
                     <button
                         @click="activeTab = 'payments'"
                         type="button"
-                        class="px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2"
+                        class="px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2 shrink-0"
                         :class="activeTab === 'payments'
                             ? 'bg-[#163E3E] text-white shadow-2xs'
                             : 'bg-white text-[#5B6770] hover:text-[#163E3E] border border-[#D6E0E7]'"
@@ -723,7 +723,7 @@ const deleteDocument = async (renterDocument: DocumentItem) => {
                     <button
                         @click="activeTab = 'deposits'"
                         type="button"
-                        class="px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2"
+                        class="px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2 shrink-0"
                         :class="activeTab === 'deposits'
                             ? 'bg-[#163E3E] text-white shadow-2xs'
                             : 'bg-white text-[#5B6770] hover:text-[#163E3E] border border-[#D6E0E7]'"
@@ -735,7 +735,7 @@ const deleteDocument = async (renterDocument: DocumentItem) => {
                     <button
                         @click="activeTab = 'whatsapp'"
                         type="button"
-                        class="px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2"
+                        class="px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2 shrink-0"
                         :class="activeTab === 'whatsapp'
                             ? 'bg-[#163E3E] text-white shadow-2xs'
                             : 'bg-white text-[#5B6770] hover:text-[#163E3E] border border-[#D6E0E7]'"
@@ -747,7 +747,7 @@ const deleteDocument = async (renterDocument: DocumentItem) => {
                     <button
                         @click="activeTab = 'documents'"
                         type="button"
-                        class="px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2"
+                        class="px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-2 shrink-0"
                         :class="activeTab === 'documents'
                             ? 'bg-[#163E3E] text-white shadow-2xs'
                             : 'bg-white text-[#5B6770] hover:text-[#163E3E] border border-[#D6E0E7]'"
@@ -759,88 +759,92 @@ const deleteDocument = async (renterDocument: DocumentItem) => {
 
                 <!-- 1. تبويب الاستحقاقات والفواتير -->
                 <div v-if="activeTab === 'ledger'" class="rounded-3xl border border-[#D6E0E7] bg-white overflow-hidden shadow-2xs">
-                    <table class="w-full text-right text-xs">
-                        <thead>
-                            <tr class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
-                                <th class="py-3 px-5">الفترة</th>
-                                <th class="py-3 px-5">تاريخ الاستحقاق</th>
-                                <th class="py-3 px-5">المبلغ المطلوب</th>
-                                <th class="py-3 px-5">المسدد</th>
-                                <th class="py-3 px-5">المتبقي</th>
-                                <th class="py-3 px-5">الحالة</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-[#D6E0E7]">
-                            <tr v-for="item in ledger" :key="item.id" class="hover:bg-[#F8F4EA] transition">
-                                <td class="py-3.5 px-5 font-mono font-bold text-[#163E3E]">{{ item.period }}</td>
-                                <td class="py-3.5 px-5 font-mono text-[#5B6770]">{{ item.due_date }}</td>
-                                <td class="py-3.5 px-5 font-mono font-bold text-[#163E3E]">{{ item.amount.toLocaleString() }} ج.م</td>
-                                <td class="py-3.5 px-5 font-mono font-bold text-emerald-700">{{ item.paid_amount.toLocaleString() }} ج.م</td>
-                                <td class="py-3.5 px-5 font-mono" :class="item.outstanding_balance > 0 ? 'text-rose-600 font-bold' : 'text-[#5B6770]'">
-                                    {{ item.outstanding_balance.toLocaleString() }} ج.م
-                                </td>
-                                <td class="py-3.5 px-5">
-                                    <StatusBadge :status="item.status" :label="item.status_label" size="sm" />
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right text-xs">
+                            <thead>
+                                <tr class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
+                                    <th class="py-3 px-5">الفترة</th>
+                                    <th class="py-3 px-5">تاريخ الاستحقاق</th>
+                                    <th class="py-3 px-5">المبلغ المطلوب</th>
+                                    <th class="py-3 px-5">المسدد</th>
+                                    <th class="py-3 px-5">المتبقي</th>
+                                    <th class="py-3 px-5">الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-[#D6E0E7]">
+                                <tr v-for="item in ledger" :key="item.id" class="hover:bg-[#F8F4EA] transition">
+                                    <td class="py-3.5 px-5 font-mono font-bold text-[#163E3E]">{{ item.period }}</td>
+                                    <td class="py-3.5 px-5 font-mono text-[#5B6770]">{{ item.due_date }}</td>
+                                    <td class="py-3.5 px-5 font-mono font-bold text-[#163E3E]">{{ item.amount.toLocaleString() }} ج.م</td>
+                                    <td class="py-3.5 px-5 font-mono font-bold text-emerald-700">{{ item.paid_amount.toLocaleString() }} ج.م</td>
+                                    <td class="py-3.5 px-5 font-mono" :class="item.outstanding_balance > 0 ? 'text-rose-600 font-bold' : 'text-[#5B6770]'">
+                                        {{ item.outstanding_balance.toLocaleString() }} ج.م
+                                    </td>
+                                    <td class="py-3.5 px-5">
+                                        <StatusBadge :status="item.status" :label="item.status_label" size="sm" />
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <!-- 2. تبويب سندات القبض والدفعات -->
                 <div v-if="activeTab === 'payments'" class="rounded-3xl border border-[#D6E0E7] bg-white overflow-hidden shadow-2xs">
-                    <table class="w-full text-right text-xs">
-                        <thead>
-                            <tr class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
-                                <th class="py-3 px-5">
-                                    <ResourceTableHeading :href="route('payments.index')">رقم السند</ResourceTableHeading>
-                                </th>
-                                <th class="py-3 px-5">تاريخ التحصيل</th>
-                                <th class="py-3 px-5">المبلغ</th>
-                                <th class="py-3 px-5">طريقة الدفع</th>
-                                <th class="py-3 px-5">ملاحظات</th>
-                                <th class="py-3 px-5 text-center">المرفقات والسند</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-[#D6E0E7]">
-                            <tr v-for="pay in payments" :key="pay.id" class="hover:bg-[#F8F4EA] transition">
-                                <td class="py-3.5 px-5 font-mono font-bold text-[#163E3E]">{{ pay.reference }}</td>
-                                <td class="py-3.5 px-5 font-mono text-[#5B6770]">{{ pay.paid_at }}</td>
-                                <td class="py-3.5 px-5 font-mono font-bold text-[#163E3E]">{{ pay.amount.toLocaleString() }} ج.م</td>
-                                <td class="py-3.5 px-5 text-[#163E3E]">{{ pay.payment_method }}</td>
-                                <td class="py-3.5 px-5 text-[#5B6770]">{{ pay.notes || '—' }}</td>
-                                <td class="py-3.5 px-5 text-center">
-                                    <div class="flex items-center justify-center gap-2">
-                                        <a
-                                            v-if="pay.has_receipt && pay.receipt_url"
-                                            :href="pay.receipt_url"
-                                            target="_blank"
-                                            class="h-7 px-2.5 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-bold transition inline-flex items-center gap-1 shadow-2xs"
-                                            title="عرض إشعار التحويل المرفق"
-                                        >
-                                            <Paperclip class="w-3 h-3 text-emerald-700" />
-                                            <span>إشعار التحويل</span>
-                                        </a>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right text-xs">
+                            <thead>
+                                <tr class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
+                                    <th class="py-3 px-5">
+                                        <ResourceTableHeading :href="route('payments.index')">رقم السند</ResourceTableHeading>
+                                    </th>
+                                    <th class="py-3 px-5">تاريخ التحصيل</th>
+                                    <th class="py-3 px-5">المبلغ</th>
+                                    <th class="py-3 px-5">طريقة الدفع</th>
+                                    <th class="py-3 px-5">ملاحظات</th>
+                                    <th class="py-3 px-5 text-center">المرفقات والسند</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-[#D6E0E7]">
+                                <tr v-for="pay in payments" :key="pay.id" class="hover:bg-[#F8F4EA] transition">
+                                    <td class="py-3.5 px-5 font-mono font-bold text-[#163E3E]">{{ pay.reference }}</td>
+                                    <td class="py-3.5 px-5 font-mono text-[#5B6770]">{{ pay.paid_at }}</td>
+                                    <td class="py-3.5 px-5 font-mono font-bold text-[#163E3E]">{{ pay.amount.toLocaleString() }} ج.م</td>
+                                    <td class="py-3.5 px-5 text-[#163E3E]">{{ pay.payment_method }}</td>
+                                    <td class="py-3.5 px-5 text-[#5B6770]">{{ pay.notes || '—' }}</td>
+                                    <td class="py-3.5 px-5 text-center">
+                                        <div class="flex items-center justify-center gap-2">
+                                            <a
+                                                v-if="pay.has_receipt && pay.receipt_url"
+                                                :href="pay.receipt_url"
+                                                target="_blank"
+                                                class="h-7 px-2.5 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-bold transition inline-flex items-center gap-1 shadow-2xs"
+                                                title="عرض إشعار التحويل المرفق"
+                                            >
+                                                <Paperclip class="w-3 h-3 text-emerald-700" />
+                                                <span>إشعار التحويل</span>
+                                            </a>
 
-                                        <a
-                                            :href="route('payments.receipt', pay.id)"
-                                            target="_blank"
-                                            class="h-7 px-2.5 rounded-lg border border-[#D6E0E7] bg-white hover:bg-slate-50 text-[#163E3E] text-[11px] font-bold transition inline-flex items-center gap-1 shadow-2xs"
-                                            title="عرض وطباعة سند القبض"
-                                        >
-                                            <Printer class="w-3 h-3" />
-                                            <span>السند</span>
-                                        </a>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                                            <a
+                                                :href="route('payments.receipt', pay.id)"
+                                                target="_blank"
+                                                class="h-7 px-2.5 rounded-lg border border-[#D6E0E7] bg-white hover:bg-slate-50 text-[#163E3E] text-[11px] font-bold transition inline-flex items-center gap-1 shadow-2xs"
+                                                title="عرض وطباعة سند القبض"
+                                            >
+                                                <Printer class="w-3 h-3" />
+                                                <span>السند</span>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <!-- 3. تبويب سجل مبالغ التأمين المستردة (مفصول عن الإيجار) -->
                 <div v-if="activeTab === 'deposits'" class="rounded-3xl border border-[#D6E0E7] bg-white overflow-hidden shadow-2xs">
-                    <div v-if="security_deposits && security_deposits.length > 0">
+                    <div v-if="security_deposits && security_deposits.length > 0" class="overflow-x-auto">
                         <table class="w-full text-right text-xs">
                             <thead>
                                 <tr class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
@@ -892,29 +896,31 @@ const deleteDocument = async (renterDocument: DocumentItem) => {
 
                 <!-- 3. تبويب رسائل WhatsApp -->
                 <div v-if="activeTab === 'whatsapp'" class="rounded-3xl border border-[#D6E0E7] bg-white overflow-hidden shadow-2xs">
-                    <table class="w-full text-right text-xs">
-                        <thead>
-                            <tr class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
-                                <th class="py-3 px-5">نوع الإشعار</th>
-                                <th class="py-3 px-5">رقم المستلم</th>
-                                <th class="py-3 px-5">وقت الإرسال</th>
-                                <th class="py-3 px-5">حالة التسليم</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-[#D6E0E7]">
-                            <tr v-for="log in whatsapp_logs" :key="log.id" class="hover:bg-[#F8F4EA] transition">
-                                <td class="py-3.5 px-5 font-bold text-[#163E3E] flex items-center gap-2">
-                                    <MessageCircle class="w-4 h-4 text-emerald-600 shrink-0" />
-                                    <span>{{ log.template }}</span>
-                                </td>
-                                <td class="py-3.5 px-5 font-mono text-[#5B6770]" dir="ltr">{{ log.phone }}</td>
-                                <td class="py-3.5 px-5 font-mono text-[#5B6770]">{{ log.sent_at }}</td>
-                                <td class="py-3.5 px-5">
-                                    <StatusBadge :status="log.status" :label="log.status_label" size="sm" />
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right text-xs">
+                            <thead>
+                                <tr class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
+                                    <th class="py-3 px-5">نوع الإشعار</th>
+                                    <th class="py-3 px-5">رقم المستلم</th>
+                                    <th class="py-3 px-5">وقت الإرسال</th>
+                                    <th class="py-3 px-5">حالة التسليم</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-[#D6E0E7]">
+                                <tr v-for="log in whatsapp_logs" :key="log.id" class="hover:bg-[#F8F4EA] transition">
+                                    <td class="py-3.5 px-5 font-bold text-[#163E3E] flex items-center gap-2">
+                                        <MessageCircle class="w-4 h-4 text-emerald-600 shrink-0" />
+                                        <span>{{ log.template }}</span>
+                                    </td>
+                                    <td class="py-3.5 px-5 font-mono text-[#5B6770]" dir="ltr">{{ log.phone }}</td>
+                                    <td class="py-3.5 px-5 font-mono text-[#5B6770]">{{ log.sent_at }}</td>
+                                    <td class="py-3.5 px-5">
+                                        <StatusBadge :status="log.status" :label="log.status_label" size="sm" />
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <!-- 4. تبويب المستندات والوثائق الخاصة -->
@@ -1006,63 +1012,65 @@ const deleteDocument = async (renterDocument: DocumentItem) => {
 
                     <!-- جدول المستندات المحفوظة -->
                     <div class="rounded-3xl border border-[#D6E0E7] bg-white overflow-hidden shadow-2xs">
-                        <table class="w-full text-right text-xs">
-                            <thead>
-                                <tr class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
-                                    <th class="py-3 px-5">المستند</th>
-                                    <th class="py-3 px-5">النوع</th>
-                                    <th class="py-3 px-5">الحجم</th>
-                                    <th class="py-3 px-5">تاريخ الإضافة</th>
-                                    <th class="py-3 px-5 text-center">الإجراءات</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-[#D6E0E7]">
-                                <tr v-if="!documents || documents.length === 0">
-                                    <td colspan="5" class="py-8 px-5 text-center text-[#8A9AA7]">
-                                        <Paperclip class="w-6 h-6 mx-auto mb-2 text-[#BAC7D5]" />
-                                        <span>لا توجد مستندات مرفقة لهذا المستأجر حتى الآن.</span>
-                                    </td>
-                                </tr>
-                                <tr v-for="doc in documents" :key="doc.id" class="hover:bg-[#F8F4EA] transition">
-                                    <td class="py-3.5 px-5 font-bold text-[#163E3E]">
-                                        <div class="flex items-center gap-2">
-                                            <FileText class="w-4 h-4 text-[#163E3E] shrink-0" />
-                                            <div>
-                                                <span>{{ doc.title }}</span>
-                                                <span class="block text-[10px] text-[#8A9AA7] font-mono mt-0.5">{{ doc.original_filename }}</span>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-right text-xs">
+                                <thead>
+                                    <tr class="bg-[#F8FAFC] border-b border-[#D6E0E7] text-[#5B6770] font-bold">
+                                        <th class="py-3 px-5">المستند</th>
+                                        <th class="py-3 px-5">النوع</th>
+                                        <th class="py-3 px-5">الحجم</th>
+                                        <th class="py-3 px-5">تاريخ الإضافة</th>
+                                        <th class="py-3 px-5 text-center">الإجراءات</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-[#D6E0E7]">
+                                    <tr v-if="!documents || documents.length === 0">
+                                        <td colspan="5" class="py-8 px-5 text-center text-[#8A9AA7]">
+                                            <Paperclip class="w-6 h-6 mx-auto mb-2 text-[#BAC7D5]" />
+                                            <span>لا توجد مستندات مرفقة لهذا المستأجر حتى الآن.</span>
+                                        </td>
+                                    </tr>
+                                    <tr v-for="doc in documents" :key="doc.id" class="hover:bg-[#F8F4EA] transition">
+                                        <td class="py-3.5 px-5 font-bold text-[#163E3E]">
+                                            <div class="flex items-center gap-2">
+                                                <FileText class="w-4 h-4 text-[#163E3E] shrink-0" />
+                                                <div>
+                                                    <span>{{ doc.title }}</span>
+                                                    <span class="block text-[10px] text-[#8A9AA7] font-mono mt-0.5">{{ doc.original_filename }}</span>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td class="py-3.5 px-5">
-                                        <span class="px-2 py-0.5 rounded-md bg-slate-100 text-[#5B6770] font-semibold text-[11px]">
-                                            {{ doc.document_type_label }}
-                                        </span>
-                                    </td>
-                                    <td class="py-3.5 px-5 font-mono text-[#5B6770]">{{ doc.file_size || '—' }}</td>
-                                    <td class="py-3.5 px-5 font-mono text-[#5B6770]">{{ doc.created_at }}</td>
-                                    <td class="py-3.5 px-5 text-center">
-                                        <div class="flex items-center justify-center gap-1.5">
-                                            <a
-                                                :href="doc.download_url"
-                                                class="h-7 px-2.5 rounded-lg border border-[#D6E0E7] bg-white hover:bg-slate-50 text-[#163E3E] text-[11px] font-bold transition flex items-center gap-1 shadow-2xs"
-                                                title="تحميل المستند"
-                                            >
-                                                <Download class="w-3 h-3" />
-                                                <span>تحميل</span>
-                                            </a>
-                                            <button
-                                                @click="deleteDocument(doc)"
-                                                type="button"
-                                                class="h-7 px-2 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 text-rose-600 transition flex items-center shadow-2xs cursor-pointer"
-                                                title="حذف المستند"
-                                            >
-                                                <Trash2 class="w-3 h-3" />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                                        </td>
+                                        <td class="py-3.5 px-5">
+                                            <span class="px-2 py-0.5 rounded-md bg-slate-100 text-[#5B6770] font-semibold text-[11px]">
+                                                {{ doc.document_type_label }}
+                                            </span>
+                                        </td>
+                                        <td class="py-3.5 px-5 font-mono text-[#5B6770]">{{ doc.file_size || '—' }}</td>
+                                        <td class="py-3.5 px-5 font-mono text-[#5B6770]">{{ doc.created_at }}</td>
+                                        <td class="py-3.5 px-5 text-center">
+                                            <div class="flex items-center justify-center gap-1.5">
+                                                <a
+                                                    :href="doc.download_url"
+                                                    class="h-7 px-2.5 rounded-lg border border-[#D6E0E7] bg-white hover:bg-slate-50 text-[#163E3E] text-[11px] font-bold transition flex items-center gap-1 shadow-2xs"
+                                                    title="تحميل المستند"
+                                                >
+                                                    <Download class="w-3 h-3" />
+                                                    <span>تحميل</span>
+                                                </a>
+                                                <button
+                                                    @click="deleteDocument(doc)"
+                                                    type="button"
+                                                    class="h-7 px-2 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 text-rose-600 transition flex items-center shadow-2xs cursor-pointer"
+                                                    title="حذف المستند"
+                                                >
+                                                    <Trash2 class="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>

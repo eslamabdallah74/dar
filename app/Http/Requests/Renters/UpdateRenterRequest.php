@@ -44,12 +44,23 @@ class UpdateRenterRequest extends FormRequest
                     ->ignore($renterId),
             ],
             'email' => ['nullable', 'string', 'lowercase', 'email:rfc', 'max:255'],
-            'national_id' => ['nullable', 'string', 'min:6', 'max:50', 'regex:/^[A-Za-z0-9\s\-]+$/'],
+            'national_id' => [
+                'nullable',
+                'string',
+                'min:6',
+                'max:50',
+                'regex:/^[A-Za-z0-9\s\-]+$/',
+                Rule::unique('renters', 'national_id')
+                    ->where('workspace_id', $workspaceId)
+                    ->ignore($renterId),
+            ],
             'gender' => ['nullable', 'string', Rule::enum(Gender::class)],
             'notes' => ['nullable', 'string'],
             'whatsapp_consent' => ['nullable', 'boolean'],
             'id_card_front' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:5120'],
             'id_card_back' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:5120'],
+            'delete_id_card_front' => ['nullable', 'boolean'],
+            'delete_id_card_back' => ['nullable', 'boolean'],
         ];
     }
 
@@ -67,6 +78,7 @@ class UpdateRenterRequest extends FormRequest
             'phone.unique' => 'رقم الهاتف مسجل بالفعل لمستأجر آخر في هذه المنشأة.',
             'email.email' => 'يرجى إدخال بريد إلكتروني صحيح.',
             'national_id.min' => 'يجب ألا يقل الرقم القومي / الهوية عن 6 خانات.',
+            'national_id.unique' => 'الرقم القومي / الهوية مسجل بالفعل لمستأجر آخر في هذه المنشأة.',
             'national_id.regex' => 'الرقم القومي / الهوية يحتوي على رموز غير صالحة.',
         ];
     }

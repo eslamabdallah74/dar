@@ -18,6 +18,7 @@ use App\Services\Storage\DocumentStorageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -221,46 +222,80 @@ class RenterController extends Controller
 
         $validated = $request->validated();
 
-        if ($request->hasFile('id_card_front')) {
-            if ($renter->id_card_front) {
-                EncryptedFileService::delete($renter->id_card_front, $storage->getPrivateDisk());
-                $storage->delete($renter->id_card_front, 'public');
-            }
-            $file = $request->file('id_card_front');
-            $path = $storage->storeEncrypted($file, "ids/{$renter->id}");
-            $validated['id_card_front'] = $path;
+        if ($request->boolean('delete_id_card_front') || $request->hasFile('id_card_front')) {
+            $validated['id_card_front'] = $this->resolveUpdatedIdCardPath($request, $renter, 'front', $storage);
         } else {
             unset($validated['id_card_front']);
         }
+        unset($validated['delete_id_card_front']);
 
-        if ($request->hasFile('id_card_back')) {
-            if ($renter->id_card_back) {
-                EncryptedFileService::delete($renter->id_card_back, $storage->getPrivateDisk());
-                $storage->delete($renter->id_card_back, 'public');
-            }
-            $file = $request->file('id_card_back');
-            $path = $storage->storeEncrypted($file, "ids/{$renter->id}");
-            $validated['id_card_back'] = $path;
+        if ($request->boolean('delete_id_card_back') || $request->hasFile('id_card_back')) {
+            $validated['id_card_back'] = $this->resolveUpdatedIdCardPath($request, $renter, 'back', $storage);
         } else {
             unset($validated['id_card_back']);
         }
+        unset($validated['delete_id_card_back']);
 
-        if (array_key_exists('whatsapp_consent', $validated)) {
-            $wantsConsent = (bool) $validated['whatsapp_consent'];
-            if ($wantsConsent !== $renter->hasConsentedToWhatsApp()) {
-                if ($wantsConsent) {
-                    $validated['whatsapp_opt_in_at'] = now();
-                    $validated['whatsapp_opted_out_at'] = null;
-                } elseif ($renter->whatsapp_opt_in_at !== null) {
-                    $validated['whatsapp_opted_out_at'] = now();
-                }
-            }
-            unset($validated['whatsapp_consent']);
-        }
+        $validated = $this->handleWhatsAppConsentUpdate($validated, $renter);
 
         $renter->update($validated);
 
         return back()->with('success', 'تم تحديث بيانات المستأجر بنجاح');
+    }
+
+    /**
+     * @param  'front'|'back'  $side
+     */
+    private function resolveUpdatedIdCardPath(
+        UpdateRenterRequest $request,
+        Renter $renter,
+        string $side,
+        DocumentStorageService $storage
+    ): ?string {
+        $deleteFlag = "delete_id_card_{$side}";
+        $fileField = "id_card_{$side}";
+        /** @var string|null $currentPath */
+        $currentPath = $side === 'front' ? $renter->id_card_front : $renter->id_card_back;
+
+        if ($request->boolean($deleteFlag)) {
+            $this->deleteIdCardFileSafely($currentPath, $renter, $storage);
+
+            return null;
+        }
+
+        if ($request->hasFile($fileField)) {
+            $this->deleteIdCardFileSafely($currentPath, $renter, $storage);
+            /** @var UploadedFile $file */
+            $file = $request->file($fileField);
+
+            return $storage->storeEncrypted($file, "ids/{$renter->id}");
+        }
+
+        return $currentPath;
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function handleWhatsAppConsentUpdate(array $validated, Renter $renter): array
+    {
+        if (! array_key_exists('whatsapp_consent', $validated)) {
+            return $validated;
+        }
+
+        $wantsConsent = (bool) $validated['whatsapp_consent'];
+        if ($wantsConsent !== $renter->hasConsentedToWhatsApp()) {
+            if ($wantsConsent) {
+                $validated['whatsapp_opt_in_at'] = now();
+                $validated['whatsapp_opted_out_at'] = null;
+            } elseif ($renter->whatsapp_opt_in_at !== null) {
+                $validated['whatsapp_opted_out_at'] = now();
+            }
+        }
+        unset($validated['whatsapp_consent']);
+
+        return $validated;
     }
 
     public function storeDocument(
@@ -331,6 +366,52 @@ class RenterController extends Controller
         }
 
         abort(404, 'ملف بطاقة الهوية غير موجود.');
+    }
+
+    public function destroyIdCard(
+        Request $request,
+        Renter $renter,
+        string $side,
+        DocumentStorageService $storage
+    ): RedirectResponse {
+        $workspace = $this->resolveWorkspace($request);
+        abort_if($renter->workspace_id !== $workspace->id, 403, 'غير مصرح لك بإدارة هذا المستأجر.');
+
+        abort_if(! in_array($side, ['front', 'back'], true), 404);
+
+        $column = $side === 'front' ? 'id_card_front' : 'id_card_back';
+        /** @var string|null $path */
+        $path = $renter->{$column};
+
+        if ($path) {
+            $this->deleteIdCardFileSafely($path, $renter, $storage);
+            $renter->update([$column => null]);
+        }
+
+        return back()->with('success', 'تم حذف صورة بطاقة الهوية بنجاح');
+    }
+
+    /**
+     * Safely delete an ID card file from encrypted storage if not referenced by any other renter.
+     */
+    private function deleteIdCardFileSafely(?string $path, Renter $currentRenter, DocumentStorageService $storage): void
+    {
+        if (! $path) {
+            return;
+        }
+
+        $isReferencedElsewhere = Renter::withoutGlobalScopes()
+            ->where('id', '!=', $currentRenter->id)
+            ->where(function ($q) use ($path) {
+                $q->where('id_card_front', $path)
+                    ->orWhere('id_card_back', $path);
+            })
+            ->exists();
+
+        if (! $isReferencedElsewhere) {
+            EncryptedFileService::delete($path, $storage->getPrivateDisk());
+            $storage->delete($path, 'public');
+        }
     }
 
     public function destroyDocument(

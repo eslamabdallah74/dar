@@ -39,7 +39,14 @@ class StoreRenterRequest extends FormRequest
                 Rule::unique('renters', 'phone')->where('workspace_id', $workspaceId),
             ],
             'email' => ['nullable', 'string', 'lowercase', 'email:rfc', 'max:255'],
-            'national_id' => ['nullable', 'string', 'min:6', 'max:50', 'regex:/^[A-Za-z0-9\s\-]+$/'],
+            'national_id' => [
+                'nullable',
+                'string',
+                'min:6',
+                'max:50',
+                'regex:/^[A-Za-z0-9\s\-]+$/',
+                Rule::unique('renters', 'national_id')->where('workspace_id', $workspaceId),
+            ],
             'gender' => ['nullable', 'string', Rule::enum(Gender::class)],
             'whatsapp_consent' => ['nullable', 'boolean'],
             'notes' => ['nullable', 'string'],
@@ -62,6 +69,7 @@ class StoreRenterRequest extends FormRequest
             'phone.unique' => 'رقم الهاتف مسجل بالفعل لمستأجر آخر في هذه المنشأة.',
             'email.email' => 'يرجى إدخال بريد إلكتروني صحيح.',
             'national_id.min' => 'يجب ألا يقل الرقم القومي / الهوية عن 6 خانات.',
+            'national_id.unique' => 'الرقم القومي / الهوية مسجل بالفعل لمستأجر آخر في هذه المنشأة.',
             'national_id.regex' => 'الرقم القومي / الهوية يحتوي على رموز غير صالحة.',
         ];
     }

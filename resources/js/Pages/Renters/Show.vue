@@ -11,6 +11,7 @@ import {
     ArrowRight,
     Coins,
     Download,
+    Eye,
     FileText,
     Mail,
     MessageCircle,
@@ -81,6 +82,8 @@ const props = defineProps<{
         national_id: string;
         gender?: 'male' | 'female' | null;
         gender_label?: string | null;
+        id_card_front_url?: string | null;
+        id_card_back_url?: string | null;
         whatsapp_opted_in: boolean;
         whatsapp_opt_in_date: string | null;
         whatsapp_opted_out_date?: string | null;
@@ -177,33 +180,93 @@ const submitDocument = () => {
 };
 
 const showEditModal = ref(false);
-const editForm = useForm({
+const frontFileInputRef = ref<HTMLInputElement | null>(null);
+const backFileInputRef = ref<HTMLInputElement | null>(null);
+
+const editForm = useForm<{
+    name: string;
+    phone: string;
+    national_id: string;
+    email: string;
+    gender: '' | 'male' | 'female';
+    notes: string;
+    whatsapp_consent: boolean;
+    id_card_front: File | null;
+    id_card_back: File | null;
+    delete_id_card_front: boolean;
+    delete_id_card_back: boolean;
+}>({
     name: props.renter.name,
     phone: props.renter.phone,
     national_id: props.renter.national_id === '—' ? '' : props.renter.national_id,
     email: props.renter.email || '',
     gender: (props.renter.gender || '') as '' | 'male' | 'female',
     notes: props.renter.notes || '',
-    whatsapp_consent: props.renter.whatsapp_opted_in,
+    whatsapp_consent: Boolean(props.renter.whatsapp_opted_in),
+    id_card_front: null,
+    id_card_back: null,
+    delete_id_card_front: false,
+    delete_id_card_back: false,
 });
 
 const openEditModal = () => {
+    editForm.clearErrors();
     editForm.name = props.renter.name;
     editForm.phone = props.renter.phone;
     editForm.national_id = props.renter.national_id === '—' ? '' : props.renter.national_id;
     editForm.email = props.renter.email || '';
     editForm.gender = (props.renter.gender || '') as '' | 'male' | 'female';
     editForm.notes = props.renter.notes || '';
-    editForm.whatsapp_consent = props.renter.whatsapp_opted_in;
+    editForm.whatsapp_consent = Boolean(props.renter.whatsapp_opted_in);
+    editForm.id_card_front = null;
+    editForm.id_card_back = null;
+    editForm.delete_id_card_front = false;
+    editForm.delete_id_card_back = false;
     showEditModal.value = true;
 };
 
+const handleFrontFileChange = (e: Event) => {
+    const target = e.target as HTMLInputElement;
+    if (target.files?.[0]) {
+        editForm.id_card_front = target.files[0];
+        editForm.delete_id_card_front = false;
+    }
+};
+
+const handleBackFileChange = (e: Event) => {
+    const target = e.target as HTMLInputElement;
+    if (target.files?.[0]) {
+        editForm.id_card_back = target.files[0];
+        editForm.delete_id_card_back = false;
+    }
+};
+
 const submitEdit = () => {
-    editForm.put(route('renters.update', props.renter.id), {
+    editForm.transform((data) => ({
+        ...data,
+        _method: 'put',
+    })).post(route('renters.update', props.renter.id), {
+        forceFormData: true,
         onSuccess: () => {
             showEditModal.value = false;
         },
     });
+};
+
+const deleteIdCardSide = async (side: 'front' | 'back') => {
+    const sideLabel = side === 'front' ? 'الوجه الأمامي' : 'الوجه الخلفي';
+    const confirmed = await confirmDialog.confirm({
+        tone: 'danger',
+        icon: Trash2,
+        title: `حذف صورة بطاقة الهوية (${sideLabel})؟`,
+        message: 'سيتم حذف صورة بطاقة الهوية نهائياً من النظام ووحدة التخزين المشفرة.',
+        confirmLabel: 'تأكيد الحذف',
+        cancelLabel: 'إلغاء',
+    });
+
+    if (confirmed) {
+        router.delete(route('renters.id-card.destroy', [props.renter.id, side]));
+    }
 };
 
 const confirmDialog = useConfirmDialog();
@@ -414,6 +477,114 @@ const deleteDocument = async (renterDocument: DocumentItem) => {
                     <div v-if="renter.notes" class="p-3 rounded-xl bg-[#F8FAFC] border border-[#D6E0E7] text-xs text-[#5B6770]">
                         <span class="font-bold text-[#163E3E] block mb-1">ملاحظات الإدارة:</span>
                         {{ renter.notes }}
+                    </div>
+                </div>
+
+                <!-- بطاقة صور الهوية الوطنية -->
+                <div class="rounded-3xl border border-[#D6E0E7] bg-white p-6 shadow-2xs space-y-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-[#D6E0E7]">
+                        <div class="flex items-center gap-2">
+                            <ShieldCheck class="w-4 h-4 text-[#163E3E]" />
+                            <span class="text-sm font-bold text-[#163E3E]">بطاقة الهوية الوطنية</span>
+                        </div>
+                        <button
+                            @click="openEditModal"
+                            type="button"
+                            class="text-xs text-[#163E3E] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                        >
+                            <Pencil class="w-3 h-3" />
+                            <span>إدارة الصور</span>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <!-- الوجه الأمامي -->
+                        <div class="rounded-2xl border border-[#D6E0E7] bg-[#F8FAFC] p-3 flex flex-col items-center justify-center text-center space-y-2">
+                            <span class="text-[11px] font-bold text-[#5B6770]">الوجه الأمامي</span>
+                            <div v-if="renter.id_card_front_url" class="space-y-2 w-full">
+                                <a
+                                    :href="renter.id_card_front_url"
+                                    target="_blank"
+                                    class="block w-full h-20 rounded-xl overflow-hidden border border-[#D6E0E7] bg-slate-100 hover:opacity-90 transition relative group"
+                                >
+                                    <img
+                                        :src="renter.id_card_front_url"
+                                        alt="بطاقة الهوية - الوجه الأمامي"
+                                        class="w-full h-full object-cover"
+                                    />
+                                    <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold gap-1">
+                                        <Eye class="w-3.5 h-3.5" />
+                                        <span>عرض</span>
+                                    </div>
+                                </a>
+                                <div class="flex items-center justify-center gap-1.5 pt-1">
+                                    <a
+                                        :href="renter.id_card_front_url"
+                                        target="_blank"
+                                        class="h-7 px-2 rounded-lg border border-[#D6E0E7] bg-white hover:bg-slate-50 text-[#163E3E] text-[11px] font-bold transition flex items-center gap-1 shadow-2xs"
+                                    >
+                                        <Eye class="w-3 h-3" />
+                                        <span>معاينة</span>
+                                    </a>
+                                    <button
+                                        @click="deleteIdCardSide('front')"
+                                        type="button"
+                                        class="h-7 px-2 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 text-rose-600 transition flex items-center shadow-2xs cursor-pointer"
+                                        title="حذف الوجه الأمامي"
+                                    >
+                                        <Trash2 class="w-3 h-3" />
+                                    </button>
+                                </div>
+                            </div>
+                            <div v-else class="py-4 text-center">
+                                <Shield class="w-7 h-7 mx-auto text-[#BAC7D5] mb-1" />
+                                <span class="text-[11px] text-[#8A9AA7]">غير مرفوعة</span>
+                            </div>
+                        </div>
+
+                        <!-- الوجه الخلفي -->
+                        <div class="rounded-2xl border border-[#D6E0E7] bg-[#F8FAFC] p-3 flex flex-col items-center justify-center text-center space-y-2">
+                            <span class="text-[11px] font-bold text-[#5B6770]">الوجه الخلفي</span>
+                            <div v-if="renter.id_card_back_url" class="space-y-2 w-full">
+                                <a
+                                    :href="renter.id_card_back_url"
+                                    target="_blank"
+                                    class="block w-full h-20 rounded-xl overflow-hidden border border-[#D6E0E7] bg-slate-100 hover:opacity-90 transition relative group"
+                                >
+                                    <img
+                                        :src="renter.id_card_back_url"
+                                        alt="بطاقة الهوية - الوجه الخلفي"
+                                        class="w-full h-full object-cover"
+                                    />
+                                    <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold gap-1">
+                                        <Eye class="w-3.5 h-3.5" />
+                                        <span>عرض</span>
+                                    </div>
+                                </a>
+                                <div class="flex items-center justify-center gap-1.5 pt-1">
+                                    <a
+                                        :href="renter.id_card_back_url"
+                                        target="_blank"
+                                        class="h-7 px-2 rounded-lg border border-[#D6E0E7] bg-white hover:bg-slate-50 text-[#163E3E] text-[11px] font-bold transition flex items-center gap-1 shadow-2xs"
+                                    >
+                                        <Eye class="w-3 h-3" />
+                                        <span>معاينة</span>
+                                    </a>
+                                    <button
+                                        @click="deleteIdCardSide('back')"
+                                        type="button"
+                                        class="h-7 px-2 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 text-rose-600 transition flex items-center shadow-2xs cursor-pointer"
+                                        title="حذف الوجه الخلفي"
+                                    >
+                                        <Trash2 class="w-3 h-3" />
+                                    </button>
+                                </div>
+                            </div>
+                            <div v-else class="py-4 text-center">
+                                <Shield class="w-7 h-7 mx-auto text-[#BAC7D5] mb-1" />
+                                <span class="text-[11px] text-[#8A9AA7]">غير مرفوعة</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1020,6 +1191,127 @@ const deleteDocument = async (renterDocument: DocumentItem) => {
                                 <span class="text-[#5B6770] text-[11px]">إرسال إيصالات السداد، تذكيرات استحقاق الإيجار، وتنبيهات انتهاء العقد تلقائياً</span>
                             </div>
                         </label>
+                    </div>
+
+                    <!-- صور بطاقة الهوية (الوجه الأمامي والخلفي) -->
+                    <div class="p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#D6E0E7] space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-[#163E3E] flex items-center gap-1.5">
+                                <ShieldCheck class="w-4 h-4 text-[#163E3E]" />
+                                <span>صور بطاقة الهوية</span>
+                            </span>
+                            <span class="text-[11px] text-[#5B6770]">صيغ JPG, PNG, WEBP (حد أقصى 5MB)</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <!-- الوجه الأمامي -->
+                            <div class="p-3 rounded-xl border border-[#D6E0E7] bg-white space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <label for="edit-renter-id-front" class="block text-xs font-bold text-[#163E3E]">
+                                        الوجه الأمامي
+                                    </label>
+                                    <span v-if="renter.id_card_front_url && !editForm.delete_id_card_front && !editForm.id_card_front" class="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-semibold">
+                                        صورة متوفرة
+                                    </span>
+                                    <span v-else-if="editForm.delete_id_card_front" class="text-[10px] text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded font-semibold">
+                                        محددة للحذف
+                                    </span>
+                                </div>
+
+                                <div v-if="renter.id_card_front_url && !editForm.delete_id_card_front && !editForm.id_card_front" class="flex items-center justify-between gap-2 pt-1">
+                                    <a :href="renter.id_card_front_url" target="_blank" class="text-[11px] text-[#163E3E] hover:underline flex items-center gap-1">
+                                        <Eye class="w-3 h-3" />
+                                        <span>معاينة الصورة</span>
+                                    </a>
+                                    <button
+                                        type="button"
+                                        @click="editForm.delete_id_card_front = true"
+                                        class="text-[11px] text-rose-600 hover:text-rose-800 font-semibold flex items-center gap-0.5 cursor-pointer"
+                                    >
+                                        <Trash2 class="w-3 h-3" />
+                                        <span>حذف</span>
+                                    </button>
+                                </div>
+
+                                <div v-if="editForm.delete_id_card_front" class="flex items-center justify-between pt-1">
+                                    <span class="text-[11px] text-rose-600">سيتم حذف الصورة عند الحفظ</span>
+                                    <button
+                                        type="button"
+                                        @click="editForm.delete_id_card_front = false"
+                                        class="text-[11px] text-[#163E3E] underline font-semibold cursor-pointer"
+                                    >
+                                        تراجع
+                                    </button>
+                                </div>
+
+                                <input
+                                    id="edit-renter-id-front"
+                                    ref="frontFileInputRef"
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/jpg,image/webp"
+                                    @change="handleFrontFileChange"
+                                    aria-label="صورة الوجه الأمامي لبطاقة الهوية"
+                                    class="w-full text-xs text-[#5B6770] file:mr-0 file:ml-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#E8F0F0] file:text-[#163E3E] hover:file:bg-[#d6e5e5] cursor-pointer"
+                                />
+                                <p v-if="editForm.errors.id_card_front" class="text-xs text-rose-600 font-semibold mt-1">
+                                    {{ editForm.errors.id_card_front }}
+                                </p>
+                            </div>
+
+                            <!-- الوجه الخلفي -->
+                            <div class="p-3 rounded-xl border border-[#D6E0E7] bg-white space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <label for="edit-renter-id-back" class="block text-xs font-bold text-[#163E3E]">
+                                        الوجه الخلفي
+                                    </label>
+                                    <span v-if="renter.id_card_back_url && !editForm.delete_id_card_back && !editForm.id_card_back" class="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-semibold">
+                                        صورة متوفرة
+                                    </span>
+                                    <span v-else-if="editForm.delete_id_card_back" class="text-[10px] text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded font-semibold">
+                                        محددة للحذف
+                                    </span>
+                                </div>
+
+                                <div v-if="renter.id_card_back_url && !editForm.delete_id_card_back && !editForm.id_card_back" class="flex items-center justify-between gap-2 pt-1">
+                                    <a :href="renter.id_card_back_url" target="_blank" class="text-[11px] text-[#163E3E] hover:underline flex items-center gap-1">
+                                        <Eye class="w-3 h-3" />
+                                        <span>معاينة الصورة</span>
+                                    </a>
+                                    <button
+                                        type="button"
+                                        @click="editForm.delete_id_card_back = true"
+                                        class="text-[11px] text-rose-600 hover:text-rose-800 font-semibold flex items-center gap-0.5 cursor-pointer"
+                                    >
+                                        <Trash2 class="w-3 h-3" />
+                                        <span>حذف</span>
+                                    </button>
+                                </div>
+
+                                <div v-if="editForm.delete_id_card_back" class="flex items-center justify-between pt-1">
+                                    <span class="text-[11px] text-rose-600">سيتم حذف الصورة عند الحفظ</span>
+                                    <button
+                                        type="button"
+                                        @click="editForm.delete_id_card_back = false"
+                                        class="text-[11px] text-[#163E3E] underline font-semibold cursor-pointer"
+                                    >
+                                        تراجع
+                                    </button>
+                                </div>
+
+                                <input
+                                    id="edit-renter-id-back"
+                                    ref="backFileInputRef"
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/jpg,image/webp"
+                                    @change="handleBackFileChange"
+                                    aria-label="صورة الوجه الخلفي لبطاقة الهوية"
+                                    class="w-full text-xs text-[#5B6770] file:mr-0 file:ml-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#E8F0F0] file:text-[#163E3E] hover:file:bg-[#d6e5e5] cursor-pointer"
+                                />
+                                <p v-if="editForm.errors.id_card_back" class="text-xs text-rose-600 font-semibold mt-1">
+                                    {{ editForm.errors.id_card_back }}
+                                </p>
+                            </div>
+                        </div>
                     </div>
 
                     <div>

@@ -105,6 +105,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/renters/{renter}/documents', [RenterController::class, 'storeDocument'])->name('renters.documents.store');
     Route::get('/renters/{renter}/documents/{document}/download', [RenterController::class, 'downloadDocument'])->name('renters.documents.download');
     Route::get('/renters/{renter}/id-card/{side}', [RenterController::class, 'viewIdCard'])->where('side', 'front|back')->name('renters.id-card');
+    Route::delete('/renters/{renter}/id-card/{side}', [RenterController::class, 'destroyIdCard'])->where('side', 'front|back')->name('renters.id-card.destroy');
     Route::delete('/renters/{renter}/documents/{document}', [RenterController::class, 'destroyDocument'])->name('renters.documents.destroy');
 
     // 06 / العقود

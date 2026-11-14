@@ -225,16 +225,16 @@ If the suggested name conflicts with an existing record, handle it safely and su
 
 ### Acceptance Criteria
 
-- [ ] Duplicate works for all applicable unit types.
-- [ ] Nested structures are duplicated correctly.
-- [ ] Images are not duplicated.
-- [ ] Operational data is not duplicated.
-- [ ] Names are automatically suggested with an incremented suffix.
-- [ ] Users can modify all editable fields before creation.
-- [ ] The resulting entity is independent.
-- [ ] Existing creation functionality continues working.
-- [ ] No production data is lost or modified.
-- [ ] Appropriate automated tests are added.
+- [x] Duplicate works for all applicable unit types.
+- [x] Nested structures are duplicated correctly.
+- [x] Images are not duplicated.
+- [x] Operational data is not duplicated.
+- [x] Names are automatically suggested with an incremented suffix.
+- [x] Users can modify all editable fields before creation.
+- [x] The resulting entity is independent.
+- [x] Existing creation functionality continues working.
+- [x] No production data is lost or modified.
+- [x] Appropriate automated tests are added.
 
 After completion, report the implementation and test results before proceeding.
 
@@ -330,15 +330,15 @@ Do not introduce new permission systems.
 
 ### Acceptance Criteria
 
-- [ ] Tenant information can be edited from the tenant details interface.
-- [ ] All existing editable fields are supported.
-- [ ] National ID and mobile validation work correctly.
-- [ ] Existing values do not cause false uniqueness errors.
-- [ ] ID images can be uploaded, replaced, and deleted.
-- [ ] Active contracts remain unchanged.
-- [ ] Tenant data remains isolated between workspaces.
-- [ ] Existing tenant creation and other workflows continue working.
-- [ ] Tests cover validation, authorization, image management, and contract preservation.
+- [x] Tenant information can be edited from the tenant details interface.
+- [x] All existing editable fields are supported.
+- [x] National ID and mobile validation work correctly.
+- [x] Existing values do not cause false uniqueness errors.
+- [x] ID images can be uploaded, replaced, and deleted.
+- [x] Active contracts remain unchanged.
+- [x] Tenant data remains isolated between workspaces.
+- [x] Existing tenant creation and other workflows continue working.
+- [x] Tests cover validation, authorization, image management, and contract preservation.
 
 Report completion before proceeding.
 
@@ -445,15 +445,15 @@ If the initial status behavior is not clear from existing conventions, ask befor
 
 ### Acceptance Criteria
 
-- [ ] Three statuses are supported.
-- [ ] Status changes are manual only.
-- [ ] Status belongs to the tenant.
-- [ ] The indicator appears beside tenant names throughout the application.
-- [ ] Existing notes remain functional.
-- [ ] No automated status changes are introduced.
-- [ ] Existing tenant workflows continue working.
-- [ ] Workspace isolation and authorization are preserved.
-- [ ] Tests cover status persistence, authorization, and validation.
+- [x] Three statuses are supported.
+- [x] Status changes are manual only.
+- [x] Status belongs to the tenant.
+- [x] The indicator appears beside tenant names throughout the application.
+- [x] Existing notes remain functional.
+- [x] No automated status changes are introduced.
+- [x] Existing tenant workflows continue working.
+- [x] Workspace isolation and authorization are preserved.
+- [x] Tests cover status persistence, authorization, and validation.
 
 Report completion before proceeding.
 
@@ -670,15 +670,15 @@ Do not claim that every page has been tested if only a subset was inspected.
 
 ### Acceptance Criteria
 
-- [ ] The entire website has been reviewed.
-- [ ] All existing application routes have been considered.
-- [ ] Landing page is responsive.
-- [ ] Shared layout components work correctly.
-- [ ] Tables and forms are usable on mobile.
-- [ ] Arabic RTL and English LTR work correctly.
-- [ ] No unintended horizontal overflow.
-- [ ] Desktop appearance is preserved.
-- [ ] No unnecessary redesign has been introduced.
+- [x] The entire website has been reviewed.
+- [x] All existing application routes have been considered.
+- [x] Landing page is responsive.
+- [x] Shared layout components work correctly.
+- [x] Tables and forms are usable on mobile.
+- [x] Arabic RTL and English LTR work correctly.
+- [x] No unintended horizontal overflow.
+- [x] Desktop appearance is preserved.
+- [x] No unnecessary redesign has been introduced.
 
 Provide a final responsive audit report with:
 

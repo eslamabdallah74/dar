@@ -27,6 +27,7 @@ import {
     Maximize2,
     Minimize2,
     AlertTriangle,
+    Copy,
     MapPin,
     ShieldCheck,
     Receipt,
@@ -117,7 +118,7 @@ const activeUnitForPayment = ref<any>(null);
 
 // Modal Unit Form state
 const showUnitModal = ref(false);
-const modalMode = ref<'create' | 'edit'>('create');
+const modalMode = ref<'create' | 'edit' | 'duplicate'>('create');
 const unitToEdit = ref<UnitItem | null>(null);
 const presetParentId = ref<number | null>(null);
 const presetUnitType = ref<'apartment' | 'room' | 'bed' | 'shop' | null>(null);
@@ -230,6 +231,15 @@ const handleEditUnit = (unit: UnitItem) => {
     showUnitModal.value = true;
 };
 
+const handleDuplicateUnit = (unit: UnitItem) => {
+    drawerOpen.value = false;
+    modalMode.value = 'duplicate';
+    unitToEdit.value = unit;
+    presetParentId.value = unit.parent_unit_id ?? null;
+    presetUnitType.value = null;
+    showUnitModal.value = true;
+};
+
 const handleDeleteUnit = (unit: UnitItem) => {
     drawerOpen.value = false;
     unitToDelete.value = unit;
@@ -313,6 +323,15 @@ const filteredUnits = computed(() => {
                 >
                     <FileText class="w-4 h-4" />
                     <span>تأجير وحدة</span>
+                </Link>
+
+                <Link
+                    :href="route('properties.create', { duplicate_from: property.id })"
+                    class="h-10 px-4 rounded-xl border border-[#163E3E]/30 bg-[#E8F0F0] text-[#163E3E] hover:bg-[#163E3E] hover:text-white text-xs font-bold transition flex items-center gap-1.5"
+                    title="نسخ وتكرار هذا العقار في معالج الإنشاء"
+                >
+                    <Copy class="w-4 h-4" />
+                    <span>نسخ العقار</span>
                 </Link>
 
                 <button
@@ -908,6 +927,7 @@ const filteredUnits = computed(() => {
             @select-unit="handleSelectSubUnit"
             @add-sub-unit="(pId, type) => selectedUnit && handleAddChildUnit(selectedUnit, type)"
             @edit-unit="handleEditUnit"
+            @duplicate-unit="handleDuplicateUnit"
             @delete-unit="handleDeleteUnit"
             @record-payment="handleRecordPayment"
         />

@@ -14,6 +14,7 @@ import {
     Check,
     CheckCircle2,
     ChevronLeft,
+    Copy,
     DoorOpen,
     Droplets,
     FileText,
@@ -71,6 +72,7 @@ const props = defineProps<{
     property_types: PropertyTypeOption[];
     amenities_list: AmenityOption[];
     finishing_types: FinishingTypeOption[];
+    initial_data?: Record<string, any> | null;
 }>();
 
 // Steps definition
@@ -84,34 +86,36 @@ const steps = [
 
 const currentStep = ref(1);
 
+const init = props.initial_data;
+
 // Form state
 const form = useForm({
-    name: '',
-    code: '',
-    property_type: 'building',
-    address: '',
-    city: 'القاهرة',
-    district: '',
-    street: '',
-    building_number: '',
-    postal_code: '',
-    google_maps_url: '',
-    floors_count: 4,
-    floor_number: '',
-    total_area: '' as string | number,
-    commercial_activity: '',
-    year_built: new Date().getFullYear(),
-    finishing_type: 'super_lux',
-    amenities: [] as string[],
-    electricity_meter_number: '',
-    water_meter_number: '',
-    gas_meter_number: '',
-    guard_name: '',
-    guard_phone: '',
-    deed_number: '',
-    notes: '',
+    name: init?.name || '',
+    code: init?.code || '',
+    property_type: init?.property_type || 'building',
+    address: init?.address || '',
+    city: init?.city || 'القاهرة',
+    district: init?.district || '',
+    street: init?.street || '',
+    building_number: init?.building_number || '',
+    postal_code: init?.postal_code || '',
+    google_maps_url: init?.google_maps_url || '',
+    floors_count: init?.floors_count ?? 4,
+    floor_number: init?.floor_number || '',
+    total_area: (init?.total_area ?? '') as string | number,
+    commercial_activity: init?.commercial_activity || '',
+    year_built: init?.year_built ?? new Date().getFullYear(),
+    finishing_type: init?.finishing_type || 'super_lux',
+    amenities: (init?.amenities ?? []) as string[],
+    electricity_meter_number: init?.electricity_meter_number || '',
+    water_meter_number: init?.water_meter_number || '',
+    gas_meter_number: init?.gas_meter_number || '',
+    guard_name: init?.guard_name || '',
+    guard_phone: init?.guard_phone || '',
+    deed_number: init?.deed_number || '',
+    notes: init?.notes || '',
     cover_image_file: null as File | null,
-    generation_config: {
+    generation_config: init?.generation_config || {
         enabled: true,
         rental_mode: 'whole',
         floors_count: 4,
@@ -121,7 +125,7 @@ const form = useForm({
         include_ground_shops: true,
         shops_count: 2,
     },
-    units: [] as GeneratedUnit[],
+    units: (init?.units ?? []) as GeneratedUnit[],
 });
 
 // Image preview
@@ -525,7 +529,64 @@ watch(
 );
 
 // Initial generation
-generateUnits();
+if (!props.initial_data?.units || props.initial_data.units.length === 0) {
+    generateUnits();
+}
+
+function duplicateWizardUnit(sourceUnit: GeneratedUnit) {
+    const newTempId = 'unit_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const existingNames = form.units.map((u) => u.name);
+
+    let base = sourceUnit.name.trim();
+    let startNum = 2;
+    const match = base.match(/^(.*?)\s+(\d+)$/);
+    if (match) {
+        base = match[1];
+        startNum = parseInt(match[2], 10) + 1;
+    }
+    let candidate = `${base} ${startNum}`;
+    let n = startNum;
+    while (existingNames.includes(candidate)) {
+        n++;
+        candidate = `${base} ${n}`;
+    }
+
+    const clonedRoot: GeneratedUnit = {
+        id: newTempId,
+        temp_id: newTempId,
+        parent_temp_id: sourceUnit.parent_temp_id ?? null,
+        name: candidate,
+        code: sourceUnit.code ? `${sourceUnit.code}-2` : '',
+        unit_type: sourceUnit.unit_type,
+        is_rentable: sourceUnit.is_rentable,
+        floor_name: sourceUnit.floor_name || '',
+    };
+
+    const newUnits: GeneratedUnit[] = [clonedRoot];
+
+    function cloneChildren(oldParentTempId: string, newParentTempId: string) {
+        const children = form.units.filter((u) => u.parent_temp_id === oldParentTempId);
+        for (const child of children) {
+            const childTempId = 'unit_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+            const childCloned: GeneratedUnit = {
+                id: childTempId,
+                temp_id: childTempId,
+                parent_temp_id: newParentTempId,
+                name: child.name,
+                code: child.code ? `${child.code}-2` : '',
+                unit_type: child.unit_type,
+                is_rentable: child.is_rentable,
+                floor_name: child.floor_name || '',
+            };
+            newUnits.push(childCloned);
+            cloneChildren(child.temp_id, childTempId);
+        }
+    }
+
+    cloneChildren(sourceUnit.temp_id, newTempId);
+
+    form.units.push(...newUnits);
+}
 
 function removeUnit(index: number) {
     const removed = form.units[index];
@@ -692,6 +753,27 @@ function submit() {
                         <ArrowRight class="size-4" />
                         العودة لقائمة العقارات
                     </Link>
+                </div>
+
+                <!-- Duplicate Banner (if duplicated from an existing property) -->
+                <div
+                    v-if="initial_data"
+                    class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 text-emerald-950 shadow-xs"
+                >
+                    <div class="flex items-center gap-3">
+                        <span class="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
+                            <Copy class="size-5" />
+                        </span>
+                        <div>
+                            <h4 class="text-sm font-bold">نسخ وتكرار العقار / الوحدة</h4>
+                            <p class="text-xs text-emerald-700 mt-0.5">
+                                تم تجهيز المعالج بالبيانات والمواصفات وهيكل الوحدات المقترحة بدون أي صور أو سجلات تشغيلية سابقة. يمكنك مراجعة وتعديل أي خانة قبل الاعتماد.
+                            </p>
+                        </div>
+                    </div>
+                    <span class="text-xs font-mono font-bold bg-white px-3 py-1 rounded-lg border border-emerald-200 text-emerald-800 shrink-0 self-start sm:self-auto">
+                        مسودة نسخة جديدة
+                    </span>
                 </div>
 
                 <!-- Wizard Progress Stepper -->
@@ -1913,15 +1995,26 @@ function submit() {
                                                     </button>
                                                 </td>
 
-                                                <!-- Action: Remove -->
+                                                <!-- Action: Duplicate & Remove -->
                                                 <td class="p-2.5 text-center">
-                                                    <button
-                                                        type="button"
-                                                        @click="removeUnit(index)"
-                                                        class="grid size-7 place-items-center rounded-lg text-rose-500 transition hover:bg-rose-50 hover:text-rose-700"
-                                                    >
-                                                        <Trash2 class="size-4" />
-                                                    </button>
+                                                    <div class="flex items-center justify-center gap-1">
+                                                        <button
+                                                            type="button"
+                                                            @click="duplicateWizardUnit(unit)"
+                                                            class="grid size-7 place-items-center rounded-lg text-[#18705A] transition hover:bg-[#EFF7F2] hover:text-[#105742]"
+                                                            title="نسخ وتكرار هذه الوحدة"
+                                                        >
+                                                            <Copy class="size-3.5" />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            @click="removeUnit(index)"
+                                                            class="grid size-7 place-items-center rounded-lg text-rose-500 transition hover:bg-rose-50 hover:text-rose-700"
+                                                            title="حذف الوحدة"
+                                                        >
+                                                            <Trash2 class="size-3.5" />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         </tbody>

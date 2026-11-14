@@ -14,6 +14,7 @@ use App\Models\Property;
 use App\Models\Unit;
 use App\Models\Workspace;
 use App\Services\Limits\WorkspaceLimitService;
+use App\Services\Properties\EntityDuplicationService;
 use App\Services\Properties\PropertyUnitBoardService;
 use App\Services\PropertyUnitGeneratorService;
 use App\Services\Storage\DocumentStorageService;
@@ -21,6 +22,7 @@ use App\Services\UnitHierarchyService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -148,15 +150,24 @@ class PropertyController extends Controller
         ]);
     }
 
-    public function create(Request $request): Response
+    public function create(Request $request, EntityDuplicationService $duplicationService): Response
     {
-        // Only authorizes access to the active workspace; the form itself needs no workspace data.
-        $this->resolveWorkspace($request);
+        $workspace = $this->resolveWorkspace($request);
+
+        $initialData = null;
+        if ($request->has('duplicate_from')) {
+            $sourceProperty = $workspace->properties()
+                ->where('id', (int) $request->query('duplicate_from'))
+                ->firstOrFail();
+
+            $initialData = $duplicationService->buildPropertyDuplicateData($sourceProperty);
+        }
 
         return Inertia::render('Properties/Create', [
             'property_types' => PropertyType::options(),
             'amenities_list' => PropertyAmenity::options(),
             'finishing_types' => FinishingType::options(),
+            'initial_data' => $initialData,
         ]);
     }
 
@@ -365,6 +376,42 @@ class PropertyController extends Controller
         $unit->delete();
 
         return back()->with('success', 'تم حذف الوحدة بنجاح');
+    }
+
+    public function duplicateUnit(
+        Request $request,
+        Property $property,
+        Unit $unit,
+        EntityDuplicationService $duplicationService
+    ): RedirectResponse {
+        $workspace = $this->resolveWorkspace($request);
+
+        abort_if($property->workspace_id !== $workspace->id, 403, 'غير مصرح لك بإدارة هذا العقار.');
+        abort_if($unit->property_id !== $property->id || $unit->workspace_id !== $workspace->id, 403, 'غير مصرح لك بنسخ هذه الوحدة.');
+
+        $validated = $request->validate([
+            'name' => ['nullable', 'string', 'max:255'],
+            'code' => ['nullable', 'string', 'max:50'],
+            'parent_unit_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('units', 'id')->where('workspace_id', $workspace->id),
+            ],
+        ]);
+
+        $parentUnitId = array_key_exists('parent_unit_id', $validated)
+            ? ($validated['parent_unit_id'] !== null ? (int) $validated['parent_unit_id'] : null)
+            : $unit->parent_unit_id;
+
+        $clonedUnit = $duplicationService->duplicateUnitHierarchy(
+            $property,
+            $unit,
+            $validated['name'] ?? null,
+            $validated['code'] ?? null,
+            $parentUnitId
+        );
+
+        return back()->with('success', "تم نسخ الوحدة ({$clonedUnit->name}) وهيكلها بنجاح");
     }
 
     /**

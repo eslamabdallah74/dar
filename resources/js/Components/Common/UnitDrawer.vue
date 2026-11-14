@@ -17,6 +17,7 @@ import {
     Wrench,
     X,
     CheckCircle2,
+    Copy,
     Edit3,
     Trash2,
 } from 'lucide-vue-next';
@@ -77,6 +78,7 @@ const emit = defineEmits<{
     (e: 'selectUnit', unitId: number): void;
     (e: 'addSubUnit', parentUnitId: number, childType: 'room' | 'bed'): void;
     (e: 'editUnit', unit: UnitItem): void;
+    (e: 'duplicateUnit', unit: UnitItem): void;
     (e: 'deleteUnit', unit: UnitItem): void;
 }>();
 
@@ -469,6 +471,17 @@ const canDelete = computed(() => {
                         >
                             <Edit3 class="w-4 h-4 text-[#163E3E]" />
                             <span>تعديل</span>
+                        </button>
+
+                        <!-- Duplicate Unit -->
+                        <button
+                            @click="emit('duplicateUnit', unit)"
+                            type="button"
+                            class="h-10 px-3.5 rounded-xl border border-[#D6E0E7] hover:bg-[#F8F4EA] text-xs font-bold text-[#163E3E] transition flex items-center gap-1.5 cursor-pointer"
+                            title="نسخ هذه الوحدة وهيكلها"
+                        >
+                            <Copy class="w-4 h-4 text-[#163E3E]" />
+                            <span>نسخ</span>
                         </button>
 
                         <!-- Delete Unit (if allowed) -->

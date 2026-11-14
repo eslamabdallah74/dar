@@ -10,6 +10,7 @@ import {
     Check,
     AlertCircle,
     Info,
+    Copy,
 } from 'lucide-vue-next';
 
 export interface UnitItem {
@@ -30,7 +31,7 @@ export interface UnitItem {
 
 const props = defineProps<{
     show: boolean;
-    mode: 'create' | 'edit';
+    mode: 'create' | 'edit' | 'duplicate';
     propertyId: number;
     propertyName: string;
     unit?: UnitItem | null;
@@ -70,6 +71,27 @@ watch(
         if (props.mode === 'edit' && props.unit) {
             form.name = props.unit.name;
             form.code = props.unit.code || '';
+            const t = props.unit.unit_type;
+            form.unit_type = (t === 'apartment' || t === 'room' || t === 'bed' || t === 'shop') ? t : 'apartment';
+            form.parent_unit_id = props.unit.parent_unit_id ?? null;
+            form.is_rentable = props.unit.is_rentable;
+        } else if (props.mode === 'duplicate' && props.unit) {
+            let base = props.unit.name.trim();
+            let startNum = 2;
+            const match = base.match(/^(.*?)\s+(\d+)$/);
+            if (match) {
+                base = match[1];
+                startNum = parseInt(match[2], 10) + 1;
+            }
+            let candidate = `${base} ${startNum}`;
+            let n = startNum;
+            const existingNames = props.availableUnits.map((u) => u.name);
+            while (existingNames.includes(candidate)) {
+                n++;
+                candidate = `${base} ${n}`;
+            }
+            form.name = candidate;
+            form.code = props.unit.code ? `${props.unit.code}-2` : '';
             const t = props.unit.unit_type;
             form.unit_type = (t === 'apartment' || t === 'room' || t === 'bed' || t === 'shop') ? t : 'apartment';
             form.parent_unit_id = props.unit.parent_unit_id ?? null;
@@ -155,6 +177,13 @@ const submit = () => {
                 emit('close');
             },
         });
+    } else if (props.mode === 'duplicate' && props.unit) {
+        form.post(route('properties.units.duplicate', [props.propertyId, props.unit.id]), {
+            onSuccess: () => {
+                emit('saved');
+                emit('close');
+            },
+        });
     } else if (props.mode === 'edit' && props.unit) {
         form.put(route('properties.units.update', [props.propertyId, props.unit.id]), {
             onSuccess: () => {
@@ -184,7 +213,7 @@ const submit = () => {
                     </div>
                     <div>
                         <h3 class="text-base font-bold text-[#163E3E]">
-                            {{ mode === 'create' ? 'إضافة وحدة جديدة' : 'تعديل بيانات الوحدة' }}
+                            {{ mode === 'duplicate' ? 'نسخ الوحدة وتكرار هيكلها' : (mode === 'create' ? 'إضافة وحدة جديدة' : 'تعديل بيانات الوحدة') }}
                         </h3>
                         <p class="text-xs text-[#5B6770]">
                             {{ propertyName }}
@@ -204,6 +233,17 @@ const submit = () => {
 
             <!-- Form -->
             <form @submit.prevent="submit" class="space-y-4">
+                <!-- Duplicate Context Banner -->
+                <div
+                    v-if="mode === 'duplicate'"
+                    class="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-xs text-emerald-900"
+                >
+                    <Copy class="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                    <div class="leading-relaxed">
+                        <span class="font-bold">تكرار الوحدة:</span>
+                        سيتم إنشاء نسخة جديدة من هذه الوحدة مع تكرار كافة الوحدات التابعة لها كالغرف والأسِرّة تلقائياً بدون أي عقود أو سجلات مالية سابقة.
+                    </div>
+                </div>
                 <!-- Preset Context Banner -->
                 <div
                     v-if="isParentLocked && presetParentUnit"
@@ -404,7 +444,7 @@ const submit = () => {
                         class="h-10 px-5 rounded-xl bg-[#163E3E] hover:bg-[#102F2F] disabled:opacity-50 text-white text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-xs"
                     >
                         <Check class="w-4 h-4" />
-                        <span>{{ form.processing ? 'جاري الحفظ...' : (mode === 'create' ? 'حفظ الوحدة' : 'حفظ التعديلات') }}</span>
+                        <span>{{ form.processing ? 'جاري الحفظ...' : (mode === 'duplicate' ? 'تأكيد نسخ الوحدة' : (mode === 'create' ? 'حفظ الوحدة' : 'حفظ التعديلات')) }}</span>
                     </button>
                 </div>
             </form>

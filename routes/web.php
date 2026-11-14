@@ -94,6 +94,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/properties/{property}/units', [PropertyController::class, 'storeUnit'])->name('properties.units.store');
     Route::put('/properties/{property}/units/{unit}', [PropertyController::class, 'updateUnit'])->name('properties.units.update');
     Route::delete('/properties/{property}/units/{unit}', [PropertyController::class, 'destroyUnit'])->name('properties.units.destroy');
+    Route::post('/properties/{property}/units/{unit}/duplicate', [PropertyController::class, 'duplicateUnit'])->name('properties.units.duplicate');
 
     // 05 / المستأجرون
     Route::get('/renters', [RenterController::class, 'index'])->name('renters.index');

@@ -5,6 +5,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import EmptyState from '@/Components/Common/EmptyState.vue';
 import {
     Building2,
+    Copy,
     MapPin,
     Plus,
     Search,
@@ -233,13 +234,23 @@ const filteredProperties = computed(() => {
                     <span class="text-xs text-[#5B6770] font-mono">
                         {{ prop.total_units }} وحدات مسجلة
                     </span>
-                    <Link
-                        :href="route('properties.show', prop.id)"
-                        class="h-9 px-4 rounded-xl bg-[#163E3E]/10 hover:bg-[#163E3E] text-[#163E3E] hover:text-white text-xs font-bold transition flex items-center gap-1.5"
-                    >
-                        <span>إدارة الوحدات وشجرة الأدوار</span>
-                        <span>←</span>
-                    </Link>
+                    <div class="flex items-center gap-2">
+                        <Link
+                            :href="route('properties.create', { duplicate_from: prop.id })"
+                            class="h-9 px-3 rounded-xl border border-[#D6E0E7] bg-white hover:bg-[#F8F4EA] text-[#163E3E] text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
+                            title="نسخ وتكرار هذا العقار في المعالج"
+                        >
+                            <Copy class="w-3.5 h-3.5" />
+                            <span>نسخ</span>
+                        </Link>
+                        <Link
+                            :href="route('properties.show', prop.id)"
+                            class="h-9 px-4 rounded-xl bg-[#163E3E]/10 hover:bg-[#163E3E] text-[#163E3E] hover:text-white text-xs font-bold transition flex items-center gap-1.5"
+                        >
+                            <span>إدارة الوحدات وشجرة الأدوار</span>
+                            <span>←</span>
+                        </Link>
+                    </div>
                 </div>
             </div>
         </div>

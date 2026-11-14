@@ -46,7 +46,11 @@ const handleTryAgain = () => {
 
 <template>
     <GuestLayout>
-        <Head title="استعادة كلمة المرور — Nook Mate" />
+        <Head>
+            <title>استعادة كلمة المرور | Nook Mate</title>
+            <meta name="description" head-key="description" content="استعادة كلمة المرور لحسابك في منصة Nook Mate." />
+            <meta name="robots" head-key="robots" content="noindex, follow" />
+        </Head>
 
         <!-- 1. Success State: When email is sent successfully -->
         <div v-if="isSent && !showFormAgain" class="space-y-6 py-2 text-center">

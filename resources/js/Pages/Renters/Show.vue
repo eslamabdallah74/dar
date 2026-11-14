@@ -83,6 +83,7 @@ const props = defineProps<{
         gender_label?: string | null;
         whatsapp_opted_in: boolean;
         whatsapp_opt_in_date: string | null;
+        whatsapp_opted_out_date?: string | null;
         notes: string | null;
         created_at: string;
     };
@@ -183,6 +184,7 @@ const editForm = useForm({
     email: props.renter.email || '',
     gender: (props.renter.gender || '') as '' | 'male' | 'female',
     notes: props.renter.notes || '',
+    whatsapp_consent: props.renter.whatsapp_opted_in,
 });
 
 const openEditModal = () => {
@@ -192,6 +194,7 @@ const openEditModal = () => {
     editForm.email = props.renter.email || '';
     editForm.gender = (props.renter.gender || '') as '' | 'male' | 'female';
     editForm.notes = props.renter.notes || '';
+    editForm.whatsapp_consent = props.renter.whatsapp_opted_in;
     showEditModal.value = true;
 };
 
@@ -388,11 +391,22 @@ const deleteDocument = async (renterDocument: DocumentItem) => {
 
                         <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
                             <span class="text-[#5B6770] flex items-center gap-1.5">
-                                <MessageCircle class="w-3.5 h-3.5 text-emerald-600" />
+                                <MessageCircle class="w-3.5 h-3.5" :class="renter.whatsapp_opted_in ? 'text-emerald-600' : 'text-slate-400'" />
                                 <span>موافقة WhatsApp:</span>
                             </span>
-                            <span class="text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                                مفعل وموثق
+                            <span
+                                v-if="renter.whatsapp_opted_in"
+                                class="inline-flex items-center gap-1 text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 text-xs"
+                            >
+                                <span>مفعل</span>
+                                <span v-if="renter.whatsapp_opt_in_date" class="text-[10px] text-emerald-600 font-normal">({{ renter.whatsapp_opt_in_date }})</span>
+                            </span>
+                            <span
+                                v-else
+                                class="inline-flex items-center gap-1 text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 text-xs"
+                            >
+                                <span>ملغي / غير مفعل</span>
+                                <span v-if="renter.whatsapp_opted_out_date" class="text-[10px] text-amber-700 font-normal">({{ renter.whatsapp_opted_out_date }})</span>
                             </span>
                         </div>
                     </div>
@@ -887,12 +901,14 @@ const deleteDocument = async (renterDocument: DocumentItem) => {
 
                 <form @submit.prevent="submitEdit" class="space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">الاسم بالكامل *</label>
+                        <label for="edit-renter-name" class="block text-xs font-bold text-[#163E3E] mb-1.5">الاسم بالكامل *</label>
                         <input
+                            id="edit-renter-name"
                             v-model="editForm.name"
                             type="text"
                             required
                             minlength="3"
+                            aria-label="الاسم بالكامل"
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         />
                         <p v-if="editForm.errors.name" class="text-xs text-rose-600 font-semibold mt-1">
@@ -902,26 +918,30 @@ const deleteDocument = async (renterDocument: DocumentItem) => {
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-bold text-[#163E3E] mb-1.5">رقم الهاتف *</label>
+                            <label for="edit-renter-phone" class="block text-xs font-bold text-[#163E3E] mb-1.5">رقم الهاتف *</label>
                             <input
+                                id="edit-renter-phone"
                                 v-model="editForm.phone"
                                 type="tel"
                                 required
+                                aria-label="رقم الهاتف"
                                 class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition font-mono text-right"
                             />
                             <p v-if="editForm.errors.phone" class="text-xs text-rose-600 font-semibold mt-1">
                                 {{ editForm.errors.phone }}
                             </p>
                             <p v-else class="text-[11px] text-[#5B6770] mt-1">
-                                رقم مصري (مثال: 01012345678 أو +201012345678)
+                                رقم مصري أو سعودي (مثال: 01012345678 أو +966501234567)
                             </p>
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-[#163E3E] mb-1.5">الرقم القومي / الهوية</label>
+                            <label for="edit-renter-national-id" class="block text-xs font-bold text-[#163E3E] mb-1.5">الرقم القومي / الهوية</label>
                             <input
+                                id="edit-renter-national-id"
                                 v-model="editForm.national_id"
                                 type="text"
+                                aria-label="الرقم القومي أو الهوية"
                                 class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                             />
                             <p v-if="editForm.errors.national_id" class="text-xs text-rose-600 font-semibold mt-1">
@@ -972,10 +992,12 @@ const deleteDocument = async (renterDocument: DocumentItem) => {
                     </div>
 
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">البريد الإلكتروني</label>
+                        <label for="edit-renter-email" class="block text-xs font-bold text-[#163E3E] mb-1.5">البريد الإلكتروني</label>
                         <input
+                            id="edit-renter-email"
                             v-model="editForm.email"
                             type="email"
+                            aria-label="البريد الإلكتروني"
                             class="w-full h-11 px-3.5 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition"
                         />
                         <p v-if="editForm.errors.email" class="text-xs text-rose-600 font-semibold mt-1">
@@ -983,11 +1005,30 @@ const deleteDocument = async (renterDocument: DocumentItem) => {
                         </p>
                     </div>
 
+                    <!-- موافقة رسائل وإشعارات WhatsApp -->
+                    <div class="p-3.5 rounded-2xl bg-[#E8F0F0]/40 border border-[#163E3E]/20">
+                        <label for="edit-renter-whatsapp-consent" class="flex items-center gap-3 cursor-pointer">
+                            <input
+                                id="edit-renter-whatsapp-consent"
+                                type="checkbox"
+                                v-model="editForm.whatsapp_consent"
+                                aria-label="الموافقة على استلام إشعارات وإيصالات الإيجار عبر WhatsApp"
+                                class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                            />
+                            <div class="text-xs">
+                                <span class="font-bold text-[#163E3E] block">استلام رسائل وإشعارات WhatsApp</span>
+                                <span class="text-[#5B6770] text-[11px]">إرسال إيصالات السداد، تذكيرات استحقاق الإيجار، وتنبيهات انتهاء العقد تلقائياً</span>
+                            </div>
+                        </label>
+                    </div>
+
                     <div>
-                        <label class="block text-xs font-bold text-[#163E3E] mb-1.5">ملاحظات الإدارة</label>
+                        <label for="edit-renter-notes" class="block text-xs font-bold text-[#163E3E] mb-1.5">ملاحظات الإدارة</label>
                         <textarea
+                            id="edit-renter-notes"
                             v-model="editForm.notes"
                             rows="2"
+                            aria-label="ملاحظات الإدارة"
                             class="w-full p-3 rounded-xl border border-[#D6E0E7] bg-[#F8FAFC] text-sm text-[#163E3E] focus:border-[#163E3E] focus:bg-white focus:ring-1 focus:ring-[#163E3E] transition resize-none"
                         ></textarea>
                     </div>

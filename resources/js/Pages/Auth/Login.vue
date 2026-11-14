@@ -6,7 +6,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ArrowLeft, Lock, Mail } from 'lucide-vue-next';
+import { ArrowLeft, CheckCircle2, Lock, Mail, ShieldCheck } from 'lucide-vue-next';
 
 defineProps<{
     canResetPassword?: boolean;
@@ -30,12 +30,20 @@ const submit = () => {
 
 <template>
     <GuestLayout image-background>
-        <Head title="تسجيل الدخول — Nook Mate" />
+        <Head>
+            <title>تسجيل الدخول | Nook Mate</title>
+            <meta
+                name="description"
+                head-key="description"
+                content="سجّل الدخول إلى مساحة عملك في Nook Mate لمتابعة عقاراتك، إدارة المستأجرين، عقود الإيجار، وسندات القبض الفورية بكل سهولة وأمان."
+            />
+            <meta name="robots" head-key="robots" content="noindex, follow" />
+        </Head>
 
         <div class="mb-3 text-center sm:mb-6">
-            <h1 class="text-2xl font-bold text-white">أهلاً بيك من جديد 👋</h1>
+            <h1 class="text-2xl font-bold text-white">تسجيل الدخول إلى Nook Mate</h1>
             <p class="mt-1.5 text-xs text-zinc-300 font-medium">
-                سجّل دخولك لمتابعة عقاراتك، المستأجرين، وتحصيلات الإيجار.
+                أهلاً بك مجدداً — سجّل دخولك لمتابعة عقاراتك، المستأجرين، وتحصيلات الإيجار.
             </p>
         </div>
 
@@ -124,5 +132,24 @@ const submit = () => {
                 </Link>
             </div>
         </form>
+
+        <!-- ملخص مزايا المنصة والأمان (Platform Highlights & Trust) -->
+        <div class="mt-6 border-t border-white/10 pt-4 text-right">
+            <h2 class="text-xs font-bold text-zinc-200 mb-2">لماذا يختار ملاك ومديرو العقارات Nook Mate؟</h2>
+            <ul class="space-y-1.5 text-[11px] text-zinc-300">
+                <li class="flex items-center gap-1.5">
+                    <CheckCircle2 class="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                    <span>نظام الصناديق المتداخلة لإدارة مرنة من المبنى الكامل إلى السرير المفرد.</span>
+                </li>
+                <li class="flex items-center gap-1.5">
+                    <CheckCircle2 class="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                    <span>تذكيرات آلية للمستأجرين بمواعيد الإيجار عبر واتساب وسندات قبض إلكترونية معتمدة.</span>
+                </li>
+                <li class="flex items-center gap-1.5">
+                    <ShieldCheck class="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                    <span>بيانات مشفرة وسحابية آمنة تضمن استمرارية أعمالك العقارية وحمايتها دائماً.</span>
+                </li>
+            </ul>
+        </div>
     </GuestLayout>
 </template>

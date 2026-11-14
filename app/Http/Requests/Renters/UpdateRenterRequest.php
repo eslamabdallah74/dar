@@ -47,6 +47,7 @@ class UpdateRenterRequest extends FormRequest
             'national_id' => ['nullable', 'string', 'min:6', 'max:50', 'regex:/^[A-Za-z0-9\s\-]+$/'],
             'gender' => ['nullable', 'string', Rule::enum(Gender::class)],
             'notes' => ['nullable', 'string'],
+            'whatsapp_consent' => ['nullable', 'boolean'],
             'id_card_front' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:5120'],
             'id_card_back' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:5120'],
         ];

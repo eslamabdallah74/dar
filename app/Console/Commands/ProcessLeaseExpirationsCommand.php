@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Models\Lease;
-use App\Models\Workspace;
 use App\Services\WhatsAppService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -42,7 +41,7 @@ class ProcessLeaseExpirationsCommand extends Command
         $query = Lease::withoutGlobalScopes()
             ->where('status', 'active')
             ->whereNotNull('ends_on')
-            ->with(['renter', 'unit']);
+            ->with(['renter', 'unit', 'workspace']);
 
         if ($workspaceId) {
             $query->where('workspace_id', $workspaceId);
@@ -53,41 +52,16 @@ class ProcessLeaseExpirationsCommand extends Command
         $skippedCount = 0;
 
         foreach ($leases as $lease) {
-            $diffInDays = (int) $evalDate->diffInDays(Carbon::parse($lease->ends_on), false);
+            $daysRemaining = $this->milestoneDueForLease($lease, $evalDate, $milestones);
 
-            if (! in_array($diffInDays, $milestones, true)) {
-                $skippedCount++;
-
-                continue;
-            }
-
-            $renter = $lease->renter;
-            if (! $renter || empty($renter->phone)) {
-                $skippedCount++;
-
-                continue;
-            }
-
-            if ($renter->whatsapp_opted_out_at !== null) {
-                $skippedCount++;
-
-                continue;
-            }
-
-            $dedupKey = "lease_renewal_{$lease->id}_{$diffInDays}d";
-            $alreadySent = Workspace::find($lease->workspace_id)?->messageLogs()
-                ->where('deduplication_key', $dedupKey)
-                ->whereIn('status', ['sent', 'delivered', 'pending'])
-                ->exists();
-
-            if ($alreadySent) {
+            if ($daysRemaining === null) {
                 $skippedCount++;
 
                 continue;
             }
 
             try {
-                $whatsAppService->queueLeaseRenewalAlert($lease, $diffInDays);
+                $whatsAppService->queueLeaseRenewalAlert($lease, $daysRemaining);
                 $dispatchedCount++;
             } catch (\Throwable $e) {
                 Log::error("[ProcessLeaseExpirationsCommand] Failed to queue renewal alert for lease #{$lease->id}: {$e->getMessage()}");
@@ -105,5 +79,31 @@ class ProcessLeaseExpirationsCommand extends Command
         Log::info('[ProcessLeaseExpirationsCommand] '.$summary);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Determine if a renewal alert should be sent, returning the remaining days milestone or null.
+     *
+     * @param  array<int, int>  $milestones
+     */
+    protected function milestoneDueForLease(Lease $lease, Carbon $evalDate, array $milestones): ?int
+    {
+        $workspace = $lease->workspace;
+        $diffInDays = (int) $evalDate->diffInDays(Carbon::parse($lease->ends_on), false);
+        $renter = $lease->renter;
+
+        if (($workspace && ! $workspace->auto_whatsapp_reminders)
+            || ! in_array($diffInDays, $milestones, true)
+            || ! $renter || empty($renter->phone) || $renter->whatsapp_opted_out_at !== null) {
+            return null;
+        }
+
+        $dedupKey = "lease_renewal_{$lease->id}_{$diffInDays}d";
+        $alreadySent = $workspace?->messageLogs()
+            ->where('deduplication_key', $dedupKey)
+            ->whereIn('status', ['sent', 'delivered', 'pending'])
+            ->exists();
+
+        return $alreadySent ? null : $diffInDays;
     }
 }

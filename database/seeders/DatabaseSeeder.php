@@ -17,7 +17,10 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AdminUserSeeder::class,
             PlanSeeder::class,
-            RentalDemoSeeder::class,
         ]);
+
+        if (app()->environment('local', 'testing')) {
+            $this->call(RentalDemoSeeder::class);
+        }
     }
 }

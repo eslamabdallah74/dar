@@ -3,6 +3,7 @@
 namespace App\Services\WhatsApp;
 
 use App\Contracts\WhatsAppGatewayInterface;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -22,6 +23,12 @@ class MetaCloudApiGateway implements WhatsAppGatewayInterface
         $this->apiVersion = config('services.whatsapp.api_version', 'v21.0');
     }
 
+    /**
+     * Send an official pre-approved WhatsApp template message via Meta Graph API.
+     *
+     * @param  array<array-key, mixed>  $parameters
+     * @return array{success: bool, provider_message_id: ?string, status: string, error_message: ?string}
+     */
     public function sendTemplate(string $toPhone, string $templateName, array $parameters = []): array
     {
         if (empty($this->token) || empty($this->phoneNumberId)) {
@@ -35,28 +42,22 @@ class MetaCloudApiGateway implements WhatsAppGatewayInterface
             ];
         }
 
+        $formattedPhone = $this->formatPhoneNumber($toPhone);
+        $url = "https://graph.facebook.com/{$this->apiVersion}/{$this->phoneNumberId}/messages";
+
+        $bodyParameters = $this->buildBodyParameters($templateName, $parameters);
+
+        $components = [];
+        if (! empty($bodyParameters)) {
+            $components[] = [
+                'type' => 'body',
+                'parameters' => $bodyParameters,
+            ];
+        }
+
         try {
-            $formattedPhone = $this->formatPhoneNumber($toPhone);
-            $url = "https://graph.facebook.com/{$this->apiVersion}/{$this->phoneNumberId}/messages";
-
-            $bodyParameters = [];
-            foreach ($parameters as $val) {
-                $bodyParameters[] = [
-                    'type' => 'text',
-                    'text' => (string) $val,
-                ];
-            }
-
-            $components = [];
-            if (! empty($bodyParameters)) {
-                $components[] = [
-                    'type' => 'body',
-                    'parameters' => $bodyParameters,
-                ];
-            }
-
             $response = Http::withToken($this->token)
-                ->timeout(10)
+                ->timeout(12)
                 ->post($url, [
                     'messaging_product' => 'whatsapp',
                     'recipient_type' => 'individual',
@@ -81,7 +82,12 @@ class MetaCloudApiGateway implements WhatsAppGatewayInterface
                 ];
             }
 
-            Log::error('[WhatsApp Meta Template Error] Response: '.$response->body());
+            Log::error("[WhatsApp Meta Template Error] Status: {$response->status()} - Response: ".$response->body());
+
+            // If server-side 5xx temporary outage from Meta, throw dedicated exception to let Queue retry
+            if ($response->serverError()) {
+                throw new MetaApiException("Meta Cloud API temporary server error ({$response->status()}): {$response->body()}");
+            }
 
             return [
                 'success' => false,
@@ -89,6 +95,11 @@ class MetaCloudApiGateway implements WhatsAppGatewayInterface
                 'status' => 'failed',
                 'error_message' => $response->json('error.message') ?? 'HTTP error: '.$response->status(),
             ];
+        } catch (ConnectionException|MetaApiException $e) {
+            Log::error('[WhatsApp Gateway Transient Exception] '.$e->getMessage());
+
+            // Re-throw network timeouts and 5xx so the queue worker retries with backoff
+            throw $e;
         } catch (Throwable $e) {
             Log::error('[WhatsApp Gateway Exception] '.$e->getMessage());
 
@@ -101,14 +112,63 @@ class MetaCloudApiGateway implements WhatsAppGatewayInterface
         }
     }
 
-    protected function formatPhoneNumber(string $phone): string
+    /**
+     * Map named or indexed parameter inputs to exact positional template variables ({{1}}, {{2}}, ...).
+     *
+     * @param  array<array-key, mixed>  $parameters
+     * @return array<int, array{type: string, text: string}>
+     */
+    protected function buildBodyParameters(string $templateName, array $parameters): array
     {
-        // Strip non-digits
-        $cleaned = preg_replace('/\D+/', '', $phone) ?? '';
+        $renterName = $parameters['renter_name'] ?? $parameters[0] ?? '';
+        $unitName = $parameters['unit'] ?? $parameters[1] ?? '';
 
-        // Normalize Egyptian numbers: 010... -> 2010...
+        $orderedValues = match ($templateName) {
+            'payment_receipt_instant_ar' => [
+                $renterName,
+                $parameters['amount'] ?? $parameters[1] ?? '',
+                $parameters['receipt_no'] ?? $parameters[2] ?? '',
+                $parameters['link'] ?? $parameters[3] ?? '',
+            ],
+            'rent_due_reminder_ar' => [
+                $renterName,
+                $unitName,
+                $parameters['due_date'] ?? $parameters[2] ?? '',
+                $parameters['amount'] ?? $parameters[3] ?? '',
+            ],
+            'overdue_notice_ar' => [
+                $renterName,
+                $unitName,
+                $parameters['due_date'] ?? $parameters[2] ?? '',
+                $parameters['amount'] ?? $parameters[3] ?? '',
+            ],
+            'contract_renewal_ar' => [
+                $renterName,
+                $unitName,
+                $parameters['end_date'] ?? $parameters[2] ?? '',
+            ],
+            default => array_values($parameters),
+        };
+
+        return array_map(fn ($val) => [
+            'type' => 'text',
+            'text' => (string) $val,
+        ], $orderedValues);
+    }
+
+    /**
+     * Normalize international phone numbers (Egypt +20, Saudi Arabia +966, UAE +971, E.164).
+     */
+    public function formatPhoneNumber(string $phone): string
+    {
+        $cleaned = (string) preg_replace('/\D+/', '', $phone);
+
         if (str_starts_with($cleaned, '01') && strlen($cleaned) === 11) {
             $cleaned = '2'.$cleaned;
+        } elseif (str_starts_with($cleaned, '05') && strlen($cleaned) === 10) {
+            $cleaned = '966'.substr($cleaned, 1);
+        } elseif (str_starts_with($cleaned, '00')) {
+            $cleaned = substr($cleaned, 2);
         }
 
         return $cleaned;
